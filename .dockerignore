@@ -1,0 +1,42 @@
+# Build artifacts
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test data (not pom.xml)
+*.csv
+src/test/**/*.xml
+
+# Environment files
+.env
+.env.local
+*.env
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+docs/
+postman/
+
+# Maven wrapper (we copy this explicitly)
+# !.mvn/
+
+# Temporary files
+tmp/
+temp/

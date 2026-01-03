@@ -1,7 +1,9 @@
 package io.moov.watchman.search;
 
 import io.moov.watchman.model.Entity;
+import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.SearchResult;
+import io.moov.watchman.model.SourceList;
 
 import java.util.List;
 
@@ -19,6 +21,18 @@ public interface SearchService {
      * @return List of matching entities with scores, sorted by score descending
      */
     List<SearchResult> search(String query, int limit, double minMatch);
+
+    /**
+     * Search for entities with filtering options.
+     * 
+     * @param query Search query (name, business name, etc.)
+     * @param sourceList Filter by source list (null for all sources)
+     * @param entityType Filter by entity type (null for all types)
+     * @param limit Maximum number of results to return
+     * @param minMatch Minimum similarity score threshold (0.0-1.0)
+     * @return List of matching entities with scores, sorted by score descending
+     */
+    List<SearchResult> search(String query, SourceList sourceList, EntityType entityType, int limit, double minMatch);
 
     /**
      * Search with default parameters.

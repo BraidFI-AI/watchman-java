@@ -1,0 +1,383 @@
+{
+  "info": {
+    "_postman_id": "watchman-java-api-collection",
+    "name": "Watchman Java API",
+    "description": "API collection for Watchman Java - Sanctions Screening Service\n\nThis collection covers all endpoints for the Java port of the Watchman sanctions screening platform.\n\n## Features\n- Single entity search\n- Batch screening (up to 1000 items)\n- Data refresh management\n- Health monitoring\n\n## Base URL\n- Local: http://localhost:8084\n- Fly.io: https://watchman-java.fly.dev",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8084",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Info",
+      "description": "Health check and system information endpoints",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the service is healthy and running"
+          },
+          "response": [
+            {
+              "name": "Healthy Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"UP\",\n  \"timestamp\": \"2026-01-03T00:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Available Lists",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/lists",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "lists"]
+            },
+            "description": "Get information about available sanctions lists"
+          },
+          "response": [
+            {
+              "name": "Lists Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"lists\": [\n    {\"name\": \"OFAC SDN\", \"count\": 12500},\n    {\"name\": \"US CSL\", \"count\": 8000},\n    {\"name\": \"EU CSL\", \"count\": 5000},\n    {\"name\": \"UK CSL\", \"count\": 3000}\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "description": "Single entity search endpoints",
+      "item": [
+        {
+          "name": "Search by Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/search?name=John%20Doe&limit=10&minMatch=0.85",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "search"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "John%20Doe",
+                  "description": "Name to search for (required)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Maximum number of results (default: 10)"
+                },
+                {
+                  "key": "minMatch",
+                  "value": "0.85",
+                  "description": "Minimum match score threshold 0.0-1.0 (default: 0.85)"
+                }
+              ]
+            },
+            "description": "Search sanctions lists by name"
+          },
+          "response": [
+            {
+              "name": "Search Results",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"results\": [\n    {\n      \"entityId\": \"12345\",\n      \"name\": \"JOHN DOE\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"score\": 0.95,\n      \"altNames\": [\"JOHNNY DOE\"],\n      \"addresses\": [\"123 Main St, Somewhere\"],\n      \"remarks\": \"DOB 1970-01-01\"\n    }\n  ],\n  \"query\": \"John Doe\",\n  \"totalResults\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search with Source Filter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/search?name=Acme%20Corp&source=OFAC_SDN&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "search"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Acme%20Corp",
+                  "description": "Name to search for"
+                },
+                {
+                  "key": "source",
+                  "value": "OFAC_SDN",
+                  "description": "Filter by source list (OFAC_SDN, US_CSL, EU_CSL, UK_CSL)"
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "description": "Maximum number of results"
+                }
+              ]
+            },
+            "description": "Search with source list filter"
+          },
+          "response": []
+        },
+        {
+          "name": "Search with Type Filter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/search?name=Bank&type=BUSINESS&minMatch=0.80",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "search"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Bank",
+                  "description": "Name to search for"
+                },
+                {
+                  "key": "type",
+                  "value": "BUSINESS",
+                  "description": "Filter by entity type (PERSON, BUSINESS, VESSEL, AIRCRAFT, UNKNOWN)"
+                },
+                {
+                  "key": "minMatch",
+                  "value": "0.80",
+                  "description": "Minimum match score"
+                }
+              ]
+            },
+            "description": "Search filtered by entity type"
+          },
+          "response": []
+        },
+        {
+          "name": "Search - Low Threshold",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/search?name=Mohammad&minMatch=0.70&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "search"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Mohammad",
+                  "description": "Common name with variations"
+                },
+                {
+                  "key": "minMatch",
+                  "value": "0.70",
+                  "description": "Lower threshold to catch spelling variations"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Higher limit for fuzzy matches"
+                }
+              ]
+            },
+            "description": "Search with lower threshold for fuzzy matching"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Batch Screening",
+      "description": "Batch screening endpoints for processing multiple entities",
+      "item": [
+        {
+          "name": "Batch Screen - Simple",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\"id\": \"1\", \"name\": \"John Smith\"},\n    {\"id\": \"2\", \"name\": \"Acme Corporation\"},\n    {\"id\": \"3\", \"name\": \"Jane Doe\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "search", "batch"]
+            },
+            "description": "Screen multiple entities in a single request (max 1000 items)"
+          },
+          "response": [
+            {
+              "name": "Batch Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"results\": [\n    {\n      \"itemId\": \"1\",\n      \"name\": \"John Smith\",\n      \"matches\": [\n        {\n          \"entityId\": \"12345\",\n          \"name\": \"JOHN SMITH\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"score\": 0.98\n        }\n      ],\n      \"matchCount\": 1\n    },\n    {\n      \"itemId\": \"2\",\n      \"name\": \"Acme Corporation\",\n      \"matches\": [],\n      \"matchCount\": 0\n    },\n    {\n      \"itemId\": \"3\",\n      \"name\": \"Jane Doe\",\n      \"matches\": [],\n      \"matchCount\": 0\n    }\n  ],\n  \"statistics\": {\n    \"totalItems\": 3,\n    \"itemsWithMatches\": 1,\n    \"itemsWithoutMatches\": 2,\n    \"totalMatches\": 1,\n    \"processingTimeMs\": 45\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Batch Screen - With Filters",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\"id\": \"cust-001\", \"name\": \"Global Trading LLC\"},\n    {\"id\": \"cust-002\", \"name\": \"Mohammad Ali\"},\n    {\"id\": \"cust-003\", \"name\": \"Petrochemical Industries\"},\n    {\"id\": \"cust-004\", \"name\": \"Al-Rashid Enterprises\"},\n    {\"id\": \"cust-005\", \"name\": \"Northern Bank\"}\n  ],\n  \"minMatch\": 0.80,\n  \"limit\": 5,\n  \"sourceFilter\": \"OFAC_SDN\",\n  \"typeFilter\": \"BUSINESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "search", "batch"]
+            },
+            "description": "Batch screen with source and type filters"
+          },
+          "response": []
+        },
+        {
+          "name": "Batch Screen - Large (100 items)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\"id\": \"1\", \"name\": \"Customer One\"},\n    {\"id\": \"2\", \"name\": \"Customer Two\"},\n    {\"id\": \"3\", \"name\": \"Customer Three\"},\n    {\"id\": \"4\", \"name\": \"Customer Four\"},\n    {\"id\": \"5\", \"name\": \"Customer Five\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "search", "batch"]
+            },
+            "description": "Example large batch request (modify items array as needed, max 1000)"
+          },
+          "response": []
+        },
+        {
+          "name": "Batch Screen - Async",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\"id\": \"async-1\", \"name\": \"Async Test One\"},\n    {\"id\": \"async-2\", \"name\": \"Async Test Two\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10,\n  \"webhookUrl\": \"https://your-webhook.example.com/callback\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search/batch/async",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "search", "batch", "async"]
+            },
+            "description": "Submit batch for async processing (for very large batches)"
+          },
+          "response": [
+            {
+              "name": "Async Accepted",
+              "status": "Accepted",
+              "code": 202,
+              "body": "{\n  \"jobId\": \"batch-job-12345\",\n  \"status\": \"PENDING\",\n  \"itemCount\": 2,\n  \"submittedAt\": \"2026-01-03T00:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Batch Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/search/batch/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["v2", "search", "batch", "config"]
+            },
+            "description": "Get batch screening configuration and limits"
+          },
+          "response": [
+            {
+              "name": "Config Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"maxBatchSize\": 1000,\n  \"defaultMinMatch\": 0.85,\n  \"defaultLimit\": 10,\n  \"asyncThreshold\": 500,\n  \"supportedSources\": [\"OFAC_SDN\", \"US_CSL\", \"EU_CSL\", \"UK_CSL\"],\n  \"supportedTypes\": [\"PERSON\", \"BUSINESS\", \"VESSEL\", \"AIRCRAFT\"]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Data Management",
+      "description": "Data download and refresh endpoints",
+      "item": [
+        {
+          "name": "Refresh Data",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/download/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "download", "refresh"]
+            },
+            "description": "Trigger manual refresh of sanctions data from all sources"
+          },
+          "response": [
+            {
+              "name": "Refresh Started",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"REFRESHING\",\n  \"message\": \"Data refresh started\",\n  \"startedAt\": \"2026-01-03T00:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Download Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/download/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "download", "status"]
+            },
+            "description": "Get current status of data downloads"
+          },
+          "response": [
+            {
+              "name": "Status Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"READY\",\n  \"lastRefresh\": \"2026-01-03T00:00:00Z\",\n  \"sources\": [\n    {\"name\": \"OFAC_SDN\", \"status\": \"LOADED\", \"entityCount\": 12500, \"lastUpdated\": \"2026-01-03T00:00:00Z\"},\n    {\"name\": \"US_CSL\", \"status\": \"LOADED\", \"entityCount\": 8000, \"lastUpdated\": \"2026-01-03T00:00:00Z\"},\n    {\"name\": \"EU_CSL\", \"status\": \"LOADED\", \"entityCount\": 5000, \"lastUpdated\": \"2026-01-03T00:00:00Z\"},\n    {\"name\": \"UK_CSL\", \"status\": \"LOADED\", \"entityCount\": 3000, \"lastUpdated\": \"2026-01-03T00:00:00Z\"}\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

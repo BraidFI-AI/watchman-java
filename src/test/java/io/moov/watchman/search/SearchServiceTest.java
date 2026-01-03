@@ -1,6 +1,9 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.index.EntityIndex;
+import io.moov.watchman.index.InMemoryEntityIndex;
 import io.moov.watchman.model.*;
+import io.moov.watchman.similarity.JaroWinklerSimilarity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,11 +21,23 @@ import static org.assertj.core.api.Assertions.within;
 class SearchServiceTest {
 
     private SearchService searchService;
+    private EntityIndex entityIndex;
 
     @BeforeEach
     void setUp() {
-        // TODO: Implement and inject SearchServiceImpl with test data
-        searchService = null;
+        entityIndex = new InMemoryEntityIndex();
+        EntityScorer entityScorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+        searchService = new SearchServiceImpl(entityIndex, entityScorer);
+        
+        // Add test data
+        entityIndex.addAll(List.of(
+            Entity.of("7140", "Nicolas Maduro", EntityType.PERSON, SourceList.US_OFAC),
+            Entity.of("7141", "MADURO MOROS, Nicolas", EntityType.PERSON, SourceList.US_OFAC),
+            Entity.of("7142", "MADURO, Nicolas Jr", EntityType.PERSON, SourceList.US_OFAC),
+            Entity.of("1001", "AEROCARIBBEAN AIRLINES", EntityType.BUSINESS, SourceList.US_OFAC),
+            Entity.of("1002", "BANCO NACIONAL DE CUBA", EntityType.BUSINESS, SourceList.US_OFAC),
+            Entity.of("1003", "HAVANA SHIPPING CO", EntityType.VESSEL, SourceList.US_OFAC)
+        ));
     }
 
     @Nested

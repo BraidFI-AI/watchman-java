@@ -7,11 +7,24 @@ spring:
 
 watchman:
   download:
-    refresh-interval: 12h
+    enabled: true
+    on-startup: true
+    refresh-interval-ms: 43200000  # 12 hours in milliseconds
+    sources:
+      - US_OFAC
+      # - US_CSL
+      # - EU_CSL
+      # - UK_CSL
     ofac:
       sdn-url: https://www.treasury.gov/ofac/downloads/sdn.csv
       add-url: https://www.treasury.gov/ofac/downloads/add.csv
       alt-url: https://www.treasury.gov/ofac/downloads/alt.csv
+    csl:
+      url: https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.csv
+    eu-csl:
+      url: https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw
+    uk-csl:
+      url: https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv
   search:
     default-limit: 10
     max-limit: 100

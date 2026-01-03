@@ -29,8 +29,7 @@ class OFACParserTest {
 
     @BeforeEach
     void setUp() {
-        // TODO: Implement and inject OFACParserImpl
-        parser = null;
+        parser = new OFACParserImpl();
     }
 
     @Nested
@@ -182,15 +181,12 @@ class OFACParserTest {
             
             assertThat(parser).isNotNull();
             
-            List<Entity> entities = parser.parse(
-                null, // No file path
-                null,
-                null
-            );
-            // This test needs to use stream-based method
-            // TODO: Add stream-based parse method with all three streams
+            // Parse using InputStream-based method
+            List<Entity> entities = parser.parse(sdnStream, addStream, null);
             
-            assertThat(true).isTrue(); // Placeholder
+            assertThat(entities).hasSize(1);
+            Entity entity = entities.get(0);
+            assertThat(entity.addresses()).isNotEmpty();
         }
 
         @Test
