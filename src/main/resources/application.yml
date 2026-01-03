@@ -1,0 +1,22 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: watchman-java
+
+watchman:
+  download:
+    refresh-interval: 12h
+    ofac:
+      sdn-url: https://www.treasury.gov/ofac/downloads/sdn.csv
+      add-url: https://www.treasury.gov/ofac/downloads/add.csv
+      alt-url: https://www.treasury.gov/ofac/downloads/alt.csv
+  search:
+    default-limit: 10
+    max-limit: 100
+    min-match: 0.88
+  scoring:
+    jaro-winkler:
+      boost-threshold: 0.7
+      prefix-size: 4

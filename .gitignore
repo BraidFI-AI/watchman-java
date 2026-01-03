@@ -1,0 +1,38 @@
+# Build output
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Maven
+*.jar
+*.war
+*.ear
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application data
+data/
+
+# Test output
+test-output/
+surefire-reports/
+
+# Keep OFAC test data (don't ignore)
+!src/test/resources/ofac/*.csv
