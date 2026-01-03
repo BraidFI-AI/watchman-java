@@ -313,7 +313,7 @@ src/
 
 ## Test Coverage
 
-See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed test documentation including:
+See [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md) for detailed test documentation including:
 - Test counts by area
 - Test case descriptions
 - Coverage of Go test cases
@@ -325,10 +325,20 @@ See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed test documentation includi
 | Similarity Engine | 56 | Jaro-Winkler, normalization, phonetics |
 | Parsers | 62 | OFAC, US CSL, EU CSL, UK CSL |
 | Search & Index | 48 | Scoring, filtering, ranking |
-| REST API | 42 | Controllers, DTOs, validation |
+| REST API | 55 | Controllers, DTOs, validation, error handling |
 | Download Service | 32 | Refresh, scheduling, multi-source |
 | Batch Screening | 21 | Parallel processing, statistics |
 | Integration | 61 | End-to-end pipeline tests |
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [API_SPEC.md](docs/API_SPEC.md) | Complete API reference with examples |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Fly.io deployment guide |
+| [USER_GUIDE.md](docs/USER_GUIDE.md) | Business user guide |
+| [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error handling & logging guide |
+| [TEST_COVERAGE.md](docs/TEST_COVERAGE.md) | Detailed test documentation |
 
 ## License
 

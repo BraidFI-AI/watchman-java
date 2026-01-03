@@ -2,7 +2,7 @@
 
 This document provides comprehensive test coverage information for the Watchman Java project.
 
-**Total: 322 Tests | 21 Test Classes | 0 Failures**
+**Total: 335 Tests | 23 Test Classes | 0 Failures**
 
 ---
 
@@ -13,7 +13,7 @@ This document provides comprehensive test coverage information for the Watchman 
 | Similarity Engine | 4 | 56 | Core fuzzy matching algorithms |
 | Parsers | 5 | 62 | OFAC and CSL file parsers |
 | Search & Index | 4 | 48 | Search service, scoring, indexing |
-| REST API | 3 | 42 | Controller endpoint tests |
+| REST API | 5 | 55 | Controller endpoint & error handling tests |
 | Download Service | 3 | 32 | Data refresh and download |
 | Batch Screening | 2 | 21 | Batch processing API |
 | Integration | 3 | 61 | End-to-end pipeline tests |
@@ -194,7 +194,7 @@ In-memory entity index tests.
 
 ---
 
-### 4. REST API (42 tests)
+### 4. REST API (55 tests)
 
 #### SearchControllerTest.java
 Search endpoint tests.
@@ -235,6 +235,32 @@ Batch screening endpoint tests.
 - `returns400ForEmptyItemsList()` - Validates non-empty
 - `returns400ForOversizedBatch()` - Enforces 1000 item limit
 - `includesSummaryStatistics()` - Response has stats
+
+#### GlobalExceptionHandlerTest.java (NEW)
+Global error handling infrastructure tests.
+
+| Test Category | Tests | Description |
+|---------------|-------|-------------|
+| Request ID Tracking | 2 | X-Request-ID header generation/passthrough |
+| Missing Parameters | 1 | 400 Bad Request for missing params |
+| Method Not Allowed | 1 | 405 for unsupported HTTP methods |
+| Internal Server Error | 1 | 500 for uncaught exceptions |
+| Entity Not Found | 1 | 404 for missing entities |
+| Illegal Argument | 1 | 400 for invalid arguments |
+| Service Unavailable | 1 | 503 for unavailable services |
+
+**Key Test Cases:**
+- `shouldReturnRequestIdHeader()` - All responses include X-Request-ID
+- `shouldUseProvidedRequestId()` - Client-provided request IDs preserved
+- `shouldReturnErrorResponseForMissingParameter()` - Consistent error DTO
+- `shouldHandleInternalServerError()` - Graceful 500 responses
+
+#### ErrorResponseTest.java (NEW)
+Error response DTO tests.
+
+| Test Category | Tests | Description |
+|---------------|-------|-------------|
+| Factory Methods | 5 | badRequest, notFound, internalError, etc. |
 
 ---
 

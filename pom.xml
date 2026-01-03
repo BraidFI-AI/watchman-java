@@ -22,6 +22,7 @@
         <commons-text.version>1.11.0</commons-text.version>
         <commons-csv.version>1.10.0</commons-csv.version>
         <commons-codec.version>1.16.0</commons-codec.version>
+        <logback-contrib.version>0.1.5</logback-contrib.version>
     </properties>
 
     <dependencies>
@@ -66,6 +67,18 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
+        </dependency>
+
+        <!-- Structured JSON Logging -->
+        <dependency>
+            <groupId>ch.qos.logback.contrib</groupId>
+            <artifactId>logback-json-classic</artifactId>
+            <version>${logback-contrib.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback.contrib</groupId>
+            <artifactId>logback-jackson</artifactId>
+            <version>${logback-contrib.version}</version>
         </dependency>
 
         <!-- Testing -->
