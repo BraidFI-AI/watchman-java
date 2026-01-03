@@ -6,6 +6,27 @@ This document provides comprehensive test coverage information for the Watchman 
 
 ---
 
+## Quick Run
+
+```bash
+# Run all tests
+./scripts/test-all.sh
+
+# Run tests by area
+./scripts/test-similarity.sh   # 🔤 Similarity Engine (56 tests)
+./scripts/test-parsers.sh      # 📄 Parsers (62 tests)
+./scripts/test-search.sh       # 🔍 Search & Index (48 tests)
+./scripts/test-api.sh          # 🌐 REST API (55 tests)
+./scripts/test-download.sh     # 📥 Download Service (32 tests)
+./scripts/test-batch.sh        # 📦 Batch Screening (21 tests)
+./scripts/test-integration.sh  # 🔗 Integration (61 tests)
+
+# Test live deployed API
+./scripts/test-live-api.sh
+```
+
+---
+
 ## Test Summary by Area
 
 | Area | Test Classes | Test Count | Description |
@@ -23,6 +44,8 @@ This document provides comprehensive test coverage information for the Watchman 
 ## Detailed Test Coverage
 
 ### 1. Similarity Engine (56 tests)
+
+**Run:** `./scripts/test-similarity.sh`
 
 #### JaroWinklerSimilarityTest.java
 Core fuzzy string matching algorithm tests.
@@ -91,6 +114,8 @@ Entity-level name comparison with alt names.
 
 ### 2. Parsers (62 tests)
 
+**Run:** `./scripts/test-parsers.sh`
+
 #### OFACParserTest.java
 OFAC SDN CSV file parser tests.
 
@@ -149,6 +174,8 @@ Entity type classification tests.
 
 ### 3. Search & Index (48 tests)
 
+**Run:** `./scripts/test-search.sh`
+
 #### SearchServiceTest.java
 Search service orchestration tests.
 
@@ -195,6 +222,8 @@ In-memory entity index tests.
 ---
 
 ### 4. REST API (55 tests)
+
+**Run:** `./scripts/test-api.sh`
 
 #### SearchControllerTest.java
 Search endpoint tests.
@@ -266,6 +295,8 @@ Error response DTO tests.
 
 ### 5. Download Service (32 tests)
 
+**Run:** `./scripts/test-download.sh`
+
 #### DownloadServiceImplTest.java
 Data download service tests.
 
@@ -298,6 +329,8 @@ Download API integration tests.
 
 ### 6. Batch Screening (21 tests)
 
+**Run:** `./scripts/test-batch.sh`
+
 #### BatchScreeningServiceTest.java
 Batch processing service tests.
 
@@ -328,6 +361,8 @@ Batch API endpoint tests.
 ---
 
 ### 7. Integration Tests (61 tests)
+
+**Run:** `./scripts/test-integration.sh`
 
 #### PipelineIntegrationTest.java
 Full pipeline integration tests.
