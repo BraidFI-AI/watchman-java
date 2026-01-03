@@ -36,3 +36,4 @@ surefire-reports/
 
 # Keep OFAC test data (don't ignore)
 !src/test/resources/ofac/*.csv
+src/test/resources/ofac/*.csv
