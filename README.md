@@ -336,6 +336,7 @@ See [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md) for detailed test documentati
 |----------|-------------|
 | [API_SPEC.md](docs/API_SPEC.md) | Complete API reference with examples |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Fly.io deployment guide |
+| [SCALING_GUIDE.md](docs/SCALING_GUIDE.md) | Performance benchmarks & scaling for Fly.io/AWS |
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | Business user guide |
 | [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error handling & logging guide |
 | [TEST_COVERAGE.md](docs/TEST_COVERAGE.md) | Detailed test documentation |
