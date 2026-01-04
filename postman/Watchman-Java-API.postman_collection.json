@@ -24,8 +24,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             },
             "description": "Check if the service is healthy and running"
           },
@@ -44,9 +48,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/lists",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "lists"]
+              "raw": "{{baseUrl}}/v2/listinfo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "listinfo"
+              ]
             },
             "description": "Get information about available sanctions lists"
           },
@@ -71,9 +80,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/search?name=John%20Doe&limit=10&minMatch=0.85",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "search"],
+              "raw": "{{baseUrl}}/v2/search?name=John%20Doe&limit=10&minMatch=0.85",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ],
               "query": [
                 {
                   "key": "name",
@@ -99,7 +113,7 @@
               "name": "Search Results",
               "status": "OK",
               "code": 200,
-              "body": "{\n  \"results\": [\n    {\n      \"entityId\": \"12345\",\n      \"name\": \"JOHN DOE\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"score\": 0.95,\n      \"altNames\": [\"JOHNNY DOE\"],\n      \"addresses\": [\"123 Main St, Somewhere\"],\n      \"remarks\": \"DOB 1970-01-01\"\n    }\n  ],\n  \"query\": \"John Doe\",\n  \"totalResults\": 1\n}"
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"12345\",\n      \"name\": \"JOHN DOE\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"12345\",\n      \"score\": 0.95,\n      \"altNames\": [\n        \"JOHNNY DOE\",\n        \"DOE, JOHN\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": null\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-123\",\n  \"debug\": null\n}"
             }
           ]
         },
@@ -109,9 +123,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/search?name=Acme%20Corp&source=OFAC_SDN&limit=25",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "search"],
+              "raw": "{{baseUrl}}/v2/search?name=Acme%20Corp&source=OFAC_SDN&limit=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ],
               "query": [
                 {
                   "key": "name",
@@ -132,7 +151,14 @@
             },
             "description": "Search with source list filter"
           },
-          "response": []
+          "response": [
+            {
+              "name": "Filtered Search Results",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"67890\",\n      \"name\": \"ACME CORPORATION\",\n      \"type\": \"BUSINESS\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"67890\",\n      \"score\": 0.92,\n      \"altNames\": [\n        \"ACME CORP\",\n        \"ACME CO.\"\n      ],\n      \"programs\": [\n        \"SYRIA\"\n      ],\n      \"breakdown\": null\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": null,\n  \"debug\": null\n}"
+            }
+          ]
         },
         {
           "name": "Search with Type Filter",
@@ -140,9 +166,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/search?name=Bank&type=BUSINESS&minMatch=0.80",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "search"],
+              "raw": "{{baseUrl}}/v2/search?name=Bank&type=BUSINESS&minMatch=0.80",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ],
               "query": [
                 {
                   "key": "name",
@@ -163,7 +194,14 @@
             },
             "description": "Search filtered by entity type"
           },
-          "response": []
+          "response": [
+            {
+              "name": "Type Filtered Results",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"11223\",\n      \"name\": \"BANK OF COMMERCE\",\n      \"type\": \"BUSINESS\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"11223\",\n      \"score\": 0.88,\n      \"altNames\": [\n        \"COMMERCE BANK\"\n      ],\n      \"programs\": [\n        \"IRAN\"\n      ],\n      \"breakdown\": null\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": null,\n  \"debug\": null\n}"
+            }
+          ]
         },
         {
           "name": "Search - Low Threshold",
@@ -171,9 +209,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/search?name=Mohammad&minMatch=0.70&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "search"],
+              "raw": "{{baseUrl}}/v2/search?name=Mohammad&minMatch=0.70&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ],
               "query": [
                 {
                   "key": "name",
@@ -194,7 +237,14 @@
             },
             "description": "Search with lower threshold for fuzzy matching"
           },
-          "response": []
+          "response": [
+            {
+              "name": "Fuzzy Match Results",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"45678\",\n      \"name\": \"MOHAMMAD ALI AHMED\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"45678\",\n      \"score\": 0.78,\n      \"altNames\": [\n        \"MOHAMMED ALI AHMAD\",\n        \"MUHAMMAD A. AHMED\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": null\n    },\n    {\n      \"id\": \"45679\",\n      \"name\": \"MOHAMMAD HASSAN\",\n      \"type\": \"PERSON\",\n      \"source\": \"EU_CSL\",\n      \"sourceId\": \"45679\",\n      \"score\": 0.72,\n      \"altNames\": [\n        \"MOHAMMED HASAN\"\n      ],\n      \"programs\": null,\n      \"breakdown\": null\n    }\n  ],\n  \"totalResults\": 2,\n  \"requestID\": null,\n  \"debug\": null\n}"
+            }
+          ]
         }
       ]
     },
@@ -218,8 +268,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "search", "batch"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search",
+                "batch"
+              ]
             },
             "description": "Screen multiple entities in a single request (max 1000 items)"
           },
@@ -248,12 +304,25 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "search", "batch"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search",
+                "batch"
+              ]
             },
             "description": "Batch screen with source and type filters"
           },
-          "response": []
+          "response": [
+            {
+              "name": "Filtered Batch Results",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"batchId\": \"batch-xyz-456\",\n  \"results\": [\n    {\n      \"requestId\": \"cust-001\",\n      \"query\": \"Global Trading LLC\",\n      \"status\": \"COMPLETED\",\n      \"errorMessage\": null,\n      \"matches\": [\n        {\n          \"entityId\": \"99887\",\n          \"name\": \"GLOBAL TRADING LIMITED\",\n          \"entityType\": \"BUSINESS\",\n          \"sourceList\": \"OFAC_SDN\",\n          \"score\": 0.89,\n          \"remarks\": \"Linked to sanctioned entity\"\n        }\n      ]\n    },\n    {\n      \"requestId\": \"cust-002\",\n      \"query\": \"Mohammad Ali\",\n      \"status\": \"COMPLETED\",\n      \"errorMessage\": null,\n      \"matches\": []\n    }\n  ],\n  \"statistics\": {\n    \"totalProcessed\": 5,\n    \"withMatches\": 1,\n    \"withoutMatches\": 4,\n    \"failed\": 0\n  },\n  \"totalItems\": 5,\n  \"totalMatches\": 1,\n  \"itemsWithMatches\": 1,\n  \"processingTimeMs\": 123,\n  \"processedAt\": \"2026-01-04T12:00:00Z\"\n}"
+            }
+          ]
         },
         {
           "name": "Batch Screen - Large (100 items)",
@@ -271,12 +340,25 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "search", "batch"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search",
+                "batch"
+              ]
             },
             "description": "Example large batch request (modify items array as needed, max 1000)"
           },
-          "response": []
+          "response": [
+            {
+              "name": "Large Batch Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"batchId\": \"batch-large-789\",\n  \"results\": [\n    {\n      \"requestId\": \"1\",\n      \"query\": \"Customer One\",\n      \"status\": \"COMPLETED\",\n      \"errorMessage\": null,\n      \"matches\": []\n    }\n  ],\n  \"statistics\": {\n    \"totalProcessed\": 5,\n    \"withMatches\": 0,\n    \"withoutMatches\": 5,\n    \"failed\": 0\n  },\n  \"totalItems\": 5,\n  \"totalMatches\": 0,\n  \"itemsWithMatches\": 0,\n  \"processingTimeMs\": 87,\n  \"processedAt\": \"2026-01-04T12:00:00Z\"\n}"
+            }
+          ]
         },
         {
           "name": "Batch Screen - Async",
@@ -294,8 +376,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch/async",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "search", "batch", "async"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search",
+                "batch",
+                "async"
+              ]
             },
             "description": "Submit batch for async processing (for very large batches)"
           },
@@ -315,8 +404,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch/config",
-              "host": ["{{baseUrl}}"],
-              "path": ["v2", "search", "batch", "config"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search",
+                "batch",
+                "config"
+              ]
             },
             "description": "Get batch screening configuration and limits"
           },
@@ -342,8 +438,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/download/refresh",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "download", "refresh"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "download",
+                "refresh"
+              ]
             },
             "description": "Trigger manual refresh of sanctions data from all sources"
           },
@@ -363,8 +465,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/download/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "download", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "download",
+                "status"
+              ]
             },
             "description": "Get current status of data downloads"
           },
