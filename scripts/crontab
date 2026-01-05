@@ -1,0 +1,11 @@
+# Watchman Agent Cron Schedule
+# Runs Nemesis and Strategic Analyzer daily
+
+# Run Nemesis every day at 8 AM UTC
+0 8 * * * cd /app && python3 scripts/run-nemesis.py >> /data/logs/nemesis.log 2>&1
+
+# Run Strategic Analyzer 1 hour after Nemesis
+0 9 * * * cd /app && python3 scripts/run-strategic-analyzer.py --latest >> /data/logs/analyzer.log 2>&1
+
+# Clean up old reports (keep last 30 days)
+0 10 1 * * find /data/reports -name "*.json" -mtime +30 -delete

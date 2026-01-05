@@ -321,9 +321,12 @@ A test **passes** when:
 Go Score: 0.85    Java Score: 0.72    Diff: 13%
 ```
 
-**Interpretation**: Different scoring algorithms. Both found the same entity but assigned different confidence levels.
+**Interpretation**: Java is a port of Go and should produce identical or near-identical scores. Differences > 5% indicate porting bugs or missing logic.
 
-**Action**: Review the scoring implementation in both codebases. Small differences (< 15%) are often acceptable.
+**Action**: 
+- **< 5% difference**: Likely acceptable (floating-point precision, minor implementation details)
+- **5-10% difference**: Investigate - possible missing optimization or penalty
+- **> 10% difference**: CRITICAL - Java has not correctly ported Go's algorithm. Review Go source code and fix Java implementation.
 
 #### 2. Different Top Matches
 
