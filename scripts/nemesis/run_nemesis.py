@@ -260,8 +260,71 @@ def main():
         print(f"\n{'='*80}")
         print("STEP 8: Creating GitHub Issue")
         print('='*80)
-        print(f"⚠ GitHub integration skipped (v2 standalone mode)")
-        print(f"  To enable: pip install PyGithub and set GITHUB_TOKEN")
+        
+        github_token = os.environ.get("GITHUB_TOKEN")
+        create_issues = os.environ.get("CREATE_GITHUB_ISSUES", "false").lower() == "true"
+        github_repo = os.environ.get("GITHUB_REPO", "moov-io/watchman-java")
+        
+        if create_issues and github_token:
+            try:
+                from github import Github
+                
+                gh = Github(github_token)
+                repo = gh.get_repo(github_repo)
+                
+                # Create issue with summary of divergences
+                issue_title = f"Nemesis: {len(all_divergences)} divergences found ({today})"
+                
+                # Build issue body
+                issue_body = f"""## Nemesis 1.0 Report
+
+**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}
+**Queries Executed:** {len(test_cases)}
+**Divergences Found:** {len(all_divergences)}
+**Coverage:** {new_coverage['coverage_percentage']:.1f}%
+
+### Divergences by Severity
+"""
+                
+                for severity, count in sorted(by_severity.items()):
+                    issue_body += f"- **{severity}**: {count}\n"
+                
+                # Add AI analysis if available
+                if analysis and analysis.issues:
+                    issue_body += f"\n### Top Issues Identified\n\n"
+                    for i, issue in enumerate(analysis.issues[:5], 1):
+                        priority = issue.get('priority', 'P?')
+                        category = issue.get('category', 'Unknown')
+                        description = issue.get('description', '')
+                        recommendation = issue.get('recommendation', '')
+                        
+                        issue_body += f"#### {i}. [{priority}] {category}\n\n"
+                        issue_body += f"{description}\n\n"
+                        if recommendation:
+                            issue_body += f"**Recommendation:** {recommendation}\n\n"
+                
+                # Add link to full report
+                issue_body += f"\n### Full Report\n\nSee `/data/reports/nemesis-{today}.json` for complete details.\n"
+                
+                # Create the issue
+                created_issue = repo.create_issue(
+                    title=issue_title,
+                    body=issue_body,
+                    labels=["nemesis", "automated-testing"]
+                )
+                
+                print(f"✓ Created GitHub issue: {created_issue.html_url}")
+                
+            except ImportError:
+                print(f"⚠ PyGithub not installed. Run: pip install PyGithub")
+            except Exception as e:
+                print(f"⚠ Failed to create GitHub issue: {e}")
+        else:
+            if not github_token:
+                print(f"⚠ GitHub integration disabled: GITHUB_TOKEN not set")
+            elif not create_issues:
+                print(f"⚠ GitHub integration disabled: CREATE_GITHUB_ISSUES not set to 'true'")
+            print(f"  To enable: set GITHUB_TOKEN and CREATE_GITHUB_ISSUES=true")
     
     # Final summary
     print(f"\n{'='*80}")
