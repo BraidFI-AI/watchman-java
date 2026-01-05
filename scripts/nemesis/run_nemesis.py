@@ -278,33 +278,93 @@ def main():
                 # Build issue body
                 issue_body = f"""## Nemesis 1.0 Report
 
-**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}
-**Queries Executed:** {len(test_cases)}
-**Divergences Found:** {len(all_divergences)}
+**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}  
+**Queries Executed:** {len(test_cases)}  
+**Divergences Found:** {len(all_divergences)}  
 **Coverage:** {new_coverage['coverage_percentage']:.1f}%
 
-### Divergences by Severity
+---
+
+### 📊 Divergences by Severity
 """
                 
                 for severity, count in sorted(by_severity.items()):
-                    issue_body += f"- **{severity}**: {count}\n"
+                    issue_body += f"- **{severity.upper()}**: {count}\n"
+                
+                # Add divergence type breakdown
+                by_type = {}
+                for div in all_divergences:
+                    dtype = div.get("type", "unknown")
+                    by_type[dtype] = by_type.get(dtype, 0) + 1
+                
+                issue_body += f"\n### 🔍 Divergences by Type\n\n"
+                for dtype, count in sorted(by_type.items(), key=lambda x: -x[1]):
+                    issue_body += f"- **{dtype}**: {count}\n"
                 
                 # Add AI analysis if available
                 if analysis and analysis.issues:
-                    issue_body += f"\n### Top Issues Identified\n\n"
+                    issue_body += f"\n---\n\n### 🤖 AI Analysis - Top Issues\n\n"
                     for i, issue in enumerate(analysis.issues[:5], 1):
                         priority = issue.get('priority', 'P?')
                         category = issue.get('category', 'Unknown')
                         description = issue.get('description', '')
                         recommendation = issue.get('recommendation', '')
+                        affected = issue.get('affected_queries', 0)
                         
                         issue_body += f"#### {i}. [{priority}] {category}\n\n"
+                        if affected:
+                            issue_body += f"**Affected Queries:** {affected}\n\n"
                         issue_body += f"{description}\n\n"
                         if recommendation:
-                            issue_body += f"**Recommendation:** {recommendation}\n\n"
+                            issue_body += f"**💡 Recommendation:** {recommendation}\n\n"
+                        issue_body += "---\n\n"
                 
-                # Add link to full report
-                issue_body += f"\n### Full Report\n\nSee `/data/reports/nemesis-{today}.json` for complete details.\n"
+                # Add sample divergences
+                issue_body += f"\n### 📋 Sample Divergences (first 10)\n\n"
+                
+                for i, div in enumerate(all_divergences[:10], 1):
+                    query = div.get('query', 'N/A')
+                    dtype = div.get('type', 'unknown')
+                    severity = div.get('severity', 'unknown')
+                    description = div.get('description', '')
+                    
+                    issue_body += f"#### {i}. Query: `{query}`\n\n"
+                    issue_body += f"- **Type:** {dtype}\n"
+                    issue_body += f"- **Severity:** {severity}\n"
+                    issue_body += f"- **Description:** {description}\n"
+                    
+                    # Add result details if available
+                    java_data = div.get('java_data')
+                    go_data = div.get('go_data')
+                    
+                    if java_data or go_data:
+                        issue_body += "\n**Results:**\n"
+                        if java_data:
+                            java_name = java_data.get('name', 'N/A')
+                            java_score = java_data.get('match', 0)
+                            issue_body += f"- Java: `{java_name}` (score: {java_score:.3f})\n"
+                        if go_data:
+                            go_name = go_data.get('name', 'N/A')
+                            go_score = go_data.get('match', 0)
+                            issue_body += f"- Go: `{go_name}` (score: {go_score:.3f})\n"
+                    
+                    issue_body += "\n"
+                
+                if len(all_divergences) > 10:
+                    issue_body += f"\n*... and {len(all_divergences) - 10} more divergences*\n"
+                
+                # Add footer
+                issue_body += f"\n---\n\n### 📁 Full Report\n\n"
+                issue_body += f"Complete report available at: `/data/reports/nemesis-{today}.json`\n\n"
+                issue_body += f"**Report Summary:**\n"
+                issue_body += f"```json\n"
+                issue_body += f"{{\n"
+                issue_body += f'  "total_divergences": {len(all_divergences)},\n'
+                issue_body += f'  "coverage": "{new_coverage["coverage_percentage"]:.1f}%",\n'
+                issue_body += f'  "entities_tested": {new_coverage["entities_tested"]},\n'
+                issue_body += f'  "queries_executed": {len(test_cases)}\n'
+                issue_body += f"}}\n"
+                issue_body += f"```\n"
                 
                 # Create the issue
                 created_issue = repo.create_issue(
