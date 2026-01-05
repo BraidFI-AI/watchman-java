@@ -276,30 +276,56 @@ def main():
                 issue_title = f"Nemesis: {len(all_divergences)} divergences found ({today})"
                 
                 # Build issue body
-                issue_body = f"""## Nemesis 1.0 Report
+                issue_body = f"""## Nemesis 1.0 Report - Automated Testing Results
 
 **Date:** {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}  
-**Queries Executed:** {len(test_cases)}  
-**Divergences Found:** {len(all_divergences)}  
-**Coverage:** {new_coverage['coverage_percentage']:.1f}%
+**Queries Tested:** {len(test_cases)} diverse name searches  
+**Issues Found:** {len(all_divergences)} differences between Java and Go implementations  
+**Test Coverage:** {new_coverage['coverage_percentage']:.1f}% of OFAC entities ({new_coverage['entities_tested']}/{len(entities)} tested)
 
 ---
 
-### 📊 Divergences by Severity
+## 🎯 What This Report Means
+
+Nemesis tests the **Java implementation** against the **Go baseline** (our production-proven system). Any difference is a potential bug in Java that needs investigation.
+
+---
+
+## 📊 Issues by Impact
+
 """
                 
-                for severity, count in sorted(by_severity.items()):
-                    issue_body += f"- **{severity.upper()}**: {count}\n"
+                severity_explanations = {
+                    "critical": "🔴 **CRITICAL** - Java returns wrong entity or significantly different scores. Could lead to compliance failures.",
+                    "moderate": "🟡 **MODERATE** - Java returns extra/missing results compared to Go. May affect match quality.",
+                    "minor": "🟢 **MINOR** - Small scoring differences (<5%). Low priority."
+                }
                 
-                # Add divergence type breakdown
+                for severity in ["critical", "moderate", "minor"]:
+                    count = by_severity.get(severity, 0)
+                    if count > 0:
+                        issue_body += f"{severity_explanations[severity]}\n"
+                        issue_body += f"- **Count:** {count} queries affected\n\n"
+                
+                # Add divergence type breakdown with explanations
                 by_type = {}
                 for div in all_divergences:
                     dtype = div.get("type", "unknown")
                     by_type[dtype] = by_type.get(dtype, 0) + 1
                 
-                issue_body += f"\n### 🔍 Divergences by Type\n\n"
+                issue_body += f"\n## 🔍 Issue Types\n\n"
+                
+                type_explanations = {
+                    "top_result_differs": "**Wrong Top Match** - Java returns a different entity than Go as the #1 result",
+                    "score_difference": "**Score Mismatch** - Same entity but Java calculates a different confidence score",
+                    "java_extra_result": "**Java Over-Matching** - Java returns results Go filters out (possible false positives)",
+                    "go_extra_result": "**Java Under-Matching** - Go returns results Java misses (possible false negatives)",
+                    "result_order_differs": "**Different Ranking** - Same entities but different order"
+                }
+                
                 for dtype, count in sorted(by_type.items(), key=lambda x: -x[1]):
-                    issue_body += f"- **{dtype}**: {count}\n"
+                    explanation = type_explanations.get(dtype, dtype)
+                    issue_body += f"- {explanation}: **{count} occurrences**\n"
                 
                 # Add AI analysis if available
                 if analysis and analysis.issues:
@@ -319,8 +345,9 @@ def main():
                             issue_body += f"**💡 Recommendation:** {recommendation}\n\n"
                         issue_body += "---\n\n"
                 
-                # Add sample divergences
-                issue_body += f"\n### 📋 Sample Divergences (first 10)\n\n"
+                # Add sample divergences with clearer descriptions
+                issue_body += f"\n---\n\n## 📋 Example Issues (Top 10)\n\n"
+                issue_body += f"*These examples show the most common problems. Full details in report file.*\n\n"
                 
                 for i, div in enumerate(all_divergences[:10], 1):
                     query = div.get('query', 'N/A')
@@ -328,41 +355,75 @@ def main():
                     severity = div.get('severity', 'unknown')
                     description = div.get('description', '')
                     
-                    issue_body += f"#### {i}. Query: `{query}`\n\n"
-                    issue_body += f"- **Type:** {dtype}\n"
-                    issue_body += f"- **Severity:** {severity}\n"
-                    issue_body += f"- **Description:** {description}\n"
+                    # Create human-readable type label
+                    type_labels = {
+                        "top_result_differs": "🔴 Wrong Top Match",
+                        "score_difference": "📊 Score Mismatch",
+                        "java_extra_result": "➕ Java Over-Matching",
+                        "go_extra_result": "➖ Java Missing Result",
+                        "result_order_differs": "🔄 Different Ranking"
+                    }
+                    type_label = type_labels.get(dtype, dtype)
+                    
+                    issue_body += f"### {i}. {type_label}\n\n"
+                    issue_body += f"**Search Query:** `{query}`\n\n"
                     
                     # Add result details if available
                     java_data = div.get('java_data')
                     go_data = div.get('go_data')
                     
                     if java_data or go_data:
-                        issue_body += "\n**Results:**\n"
+                        issue_body += f"**What Happened:**\n"
                         if java_data:
                             java_name = java_data.get('name', 'N/A')
                             java_score = java_data.get('match', 0)
-                            issue_body += f"- Java: `{java_name}` (score: {java_score:.3f})\n"
+                            issue_body += f"- Java returned: `{java_name}` (confidence: {java_score:.1%})\n"
                         if go_data:
                             go_name = go_data.get('name', 'N/A')
                             go_score = go_data.get('match', 0)
-                            issue_body += f"- Go: `{go_name}` (score: {go_score:.3f})\n"
+                            issue_body += f"- Go returned: `{go_name}` (confidence: {go_score:.1%})\n"
+                        
+                        # Add interpretation
+                        if dtype == "top_result_differs":
+                            issue_body += f"\n**Why This Matters:** Java and Go disagree on which entity matches best. This could cause compliance misses.\n"
+                        elif dtype == "score_difference":
+                            score_diff = div.get('score_difference', 0)
+                            issue_body += f"\n**Why This Matters:** Score difference of {score_diff:.1%}. Scoring algorithm may need calibration.\n"
+                        elif dtype == "java_extra_result":
+                            issue_body += f"\n**Why This Matters:** Java may be creating false positives - matching names that shouldn't match.\n"
+                        elif dtype == "go_extra_result":
+                            issue_body += f"\n**Why This Matters:** Java may be missing legitimate matches that Go finds.\n"
                     
                     issue_body += "\n"
                 
                 if len(all_divergences) > 10:
-                    issue_body += f"\n*... and {len(all_divergences) - 10} more divergences*\n"
+                    issue_body += f"\n*... plus {len(all_divergences) - 10} more issues in the full report*\n"
                 
-                # Add footer
-                issue_body += f"\n---\n\n### 📁 Full Report\n\n"
-                issue_body += f"Complete report available at: `/data/reports/nemesis-{today}.json`\n\n"
-                issue_body += f"**Report Summary:**\n"
+                # Add footer with action items
+                issue_body += f"\n---\n\n## 🔧 Recommended Actions\n\n"
+                
+                critical_count = by_severity.get('critical', 0)
+                if critical_count > 0:
+                    issue_body += f"1. **Priority 1:** Fix {critical_count} critical issues first (wrong top matches, major score differences)\n"
+                
+                java_extra = by_type.get('java_extra_result', 0)
+                if java_extra > 0:
+                    issue_body += f"2. **Investigate Over-Matching:** Java returns {java_extra} extra results - review matching thresholds\n"
+                
+                go_extra = by_type.get('go_extra_result', 0)
+                if go_extra > 0:
+                    issue_body += f"3. **Investigate Under-Matching:** Java misses {go_extra} results that Go finds - check scoring logic\n"
+                
+                issue_body += f"\n## 📁 Full Report Location\n\n"
+                issue_body += f"Complete technical details: `/data/reports/nemesis-{today}.json`\n\n"
                 issue_body += f"```json\n"
                 issue_body += f"{{\n"
-                issue_body += f'  "total_divergences": {len(all_divergences)},\n'
+                issue_body += f'  "total_issues": {len(all_divergences)},\n'
+                issue_body += f'  "critical": {by_severity.get("critical", 0)},\n'
+                issue_body += f'  "moderate": {by_severity.get("moderate", 0)},\n'
+                issue_body += f'  "minor": {by_severity.get("minor", 0)},\n'
                 issue_body += f'  "coverage": "{new_coverage["coverage_percentage"]:.1f}%",\n'
-                issue_body += f'  "entities_tested": {new_coverage["entities_tested"]},\n'
-                issue_body += f'  "queries_executed": {len(test_cases)}\n'
+                issue_body += f'  "entities_tested": {new_coverage["entities_tested"]}\n'
                 issue_body += f"}}\n"
                 issue_body += f"```\n"
                 
