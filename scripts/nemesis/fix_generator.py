@@ -43,7 +43,7 @@ class FixGenerator:
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
                 raise ValueError("OPENAI_API_KEY required")
-            openai.api_key = api_key
+            self.client = openai.OpenAI(api_key=api_key)
             self.model = "gpt-4"
         else:
             raise ValueError(f"Unknown AI provider: {ai_provider}")
@@ -240,7 +240,7 @@ class FixGenerator:
             return response.content[0].text
         
         elif self.ai_provider == "openai":
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{
                     "role": "user",
