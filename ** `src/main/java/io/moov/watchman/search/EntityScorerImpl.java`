@@ -1,0 +1,37 @@
+package io.moov.watchman.search;
+
+import io.moov.watchman.model.*;
+import io.moov.watchman.similarity.SimilarityService;
+import io.moov.watchman.similarity.TextNormalizer;
+
+import java.util.List;
+
+public class EntityScorerImpl implements EntityScorer {
+    
+    private final SimilarityService similarityService;
+    private final TextNormalizer normalizer;
+
+    public EntityScorerImpl(SimilarityService similarityService) {
+        this.similarityService = similarityService;
+        this.normalizer = new TextNormalizer();
+    }
+
+    @Override
+    public double score(String queryName, Entity candidate) {
+        return scoreWithBreakdown(queryName, candidate).totalWeightedScore();
+    }
+
+    @Override
+    public ScoreBreakdown scoreWithBreakdown(String queryName, Entity candidate) {
+        // Placeholder for enhanced name and alternative name comparison logic.
+        // Actual implementation would depend on further details of the Go version's approach.
+    }
+
+    @Override
+    public ScoreBreakdown scoreWithBreakdown(Entity query, Entity candidate) {
+        // Placeholder for improved scoring logic adjustments.
+        // Focus on handling crypto address and government ID comparisons more effectively.
+    }
+
+    // Additional private methods for normalized comparison would be placed here.
+}
