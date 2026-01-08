@@ -4,6 +4,34 @@ Generate API Reference from compiled Java classes.
 
 Extracts public methods, fields, and signatures from bytecode
 to prevent AI hallucination during fix generation.
+
+## Purpose
+Provides accurate Java API documentation to the Nemesis repair pipeline AI,
+preventing it from inventing non-existent methods or classes.
+
+## How it Works
+1. Finds all .class files in target/classes/
+2. Uses javap (Java bytecode disassembler) to extract public API
+3. Parses method signatures, fields, and class definitions
+4. Generates both JSON and Markdown formats
+
+## Integration
+- Runs during Docker build after Maven compilation
+- Output copied to runtime container as /app/API-REFERENCE.md
+- Loaded by fix_generator.py and included in AI prompts
+
+## Usage
+    python3 scripts/generate_api_reference.py
+
+Requires:
+- Compiled Java classes in target/classes/
+- javap binary (included in JDK)
+
+Output:
+- target/api-reference.json - Structured data
+- target/API-REFERENCE.md - Markdown for AI consumption
+
+See: docs/API_REFERENCE_GENERATION.md for full documentation
 """
 
 import subprocess
