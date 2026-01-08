@@ -1,11 +1,11 @@
 # Watchman Agent Cron Schedule
-# Runs Nemesis 1.0 every 5 minutes (testing mode)
+# Runs Nemesis 1.0 daily at 8am UTC
 
-# Run Nemesis 1.0 every 5 minutes
-*/5 * * * * cd /app && PYTHONPATH=/app/scripts GITHUB_TOKEN="${GITHUB_TOKEN}" CREATE_GITHUB_ISSUES="${CREATE_GITHUB_ISSUES}" OPENAI_API_KEY="${OPENAI_API_KEY}" WATCHMAN_JAVA_API_URL="${WATCHMAN_JAVA_API_URL}" WATCHMAN_GO_API_URL="${WATCHMAN_GO_API_URL}" COMPARE_IMPLEMENTATIONS="${COMPARE_IMPLEMENTATIONS}" AI_PROVIDER="${AI_PROVIDER}" AI_MODEL="${AI_MODEL}" GITHUB_REPO="${GITHUB_REPO}" python3 scripts/nemesis/run_nemesis.py >> /data/logs/nemesis.log 2>&1
+# Run Nemesis 1.0 daily at 8am UTC
+0 8 * * * cd /app && PYTHONPATH=/app/scripts GITHUB_TOKEN="${GITHUB_TOKEN}" CREATE_GITHUB_ISSUES="${CREATE_GITHUB_ISSUES}" OPENAI_API_KEY="${OPENAI_API_KEY}" WATCHMAN_JAVA_API_URL="${WATCHMAN_JAVA_API_URL}" WATCHMAN_GO_API_URL="${WATCHMAN_GO_API_URL}" COMPARE_IMPLEMENTATIONS="${COMPARE_IMPLEMENTATIONS}" AI_PROVIDER="${AI_PROVIDER}" AI_MODEL="${AI_MODEL}" GITHUB_REPO="${GITHUB_REPO}" python3 scripts/nemesis/run_nemesis.py >> /data/logs/nemesis.log 2>&1
 
-# Run Repair Pipeline 2 minutes after Nemesis (every 5 minutes, offset by 2)
-2-59/5 * * * * cd /app && PYTHONPATH=/app/scripts ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" GITHUB_TOKEN="${GITHUB_TOKEN}" GITHUB_REPO="${GITHUB_REPO}" python3 scripts/run_repair_pipeline.py >> /data/logs/repair-pipeline.log 2>&1
+# Run Repair Pipeline 5 minutes after Nemesis (8:05am UTC daily)
+5 8 * * * cd /app && PYTHONPATH=/app/scripts ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" GITHUB_TOKEN="${GITHUB_TOKEN}" GITHUB_REPO="${GITHUB_REPO}" python3 scripts/run_repair_pipeline.py >> /data/logs/repair-pipeline.log 2>&1
 
 # Clean up old reports (keep last 30 days)
 0 10 1 * * find /data/reports -name "*.json" -mtime +30 -delete
