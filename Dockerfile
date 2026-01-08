@@ -2,8 +2,8 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-# Install curl for maven wrapper
-RUN apk add --no-cache curl
+# Install curl for maven wrapper and python for API generation
+RUN apk add --no-cache curl python3
 
 # Copy maven wrapper and pom
 COPY .mvn/ .mvn/
