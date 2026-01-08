@@ -110,6 +110,44 @@ class FixGenerator:
     
     def _find_ai_issue(self, issue_id: str, report: Dict) -> Optional[Dict]:
         """Find the AI issue from report that matches this analysis."""
+        # First try to find in action plan (more structured)
+        action_plan_file = str(self.project_root / 'data' / 'reports' / f'action-plan-*.json')
+        import glob
+        action_plans = sorted(glob.glob(action_plan_file), reverse=True)
+        
+        if action_plans:
+            try:
+                with open(action_plans[0]) as f:
+                    action_plan = json.load(f)
+                
+                # Check auto_fix_actions
+                for issue in action_plan.get('auto_fix_actions', []):
+                    if issue.get('issue_id') == issue_id:
+                        return {
+                            'id': issue_id,
+                            'category': issue.get('pattern', 'unknown'),
+                            'priority': 'P1' if 'auto' in issue.get('next_step', '') else 'P2',
+                            'description': f"Pattern: {issue.get('pattern')} - Confidence: {issue.get('confidence', 0):.0%}",
+                            'recommendation': issue.get('next_step', 'Apply automated fix'),
+                            'affected_queries': issue.get('affected_queries', 0)
+                        }
+                
+                # Check human_review_actions
+                for issue in action_plan.get('human_review_actions', []):
+                    if issue.get('issue_id') == issue_id:
+                        return {
+                            'id': issue_id,
+                            'category': issue.get('pattern', 'unknown'),
+                            'priority': 'P2',
+                            'description': f"Pattern: {issue.get('pattern')} - Confidence: {issue.get('confidence', 0):.0%}",
+                            'recommendation': issue.get('next_step', 'Requires human review'),
+                            'affected_queries': issue.get('affected_queries', 0),
+                            'reasons': issue.get('reasons', [])
+                        }
+            except Exception as e:
+                print(f"   ⚠️  Could not load action plan: {e}")
+        
+        # Fallback: Try AI analysis from report
         ai_analysis = report.get('ai_analysis', {})
         issues = ai_analysis.get('issues', [])
         
@@ -117,7 +155,14 @@ class FixGenerator:
             if issue.get('id') == issue_id:
                 return issue
         
-        return None
+        # If nothing found, return a placeholder
+        return {
+            'id': issue_id,
+            'category': 'unknown',
+            'priority': 'P2',
+            'description': 'Issue details not available',
+            'recommendation': 'Review divergences and apply appropriate fix'
+        }
     
     def _get_sample_divergences(self, issue_id: str, report: Dict, max_samples: int = 5) -> List[Dict]:
         """Get sample divergences for this issue."""
@@ -162,7 +207,7 @@ class FixGenerator:
     
     def _build_prompt(self, context: Dict) -> str:
         """Build AI prompt for fix generation."""
-        issue = context['issue']
+        issue = context['issue'] or {}  # Ensure issue is never None
         analysis = context['analysis']
         files = context['file_contents']
         tests = context['test_contents']

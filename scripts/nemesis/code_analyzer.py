@@ -425,22 +425,31 @@ def main():
     with open(action_plan_file) as f:
         action_plan = json.load(f)
     
-    # Load original report to get full issue details
+    # Keep reference to report file for later use
     report_file = action_plan.get('report_file')
-    if not report_file or not os.path.exists(report_file):
-        print(f"❌ Report file not found: {report_file}")
-        sys.exit(1)
     
-    with open(report_file) as f:
-        report = json.load(f)
+    # Extract issues from action plan (auto-fix and human-review)
+    auto_fix = action_plan.get('auto_fix_actions', [])
+    human_review = action_plan.get('human_review_actions', [])
     
-    # Extract issues from AI analysis
-    ai_analysis = report.get('ai_analysis', {})
-    issues = ai_analysis.get('issues', [])
+    issues = auto_fix + human_review
     
     if not issues:
-        print("⚠️  No issues found in report")
+        print("⚠️  No issues found in action plan (all too complex or investigation needed)")
         sys.exit(0)
+    
+    # Convert action plan issues to expected format
+    formatted_issues = []
+    for issue in issues:
+        formatted_issues.append({
+            'id': issue.get('issue_id', 'UNKNOWN'),
+            'pattern': issue.get('pattern', 'unknown'),
+            'category': issue.get('pattern', 'unknown'),  # Use pattern as category
+            'confidence': issue.get('confidence', 0.0),
+            'affected_queries': issue.get('affected_queries', 0)
+        })
+    
+    issues = formatted_issues
     
     print("=" * 80)
     print("CODE ANALYZER - Finding Affected Java Files")
