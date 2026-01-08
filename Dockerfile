@@ -18,6 +18,10 @@ COPY src/ src/
 # Build the application (skip tests for faster build)
 RUN ./mvnw clean package -DskipTests -B
 
+# Generate API reference for repair agent
+COPY scripts/generate_api_reference.py scripts/
+RUN python3 scripts/generate_api_reference.py
+
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
@@ -34,6 +38,9 @@ COPY --from=build /app/target/*.jar app.jar
 
 # Copy source code for code analysis by repair agent
 COPY --from=build /app/src/ /app/src/
+
+# Copy API reference for repair agent
+COPY --from=build /app/target/API-REFERENCE.md /app/API-REFERENCE.md
 
 # Copy agent scripts and configuration
 COPY scripts/*.py scripts/requirements.txt scripts/crontab /app/scripts/

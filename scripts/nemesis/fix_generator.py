@@ -23,6 +23,15 @@ class FixGenerator:
         self.project_root = Path(project_root).resolve()
         self.ai_provider = ai_provider
         
+        # Load API reference if available
+        api_ref_path = self.project_root / "API-REFERENCE.md"
+        if api_ref_path.exists():
+            self.api_reference = api_ref_path.read_text()
+            print("✓ Loaded API reference")
+        else:
+            self.api_reference = None
+            print("⚠️  No API reference found (will rely on code context only)")
+        
         # Initialize AI client
         if ai_provider == "anthropic":
             api_key = os.getenv('ANTHROPIC_API_KEY') or os.getenv('CLAUDE_API_KEY')
@@ -252,7 +261,19 @@ class FixGenerator:
         tests = context['test_contents']
         divergences = context['divergences']
         
+        # Build API reference section
+        api_section = ""
+        if self.api_reference:
+            api_section = f"""
+API REFERENCE (USE ONLY THESE METHODS/CLASSES):
+{self.api_reference[:15000]}  
+
+CRITICAL: Only use methods and classes from the API reference above.
+"""
+        
         prompt = f"""You are an expert Java developer fixing implementation divergences between Java and Go services.
+
+{api_section}
 
 ISSUE DETAILS:
 ID: {issue.get('id', 'Unknown')}
