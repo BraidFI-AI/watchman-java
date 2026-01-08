@@ -283,6 +283,9 @@ scripts/nemesis/
 ├── result_analyzer.py      # Divergence detection (170 lines)
 ├── coverage_tracker.py     # Persistent state tracking (130 lines)
 ├── ai_analyzer.py          # AI/rule-based analysis (240 lines)
+├── repair_agent.py         # ✨ NEW: Classify divergences (400 lines)
+├── code_analyzer.py        # ✨ NEW: Map to affected code (500 lines)
+├── fix_generator.py        # ✨ NEW: Generate fixes with AI (450 lines)
 └── tests/                  # 45 passing tests
     ├── test_test_generator.py
     ├── test_query_executor.py
@@ -346,11 +349,20 @@ For issues or questions:
 3. Run tests: `pytest scripts/nemesis/tests/ -v`
 4. Check GitHub issues for known problems
 
-## Nemesis Repair Agent (Future)
+## Nemesis Repair Agent
 
 ### Overview
 
-The **Nemesis Repair Agent** will autonomously analyze divergences and generate code fixes, with clear separation between issues that can be auto-fixed vs those requiring human review.
+The **Nemesis Repair Agent** autonomously analyzes divergences and generates code fixes, with clear separation between issues that can be auto-fixed vs those requiring human review.
+
+**Status:** Phase 1 Implemented (Classification & Fix Generation)
+
+**Components:**
+- `repair_agent.py` - Classifies divergences using AI analysis
+- `code_analyzer.py` - Maps issues to affected Java files and test coverage
+- `fix_generator.py` - Generates code fixes using Claude/GPT-4
+
+**Current Mode:** Human approval required for all fixes (Phase 1)
 
 ### Classification System
 
@@ -521,26 +533,83 @@ Track repair agent effectiveness:
 - Fix velocity: <48 hours for auto-fixes
 - Regression rate: <5%
 
-### Implementation Phases
+### Implementation Status
 
-**Phase 1: Classification Only** (2 weeks)
-- Implement classification algorithm
-- Dry run on historical reports
-- Validate accuracy against manual reviews
-- No code changes, just analysis
+**✅ Phase 1: Classification & Fix Generation (Completed Jan 2026)**
+- ✅ Implemented classification algorithm
+- ✅ AI analysis integration (uses Nemesis report insights)
+- ✅ Code analyzer (finds affected files, calculates coverage)
+- ✅ Fix generator (Claude/GPT-4 powered)
+- ✅ Validation checks (syntax, test coverage, blast radius)
+- ✅ Deployed to production (Fly.io)
+- 🔄 **Current:** All fixes require human approval
 
-**Phase 2: Auto-Fix with Approval** (4 weeks)
-- Generate fixes for auto-fix category
+**🚧 Phase 2: Auto-Fix with Approval (In Progress)**
 - Create PRs automatically
 - Require human approval before merge
 - Build confidence in system
+- Track success metrics
 
-**Phase 3: Full Automation** (ongoing)
+**📋 Phase 3: Full Automation (Planned)**
 - Enable auto-merge for high-confidence fixes
 - Human review only for flagged issues
 - Continuous monitoring and refinement
 
+### Using the Repair Agent
+
+**On Fly.io (Automated):**
+
+When cron runs Nemesis, the repair agent can be invoked:
+
+```bash
+# SSH into Fly.io
+flyctl ssh console -a watchman-java
+
+# Run full repair pipeline
+cd /app
+PYTHONPATH=/app/scripts python3 scripts/nemesis/repair_agent.py /data/reports/nemesis-YYYYMMDD.json
+
+# Analyze code
+python3 scripts/nemesis/code_analyzer.py /data/reports/action-plan-*.json
+
+# Generate fixes (requires ANTHROPIC_API_KEY)
+python3 scripts/nemesis/fix_generator.py /data/reports/code-analysis-*.json
+```
+
+**Local Development:**
+
+```bash
+# Run repair agent on historical report
+python3 scripts/nemesis/repair_agent.py scripts/reports/nemesis-20260104.json
+
+# Output: action-plan-*.json with classification results
+
+# Analyze affected code
+python3 scripts/nemesis/code_analyzer.py scripts/reports/action-plan-*.json
+
+# Output: code-analysis-*.json with files, coverage, dependencies
+
+# Generate fixes (set API key first)
+export ANTHROPIC_API_KEY=sk-ant-...
+python3 scripts/nemesis/fix_generator.py scripts/reports/code-analysis-*.json
+
+# Output: fix-proposal-*.json with complete code changes
+```
+
+**Output Files:**
+- `action-plan-*.json` - Classification results (auto-fix vs human-review)
+- `code-analysis-*.json` - Affected files, test coverage, blast radius
+- `fix-proposal-*.json` - Generated code fixes with explanations
+
 ## Version History
+
+### 1.1 (2026-01-07) - Repair Agent Phase 1
+- ✨ Repair Agent: Classification system with AI analysis integration
+- ✨ Code Analyzer: Maps issues to Java files, calculates coverage
+- ✨ Fix Generator: AI-powered code fix generation (Claude/GPT-4)
+- Enhanced NEMESIS.md documentation
+- Updated cron to run every 5 minutes (testing mode)
+- All fixes require human approval (Phase 1)
 
 ### 1.0 (2026-01-04)
 - Initial release
@@ -550,8 +619,3 @@ Track repair agent effectiveness:
 - AI analysis with rule-based fallback
 - Cross-language false positive detection
 - 45 passing tests
-
-### 1.1 (Planned)
-- Nemesis Repair Agent (Phase 1: Classification)
-- Auto-fix vs Human review separation
-- GitHub issue and PR automation
