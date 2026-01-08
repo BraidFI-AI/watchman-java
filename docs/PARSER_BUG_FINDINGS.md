@@ -93,14 +93,40 @@ The penalty is meant to prevent "John Doe" from matching "John Bartholomew Doe" 
 **Java's Approach:**
 Java correctly recognizes when `query.equals(index)` and returns 1.0 without penalties. This is more intuitive and accurate for compliance use cases.
 
-### 2. Over-Matching (Java Returns More Results)
+### 2. Over-Matching (Java Returns More Results) - FALSE POSITIVES IDENTIFIED
+
 - Java returns 37 extra results compared to Go
 - Go returns only 2 extra results compared to Java
-- **Possible causes:**
-  - Java has more generous threshold
-  - Java's fuzzy matching is broader
-  - Go filters out low-confidence matches more aggressively
-- **Verdict:** Needs investigation - could be feature or bug
+
+**Root Cause: Java's Fuzzy Matching is TOO Aggressive**
+
+#### Example: Query "IRASCO S.R.L."
+
+**Java returns:**
+1. IRASCO S.R.L. - Score: 1.000 ✅ (correct exact match)
+2. CHO, Il-U - Score: 0.880 ❌ (FALSE POSITIVE - completely unrelated)
+
+**Go returns:**
+1. IRASCO S.R.L. - Match: 0.812 ✅ (correct, but penalized)
+2. CORRALES SAN IGNACIO S.P.R. DE R.L. DE C - Match: 0.511 ⚠️ (weak match, appropriately scored)
+3. Ali KHORASHADIZADEH - Match: 0.510
+4. IDRONAUT S.R.L. - Match: 0.505 (shares "S.R.L." token)
+... (10 total results, all below 0.6)
+
+**Analysis:**
+- **Java**: "CHO, Il-U" has ZERO token overlap with "IRASCO S.R.L." yet scores 0.880
+- **Go**: Second result scores only 0.511, appropriately reflecting poor match quality
+
+**More False Positives from Java:**
+- Query "IRASCO S.R.L." → Match "INVERSIONES Y REPRESENTACIONES S.A." (0.850) - only shares "S" token
+- Query "IRASCO S.R.L." → Match "JO, Kyong-Chol" (0.847) - zero overlap
+- Query "IRASCO S.R.L." → Match "GENI SARL" (0.846) - weak "S.R.L." vs "SARL" similarity
+- Query "A.M." → Match "AL-RAWI, Muhannad..." (0.893) - just "A" overlap
+
+**Verdict: Java Has a SERIOUS Over-Matching Problem**
+- Java's fuzzy matching creates false positives that could lead to compliance failures
+- Go's penalties, while penalizing exact matches, prevent these dangerous false positives
+- **Java needs stricter filtering to avoid matching unrelated entities**
 
 ## Comparison to Buggy Reports
 
@@ -171,11 +197,63 @@ Go: 0.737
 
 ## Conclusion
 
-The comparison infrastructure is now fixed. Java implementation is **not broken** - it actually scores **higher** than Go for exact matches. The 44 GitHub issues were artifacts of a parser bug that made Java scores appear as 0.0%.
+The comparison infrastructure is now fixed. Java implementation has **two major issues**:
 
-Real work remaining:
-- 11 queries with actual divergences
-- Investigate over-matching (37 Java extras)
-- Decide if scoring differences are acceptable
+1. ✅ **Better Exact Matching** - Java correctly scores perfect matches as 1.0 (vs Go's 0.812)
+2. ❌ **Dangerous Over-Matching** - Java returns false positives with high confidence scores
 
-**Status:** Infrastructure fixed ✅ | Ready for real comparison analysis 🎯
+### Downstream Effects
+
+**Positive Impact (Exact Matches):**
+- Java's 1.0 scoring for exact matches is intuitive and correct
+- Users searching for "VLADIMIR PUTIN" get 1.0 for exact match (vs Go's 0.737)
+- More predictable scoring for compliance officers
+
+**Negative Impact (False Positives):**
+- **Critical Compliance Risk**: Java matches completely unrelated entities with 85-90% confidence
+- Example: "IRASCO S.R.L." → "CHO, Il-U" at 88% is a false alarm that wastes investigation time
+- Could lead to:
+  - Legitimate transactions being blocked unnecessarily
+  - Increased manual review workload
+  - Loss of trust in the system
+  - Potential regulatory issues if false positives dominate
+
+**Go's Conservative Approach:**
+- While Go penalizes exact matches unnecessarily (0.812 vs 1.0)
+- Go's fuzzy matching is **more conservative and accurate**
+- Go filters out false positives that Java returns with high confidence
+- **Go's approach is safer for compliance use cases**
+
+### Comparison: For Name Variations
+
+**Question: Does Java provide better matching for legitimate name variations?**
+
+**Answer: NO - Java is worse for variations due to over-matching**
+
+Examples:
+- **Typos/Misspellings**: Both handle well, but Java creates false positives
+- **Word Order**: Both handle reordering (though Go penalizes slightly)
+- **Abbreviated Names**: Java's aggressive matching catches abbreviations BUT also matches unrelated abbreviations
+- **Punctuation**: Java handles "S.R.L." vs "SRL" but then matches unrelated "SARL" entities
+
+**Net Effect**: Java's looser matching catches a few more legitimate variations, but at the cost of **many false positives** that undermine system trust.
+
+### Recommended Action
+
+**Priority 1**: Fix Java's over-matching problem
+- Implement stricter token overlap requirements
+- Add minimum Jaccard similarity threshold
+- Penalize matches with zero common tokens
+- Review and tighten Jaro-Winkler parameters
+
+**Priority 2**: Improve Go's exact match handling  
+- Remove unnecessary penalties for perfect string equality
+- Check `query == index` before applying fuzzy matching
+- Return 1.0 for exact matches
+
+**Priority 3**: Re-run comparison after fixes
+- Generate fresh Nemesis report
+- Validate false positive rate drops
+- Ensure legitimate variations still match
+
+**Status:** Infrastructure fixed ✅ | **Java has critical over-matching bug** ❌ | Ready for algorithm fixes 🎯
