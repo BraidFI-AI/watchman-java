@@ -72,10 +72,16 @@ public class JaroWinklerSimilarity implements SimilarityService {
         String[] tokens1 = normalizer.tokenize(norm1);
         String[] tokens2 = normalizer.tokenize(norm2);
         
-        // Calculate best-pair Jaro-Winkler score
+        // For single tokens, use direct Jaro-Winkler
+        if (tokens1.length == 1 && tokens2.length == 1) {
+            double jaroScore = jaro(tokens1[0], tokens2[0]);
+            return applyWinklerBoost(jaroScore, tokens1[0], tokens2[0]);
+        }
+        
+        // Calculate best-pair Jaro-Winkler score for multi-token
         double jaroScore = bestPairJaro(tokens1, tokens2);
         
-        // Apply Winkler prefix boost
+        // Apply Winkler prefix boost using original normalized strings
         double score = applyWinklerBoost(jaroScore, norm1, norm2);
         
         // Apply penalties
@@ -137,7 +143,6 @@ public class JaroWinklerSimilarity implements SimilarityService {
         boolean[] s2Matches = new boolean[len2];
         
         int matches = 0;
-        int transpositions = 0;
         
         // Find matches
         for (int i = 0; i < len1; i++) {
@@ -160,6 +165,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
         }
         
         // Count transpositions
+        int transpositions = 0;
         int k = 0;
         for (int i = 0; i < len1; i++) {
             if (!s1Matches[i]) {
@@ -174,34 +180,40 @@ public class JaroWinklerSimilarity implements SimilarityService {
             k++;
         }
         
-        double m = matches;
-        return (m / len1 + m / len2 + (m - transpositions / 2.0) / m) / 3.0;
+        // Calculate Jaro similarity
+        double jaro = (matches / (double) len1 + 
+                      matches / (double) len2 + 
+                      (matches - transpositions / 2.0) / matches) / 3.0;
+        
+        return jaro;
     }
     
     /**
      * Apply Winkler prefix boost to Jaro score.
-     * Boosts score for strings that share a common prefix.
      */
     private double applyWinklerBoost(double jaroScore, String s1, String s2) {
-        // Find common prefix length (max 4 characters)
-        int prefixLen = 0;
+        if (jaroScore < 0.7) {
+            return jaroScore;
+        }
+        
+        // Calculate common prefix length (up to 4 characters)
+        int prefixLength = 0;
         int maxPrefix = Math.min(Math.min(s1.length(), s2.length()), WINKLER_PREFIX_LENGTH);
         
         for (int i = 0; i < maxPrefix; i++) {
             if (s1.charAt(i) == s2.charAt(i)) {
-                prefixLen++;
+                prefixLength++;
             } else {
                 break;
             }
         }
         
-        // Winkler boost: score + (prefix_length * weight * (1 - score))
-        return jaroScore + (prefixLen * WINKLER_PREFIX_WEIGHT * (1.0 - jaroScore));
+        return jaroScore + (prefixLength * WINKLER_PREFIX_WEIGHT * (1.0 - jaroScore));
     }
     
     /**
-     * Calculate best-pair Jaro score across token combinations.
-     * Handles word order variations in multi-word names.
+     * Calculate best-pair Jaro score for tokenized strings.
+     * This finds the best pairing of tokens between the two strings.
      */
     private double bestPairJaro(String[] tokens1, String[] tokens2) {
         if (tokens1.length == 0 || tokens2.length == 0) {
@@ -213,101 +225,104 @@ public class JaroWinklerSimilarity implements SimilarityService {
             return jaro(tokens1[0], tokens2[0]);
         }
         
-        // For multi-token, find best matching pairs
+        // For multi-token, calculate average of best matches
         double totalScore = 0.0;
         int comparisons = 0;
         
-        // Use the smaller set as the "index" tokens
-        String[] indexTokens = tokens1.length <= tokens2.length ? tokens1 : tokens2;
-        String[] queryTokens = tokens1.length <= tokens2.length ? tokens2 : tokens1;
-        
-        boolean[] usedQuery = new boolean[queryTokens.length];
-        
-        for (String indexToken : indexTokens) {
-            if (isStopword(indexToken)) {
+        // Match each token from first string to best token in second string
+        boolean[] used = new boolean[tokens2.length];
+        for (String token1 : tokens1) {
+            if (isStopword(token1)) {
                 continue;
             }
             
             double bestScore = 0.0;
-            int bestIdx = -1;
+            int bestIndex = -1;
             
-            for (int j = 0; j < queryTokens.length; j++) {
-                if (usedQuery[j] || isStopword(queryTokens[j])) {
+            for (int j = 0; j < tokens2.length; j++) {
+                if (used[j] || isStopword(tokens2[j])) {
                     continue;
                 }
                 
-                double score = jaro(indexToken, queryTokens[j]);
+                double score = jaro(token1, tokens2[j]);
                 if (score > bestScore) {
                     bestScore = score;
-                    bestIdx = j;
+                    bestIndex = j;
                 }
             }
             
-            if (bestIdx >= 0) {
-                usedQuery[bestIdx] = true;
+            if (bestIndex >= 0) {
+                used[bestIndex] = true;
                 totalScore += bestScore;
                 comparisons++;
             }
         }
         
-        // Also consider full string comparison
-        String full1 = String.join(" ", tokens1);
-        String full2 = String.join(" ", tokens2);
-        double fullScore = jaro(full1, full2);
-        
-        if (comparisons == 0) {
-            return fullScore;
-        }
-        
-        double tokenAvg = totalScore / comparisons;
-        
-        // Blend token-based and full-string scores
-        // Weight towards token-based for multi-word, full-string for similar lengths
-        double lengthRatio = (double) Math.min(tokens1.length, tokens2.length) / 
-                           Math.max(tokens1.length, tokens2.length);
-        
-        return tokenAvg * 0.6 + fullScore * 0.4;
+        return comparisons > 0 ? totalScore / comparisons : 0.0;
     }
     
     /**
      * Apply length difference penalty.
      */
     private double applyLengthPenalty(double score, String[] tokens1, String[] tokens2) {
-        int len1 = Arrays.stream(tokens1).filter(t -> !isStopword(t)).mapToInt(String::length).sum();
-        int len2 = Arrays.stream(tokens2).filter(t -> !isStopword(t)).mapToInt(String::length).sum();
+        int nonStopTokens1 = countNonStopTokens(tokens1);
+        int nonStopTokens2 = countNonStopTokens(tokens2);
         
-        if (len1 == 0 || len2 == 0) {
+        if (nonStopTokens1 == 0 && nonStopTokens2 == 0) {
             return score;
         }
         
-        double lengthRatio = (double) Math.min(len1, len2) / Math.max(len1, len2);
-        double penalty = (1.0 - lengthRatio) * LENGTH_DIFFERENCE_PENALTY_WEIGHT;
+        int lengthDiff = Math.abs(nonStopTokens1 - nonStopTokens2);
+        if (lengthDiff == 0) {
+            return score;
+        }
         
-        return score - penalty;
+        // Apply penalty based on length difference
+        double penalty = lengthDiff * LENGTH_DIFFERENCE_PENALTY_WEIGHT;
+        return Math.max(0.0, score - penalty);
     }
     
     /**
-     * Apply penalty for unmatched tokens in the index.
+     * Apply penalty for unmatched tokens.
      */
     private double applyUnmatchedTokenPenalty(double score, String[] tokens1, String[] tokens2) {
-        // Count non-stopword tokens
-        long count1 = Arrays.stream(tokens1).filter(t -> !isStopword(t)).count();
-        long count2 = Arrays.stream(tokens2).filter(t -> !isStopword(t)).count();
+        int nonStopTokens1 = countNonStopTokens(tokens1);
+        int nonStopTokens2 = countNonStopTokens(tokens2);
         
-        if (count1 == 0 || count2 == 0) {
+        if (nonStopTokens1 == 0 && nonStopTokens2 == 0) {
             return score;
         }
         
-        long unmatched = Math.abs(count1 - count2);
-        if (unmatched == 0) {
+        // Calculate unmatched tokens
+        int totalTokens = nonStopTokens1 + nonStopTokens2;
+        int matchedTokens = Math.min(nonStopTokens1, nonStopTokens2) * 2; // Each match counts for both sides
+        int unmatchedTokens = totalTokens - matchedTokens;
+        
+        if (unmatchedTokens <= 0) {
             return score;
         }
         
-        double penalty = (unmatched / (double) Math.max(count1, count2)) * UNMATCHED_INDEX_TOKEN_PENALTY_WEIGHT;
-        
-        return score - penalty;
+        // Apply penalty for unmatched tokens
+        double penalty = unmatchedTokens * UNMATCHED_INDEX_TOKEN_PENALTY_WEIGHT;
+        return Math.max(0.0, score - penalty);
     }
     
+    /**
+     * Count non-stopword tokens.
+     */
+    private int countNonStopTokens(String[] tokens) {
+        int count = 0;
+        for (String token : tokens) {
+            if (!isStopword(token)) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Check if a token is a stopword.
+     */
     private boolean isStopword(String token) {
         return STOPWORDS.contains(token.toLowerCase());
     }
