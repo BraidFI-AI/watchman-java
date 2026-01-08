@@ -1,6 +1,7 @@
 package io.moov.watchman.parser;
 
 import io.moov.watchman.model.EntityType;
+import java.util.regex.Pattern;
 
 /**
  * Parses SDN_Type field from OFAC data into EntityType enum.
@@ -12,6 +13,8 @@ import io.moov.watchman.model.EntityType;
  * - "Aircraft" or "aircraft" → AIRCRAFT
  */
 public class EntityTypeParser {
+
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
     /**
      * Parse SDN_Type string to EntityType.
@@ -32,12 +35,13 @@ public class EntityTypeParser {
             return EntityType.UNKNOWN;
         }
         
+        // Normalize whitespace and trim
+        String normalized = WHITESPACE_PATTERN.matcher(sdnType.trim()).replaceAll(" ").toLowerCase();
+        
         // In OFAC data, blank/empty type defaults to business entity
-        if (sdnType.isBlank()) {
+        if (normalized.isEmpty()) {
             return EntityType.BUSINESS;
         }
-        
-        String normalized = sdnType.trim().toLowerCase();
         
         return switch (normalized) {
             case "individual" -> EntityType.PERSON;
