@@ -152,20 +152,35 @@ class WatchmanClient:
         """Parse API response into normalized SearchResult objects"""
         results = []
         
-        # Try Go format (entities array)
+        # Both Go and Java return "entities" array, but with different field names
         entities = data.get('entities', [])
-        if entities:
-            for e in entities:
-                results.append(SearchResult(
-                    name=e.get('name', ''),
-                    entity_type=self._normalize_type(e.get('entityType', '')),
-                    source=self._normalize_source(e.get('sourceList', '')),
-                    entity_id=e.get('sourceID', ''),
-                    score=round(e.get('match', 0), 4),
-                ))
+        if entities and len(entities) > 0:
+            first = entities[0]
+            
+            # Detect format by checking field names
+            if 'match' in first or 'entityType' in first or 'sourceList' in first:
+                # Go format: match, entityType, sourceList, sourceID
+                for e in entities:
+                    results.append(SearchResult(
+                        name=e.get('name', ''),
+                        entity_type=self._normalize_type(e.get('entityType', '')),
+                        source=self._normalize_source(e.get('sourceList', '')),
+                        entity_id=e.get('sourceID', ''),
+                        score=round(e.get('match', 0), 4),
+                    ))
+            else:
+                # Java format: score, type, source, sourceId (or id)
+                for e in entities:
+                    results.append(SearchResult(
+                        name=e.get('name', ''),
+                        entity_type=self._normalize_type(e.get('type', '')),
+                        source=self._normalize_source(e.get('source', '')),
+                        entity_id=e.get('sourceId', e.get('id', '')),
+                        score=round(e.get('score', 0), 4),
+                    ))
             return results
         
-        # Try Java format (results array)
+        # Fallback: Try old Java format (results array) - deprecated
         items = data.get('results', [])
         for r in items:
             results.append(SearchResult(
