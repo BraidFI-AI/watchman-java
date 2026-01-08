@@ -58,13 +58,16 @@ public class EntityScorerImpl implements EntityScorer {
         double contactScore = 0.0; // No query contact for simple name search
         double dateScore = 0.0;    // No query date for simple name search
 
-        // Combine name and alt names - take the best match
+        // Take the best match between primary name and alt names
         double bestNameScore = Math.max(nameScore, altNamesScore);
 
-        // Calculate weighted final score
-        double totalWeight = NAME_WEIGHT;
-        double weightedSum = bestNameScore * NAME_WEIGHT;
-        double finalScore = weightedSum / totalWeight;
+        // For simple name queries, only use name scoring with stricter threshold
+        double finalScore = bestNameScore;
+        
+        // Apply stricter threshold for name-only queries to reduce false positives
+        if (finalScore < 0.85) {
+            finalScore = 0.0;
+        }
 
         return new ScoreBreakdown(
             nameScore,
@@ -85,7 +88,6 @@ public class EntityScorerImpl implements EntityScorer {
         }
 
         // Check for exact sourceId match (critical identifier)
-        // If both entities have sourceId set and they match, it's a perfect match
         if (query.sourceId() != null && !query.sourceId().isBlank() 
             && index.sourceId() != null && !index.sourceId().isBlank()
             && query.sourceId().equals(index.sourceId())) {
@@ -98,14 +100,8 @@ public class EntityScorerImpl implements EntityScorer {
         double govIdScore = compareGovernmentIds(query.governmentIds(), index.governmentIds());
         double cryptoScore = compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses());
         double addressScore = compareAddresses(query.addresses(), index.addresses());
-        double contactScore = compareContact(query.contact(), index.contact());
+        double contactScore = compareContactInfo(query.contact(), index.contact());
         double dateScore = compareDates(query, index);
-
-        // SourceId mismatch penalty: if both have sourceIds but they don't match,
-        // this counts as a critical identifier mismatch (score 0 for that factor)
-        boolean sourceIdMismatch = query.sourceId() != null && !query.sourceId().isBlank()
-            && index.sourceId() != null && !index.sourceId().isBlank()
-            && !query.sourceId().equals(index.sourceId());
 
         // Calculate weighted final score
         boolean hasExactMatch = govIdScore >= 0.99 || cryptoScore >= 0.99 || contactScore >= 0.99;
@@ -113,12 +109,28 @@ public class EntityScorerImpl implements EntityScorer {
         double finalScore;
         if (hasExactMatch) {
             // Exact identifier match - heavily weight it
-            finalScore = calculateWithExactMatch(nameScore, altNamesScore, govIdScore, 
-                cryptoScore, addressScore, contactScore, dateScore);
+            finalScore = 0.9 + (Math.max(nameScore, altNamesScore) * 0.1);
         } else {
-            // Normal weighted scoring (with sourceId mismatch penalty if applicable)
-            finalScore = calculateNormalScore(nameScore, altNamesScore, govIdScore, 
-                cryptoScore, addressScore, contactScore, dateScore, sourceIdMismatch);
+            // Normal weighted scoring - take best name score and combine with other factors
+            double bestNameScore = Math.max(nameScore, altNamesScore);
+            double totalWeight = NAME_WEIGHT;
+            double weightedSum = bestNameScore * NAME_WEIGHT;
+
+            if (addressScore > 0) {
+                totalWeight += ADDRESS_WEIGHT;
+                weightedSum += addressScore * ADDRESS_WEIGHT;
+            }
+            if (dateScore > 0) {
+                totalWeight += SUPPORTING_INFO_WEIGHT;
+                weightedSum += dateScore * SUPPORTING_INFO_WEIGHT;
+            }
+
+            finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+            
+            // Apply threshold to reduce false positives
+            if (finalScore < 0.75) {
+                finalScore = 0.0;
+            }
         }
 
         return new ScoreBreakdown(
@@ -135,63 +147,78 @@ public class EntityScorerImpl implements EntityScorer {
 
     @Override
     public double score(String queryName, String queryAddress, Entity candidate) {
-        ScoreBreakdown breakdown = scoreWithBreakdown(queryName, candidate);
-        
-        // Add address comparison if provided
-        if (queryAddress != null && !queryAddress.isBlank() && candidate.addresses() != null) {
-            double addressScore = 0.0;
-            for (Address addr : candidate.addresses()) {
-                String candidateAddr = formatAddress(addr);
-                double score = similarityService.tokenizedSimilarity(queryAddress, candidateAddr);
-                addressScore = Math.max(addressScore, score);
-            }
-            
-            // Recalculate with address
-            double totalWeight = NAME_WEIGHT + ADDRESS_WEIGHT;
-            double weightedSum = breakdown.nameScore() * NAME_WEIGHT + addressScore * ADDRESS_WEIGHT;
-            return weightedSum / totalWeight;
-        }
-        
-        return breakdown.totalWeightedScore();
-    }
-
-    // ==================== Private Helper Methods ====================
-
-    private double compareNames(String queryName, Entity candidate) {
-        if (queryName == null || queryName.isBlank() || candidate == null || candidate.name() == null) {
-            return 0.0;
-        }
-        return similarityService.tokenizedSimilarity(queryName, candidate.name());
-    }
-
-    private double compareAltNames(String queryName, Entity candidate) {
         if (queryName == null || queryName.isBlank() || candidate == null) {
             return 0.0;
         }
-        
-        List<String> altNames = candidate.altNames();
-        if (altNames == null || altNames.isEmpty()) {
-            return 0.0;
+
+        double nameScore = compareNames(queryName, candidate);
+        double addressScore = 0.0;
+
+        if (queryAddress != null && !queryAddress.isBlank() && candidate.addresses() != null) {
+            addressScore = compareAddressToString(queryAddress, candidate.addresses());
         }
-        
-        double maxScore = 0.0;
-        for (String altName : altNames) {
-            if (altName != null && !altName.isBlank()) {
-                double score = similarityService.tokenizedSimilarity(queryName, altName);
-                maxScore = Math.max(maxScore, score);
-            }
+
+        // Weight name more heavily than address
+        double totalWeight = NAME_WEIGHT;
+        double weightedSum = nameScore * NAME_WEIGHT;
+
+        if (addressScore > 0) {
+            totalWeight += ADDRESS_WEIGHT;
+            weightedSum += addressScore * ADDRESS_WEIGHT;
         }
-        return maxScore;
+
+        double finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+        
+        // Apply threshold
+        return finalScore < 0.75 ? 0.0 : finalScore;
     }
 
-    private double compareGovernmentIds(List<GovernmentId> queryIds, List<GovernmentId> indexIds) {
-        if (queryIds == null || queryIds.isEmpty() || indexIds == null || indexIds.isEmpty()) {
+    private double compareNames(String queryName, Entity candidate) {
+        if (queryName == null || queryName.isBlank() || candidate.name() == null) {
+            return 0.0;
+        }
+
+        String normalizedQuery = normalizer.lowerAndRemovePunctuation(queryName);
+        String normalizedCandidate = normalizer.lowerAndRemovePunctuation(candidate.name());
+
+        if (normalizedQuery.isEmpty() || normalizedCandidate.isEmpty()) {
+            return 0.0;
+        }
+
+        return similarityService.tokenizedSimilarity(normalizedQuery, normalizedCandidate);
+    }
+
+    private double compareAltNames(String queryName, Entity candidate) {
+        if (queryName == null || queryName.isBlank() || candidate.altNames() == null || candidate.altNames().isEmpty()) {
+            return 0.0;
+        }
+
+        String normalizedQuery = normalizer.lowerAndRemovePunctuation(queryName);
+        if (normalizedQuery.isEmpty()) {
+            return 0.0;
+        }
+
+        double bestScore = 0.0;
+        for (String altName : candidate.altNames()) {
+            if (altName != null && !altName.isBlank()) {
+                String normalizedAlt = normalizer.lowerAndRemovePunctuation(altName);
+                if (!normalizedAlt.isEmpty()) {
+                    double score = similarityService.tokenizedSimilarity(normalizedQuery, normalizedAlt);
+                    bestScore = Math.max(bestScore, score);
+                }
+            }
+        }
+        return bestScore;
+    }
+
+    private double compareGovernmentIds(List<GovernmentId> queryIds, List<GovernmentId> candidateIds) {
+        if (queryIds == null || queryIds.isEmpty() || candidateIds == null || candidateIds.isEmpty()) {
             return 0.0;
         }
 
         for (GovernmentId queryId : queryIds) {
-            for (GovernmentId indexId : indexIds) {
-                if (governmentIdsMatch(queryId, indexId)) {
+            for (GovernmentId candidateId : candidateIds) {
+                if (compareGovernmentId(queryId, candidateId)) {
                     return 1.0;
                 }
             }
@@ -199,113 +226,114 @@ public class EntityScorerImpl implements EntityScorer {
         return 0.0;
     }
 
-    private boolean governmentIdsMatch(GovernmentId a, GovernmentId b) {
-        if (a == null || b == null) return false;
-        if (a.identifier() == null || b.identifier() == null) return false;
-
-        // Normalize IDs for comparison (remove dashes, spaces)
-        String normalizedA = normalizer.normalizeId(a.identifier());
-        String normalizedB = normalizer.normalizeId(b.identifier());
-
-        if (!normalizedA.equals(normalizedB)) {
+    private boolean compareGovernmentId(GovernmentId id1, GovernmentId id2) {
+        if (id1 == null || id2 == null || id1.type() != id2.type()) {
             return false;
         }
 
-        // If types are specified, they should match
-        if (a.type() != null && b.type() != null && a.type() != b.type()) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private double compareCryptoAddresses(List<CryptoAddress> queryAddrs, List<CryptoAddress> indexAddrs) {
-        if (queryAddrs == null || queryAddrs.isEmpty() || indexAddrs == null || indexAddrs.isEmpty()) {
-            return 0.0;
-        }
-
-        for (CryptoAddress queryAddr : queryAddrs) {
-            for (CryptoAddress indexAddr : indexAddrs) {
-                if (cryptoAddressesMatch(queryAddr, indexAddr)) {
-                    return 1.0;
-                }
-            }
-        }
-        return 0.0;
-    }
-
-    private boolean cryptoAddressesMatch(CryptoAddress a, CryptoAddress b) {
-        if (a == null || b == null) return false;
-        if (a.address() == null || b.address() == null) return false;
+        String norm1 = normalizer.normalizeId(id1.value());
+        String norm2 = normalizer.normalizeId(id2.value());
         
-        // Crypto addresses are case-sensitive and must match exactly
-        return Objects.equals(a.address(), b.address());
+        return norm1.equals(norm2);
     }
 
-    private double compareAddresses(List<Address> queryAddrs, List<Address> indexAddrs) {
-        if (queryAddrs == null || queryAddrs.isEmpty() || indexAddrs == null || indexAddrs.isEmpty()) {
+    private double compareCryptoAddresses(List<CryptoAddress> queryAddresses, List<CryptoAddress> candidateAddresses) {
+        if (queryAddresses == null || queryAddresses.isEmpty() || 
+            candidateAddresses == null || candidateAddresses.isEmpty()) {
             return 0.0;
         }
 
-        double maxScore = 0.0;
-        for (Address queryAddr : queryAddrs) {
-            for (Address indexAddr : indexAddrs) {
-                double score = compareAddress(queryAddr, indexAddr);
-                maxScore = Math.max(maxScore, score);
+        for (CryptoAddress queryAddr : queryAddresses) {
+            for (CryptoAddress candidateAddr : candidateAddresses) {
+                if (Objects.equals(queryAddr.currency(), candidateAddr.currency()) &&
+                    Objects.equals(queryAddr.address(), candidateAddr.address())) {
+                    return 1.0;
+                }
             }
         }
-        return maxScore;
+        return 0.0;
     }
 
-    private double compareAddress(Address a, Address b) {
-        if (a == null || b == null) return 0.0;
+    private double compareAddresses(List<Address> queryAddresses, List<Address> candidateAddresses) {
+        if (queryAddresses == null || queryAddresses.isEmpty() || 
+            candidateAddresses == null || candidateAddresses.isEmpty()) {
+            return 0.0;
+        }
 
-        double score = 0.0;
-        int fields = 0;
-
-        // Country match is most important
-        if (a.country() != null && b.country() != null) {
-            fields++;
-            if (normalizer.lowerAndRemovePunctuation(a.country())
-                .equals(normalizer.lowerAndRemovePunctuation(b.country()))) {
-                score += 0.3;
+        double bestScore = 0.0;
+        for (Address queryAddr : queryAddresses) {
+            for (Address candidateAddr : candidateAddresses) {
+                double score = compareAddress(queryAddr, candidateAddr);
+                bestScore = Math.max(bestScore, score);
             }
         }
-
-        // City match
-        if (a.city() != null && b.city() != null) {
-            fields++;
-            double cityScore = similarityService.jaroWinkler(a.city(), b.city());
-            score += cityScore * 0.3;
-        }
-
-        // Street address match
-        if (a.line1() != null && b.line1() != null) {
-            fields++;
-            double lineScore = similarityService.tokenizedSimilarity(a.line1(), b.line1());
-            score += lineScore * 0.4;
-        }
-
-        return fields > 0 ? Math.min(1.0, score) : 0.0;
+        return bestScore;
     }
 
-    private double compareContact(ContactInfo a, ContactInfo b) {
-        if (a == null || b == null) return 0.0;
+    private double compareAddress(Address addr1, Address addr2) {
+        if (addr1 == null || addr2 == null) {
+            return 0.0;
+        }
 
-        // Email match
-        if (a.emailAddress() != null && b.emailAddress() != null) {
-            String emailA = a.emailAddress().toLowerCase().trim();
-            String emailB = b.emailAddress().toLowerCase().trim();
-            if (emailA.equals(emailB)) {
+        String full1 = buildFullAddress(addr1);
+        String full2 = buildFullAddress(addr2);
+
+        if (full1.isEmpty() || full2.isEmpty()) {
+            return 0.0;
+        }
+
+        return similarityService.tokenizedSimilarity(full1, full2);
+    }
+
+    private String buildFullAddress(Address address) {
+        StringBuilder sb = new StringBuilder();
+        if (address.line1() != null) sb.append(address.line1()).append(" ");
+        if (address.line2() != null) sb.append(address.line2()).append(" ");
+        if (address.city() != null) sb.append(address.city()).append(" ");
+        if (address.state() != null) sb.append(address.state()).append(" ");
+        if (address.postalCode() != null) sb.append(address.postalCode()).append(" ");
+        if (address.country() != null) sb.append(address.country()).append(" ");
+        return normalizer.lowerAndRemovePunctuation(sb.toString().trim());
+    }
+
+    private double compareAddressToString(String queryAddress, List<Address> candidateAddresses) {
+        if (queryAddress == null || queryAddress.isBlank() || candidateAddresses == null || candidateAddresses.isEmpty()) {
+            return 0.0;
+        }
+
+        String normalizedQuery = normalizer.lowerAndRemovePunctuation(queryAddress);
+        if (normalizedQuery.isEmpty()) {
+            return 0.0;
+        }
+
+        double bestScore = 0.0;
+        for (Address candidateAddr : candidateAddresses) {
+            String candidateStr = buildFullAddress(candidateAddr);
+            if (!candidateStr.isEmpty()) {
+                double score = similarityService.tokenizedSimilarity(normalizedQuery, candidateStr);
+                bestScore = Math.max(bestScore, score);
+            }
+        }
+        return bestScore;
+    }
+
+    private double compareContactInfo(ContactInfo contact1, ContactInfo contact2) {
+        if (contact1 == null || contact2 == null) {
+            return 0.0;
+        }
+
+        // Check email match
+        if (contact1.email() != null && contact2.email() != null) {
+            if (contact1.email().equalsIgnoreCase(contact2.email())) {
                 return 1.0;
             }
         }
 
-        // Phone match
-        if (a.phoneNumber() != null && b.phoneNumber() != null) {
-            String phoneA = normalizer.normalizePhone(a.phoneNumber());
-            String phoneB = normalizer.normalizePhone(b.phoneNumber());
-            if (phoneA.equals(phoneB)) {
+        // Check phone match (normalized)
+        if (contact1.phoneNumber() != null && contact2.phoneNumber() != null) {
+            String phone1 = normalizer.normalizeId(contact1.phoneNumber());
+            String phone2 = normalizer.normalizeId(contact2.phoneNumber());
+            if (phone1.equals(phone2)) {
                 return 1.0;
             }
         }
@@ -314,88 +342,24 @@ public class EntityScorerImpl implements EntityScorer {
     }
 
     private double compareDates(Entity query, Entity index) {
-        // Compare birth dates if both are persons
+        // Compare birth dates for persons
         if (query.person() != null && index.person() != null) {
-            LocalDate queryDob = query.person().birthDate();
-            LocalDate indexDob = index.person().birthDate();
+            LocalDate queryDob = query.person().dateOfBirth();
+            LocalDate indexDob = index.person().dateOfBirth();
             if (queryDob != null && indexDob != null) {
                 return queryDob.equals(indexDob) ? 1.0 : 0.0;
             }
         }
+
+        // Compare incorporation dates for businesses
+        if (query.business() != null && index.business() != null) {
+            LocalDate queryInc = query.business().incorporationDate();
+            LocalDate indexInc = index.business().incorporationDate();
+            if (queryInc != null && indexInc != null) {
+                return queryInc.equals(indexInc) ? 1.0 : 0.0;
+            }
+        }
+
         return 0.0;
-    }
-
-    private double calculateWithExactMatch(double nameScore, double altNameScore,
-                                           double govIdScore, double cryptoScore,
-                                           double addressScore, double contactScore,
-                                           double dateScore) {
-        // When we have an exact identifier match, give it maximum weight
-        double criticalMax = Math.max(Math.max(govIdScore, cryptoScore), contactScore);
-        double bestNameScore = Math.max(nameScore, altNameScore);
-
-        // Critical match dominates
-        if (criticalMax >= 0.99) {
-            // Even with exact ID match, consider name for final score
-            return 0.7 + (bestNameScore * 0.3);
-        }
-
-        return calculateNormalScore(nameScore, altNameScore, govIdScore, 
-            cryptoScore, addressScore, contactScore, dateScore, false);
-    }
-
-    private double calculateNormalScore(double nameScore, double altNameScore,
-                                        double govIdScore, double cryptoScore,
-                                        double addressScore, double contactScore,
-                                        double dateScore, boolean sourceIdMismatch) {
-        double totalWeight = 0.0;
-        double weightedSum = 0.0;
-
-        // Best name score
-        double bestNameScore = Math.max(nameScore, altNameScore);
-        weightedSum += bestNameScore * NAME_WEIGHT;
-        totalWeight += NAME_WEIGHT;
-
-        // If sourceIds were both provided but don't match, add a 0 score with critical weight
-        // This prevents a name-only match from being 1.0 when sourceIds are mismatched
-        if (sourceIdMismatch) {
-            weightedSum += 0.0 * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
-        }
-
-        // Add other factors if present
-        if (govIdScore > 0) {
-            weightedSum += govIdScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
-        }
-        if (cryptoScore > 0) {
-            weightedSum += cryptoScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
-        }
-        if (contactScore > 0) {
-            weightedSum += contactScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
-        }
-        if (addressScore > 0) {
-            weightedSum += addressScore * ADDRESS_WEIGHT;
-            totalWeight += ADDRESS_WEIGHT;
-        }
-        if (dateScore > 0) {
-            weightedSum += dateScore * SUPPORTING_INFO_WEIGHT;
-            totalWeight += SUPPORTING_INFO_WEIGHT;
-        }
-
-        return totalWeight > 0 ? weightedSum / totalWeight : 0.0;
-    }
-
-    private String formatAddress(Address addr) {
-        if (addr == null) return "";
-        StringBuilder sb = new StringBuilder();
-        if (addr.line1() != null) sb.append(addr.line1()).append(" ");
-        if (addr.line2() != null) sb.append(addr.line2()).append(" ");
-        if (addr.city() != null) sb.append(addr.city()).append(" ");
-        if (addr.state() != null) sb.append(addr.state()).append(" ");
-        if (addr.postalCode() != null) sb.append(addr.postalCode()).append(" ");
-        if (addr.country() != null) sb.append(addr.country());
-        return sb.toString().trim();
     }
 }
