@@ -283,9 +283,10 @@ scripts/nemesis/
 ├── result_analyzer.py      # Divergence detection (170 lines)
 ├── coverage_tracker.py     # Persistent state tracking (130 lines)
 ├── ai_analyzer.py          # AI/rule-based analysis (240 lines)
-├── repair_agent.py         # ✨ NEW: Classify divergences (400 lines)
-├── code_analyzer.py        # ✨ NEW: Map to affected code (500 lines)
-├── fix_generator.py        # ✨ NEW: Generate fixes with AI (450 lines)
+├── repair_agent.py         # ✨ Classify divergences (400 lines)
+├── code_analyzer.py        # ✨ Map to affected code (500 lines)
+├── fix_generator.py        # ✨ Generate fixes with AI (450 lines)
+├── fix_applicator.py       # ✨ Create GitHub PRs (420 lines)
 └── tests/                  # 45 passing tests
     ├── test_test_generator.py
     ├── test_query_executor.py
@@ -535,81 +536,120 @@ Track repair agent effectiveness:
 
 ### Implementation Status
 
-**✅ Phase 1: Classification & Fix Generation (Completed Jan 2026)**
+**✅ Phase 1: Classification & Fix Generation (Completed Jan 7, 2026)**
 - ✅ Implemented classification algorithm
 - ✅ AI analysis integration (uses Nemesis report insights)
 - ✅ Code analyzer (finds affected files, calculates coverage)
 - ✅ Fix generator (Claude/GPT-4 powered)
 - ✅ Validation checks (syntax, test coverage, blast radius)
 - ✅ Deployed to production (Fly.io)
-- 🔄 **Current:** All fixes require human approval
 
-**🚧 Phase 2: Auto-Fix with Approval (In Progress)**
-- Create PRs automatically
-- Require human approval before merge
-- Build confidence in system
-- Track success metrics
+**✅ Phase 2: Automated PR Creation (Completed Jan 7, 2026)**
+- ✅ Fix applicator creates GitHub PRs automatically
+- ✅ PRs include full fix explanation and validation
+- ✅ Automatic labeling (nemesis, auto-fix, complexity)
+- ✅ Review request workflow
+- ✅ Dry-run mode for testing
+- 🔄 **Current:** All PRs require human approval before merge
 
 **📋 Phase 3: Full Automation (Planned)**
 - Enable auto-merge for high-confidence fixes
 - Human review only for flagged issues
 - Continuous monitoring and refinement
+- Automatic rollback on regression
 
 ### Using the Repair Agent
 
-**On Fly.io (Automated):**
-
-When cron runs Nemesis, the repair agent can be invoked:
+**Complete Workflow (Automated Pipeline):**
 
 ```bash
-# SSH into Fly.io
+# 1. Nemesis finds divergences (runs via cron)
+python3 scripts/nemesis/run_nemesis.py
+# Output: /data/reports/nemesis-YYYYMMDD.json
+
+# 2. Classify issues
+python3 scripts/nemesis/repair_agent.py /data/reports/nemesis-YYYYMMDD.json
+# Output: /data/reports/action-plan-*.json
+
+# 3. Analyze affected code
+python3 scripts/nemesis/code_analyzer.py /data/reports/action-plan-*.json
+# Output: /data/reports/code-analysis-*.json
+
+# 4. Generate fixes (requires ANTHROPIC_API_KEY)
+python3 scripts/nemesis/fix_generator.py /data/reports/code-analysis-*.json
+# Output: /data/reports/fix-proposal-*.json
+
+# 5. Create GitHub PR
+python3 scripts/nemesis/fix_applicator.py /data/reports/fix-proposal-*.json
+# Output: GitHub PR created, URL returned
+```
+
+**On Fly.io:**
+
+```bash
+# SSH into production
 flyctl ssh console -a watchman-java
 
-# Run full repair pipeline
+# Run full pipeline
 cd /app
-PYTHONPATH=/app/scripts python3 scripts/nemesis/repair_agent.py /data/reports/nemesis-YYYYMMDD.json
-
-# Analyze code
-python3 scripts/nemesis/code_analyzer.py /data/reports/action-plan-*.json
-
-# Generate fixes (requires ANTHROPIC_API_KEY)
-python3 scripts/nemesis/fix_generator.py /data/reports/code-analysis-*.json
+PYTHONPATH=/app/scripts \
+ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" \
+GITHUB_TOKEN="${GITHUB_TOKEN}" \
+python3 scripts/nemesis/repair_agent.py /data/reports/nemesis-$(date +%Y%m%d).json && \
+python3 scripts/nemesis/code_analyzer.py /data/reports/action-plan-*.json && \
+python3 scripts/nemesis/fix_generator.py /data/reports/code-analysis-*.json && \
+python3 scripts/nemesis/fix_applicator.py /data/reports/fix-proposal-*.json
 ```
 
 **Local Development:**
 
 ```bash
-# Run repair agent on historical report
-python3 scripts/nemesis/repair_agent.py scripts/reports/nemesis-20260104.json
-
-# Output: action-plan-*.json with classification results
-
-# Analyze affected code
-python3 scripts/nemesis/code_analyzer.py scripts/reports/action-plan-*.json
-
-# Output: code-analysis-*.json with files, coverage, dependencies
-
-# Generate fixes (set API key first)
+# Test with dry-run mode
 export ANTHROPIC_API_KEY=sk-ant-...
+export GITHUB_TOKEN=ghp_...
+
+# Run pipeline
+python3 scripts/nemesis/repair_agent.py scripts/reports/nemesis-20260104.json
+python3 scripts/nemesis/code_analyzer.py scripts/reports/action-plan-*.json
 python3 scripts/nemesis/fix_generator.py scripts/reports/code-analysis-*.json
 
-# Output: fix-proposal-*.json with complete code changes
+# Dry-run PR creation (doesn't actually create PR)
+python3 scripts/nemesis/fix_applicator.py scripts/reports/fix-proposal-*.json --dry-run
+
+# Create actual PR
+python3 scripts/nemesis/fix_applicator.py scripts/reports/fix-proposal-*.json
 ```
+
+**Human Review Workflow:**
+
+1. **PR Created** - Repair agent creates PR on GitHub
+2. **Automated Checks** - PR includes:
+   - Complete code changes
+   - Fix explanation
+   - Validation results
+   - Test coverage info
+   - Affected files list
+3. **Human Reviews** - Check code quality, test locally
+4. **Approve & Merge** - If approved, merge to main
+5. **Monitor** - Watch for regressions after merge
 
 **Output Files:**
 - `action-plan-*.json` - Classification results (auto-fix vs human-review)
 - `code-analysis-*.json` - Affected files, test coverage, blast radius
 - `fix-proposal-*.json` - Generated code fixes with explanations
+- `pr-results-*.json` - PR creation results with URLs
 
 ## Version History
 
-### 1.1 (2026-01-07) - Repair Agent Phase 1
-- ✨ Repair Agent: Classification system with AI analysis integration
-- ✨ Code Analyzer: Maps issues to Java files, calculates coverage
-- ✨ Fix Generator: AI-powered code fix generation (Claude/GPT-4)
+### 1.1 (2026-01-07) - Repair Agent Phases 1 & 2
+- ✨ **Phase 1:** Classification system with AI analysis integration
+- ✨ **Phase 1:** Code analyzer maps issues to Java files, calculates coverage
+- ✨ **Phase 1:** Fix generator creates code fixes (Claude/GPT-4)
+- ✨ **Phase 2:** Fix applicator creates GitHub PRs automatically
+- ✨ **Phase 2:** Automated labeling, review requests, dry-run mode
 - Enhanced NEMESIS.md documentation
 - Updated cron to run every 5 minutes (testing mode)
-- All fixes require human approval (Phase 1)
+- Complete automated pipeline: classify → analyze → generate → PR
 
 ### 1.0 (2026-01-04)
 - Initial release
