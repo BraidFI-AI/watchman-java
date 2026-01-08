@@ -52,7 +52,7 @@ def main():
     print(f"Started: {datetime.now().isoformat()}")
     
     # Check required environment variables
-    required_vars = ['ANTHROPIC_API_KEY', 'GITHUB_TOKEN']
+    required_vars = ['OPENAI_API_KEY', 'GITHUB_TOKEN']
     missing = [var for var in required_vars if not os.getenv(var)]
     
     if missing:
@@ -123,14 +123,14 @@ def main():
     code_analysis = code_analyses[0]
     print(f"\n✓ Code analysis: {code_analysis}")
     
-    # Step 3: Generate fixes (requires ANTHROPIC_API_KEY)
-    if not os.getenv('ANTHROPIC_API_KEY'):
-        print("\n⚠️  Skipping fix generation: ANTHROPIC_API_KEY not set")
+    # Step 3: Generate fixes (requires OPENAI_API_KEY)
+    if not os.getenv('OPENAI_API_KEY'):
+        print("\n⚠️  Skipping fix generation: OPENAI_API_KEY not set")
         print("Pipeline complete (analysis only)")
         return
     
     step3 = run_command(
-        f"python3 scripts/nemesis/fix_generator.py {code_analysis}",
+        f"python3 scripts/nemesis/fix_generator.py {code_analysis} --ai-provider openai",
         "3. Generate Fixes with AI"
     )
     
