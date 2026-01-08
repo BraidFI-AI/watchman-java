@@ -32,6 +32,9 @@ RUN addgroup -g 1001 -S appgroup && \
 # Copy the built JAR
 COPY --from=build /app/target/*.jar app.jar
 
+# Copy source code for code analysis by repair agent
+COPY --from=build /app/src/ /app/src/
+
 # Copy agent scripts and configuration
 COPY scripts/*.py scripts/requirements.txt scripts/crontab /app/scripts/
 COPY scripts/nemesis/ /app/scripts/nemesis/

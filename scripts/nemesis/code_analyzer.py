@@ -44,6 +44,7 @@ class CodeAnalyzer:
             'filtering': ['*Filter*.java', '*Match*.java'],
             'precision': ['*Scorer*.java', '*Precision*.java'],
             'algorithm': ['*Algorithm*.java', '*Processor*.java'],
+            'phonetic': ['*Phonetic*.java', '*Soundex*.java', '*Similarity*.java'],
             'name': ['*Name*.java'],
             'address': ['*Address*.java'],
             'entity': ['*Entity*.java'],
