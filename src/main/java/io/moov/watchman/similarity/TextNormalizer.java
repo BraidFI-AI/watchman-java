@@ -49,11 +49,13 @@ public class TextNormalizer {
         }
 
         // Step 1: Replace common punctuation with spaces (like Go's punctuationReplacer)
-        // This handles: . , - becoming spaces
+        // Be more conservative with punctuation replacement to match Go behavior
         String result = input
-            .replace('.', ' ')
-            .replace(',', ' ')
-            .replace('-', ' ');
+            .replace(".", " ")
+            .replace(",", " ")
+            .replace("-", " ")
+            .replace("&", " and ")
+            .replace("  ", " ");
 
         // Step 2: Lowercase
         result = result.toLowerCase();
@@ -84,18 +86,19 @@ public class TextNormalizer {
             if (Character.isLetterOrDigit(c)) {
                 cleaned.append(c);
                 lastWasSpace = false;
-            } else if (Character.isWhitespace(c) || isPunctuation(c)) {
-                // Convert punctuation and whitespace to single space
+            } else if (Character.isWhitespace(c)) {
+                // Only add space if last wasn't space
                 if (!lastWasSpace) {
                     cleaned.append(' ');
                     lastWasSpace = true;
                 }
             }
-            // Skip other characters entirely
+            // Skip punctuation entirely after initial replacement
         }
 
-        // Step 6: Trim trailing space
-        return cleaned.toString().trim();
+        // Step 7: Trim and normalize multiple spaces
+        String normalized = cleaned.toString().trim();
+        return WHITESPACE_PATTERN.matcher(normalized).replaceAll(" ");
     }
 
     /**
@@ -132,59 +135,21 @@ public class TextNormalizer {
     }
 
     /**
-     * Normalize and tokenize in one step - prepares string for comparison.
-     * 
-     * @param input String to prepare
-     * @return Array of normalized tokens
-     */
-    public String[] prepareForComparison(String input) {
-        String normalized = lowerAndRemovePunctuation(input);
-        return tokenize(normalized);
-    }
-
-    /**
-     * Normalize an ID (passport, tax ID, etc.) by removing all non-alphanumeric
-     * characters and lowercasing.
+     * Normalize an identifier (phone, ID number, etc.) for comparison.
+     * Removes all non-alphanumeric characters.
      * 
      * Examples:
      * - "52-2083095" → "522083095"
-     * - "V-12345678" → "v12345678"
+     * - "(555) 123-4567" → "5551234567"
      * 
-     * @param input ID to normalize
-     * @return Normalized ID
+     * @param input Identifier to normalize
+     * @return Normalized identifier (alphanumeric only)
      */
     public String normalizeId(String input) {
         if (input == null || input.isBlank()) {
             return "";
         }
         
-        return NON_ALPHANUMERIC_PATTERN
-            .matcher(input)
-            .replaceAll("")
-            .toLowerCase();
-    }
-
-    /**
-     * Normalize a phone number by removing all non-digit characters.
-     * 
-     * Examples:
-     * - "+1 (555) 123-4567" → "15551234567"
-     * - "555.123.4567" → "5551234567"
-     * 
-     * @param input Phone number to normalize
-     * @return Normalized phone number (digits only)
-     */
-    public String normalizePhone(String input) {
-        if (input == null || input.isBlank()) {
-            return "";
-        }
-        
-        StringBuilder digits = new StringBuilder();
-        for (char c : input.toCharArray()) {
-            if (Character.isDigit(c)) {
-                digits.append(c);
-            }
-        }
-        return digits.toString();
+        return NON_ALPHANUMERIC_PATTERN.matcher(input.toLowerCase()).replaceAll("");
     }
 }
