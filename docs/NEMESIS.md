@@ -435,28 +435,158 @@ Files Affected: 5
 
 ### Repair Agent Workflow
 
-```
-AUTOMATED (Every 5 minutes via cron):
+#### Automation Architecture
 
-:00, :05, :10, :15, etc. → Nemesis runs
-    ↓
-Finds divergences, creates report
-    ↓
-:02, :07, :12, :17, etc. → Repair Pipeline runs (2 min later)
-    ↓
-1. Classify divergences (auto-fix vs human-review)
-    ↓
-2. Analyze affected code (files, coverage, dependencies)
-    ↓
-3. Generate fixes with Claude/GPT-4
-    ↓
-4. Create GitHub PRs automatically
-    ↓
-HUMAN APPROVAL GATE ⚠️
-    ↓
-Review PR on GitHub → Approve & Merge
-    ↓
-GitHub Actions auto-deploys to Fly.io 🚀
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CONTINUOUS AUTOMATION LOOP                          │
+│                         (Every 5 minutes via cron)                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │   CRON TRIGGER  │
+    │   */5 * * * *   │  ← Runs every 5 minutes (:00, :05, :10, :15, etc.)
+    └────────┬────────┘
+             │
+             ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │                    NEMESIS EXECUTION                     │
+    │  scripts/nemesis/run_nemesis.py                         │
+    │                                                          │
+    │  ✓ Generate 100 dynamic test queries                    │
+    │  ✓ Execute against Java + Go APIs                       │
+    │  ✓ Detect divergences (5 types)                         │
+    │  ✓ Use AI to identify patterns                          │
+    │  ✓ Track coverage (target: 90%)                         │
+    │                                                          │
+    │  Output: /data/reports/nemesis-YYYYMMDD.json           │
+    └────────┬───────────────────────────────────────────────┘
+             │
+             │ ~30-60 seconds
+             ▼
+    ┌─────────────────┐
+    │   CRON TRIGGER  │
+    │  2-59/5 * * * * │  ← Runs 2 min after Nemesis (:02, :07, :12, :17)
+    └────────┬────────┘
+             │
+             ▼
+    ╔═════════════════════════════════════════════════════════╗
+    ║              REPAIR PIPELINE EXECUTION                  ║
+    ║  scripts/run_repair_pipeline.py                        ║
+    ╚═════════════════════════════════════════════════════════╝
+             │
+             ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │  STEP 1: CLASSIFY DIVERGENCES                           │
+    │  repair_agent.py                                        │
+    │                                                          │
+    │  • Parse Nemesis report                                 │
+    │  • Use AI analysis from report                          │
+    │  • Classify: auto-fix vs human-review vs too-complex    │
+    │  • Calculate confidence scores                          │
+    │  • Estimate affected files                              │
+    │                                                          │
+    │  Output: action-plan-TIMESTAMP.json                     │
+    └────────┬───────────────────────────────────────────────┘
+             │
+             ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │  STEP 2: ANALYZE AFFECTED CODE                          │
+    │  code_analyzer.py                                       │
+    │                                                          │
+    │  • Map issues to Java source files                      │
+    │  • Calculate test coverage per file                     │
+    │  • Analyze dependencies & blast radius                  │
+    │  • Extract code context                                 │
+    │  • Identify few-files vs many-files                     │
+    │                                                          │
+    │  Output: code-analysis-TIMESTAMP.json                   │
+    └────────┬───────────────────────────────────────────────┘
+             │
+             ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │  STEP 3: GENERATE CODE FIXES                            │
+    │  fix_generator.py                                       │
+    │                                                          │
+    │  • Build context from analysis                          │
+    │  • Call Claude Sonnet 4 / GPT-4                         │
+    │  • Generate complete file changes                       │
+    │  • Validate syntax & structure                          │
+    │  • Include detailed explanations                        │
+    │                                                          │
+    │  Output: fix-proposal-TIMESTAMP.json                    │
+    └────────┬───────────────────────────────────────────────┘
+             │
+             ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │  STEP 4: CREATE GITHUB PULL REQUEST                     │
+    │  fix_applicator.py                                      │
+    │                                                          │
+    │  • Create new branch (nemesis-fix-TIMESTAMP)            │
+    │  • Apply code changes                                   │
+    │  • Commit with detailed message                         │
+    │  • Push to GitHub                                       │
+    │  • Create PR with labels                                │
+    │  • Add review details & validation                      │
+    │                                                          │
+    │  Output: PR URL + pr-results-TIMESTAMP.json            │
+    └────────┬───────────────────────────────────────────────┘
+             │
+             │ PR Created ✓
+             ▼
+    ╔═══════════════════════════════════════════════════════╗
+    ║            🚨 HUMAN APPROVAL GATE 🚨                  ║
+    ║                                                       ║
+    ║  Developer reviews PR on GitHub:                      ║
+    ║  • Check code quality                                 ║
+    ║  • Review test coverage                               ║
+    ║  • Validate fix logic                                 ║
+    ║  • Test locally (optional)                            ║
+    ║                                                       ║
+    ║  Decision: Approve & Merge OR Request Changes         ║
+    ╚═══════════════════════════════════════════════════════╝
+             │
+             │ If Approved
+             ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │           GITHUB ACTIONS DEPLOYMENT                      │
+    │  .github/workflows/deploy.yml                           │
+    │                                                          │
+    │  Triggered on: push to main branch                      │
+    │                                                          │
+    │  Steps:                                                  │
+    │  1. Checkout code                                       │
+    │  2. Setup flyctl                                        │
+    │  3. Deploy to Fly.io (remote build)                     │
+    │                                                          │
+    │  Result: watchman-java.fly.dev updated                  │
+    └────────┬───────────────────────────────────────────────┘
+             │
+             │ Deployment Complete ✓
+             │
+             ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │              NEXT NEMESIS CYCLE                          │
+    │  (5 minutes after previous run)                         │
+    │                                                          │
+    │  • Tests new code against Go baseline                   │
+    │  • Verifies fix didn't introduce regressions            │
+    │  • Continues coverage expansion                         │
+    └────────┬───────────────────────────────────────────────┘
+             │
+             └──────────┐
+                        │ Loop continues...
+                        ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            KEY METRICS                                       │
+│                                                                              │
+│  Automation Coverage:  95% (only PR merge requires human)                   │
+│  Cycle Time:          ~5-10 minutes (detection → PR creation)               │
+│  Human Review Time:   Variable (minutes to hours)                           │
+│  Deploy Time:         ~3-5 minutes (PR merge → production)                  │
+│  Total Loop Time:     ~5 min (auto) + review time + 5 min (deploy)         │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Key Points:**
@@ -464,6 +594,7 @@ GitHub Actions auto-deploys to Fly.io 🚀
 - ✅ PRs created without human intervention
 - ⚠️ **Human must approve and merge PRs**
 - ✅ Deployment happens automatically after merge
+- 🔄 Continuous loop validates fixes don't introduce regressions
 
 ### Safety Mechanisms
 
