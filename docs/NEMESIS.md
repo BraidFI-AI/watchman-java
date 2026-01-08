@@ -7,7 +7,7 @@
 ## What Nemesis Does
 
 Nemesis automatically:
-- ✅ Generates 100 dynamic test queries per run (vs 8 static queries previously)
+- ✅ Generates 100 dynamic test queries per run
 - ✅ Tests queries against both Java and Go implementations
 - ✅ Detects divergences (different results, scores, or ordering)
 - ✅ Tracks coverage to ensure all 1000+ OFAC entities are tested
@@ -346,6 +346,200 @@ For issues or questions:
 3. Run tests: `pytest scripts/nemesis/tests/ -v`
 4. Check GitHub issues for known problems
 
+## Nemesis Repair Agent (Future)
+
+### Overview
+
+The **Nemesis Repair Agent** will autonomously analyze divergences and generate code fixes, with clear separation between issues that can be auto-fixed vs those requiring human review.
+
+### Classification System
+
+#### ✅ Auto-Fix Criteria (Safe for Automation)
+
+Issues meeting **ALL** these criteria can be automatically fixed:
+
+1. **Single Root Cause** - Pattern confidence ≥90%
+2. **Limited Scope** - Affects ≤3 files
+3. **High Test Coverage** - Affected code has ≥70% coverage
+4. **Non-Critical Area** - Not security, compliance, or business logic
+5. **Deterministic** - 100% reproducible with clear fix
+6. **Simple Change Type:**
+   - Precision/rounding adjustments
+   - Missing null checks
+   - String normalization
+   - Configuration threshold updates
+   - Whitespace/case sensitivity
+
+**Example Auto-Fix:**
+```
+Issue: "90% of divergences show Java scores 0.05 higher than Go"
+Root Cause: Missing score normalization step
+Confidence: 95%
+Files Affected: 1 (JaroWinklerScorer.java)
+Test Coverage: 85%
+→ AUTO-FIX: Add normalization step, generate PR with tests
+```
+
+#### ⚠️ Human Review Required
+
+Issues with **ANY** of these characteristics need human oversight:
+
+1. **Complexity Flags:**
+   - Pattern confidence <80%
+   - Affects >3 files
+   - Test coverage <70%
+   - Multiple potential root causes
+
+2. **Risk Flags:**
+   - Security implications (auth, validation, sanitization)
+   - Business logic changes (compliance rules, filtering criteria)
+   - Performance trade-offs (accuracy vs speed decisions)
+   - Algorithm changes (core matching/scoring logic)
+
+3. **Ambiguity Flags:**
+   - Inconsistent patterns across divergences
+   - Requires domain knowledge
+   - No clear "correct" behavior
+   - Trade-off decisions needed
+
+**Example Needs Review:**
+```
+Issue: "Top result differs in 45 queries - no consistent pattern"
+Root Cause: Unclear (multiple potential causes)
+Confidence: 65%
+Files Affected: 5
+→ HUMAN REVIEW: Create detailed analysis issue with recommendations
+```
+
+### Repair Agent Workflow
+
+```
+Nemesis Report (313 divergences)
+    ↓
+Analyze & Group by Root Cause
+    ↓
+For each issue:
+    │
+    ├─ Auto-fixable? (meets all criteria)
+    │   ↓
+    │   Generate Code Fix
+    │   ↓
+    │   Run Tests
+    │   ↓
+    │   Tests Pass?
+    │   ├─ Yes → Create PR (auto-merge enabled)
+    │   └─ No → Downgrade to Human Review
+    │
+    ├─ Needs Review? (some risk factors)
+    │   ↓
+    │   Generate Code Fix
+    │   ↓
+    │   Create PR (request human review)
+    │   ↓
+    │   Include: confidence scores, affected files, test results
+    │
+    └─ Too Complex? (high risk/ambiguity)
+        ↓
+        Create GitHub Issue
+        ↓
+        Include: detailed analysis, examples, recommendations
+```
+
+### Safety Mechanisms
+
+**Before Auto-Fixing:**
+1. **Dry Run** - Validate fix against test suite
+2. **Coverage Check** - Ensure affected code has tests
+3. **Rollback Plan** - Tag previous version
+4. **Canary Test** - Run fix against sample queries first
+
+**After Auto-Fix:**
+1. **Continuous Monitoring** - Watch for new divergences
+2. **Regression Detection** - Compare before/after metrics
+3. **Automatic Rollback** - If divergences increase >10%
+4. **Human Alert** - Notify on unexpected behavior
+
+### Classification Algorithm
+
+```python
+def classify_issue(issue):
+    # Start with auto-fix assumption
+    classification = "auto-fix"
+    confidence = 1.0
+    reasons = []
+    
+    # Check complexity
+    if issue['pattern_confidence'] < 0.9:
+        classification = "human-review"
+        confidence = issue['pattern_confidence']
+        reasons.append("Low pattern confidence")
+    
+    if issue['files_affected'] > 3:
+        classification = "human-review"
+        reasons.append("Multiple files affected")
+    
+    # Check risk
+    if issue['test_coverage'] < 0.7:
+        classification = "human-review"
+        reasons.append("Insufficient test coverage")
+    
+    risk_keywords = ['security', 'auth', 'compliance', 'business logic']
+    if any(kw in issue['category'].lower() for kw in risk_keywords):
+        classification = "human-review"
+        reasons.append("High-risk category")
+    
+    # Check ambiguity
+    if issue['root_causes'] > 1:
+        classification = "too-complex"
+        reasons.append("Multiple root causes")
+    
+    if confidence < 0.8 and classification == "human-review":
+        classification = "too-complex"
+        reasons.append("High ambiguity")
+    
+    return {
+        "classification": classification,
+        "confidence": confidence,
+        "reasons": reasons,
+        "auto_fix_eligible": classification == "auto-fix"
+    }
+```
+
+### Metrics & Monitoring
+
+Track repair agent effectiveness:
+
+- **Auto-Fix Success Rate** - % of auto-fixes that pass review
+- **False Positive Rate** - % of auto-fixes that get reverted
+- **Human Review Load** - Number of PRs requiring review
+- **Fix Velocity** - Time from detection to merge
+- **Regression Rate** - % of fixes that introduce new divergences
+
+**Target Metrics:**
+- Auto-fix success rate: ≥95%
+- False positive rate: ≤2%
+- Fix velocity: <48 hours for auto-fixes
+- Regression rate: <5%
+
+### Implementation Phases
+
+**Phase 1: Classification Only** (2 weeks)
+- Implement classification algorithm
+- Dry run on historical reports
+- Validate accuracy against manual reviews
+- No code changes, just analysis
+
+**Phase 2: Auto-Fix with Approval** (4 weeks)
+- Generate fixes for auto-fix category
+- Create PRs automatically
+- Require human approval before merge
+- Build confidence in system
+
+**Phase 3: Full Automation** (ongoing)
+- Enable auto-merge for high-confidence fixes
+- Human review only for flagged issues
+- Continuous monitoring and refinement
+
 ## Version History
 
 ### 1.0 (2026-01-04)
@@ -356,3 +550,8 @@ For issues or questions:
 - AI analysis with rule-based fallback
 - Cross-language false positive detection
 - 45 passing tests
+
+### 1.1 (Planned)
+- Nemesis Repair Agent (Phase 1: Classification)
+- Auto-fix vs Human review separation
+- GitHub issue and PR automation

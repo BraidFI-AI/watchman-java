@@ -1,8 +1,8 @@
 # Watchman Agent Cron Schedule
-# Runs Nemesis 1.0 daily
+# Runs Nemesis 1.0 every 5 minutes (testing mode)
 
-# Run Nemesis 1.0 every day at 8 AM UTC
-0 8 * * * cd /app && PYTHONPATH=/app/scripts python3 scripts/nemesis/run_nemesis.py >> /data/logs/nemesis.log 2>&1
+# Run Nemesis 1.0 every 5 minutes
+*/5 * * * * cd /app && PYTHONPATH=/app/scripts GITHUB_TOKEN="${GITHUB_TOKEN}" CREATE_GITHUB_ISSUES="${CREATE_GITHUB_ISSUES}" OPENAI_API_KEY="${OPENAI_API_KEY}" WATCHMAN_JAVA_API_URL="${WATCHMAN_JAVA_API_URL}" WATCHMAN_GO_API_URL="${WATCHMAN_GO_API_URL}" COMPARE_IMPLEMENTATIONS="${COMPARE_IMPLEMENTATIONS}" AI_PROVIDER="${AI_PROVIDER}" AI_MODEL="${AI_MODEL}" GITHUB_REPO="${GITHUB_REPO}" python3 scripts/nemesis/run_nemesis.py >> /data/logs/nemesis.log 2>&1
 
 # Clean up old reports (keep last 30 days)
 0 10 1 * * find /data/reports -name "*.json" -mtime +30 -delete

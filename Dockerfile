@@ -34,17 +34,16 @@ COPY --from=build /app/target/*.jar app.jar
 
 # Copy agent scripts and configuration
 COPY scripts/*.py scripts/requirements.txt scripts/crontab /app/scripts/
+COPY scripts/nemesis/ /app/scripts/nemesis/
 RUN pip3 install --break-system-packages --no-cache-dir -r /app/scripts/requirements.txt && \
-    chmod +x /app/scripts/*.py
+    chmod +x /app/scripts/*.py /app/scripts/nemesis/*.py
 
 # Create data directories for sanctions list cache and agent reports
 RUN mkdir -p /app/data /data/reports /data/logs && \
     chown -R appuser:appgroup /app /data
 
-# Setup cron - don't install crontab yet, will do at runtime
+# Setup cron
 RUN chmod 644 /app/scripts/crontab
-
-USER appuser
 
 # Expose port (Fly.io uses 8080 internally)
 EXPOSE 8080
@@ -56,11 +55,18 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # JVM options for container environment
 ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
-# Create startup script that initializes cron and starts Java
+# Create startup script that starts cron as root, then drops to appuser for Java
 RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'crontab /app/scripts/crontab' >> /app/start.sh && \
-    echo 'crond -b' >> /app/start.sh && \
-    echo 'exec java $JAVA_OPTS -jar /app/app.jar' >> /app/start.sh && \
-    chmod +x /app/start.sh
+    echo '# Copy crontab to /etc/crontabs/ for appuser' >> /app/start.sh && \
+    echo 'mkdir -p /etc/crontabs' >> /app/start.sh && \
+    echo 'cp /app/scripts/crontab /etc/crontabs/appuser' >> /app/start.sh && \
+    echo '# Fix permissions on /data directories' >> /app/start.sh && \
+    echo 'mkdir -p /data/reports /data/logs /data/state' >> /app/start.sh && \
+    echo 'chown -R appuser:appgroup /data' >> /app/start.sh && \
+    echo 'crond -b -l 2' >> /app/start.sh && \
+    echo '# Switch to appuser and start Java' >> /app/start.sh && \
+    echo 'exec su-exec appuser java $JAVA_OPTS -jar /app/app.jar' >> /app/start.sh && \
+    chmod +x /app/start.sh && \
+    apk add --no-cache su-exec
 
 ENTRYPOINT ["/app/start.sh"]
