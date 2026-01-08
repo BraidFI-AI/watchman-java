@@ -363,14 +363,16 @@ For issues or questions:
 
 The **Nemesis Repair Agent** autonomously analyzes divergences and generates code fixes, with clear separation between issues that can be auto-fixed vs those requiring human review.
 
-**Status:** Phase 1 Implemented (Classification & Fix Generation)
+**Status:** Fully operational with automated pipeline (Phases 1 & 2 complete)
 
 **Components:**
 - `repair_agent.py` - Classifies divergences using AI analysis
 - `code_analyzer.py` - Maps issues to affected Java files and test coverage
 - `fix_generator.py` - Generates code fixes using Claude/GPT-4
+- `fix_applicator.py` - Creates GitHub PRs automatically
+- `run_repair_pipeline.py` - Orchestrates complete workflow
 
-**Current Mode:** Human approval required for all fixes (Phase 1)
+**Current Mode:** Automated pipeline with human approval gate for PR merges
 
 ### Classification System
 
@@ -557,13 +559,15 @@ Track repair agent effectiveness:
 - ✅ Dry-run mode for testing
 - ✅ **Automated pipeline runs every 5 minutes via cron**
 - ✅ **GitHub Actions auto-deploys after PR merge**
-- 🔄 **Current:** All PRs require human approval before merge
+- ✅ **System operational:** All PRs require human approval before merge
 
-**📋 Phase 3: Full Automation (Planned)**
-- Enable auto-merge for high-confidence fixes (based on confidence thresholds)
+**📋 Phase 3: Full Automation (Future Enhancement)**
+- Enable auto-merge for high-confidence fixes (>95% confidence)
 - Human review only for flagged/complex issues
 - Continuous monitoring and refinement
 - Automatic rollback on regression detection
+
+**Note:** Phase 3 is an optional enhancement. Current system with human approval gate is fully operational and production-ready.
 
 ### Using the Repair Agent
 

@@ -245,19 +245,7 @@ public ResponseEntity<List<SearchResultDTO>> search(
 | `download.initialDelay` | `watchman.download.initial-delay` | Startup delay |
 | `ofac.sdnUrl` | `watchman.sources.ofac.sdn-url` | OFAC SDN download URL |
 
-### Features Not Yet Ported
-
-The following Go features are planned but not yet implemented:
-
-| Go Feature | Status | Notes |
-|------------|--------|-------|
-| Geocoding Service | ❌ Not Ported | Google/Nominatim/OpenCage integration |
-| Database Persistence | ❌ Not Ported | MySQL/PostgreSQL support |
-| Address Parsing | ❌ Not Ported | libpostal integration |
-| WebUI | ❌ Not Ported | Admin dashboard |
-| Prometheus Metrics | ❌ Not Ported | Observability |
-
-### New Features in Java Version
+### Features Added in Java Version
 
 | Feature | Description |
 |---------|-------------|
@@ -330,6 +318,29 @@ See [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md) for detailed test documentati
 | Batch Screening | 21 | Parallel processing, statistics |
 | Integration | 61 | End-to-end pipeline tests |
 
+## Nemesis Repair Agent
+
+The **Nemesis Repair Agent** is an autonomous system that continuously validates the Java implementation against the Go baseline, detects divergences, and automatically generates code fixes.
+
+**Key Features:**
+- 🤖 **Autonomous Testing** - Runs every 5 minutes via cron
+- 🔍 **AI-Powered Analysis** - Uses Claude/GPT-4 to analyze divergences and identify patterns
+- 🛠️ **Automated Fixes** - Generates code fixes and creates GitHub PRs automatically
+- 📊 **Coverage Tracking** - Ensures 90% of OFAC entities are tested
+- 🚀 **CI/CD Integration** - Auto-deploys to Fly.io after PR merge
+
+**Workflow:**
+```
+Nemesis → Detect divergences → Classify issues → Analyze code → 
+Generate fixes → Create PR → Human approval → Auto-deploy
+```
+
+**Status:** Fully operational with human approval gate for all PRs.
+
+See [NEMESIS.md](docs/NEMESIS.md) for complete documentation.
+
+---
+
 ## Documentation
 
 | Document | Description |
@@ -340,6 +351,7 @@ See [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md) for detailed test documentati
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | Business user guide |
 | [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error handling & logging guide |
 | [TEST_COVERAGE.md](docs/TEST_COVERAGE.md) | Detailed test documentation |
+| [NEMESIS.md](docs/NEMESIS.md) | Nemesis autonomous testing & repair system |
 
 ## License
 
