@@ -476,7 +476,7 @@ Example {i}:
 def main():
     """CLI interface for fix generator."""
     if len(sys.argv) < 2:
-        print("Usage: fix_generator.py <code-analysis.json>")
+        print("Usage: fix_generator.py <code-analysis.json> [--ai-provider openai|anthropic]")
         print("\nGenerates code fixes based on code analysis results")
         sys.exit(1)
     
@@ -486,8 +486,14 @@ def main():
         print(f"❌ File not found: {analysis_file}")
         sys.exit(1)
     
-    # Determine AI provider
-    ai_provider = "anthropic" if os.getenv('ANTHROPIC_API_KEY') or os.getenv('CLAUDE_API_KEY') else "openai"
+    # Determine AI provider from command line or environment
+    ai_provider = "openai"  # Default to OpenAI
+    if '--ai-provider' in sys.argv:
+        provider_idx = sys.argv.index('--ai-provider')
+        if provider_idx + 1 < len(sys.argv):
+            ai_provider = sys.argv[provider_idx + 1]
+    elif os.getenv('ANTHROPIC_API_KEY') or os.getenv('CLAUDE_API_KEY'):
+        ai_provider = "anthropic"
     
     # Load code analysis
     with open(analysis_file) as f:
