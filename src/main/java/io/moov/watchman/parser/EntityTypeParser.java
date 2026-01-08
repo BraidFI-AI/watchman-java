@@ -27,14 +27,9 @@ public class EntityTypeParser {
      * @return Corresponding EntityType
      */
     public EntityType parse(String sdnType) {
-        // Null is truly unknown
-        if (sdnType == null) {
-            return EntityType.UNKNOWN;
-        }
-        
-        // In OFAC data, blank/empty type defaults to business entity
-        if (sdnType.isBlank()) {
-            return EntityType.BUSINESS;
+        // Null or empty should be handled consistently
+        if (sdnType == null || sdnType.trim().isEmpty()) {
+            return EntityType.BUSINESS; // Default to business for consistency with Go
         }
         
         String normalized = sdnType.trim().toLowerCase();
@@ -44,7 +39,7 @@ public class EntityTypeParser {
             case "entity" -> EntityType.BUSINESS;
             case "vessel" -> EntityType.VESSEL;
             case "aircraft" -> EntityType.AIRCRAFT;
-            default -> EntityType.UNKNOWN;
+            default -> EntityType.BUSINESS; // Changed from UNKNOWN to BUSINESS for Go compatibility
         };
     }
     
