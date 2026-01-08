@@ -40,15 +40,10 @@ import java.util.*;
  */
 public class CSLParserImpl implements CSLParser {
 
-    // Keywords to detect business entities
+    // Keywords to detect business entities - more restrictive set
     private static final Set<String> COMPANY_NEEDLES = Set.of(
-        "academy", "aviation", "bank", "business", "co.", "commission",
-        "committee", "company", "corporation", "defense", "electronics",
-        "equipment", "export", "group", "guard", "holding", "import",
-        "industrial", "industries", "industry", "institute", "intelligence",
-        "international", "investment", "lab", "limited", "llc", "logistics",
-        "ltd", "ltd.", "partnership", "revolutionary", "solutions",
-        "subsidiary", "supply", "technology", "trading", "university"
+        "co.", "corp", "corporation", "inc", "llc", "ltd", "ltd.", 
+        "company", "group", "bank", "industries", "industrial"
     );
 
     @Override
@@ -116,149 +111,104 @@ public class CSLParserImpl implements CSLParser {
                                 String birthDates, String birthPlaces, String idsField) {
         
         EntityType entityType = determineEntityType(type, source, name);
-        List<String> programList = parseSemicolonSeparated(programs);
-        List<String> altNames = parseSemicolonSeparated(altNamesField);
-        List<Address> addresses = parseAddresses(addressesField);
-        
-        Person person = null;
-        Business business = null;
-        Vessel vessel = null;
-        Aircraft aircraft = null;
-
-        switch (entityType) {
-            case PERSON -> person = new Person(name, altNames, null, null, null, null, List.of(), List.of());
-            case BUSINESS -> business = new Business(name, altNames, null, null, null);
-            case VESSEL -> vessel = new Vessel(name, altNames, null, vesselType, vesselFlag, null, null, 
-                callSign, grossTonnage, vesselOwner);
-            case AIRCRAFT -> aircraft = new Aircraft(name, altNames, vesselType, vesselFlag, null, 
-                callSign, null, null);
-            default -> { }
-        }
-
-        SanctionsInfo sanctions = new SanctionsInfo(programList, false, null);
+        List<String> programList = parsePrograms(programs);
+        List<String> addressList = parseAddresses(addressesField);
+        List<String> altNamesList = parseAltNames(altNamesField);
+        List<String> idsList = parseIds(idsField);
 
         return new Entity(
-            id,
-            name,
-            entityType,
-            SourceList.US_CSL,
-            id,
-            person,
-            business,
-            entityType == EntityType.ORGANIZATION ? new Organization(name, altNames, null, null, List.of()) : null,
-            aircraft,
-            vessel,
-            null, // contact
-            addresses,
-            List.of(), // cryptoAddresses
-            altNames,
-            List.of(), // governmentIds
-            sanctions,
-            remarks
+                id,
+                SourceList.CSL,
+                entityType,
+                name,
+                altNamesList,
+                addressList,
+                programList,
+                remarks,
+                idsList,
+                Optional.ofNullable(cleanField(birthDates)).filter(s -> !s.isEmpty()),
+                Optional.ofNullable(cleanField(birthPlaces)).filter(s -> !s.isEmpty())
         );
     }
 
     private EntityType determineEntityType(String type, String source, String name) {
-        String typeLower = type.toLowerCase();
-        String sourceLower = source.toLowerCase();
-        String nameLower = name.toLowerCase();
-
-        return switch (typeLower) {
-            case "individual" -> EntityType.PERSON;
-            case "vessel" -> EntityType.VESSEL;
-            case "aircraft" -> EntityType.AIRCRAFT;
-            case "entity" -> {
-                // Determine if business or organization based on source/name
-                if (sourceLower.contains("military-industrial") || 
-                    sourceLower.contains("cmic")) {
-                    yield EntityType.ORGANIZATION;
-                }
-                // Check for company keywords
-                if (isLikelyBusiness(nameLower)) {
-                    yield EntityType.BUSINESS;
-                }
-                yield EntityType.BUSINESS;
-            }
-            default -> {
-                // Try to infer from name
-                if (isLikelyBusiness(nameLower)) {
-                    yield EntityType.BUSINESS;
-                }
-                yield EntityType.UNKNOWN;
-            }
-        };
-    }
-
-    private boolean isLikelyBusiness(String nameLower) {
-        for (String needle : COMPANY_NEEDLES) {
-            if (nameLower.contains(needle)) {
-                return true;
+        // Use strict type-based determination first
+        if (type != null && !type.isBlank()) {
+            String normalizedType = type.trim().toLowerCase();
+            switch (normalizedType) {
+                case "individual":
+                    return EntityType.PERSON;
+                case "entity":
+                    return EntityType.BUSINESS;
+                case "vessel":
+                    return EntityType.VESSEL;
+                case "aircraft":
+                    return EntityType.AIRCRAFT;
+                default:
+                    // For unrecognized explicit types, return UNKNOWN
+                    return EntityType.UNKNOWN;
             }
         }
-        return false;
+        
+        // For empty/null type, use more restrictive name-based classification
+        if (name != null) {
+            String nameLower = name.toLowerCase();
+            // Only classify as BUSINESS if we have strong indicators
+            for (String needle : COMPANY_NEEDLES) {
+                if (nameLower.contains(needle)) {
+                    return EntityType.BUSINESS;
+                }
+            }
+        }
+        
+        // Default to UNKNOWN instead of BUSINESS for ambiguous cases
+        return EntityType.UNKNOWN;
     }
 
-    private List<Address> parseAddresses(String addressesField) {
-        if (addressesField == null || addressesField.isBlank()) {
+    private List<String> parsePrograms(String programs) {
+        if (programs == null || programs.isBlank()) {
             return List.of();
         }
-
-        List<Address> addresses = new ArrayList<>();
-        String[] parts = addressesField.split(";");
-        
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (trimmed.isEmpty()) continue;
-            
-            // Try to parse "street, city, country" format
-            String[] components = trimmed.split(",");
-            String line1 = components.length > 0 ? components[0].trim() : "";
-            String city = components.length > 1 ? components[1].trim() : "";
-            String country = components.length > 2 ? components[2].trim() : "";
-            
-            if (!line1.isEmpty()) {
-                addresses.add(new Address(line1, null, city, "", "", country));
-            }
-        }
-        
-        return addresses;
+        return Arrays.stream(programs.split(";"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 
-    private List<String> parseSemicolonSeparated(String field) {
-        if (field == null || field.isBlank()) {
+    private List<String> parseAddresses(String addresses) {
+        if (addresses == null || addresses.isBlank()) {
             return List.of();
         }
-        
-        List<String> result = new ArrayList<>();
-        String[] parts = field.split(";");
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                result.add(trimmed);
-            }
-        }
-        return result;
+        return Arrays.stream(addresses.split(";"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 
-    private Integer parseTonnage(String tonnage) {
-        if (tonnage == null || tonnage.isBlank()) {
-            return null;
+    private List<String> parseAltNames(String altNames) {
+        if (altNames == null || altNames.isBlank()) {
+            return List.of();
         }
-        try {
-            return Integer.parseInt(tonnage.replaceAll("[^0-9]", ""));
-        } catch (NumberFormatException e) {
-            return null;
+        return Arrays.stream(altNames.split(";"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    private List<String> parseIds(String ids) {
+        if (ids == null || ids.isBlank()) {
+            return List.of();
         }
+        return Arrays.stream(ids.split(";"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 
     private String cleanField(String value) {
         if (value == null) {
             return "";
         }
-        String cleaned = value.trim();
-        if (cleaned.equals("-0-") || cleaned.equalsIgnoreCase("null")) {
-            return "";
-        }
-        return cleaned;
+        return value.trim();
     }
 }
