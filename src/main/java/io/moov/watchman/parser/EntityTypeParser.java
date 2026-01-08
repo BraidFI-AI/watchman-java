@@ -16,12 +16,7 @@ public class EntityTypeParser {
     /**
      * Parse SDN_Type string to EntityType.
      * 
-     * In OFAC data:
-     * - "Individual" → PERSON
-     * - "Entity" or blank string → BUSINESS (blank defaults to business entity)
-     * - "Vessel" → VESSEL
-     * - "Aircraft" → AIRCRAFT
-     * - null or unrecognized → UNKNOWN
+     * Updated to match Go implementation behavior for entity type determination.
      * 
      * @param sdnType The SDN_Type value from OFAC data (e.g., "Individual", "Entity")
      * @return Corresponding EntityType
@@ -32,12 +27,16 @@ public class EntityTypeParser {
             return EntityType.UNKNOWN;
         }
         
-        // In OFAC data, blank/empty type defaults to business entity
-        if (sdnType.isBlank()) {
-            return EntityType.BUSINESS;
+        // Trim whitespace
+        String normalized = sdnType.trim();
+        
+        // Empty after trim is unknown, not business
+        if (normalized.isEmpty()) {
+            return EntityType.UNKNOWN;
         }
         
-        String normalized = sdnType.trim().toLowerCase();
+        // Case-insensitive matching
+        normalized = normalized.toLowerCase();
         
         return switch (normalized) {
             case "individual" -> EntityType.PERSON;
