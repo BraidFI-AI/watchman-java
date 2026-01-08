@@ -48,17 +48,35 @@ public class TextNormalizer {
             return "";
         }
 
-        // Step 1: Replace common punctuation with spaces (like Go's punctuationReplacer)
-        // This handles: . , - becoming spaces
+        // Step 1: Handle Arabic and special characters first (before other processing)
         String result = input
+            // Arabic characters - transliterate or remove as Go does
+            .replace("ﺍ", "a")   // Arabic alif
+            .replace("ﻉ", "a")   // Arabic ain
+            .replace("ﻱ", "i")   // Arabic yeh
+            .replace("'", "")    // Remove apostrophes completely (key for JAYSH AL-SHA'BI)
+            .replace("'", "")    // Remove curly apostrophes
+            .replace("`", "")    // Remove backticks
+            // Common Arabic/Persian transliterations
+            .replace("ش", "sh")  // Arabic sheen
+            .replace("ع", "")    // Arabic ain (remove)
+            .replace("ب", "b")   // Arabic beh
+            .replace("ی", "i");  // Persian yeh
+
+        // Step 2: Replace common punctuation with spaces (like Go's punctuationReplacer)
+        // This handles: . , - becoming spaces, but NOT apostrophes (already removed)
+        result = result
             .replace('.', ' ')
             .replace(',', ' ')
-            .replace('-', ' ');
+            .replace('-', ' ')
+            .replace('_', ' ')
+            .replace('/', ' ')
+            .replace('\\', ' ');
 
-        // Step 2: Lowercase
+        // Step 3: Lowercase
         result = result.toLowerCase();
 
-        // Step 3: Transliterate special characters (before NFD normalization)
+        // Step 4: Transliterate special characters (before NFD normalization)
         // These are actual letters in some languages but should be transliterated for comparison
         result = result
             .replace("ð", "d")   // Icelandic eth
@@ -69,14 +87,14 @@ public class TextNormalizer {
             .replace("ł", "l")   // Polish L with stroke
             .replace("ß", "ss"); // German sharp S
 
-        // Step 4: Unicode NFD normalization - separates base characters from accents
+        // Step 5: Unicode NFD normalization - separates base characters from accents
         // "é" becomes "e" + combining accent mark
         result = Normalizer.normalize(result, Normalizer.Form.NFD);
 
-        // Step 5: Remove the accent marks (diacritics)
+        // Step 6: Remove the accent marks (diacritics)
         result = DIACRITICS_PATTERN.matcher(result).replaceAll("");
 
-        // Step 6: Remove remaining punctuation and symbols, keep letters/numbers/spaces
+        // Step 7: Remove remaining punctuation and symbols, keep letters/numbers/spaces
         StringBuilder cleaned = new StringBuilder();
         boolean lastWasSpace = true; // Start true to trim leading spaces
 
@@ -94,7 +112,7 @@ public class TextNormalizer {
             // Skip other characters entirely
         }
 
-        // Step 6: Trim trailing space
+        // Step 8: Trim trailing space
         return cleaned.toString().trim();
     }
 
@@ -132,59 +150,46 @@ public class TextNormalizer {
     }
 
     /**
-     * Normalize and tokenize in one step - prepares string for comparison.
-     * 
-     * @param input String to prepare
-     * @return Array of normalized tokens
-     */
-    public String[] prepareForComparison(String input) {
-        String normalized = lowerAndRemovePunctuation(input);
-        return tokenize(normalized);
-    }
-
-    /**
-     * Normalize an ID (passport, tax ID, etc.) by removing all non-alphanumeric
-     * characters and lowercasing.
+     * Normalize an identifier (government ID, crypto address, etc.) by removing
+     * all non-alphanumeric characters and converting to lowercase.
      * 
      * Examples:
      * - "52-2083095" → "522083095"
-     * - "V-12345678" → "v12345678"
+     * - "A1b2-C3d4" → "a1b2c3d4"
      * 
-     * @param input ID to normalize
-     * @return Normalized ID
+     * @param id Identifier to normalize
+     * @return Normalized identifier, or empty string if input is null/blank
      */
-    public String normalizeId(String input) {
-        if (input == null || input.isBlank()) {
+    public String normalizeId(String id) {
+        if (id == null || id.isBlank()) {
             return "";
         }
         
-        return NON_ALPHANUMERIC_PATTERN
-            .matcher(input)
-            .replaceAll("")
-            .toLowerCase();
+        return NON_ALPHANUMERIC_PATTERN.matcher(id.toLowerCase()).replaceAll("");
     }
 
     /**
      * Normalize a phone number by removing all non-digit characters.
      * 
-     * Examples:
-     * - "+1 (555) 123-4567" → "15551234567"
-     * - "555.123.4567" → "5551234567"
-     * 
-     * @param input Phone number to normalize
-     * @return Normalized phone number (digits only)
+     * @param phone Phone number to normalize
+     * @return Normalized phone number (digits only), or empty string if input is null/blank
      */
-    public String normalizePhone(String input) {
-        if (input == null || input.isBlank()) {
+    public String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) {
             return "";
         }
         
-        StringBuilder digits = new StringBuilder();
-        for (char c : input.toCharArray()) {
-            if (Character.isDigit(c)) {
-                digits.append(c);
-            }
-        }
-        return digits.toString();
+        return phone.replaceAll("[^0-9]", "");
+    }
+
+    /**
+     * Check if a string contains meaningful content after normalization.
+     * Returns false for null, blank, or strings that normalize to nothing.
+     * 
+     * @param input String to check
+     * @return true if string has meaningful content
+     */
+    public boolean hasContent(String input) {
+        return input != null && !input.isBlank() && !lowerAndRemovePunctuation(input).isBlank();
     }
 }
