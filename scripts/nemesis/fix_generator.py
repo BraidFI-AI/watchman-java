@@ -87,6 +87,17 @@ class FixGenerator:
             except Exception as e:
                 print(f"   ⚠️  Could not read {file_path}: {e}")
         
+        # Load related interface/model files for better context
+        related_files = self._find_related_files(analysis['affected_files'])
+        for file_path in related_files:
+            full_path = self.project_root / file_path
+            try:
+                if file_path not in file_contents:  # Don't duplicate
+                    file_contents[file_path] = full_path.read_text()
+                    print(f"   📎 Including related file: {file_path}")
+            except Exception as e:
+                pass
+        
         # Load test file contents
         test_contents = {}
         for test_path in analysis['test_files']:
@@ -107,6 +118,34 @@ class FixGenerator:
             'divergences': divergences,
             'report_date': report.get('timestamp', 'unknown')
         }
+    
+    def _find_related_files(self, affected_files: List[str]) -> List[str]:
+        """Find related interface, model, and dependency files."""
+        related = []
+        
+        for file_path in affected_files:
+            # If it's an Impl class, find the interface
+            if 'Impl.java' in file_path:
+                interface_path = file_path.replace('Impl.java', '.java')
+                if (self.project_root / interface_path).exists():
+                    related.append(interface_path)
+            
+            # Find related model classes mentioned in the file
+            try:
+                full_path = self.project_root / file_path
+                content = full_path.read_text()
+                
+                # Extract imported classes from same package
+                import re
+                imports = re.findall(r'import\s+io\.moov\.watchman\.(\w+)\.(\w+);', content)
+                for package, class_name in imports:
+                    related_path = f'src/main/java/io/moov/watchman/{package}/{class_name}.java'
+                    if (self.project_root / related_path).exists():
+                        related.append(related_path)
+            except Exception:
+                pass
+        
+        return list(set(related))[:5]  # Limit to 5 most relevant files
     
     def _find_ai_issue(self, issue_id: str, report: Dict) -> Optional[Dict]:
         """Find the AI issue from report that matches this analysis."""
@@ -246,6 +285,22 @@ Generate a code fix that resolves the divergences. The fix should:
 3. Follow Java best practices and existing code style
 4. Be minimal and focused on the issue
 
+CRITICAL CONSTRAINTS - YOU MUST FOLLOW THESE:
+1. ONLY use methods and classes that exist in the provided code above
+2. DO NOT invent or hallucinate methods - check the actual method signatures in the code
+3. DO NOT add new classes unless they exist in the codebase
+4. If a class/method doesn't exist, use what's actually available or note it needs manual implementation
+5. Method names MUST match exactly what's in the provided code (case-sensitive)
+6. Check field/property access - use actual getters/setters that exist
+7. Verify imports - only use classes that are shown in the code or are standard Java
+
+VALIDATION CHECKLIST (verify before responding):
+- [ ] Every method call exists in the provided code
+- [ ] Every class reference exists or is standard Java
+- [ ] All field accesses use actual getter/setter methods
+- [ ] No hallucinated Contact, normalize(), similarity() or other non-existent methods
+- [ ] Code will compile with provided classes
+
 OUTPUT FORMAT:
 For each file that needs changes, provide:
 
@@ -380,6 +435,19 @@ Example {i}:
             # Check for basic Java structure
             if 'class ' not in content and 'interface ' not in content and 'record ' not in content:
                 validation['warnings'].append(f"{change['file']}: No class/interface/record found")
+            
+            # Check for common hallucination patterns
+            hallucination_patterns = [
+                ('Contact', 'Contact class (may not exist)'),
+                ('.normalize(', 'normalize() method (check actual method name)'),
+                ('.similarity(', 'similarity() method (check actual method name)'),
+                ('.id()', 'id() method (check actual getter name)'),
+                ('.birthDate()', 'birthDate() method (check if exists)')
+            ]
+            
+            for pattern, warning in hallucination_patterns:
+                if pattern in content:
+                    validation['warnings'].append(f"{change['file']}: Uses {warning}")
         
         return validation
 
