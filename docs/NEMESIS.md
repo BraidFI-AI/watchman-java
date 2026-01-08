@@ -293,6 +293,13 @@ scripts/nemesis/
     ├── test_result_analyzer.py
     ├── test_coverage_tracker.py
     └── test_ai_analyzer.py
+
+scripts/
+├── run_repair_pipeline.py  # ✨ Orchestrates repair agent workflow (150 lines)
+└── crontab                 # Cron schedule (Nemesis + Repair Pipeline)
+
+.github/workflows/
+└── deploy.yml              # ✨ Auto-deploy to Fly.io on merge to main
 ```
 
 ### Workflow
@@ -427,36 +434,34 @@ Files Affected: 5
 ### Repair Agent Workflow
 
 ```
-Nemesis Report (313 divergences)
+AUTOMATED (Every 5 minutes via cron):
+
+:00, :05, :10, :15, etc. → Nemesis runs
     ↓
-Analyze & Group by Root Cause
+Finds divergences, creates report
     ↓
-For each issue:
-    │
-    ├─ Auto-fixable? (meets all criteria)
-    │   ↓
-    │   Generate Code Fix
-    │   ↓
-    │   Run Tests
-    │   ↓
-    │   Tests Pass?
-    │   ├─ Yes → Create PR (auto-merge enabled)
-    │   └─ No → Downgrade to Human Review
-    │
-    ├─ Needs Review? (some risk factors)
-    │   ↓
-    │   Generate Code Fix
-    │   ↓
-    │   Create PR (request human review)
-    │   ↓
-    │   Include: confidence scores, affected files, test results
-    │
-    └─ Too Complex? (high risk/ambiguity)
-        ↓
-        Create GitHub Issue
-        ↓
-        Include: detailed analysis, examples, recommendations
+:02, :07, :12, :17, etc. → Repair Pipeline runs (2 min later)
+    ↓
+1. Classify divergences (auto-fix vs human-review)
+    ↓
+2. Analyze affected code (files, coverage, dependencies)
+    ↓
+3. Generate fixes with Claude/GPT-4
+    ↓
+4. Create GitHub PRs automatically
+    ↓
+HUMAN APPROVAL GATE ⚠️
+    ↓
+Review PR on GitHub → Approve & Merge
+    ↓
+GitHub Actions auto-deploys to Fly.io 🚀
 ```
+
+**Key Points:**
+- ✅ Entire pipeline runs automatically every 5 minutes
+- ✅ PRs created without human intervention
+- ⚠️ **Human must approve and merge PRs**
+- ✅ Deployment happens automatically after merge
 
 ### Safety Mechanisms
 
@@ -550,74 +555,68 @@ Track repair agent effectiveness:
 - ✅ Automatic labeling (nemesis, auto-fix, complexity)
 - ✅ Review request workflow
 - ✅ Dry-run mode for testing
+- ✅ **Automated pipeline runs every 5 minutes via cron**
+- ✅ **GitHub Actions auto-deploys after PR merge**
 - 🔄 **Current:** All PRs require human approval before merge
 
 **📋 Phase 3: Full Automation (Planned)**
-- Enable auto-merge for high-confidence fixes
-- Human review only for flagged issues
+- Enable auto-merge for high-confidence fixes (based on confidence thresholds)
+- Human review only for flagged/complex issues
 - Continuous monitoring and refinement
-- Automatic rollback on regression
+- Automatic rollback on regression detection
 
 ### Using the Repair Agent
 
-**Complete Workflow (Automated Pipeline):**
+**Automated Mode (Production):**
 
-```bash
-# 1. Nemesis finds divergences (runs via cron)
-python3 scripts/nemesis/run_nemesis.py
-# Output: /data/reports/nemesis-YYYYMMDD.json
+The repair agent runs automatically via cron on Fly.io:
 
-# 2. Classify issues
-python3 scripts/nemesis/repair_agent.py /data/reports/nemesis-YYYYMMDD.json
-# Output: /data/reports/action-plan-*.json
+```
+Cron Schedule:
+  */5 * * * *     → Nemesis (every 5 minutes)
+  2-59/5 * * * *  → Repair Pipeline (2 minutes after Nemesis)
 
-# 3. Analyze affected code
-python3 scripts/nemesis/code_analyzer.py /data/reports/action-plan-*.json
-# Output: /data/reports/code-analysis-*.json
-
-# 4. Generate fixes (requires ANTHROPIC_API_KEY)
-python3 scripts/nemesis/fix_generator.py /data/reports/code-analysis-*.json
-# Output: /data/reports/fix-proposal-*.json
-
-# 5. Create GitHub PR
-python3 scripts/nemesis/fix_applicator.py /data/reports/fix-proposal-*.json
-# Output: GitHub PR created, URL returned
+Logs:
+  /data/logs/nemesis.log          → Nemesis execution log
+  /data/logs/repair-pipeline.log  → Repair agent pipeline log
 ```
 
-**On Fly.io:**
+**Manual Execution:**
+
+To run the complete pipeline manually:
 
 ```bash
-# SSH into production
+# SSH into Fly.io
 flyctl ssh console -a watchman-java
 
-# Run full pipeline
+# Run complete pipeline
 cd /app
 PYTHONPATH=/app/scripts \
 ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" \
 GITHUB_TOKEN="${GITHUB_TOKEN}" \
-python3 scripts/nemesis/repair_agent.py /data/reports/nemesis-$(date +%Y%m%d).json && \
-python3 scripts/nemesis/code_analyzer.py /data/reports/action-plan-*.json && \
-python3 scripts/nemesis/fix_generator.py /data/reports/code-analysis-*.json && \
-python3 scripts/nemesis/fix_applicator.py /data/reports/fix-proposal-*.json
+python3 scripts/run_repair_pipeline.py
 ```
 
-**Local Development:**
+**Individual Components:**
 
 ```bash
-# Test with dry-run mode
-export ANTHROPIC_API_KEY=sk-ant-...
-export GITHUB_TOKEN=ghp_...
+# Run each step separately
+cd /app && PYTHONPATH=/app/scripts
 
-# Run pipeline
-python3 scripts/nemesis/repair_agent.py scripts/reports/nemesis-20260104.json
-python3 scripts/nemesis/code_analyzer.py scripts/reports/action-plan-*.json
-python3 scripts/nemesis/fix_generator.py scripts/reports/code-analysis-*.json
+# 1. Classify divergences
+python3 scripts/nemesis/repair_agent.py /data/reports/nemesis-YYYYMMDD.json
 
-# Dry-run PR creation (doesn't actually create PR)
-python3 scripts/nemesis/fix_applicator.py scripts/reports/fix-proposal-*.json --dry-run
+# 2. Analyze affected code
+python3 scripts/nemesis/code_analyzer.py /data/reports/action-plan-*.json
 
-# Create actual PR
-python3 scripts/nemesis/fix_applicator.py scripts/reports/fix-proposal-*.json
+# 3. Generate fixes
+python3 scripts/nemesis/fix_generator.py /data/reports/code-analysis-*.json
+
+# 4. Create GitHub PRs
+python3 scripts/nemesis/fix_applicator.py /data/reports/fix-proposal-*.json
+
+# Or with dry-run to test without creating PRs
+python3 scripts/nemesis/fix_applicator.py /data/reports/fix-proposal-*.json --dry-run
 ```
 
 **Human Review Workflow:**
@@ -640,6 +639,14 @@ python3 scripts/nemesis/fix_applicator.py scripts/reports/fix-proposal-*.json
 - `pr-results-*.json` - PR creation results with URLs
 
 ## Version History
+
+### 1.2 (2026-01-07) - Full Automation
+- ✨ Automated repair pipeline runs via cron (every 5 minutes)
+- ✨ GitHub Actions workflow for auto-deploy on merge
+- ✨ Complete end-to-end automation: detect → analyze → fix → PR → deploy
+- New `run_repair_pipeline.py` orchestrator script
+- Updated cron: Repair pipeline runs 2 minutes after Nemesis
+- PRs still require human approval before merge
 
 ### 1.1 (2026-01-07) - Repair Agent Phases 1 & 2
 - ✨ **Phase 1:** Classification system with AI analysis integration
