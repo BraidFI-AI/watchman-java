@@ -15,9 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * OFAC uses specific strings in the SDN_Type field:
  * - "individual" → PERSON
- * - "" (blank) or "Entity" → BUSINESS
+ * - "Entity" → BUSINESS
  * - "vessel" → VESSEL
  * - "aircraft" → AIRCRAFT
+ * - blank/null/unrecognized → UNKNOWN
  */
 class EntityTypeParserTest {
 
@@ -38,7 +39,6 @@ class EntityTypeParserTest {
             "'Individual', PERSON",
             "'INDIVIDUAL', PERSON",
             
-            "'', BUSINESS",
             "'Entity', BUSINESS",
             "'entity', BUSINESS",
             "'ENTITY', BUSINESS",
@@ -50,6 +50,9 @@ class EntityTypeParserTest {
             "'aircraft', AIRCRAFT",
             "'Aircraft', AIRCRAFT",
             "'AIRCRAFT', AIRCRAFT",
+            
+            "'', UNKNOWN",
+            "'   ', UNKNOWN"
         })
         void shouldParseEntityType(String sdnType, EntityType expected) {
             EntityType result = parser.parse(sdnType);
@@ -95,10 +98,10 @@ class EntityTypeParserTest {
     class BusinessDetectionTests {
 
         @Test
-        @DisplayName("Blank type should be business")
-        void blankShouldBeBusiness() {
-            assertThat(parser.isBusiness("")).isTrue();
-            assertThat(parser.isBusiness("   ")).isTrue();
+        @DisplayName("Blank type should be unknown")
+        void blankShouldBeUnknown() {
+            assertThat(parser.isBusiness("")).isFalse();
+            assertThat(parser.isBusiness("   ")).isFalse();
         }
 
         @Test
