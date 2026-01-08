@@ -598,11 +598,62 @@ Files Affected: 5
 
 ### Safety Mechanisms
 
+#### API Reference System (Anti-Hallucination)
+
+**Problem:** Without accurate API documentation, AI can "hallucinate" non-existent methods when generating fixes, leading to compilation errors.
+
+**Solution:** Auto-generated API reference from compiled Java bytecode:
+
+```bash
+# Generated during Docker build
+scripts/generate_api_reference.py
+  ↓
+Uses javap (Java bytecode disassembler)
+  ↓
+Extracts exact method signatures from .class files
+  ↓
+Generates API-REFERENCE.md (copied to runtime container)
+  ↓
+Loaded by fix_generator.py and included in AI prompts
+```
+
+**Example from PR #27 (Before API Reference):**
+```
+❌ 16 compilation errors due to hallucination:
+   - Invented Contact class (doesn't exist)
+   - Used normalize() instead of normalizeText()
+   - Created fake similarity(), id(), birthDate() methods
+   - Result: Build failed, manual revert required
+```
+
+**After API Reference Implementation:**
+```
+✅ AI sees exact API during fix generation:
+   - EntityScorerImpl.normalizeText(String input)
+   - SimilarityService.calculate(String a, String b)
+   - GovernmentId.getIdentifier()
+   - Entity.getDateOfBirth()
+✅ Cannot invent methods not in API reference
+✅ Validation detects hallucination patterns
+✅ Generated code compiles successfully
+```
+
+**Technical Details:**
+- **Reflection-based:** Uses `javap -public` on compiled classes (zero drift)
+- **Auto-updated:** Regenerates on every Docker build (no manual maintenance)
+- **Prompt integration:** First 15,000 chars included in AI prompt
+- **Validation:** fix_generator.py checks for known hallucination patterns
+
+**See:** [API Reference Generation Documentation](API_REFERENCE_GENERATION.md) for complete technical details.
+
+#### General Safety Mechanisms
+
 **Before Auto-Fixing:**
-1. **Dry Run** - Validate fix against test suite
-2. **Coverage Check** - Ensure affected code has tests
-3. **Rollback Plan** - Tag previous version
-4. **Canary Test** - Run fix against sample queries first
+1. **API Reference Validation** - Ensure only real methods/classes are used
+2. **Dry Run** - Validate fix against test suite
+3. **Coverage Check** - Ensure affected code has tests
+4. **Rollback Plan** - Tag previous version
+5. **Canary Test** - Run fix against sample queries first
 
 **After Auto-Fix:**
 1. **Continuous Monitoring** - Watch for new divergences
@@ -779,7 +830,11 @@ python3 scripts/nemesis/fix_applicator.py /data/reports/fix-proposal-*.json --dr
 - ✨ Automated repair pipeline runs via cron (every 5 minutes)
 - ✨ GitHub Actions workflow for auto-deploy on merge
 - ✨ Complete end-to-end automation: detect → analyze → fix → PR → deploy
+- ✨ **Anti-hallucination system:** Auto-generated API reference from bytecode
+- 🛡️ API reference prevents AI from inventing non-existent methods/classes
+- 🛡️ Zero-drift architecture: regenerates on every build
 - New `run_repair_pipeline.py` orchestrator script
+- New `generate_api_reference.py` for bytecode-based API extraction
 - Updated cron: Repair pipeline runs 2 minutes after Nemesis
 - PRs still require human approval before merge
 
