@@ -44,7 +44,7 @@ class FixGenerator:
             if not api_key:
                 raise ValueError("OPENAI_API_KEY required")
             self.client = openai.OpenAI(api_key=api_key)
-            self.model = "gpt-4"
+            self.model = "gpt-4-turbo-preview"
         else:
             raise ValueError(f"Unknown AI provider: {ai_provider}")
     
