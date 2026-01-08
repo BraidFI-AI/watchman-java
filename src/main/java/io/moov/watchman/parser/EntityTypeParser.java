@@ -18,23 +18,18 @@ public class EntityTypeParser {
      * 
      * In OFAC data:
      * - "Individual" → PERSON
-     * - "Entity" or blank string → BUSINESS (blank defaults to business entity)
+     * - "Entity" → BUSINESS
      * - "Vessel" → VESSEL
      * - "Aircraft" → AIRCRAFT
-     * - null or unrecognized → UNKNOWN
+     * - null, blank, or unrecognized → UNKNOWN
      * 
      * @param sdnType The SDN_Type value from OFAC data (e.g., "Individual", "Entity")
      * @return Corresponding EntityType
      */
     public EntityType parse(String sdnType) {
-        // Null is truly unknown
-        if (sdnType == null) {
+        // Null or blank is unknown
+        if (sdnType == null || sdnType.isBlank()) {
             return EntityType.UNKNOWN;
-        }
-        
-        // In OFAC data, blank/empty type defaults to business entity
-        if (sdnType.isBlank()) {
-            return EntityType.BUSINESS;
         }
         
         String normalized = sdnType.trim().toLowerCase();
