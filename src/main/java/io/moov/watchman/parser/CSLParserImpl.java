@@ -116,149 +116,106 @@ public class CSLParserImpl implements CSLParser {
                                 String birthDates, String birthPlaces, String idsField) {
         
         EntityType entityType = determineEntityType(type, source, name);
-        List<String> programList = parseSemicolonSeparated(programs);
-        List<String> altNames = parseSemicolonSeparated(altNamesField);
-        List<Address> addresses = parseAddresses(addressesField);
-        
-        Person person = null;
-        Business business = null;
-        Vessel vessel = null;
-        Aircraft aircraft = null;
+        List<String> programList = parseDelimitedField(programs);
+        List<String> addressList = parseDelimitedField(addressesField);
+        List<String> altNamesList = parseDelimitedField(altNamesField);
+        List<String> idsList = parseDelimitedField(idsField);
 
-        switch (entityType) {
-            case PERSON -> person = new Person(name, altNames, null, null, null, null, List.of(), List.of());
-            case BUSINESS -> business = new Business(name, altNames, null, null, null);
-            case VESSEL -> vessel = new Vessel(name, altNames, null, vesselType, vesselFlag, null, null, 
-                callSign, grossTonnage, vesselOwner);
-            case AIRCRAFT -> aircraft = new Aircraft(name, altNames, vesselType, vesselFlag, null, 
-                callSign, null, null);
-            default -> { }
+        // Build entity based on type
+        Entity.Builder builder = new Entity.Builder()
+            .id(id)
+            .source(source)
+            .entityType(entityType)
+            .name(name)
+            .programs(programList)
+            .addresses(addressList)
+            .altNames(altNamesList)
+            .remarks(remarks);
+
+        // Add person-specific fields
+        if (entityType == EntityType.PERSON && !title.isEmpty()) {
+            builder.title(title);
+        }
+        
+        // Add vessel/aircraft fields
+        if (entityType == EntityType.VESSEL || entityType == EntityType.AIRCRAFT) {
+            if (!callSign.isEmpty()) builder.callSign(callSign);
+            if (!vesselType.isEmpty()) builder.vesselType(vesselType);
+            if (!grossTonnage.isEmpty()) builder.tonnage(grossTonnage);
+            if (!vesselFlag.isEmpty()) builder.flag(vesselFlag);
+            if (!vesselOwner.isEmpty()) builder.owner(vesselOwner);
         }
 
-        SanctionsInfo sanctions = new SanctionsInfo(programList, false, null);
-
-        return new Entity(
-            id,
-            name,
-            entityType,
-            SourceList.US_CSL,
-            id,
-            person,
-            business,
-            entityType == EntityType.ORGANIZATION ? new Organization(name, altNames, null, null, List.of()) : null,
-            aircraft,
-            vessel,
-            null, // contact
-            addresses,
-            List.of(), // cryptoAddresses
-            altNames,
-            List.of(), // governmentIds
-            sanctions,
-            remarks
-        );
+        return builder.build();
     }
 
     private EntityType determineEntityType(String type, String source, String name) {
-        String typeLower = type.toLowerCase();
-        String sourceLower = source.toLowerCase();
-        String nameLower = name.toLowerCase();
-
-        return switch (typeLower) {
-            case "individual" -> EntityType.PERSON;
-            case "vessel" -> EntityType.VESSEL;
-            case "aircraft" -> EntityType.AIRCRAFT;
-            case "entity" -> {
-                // Determine if business or organization based on source/name
-                if (sourceLower.contains("military-industrial") || 
-                    sourceLower.contains("cmic")) {
-                    yield EntityType.ORGANIZATION;
-                }
-                // Check for company keywords
-                if (isLikelyBusiness(nameLower)) {
-                    yield EntityType.BUSINESS;
-                }
-                yield EntityType.BUSINESS;
-            }
-            default -> {
-                // Try to infer from name
-                if (isLikelyBusiness(nameLower)) {
-                    yield EntityType.BUSINESS;
-                }
-                yield EntityType.UNKNOWN;
-            }
-        };
-    }
-
-    private boolean isLikelyBusiness(String nameLower) {
-        for (String needle : COMPANY_NEEDLES) {
-            if (nameLower.contains(needle)) {
-                return true;
+        // Use explicit type if available
+        if (type != null && !type.isEmpty()) {
+            String normalizedType = type.toLowerCase().trim();
+            switch (normalizedType) {
+                case "individual":
+                    return EntityType.PERSON;
+                case "vessel":
+                    return EntityType.VESSEL;
+                case "aircraft":
+                    return EntityType.AIRCRAFT;
+                case "entity":
+                    return EntityType.BUSINESS;
             }
         }
-        return false;
-    }
 
-    private List<Address> parseAddresses(String addressesField) {
-        if (addressesField == null || addressesField.isBlank()) {
-            return List.of();
-        }
-
-        List<Address> addresses = new ArrayList<>();
-        String[] parts = addressesField.split(";");
-        
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (trimmed.isEmpty()) continue;
-            
-            // Try to parse "street, city, country" format
-            String[] components = trimmed.split(",");
-            String line1 = components.length > 0 ? components[0].trim() : "";
-            String city = components.length > 1 ? components[1].trim() : "";
-            String country = components.length > 2 ? components[2].trim() : "";
-            
-            if (!line1.isEmpty()) {
-                addresses.add(new Address(line1, null, city, "", "", country));
+        // For CSL, use source-specific logic
+        if (source != null) {
+            String lowerSource = source.toLowerCase();
+            if (lowerSource.contains("denied person")) {
+                return EntityType.PERSON;
             }
         }
-        
-        return addresses;
+
+        // Use name-based heuristics for business detection
+        if (name != null && containsBusinessKeyword(name.toLowerCase())) {
+            return EntityType.BUSINESS;
+        }
+
+        return EntityType.UNKNOWN;
     }
 
-    private List<String> parseSemicolonSeparated(String field) {
-        if (field == null || field.isBlank()) {
+    private boolean containsBusinessKeyword(String name) {
+        return COMPANY_NEEDLES.stream().anyMatch(name::contains);
+    }
+
+    private List<String> parseDelimitedField(String field) {
+        if (field == null || field.isEmpty()) {
             return List.of();
         }
         
-        List<String> result = new ArrayList<>();
-        String[] parts = field.split(";");
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                result.add(trimmed);
-            }
-        }
-        return result;
-    }
-
-    private Integer parseTonnage(String tonnage) {
-        if (tonnage == null || tonnage.isBlank()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(tonnage.replaceAll("[^0-9]", ""));
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return Arrays.stream(field.split(";"))
+            .map(this::cleanField)
+            .filter(s -> !s.isEmpty())
+            .toList();
     }
 
     private String cleanField(String value) {
         if (value == null) {
             return "";
         }
-        String cleaned = value.trim();
-        if (cleaned.equals("-0-") || cleaned.equalsIgnoreCase("null")) {
-            return "";
-        }
+        
+        // Normalize whitespace and remove control characters
+        String cleaned = value.trim().replaceAll("\\s+", " ");
+        
+        // Remove null bytes and other problematic characters
+        cleaned = cleaned.replace("\u0000", "").replace("\r", "").replace("\n", " ");
+        
+        // Normalize common punctuation to match Go implementation
+        // This addresses the divergences with company names containing special chars
+        cleaned = cleaned.replace("„", "\"").replace(""", "\"").replace(""", "\"");
+        cleaned = cleaned.replace("'", "'").replace("'", "'").replace("`", "'");
+        cleaned = cleaned.replace("–", "-").replace("—", "-");
+        
+        // Normalize multiple spaces again after punctuation replacement
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+        
         return cleaned;
     }
 }
