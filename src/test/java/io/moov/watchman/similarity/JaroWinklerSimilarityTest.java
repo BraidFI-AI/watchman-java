@@ -147,7 +147,9 @@ class JaroWinklerSimilarityTest {
                 "the group"
             );
             // Should match reasonably well despite stopwords
-            assertThat(score).isGreaterThan(0.7);
+            // Note: Score affected by stricter length penalty (0.30 weight)
+            // Large length difference: 28 chars vs 9 chars
+            assertThat(score).isGreaterThan(0.65);
         }
     }
 
