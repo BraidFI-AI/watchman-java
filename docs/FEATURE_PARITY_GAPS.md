@@ -19,7 +19,8 @@
 
 **Critical Finding:** Java is missing or has incomplete implementations for **73% of Go's features**.
 
-**Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 13/13 tests passing.
+**Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 13/13 tests passing.  
+**Phase 1 In Progress (Jan 8, 2026):** Language Detection with Apache Tika - 21/21 tests passing ✅
 
 ---
 
@@ -49,7 +50,7 @@
 | 18 | `saveBuffer()` | pipeline_normalize.go | N/A | ❌ | **MISSING** - buffer pooling |
 | 19 | `RemoveStopwords()` (main) | pipeline_stopwords.go | `TextNormalizer.removeStopwords()` | ⚠️ | **Multilingual (EN/ES/FR), basic language detection** |
 | 20 | `RemoveStopwordsCountry()` | pipeline_stopwords.go | N/A | ❌ | **MISSING** - country-aware fallback |
-| 21 | `detectLanguage()` | pipeline_stopwords.go | N/A | ❌ | **MISSING** - whatlanggo integration |
+| 21 | `detectLanguage()` | pipeline_stopwords.go | `LanguageDetector.detect()` | ✅ | **Phase 1: Apache Tika (70+ languages), character-based + ML detection** |
 | 22 | `removeStopwords()` (helper) | pipeline_stopwords.go | `isStopword()` | ⚠️ | Different approach |
 | 23 | `ReorderSDNName()` | pipeline_reorder.go | `Entity.reorderSDNName()` | ✅ | "LAST, FIRST" → "FIRST LAST" |
 | 24 | `ReorderSDNNames()` | pipeline_reorder.go | `Entity.normalize()` | ⚠️ | Batch via normalize() pipeline |
@@ -59,9 +60,9 @@
 | 28 | `PhoneNumber()` | norm/phone.go | `TextNormalizer.normalizeId()` | ⚠️ | Different implementation |
 
 **Summary: 28 core algorithm features**
-- ✅ 7 fully implemented (25%)
-- ⚠️ 12 partially implemented (43%)
-- ❌ 9 completely missing (32%)
+- ✅ 8 fully implemented (28.6%)
+- ⚠️ 12 partially implemented (42.8%)
+- ❌ 8 completely missing (28.6%)
 
 ---
 
