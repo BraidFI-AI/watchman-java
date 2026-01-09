@@ -31,6 +31,12 @@ public class JaroWinklerSimilarity implements SimilarityService {
     private static final double LENGTH_DIFFERENCE_PENALTY_WEIGHT = 0.30;
     private static final double UNMATCHED_INDEX_TOKEN_PENALTY_WEIGHT = 0.15;
     
+    // customJaroWinkler penalties (Phase 2 Task 3)
+    // Go: differentLetterPenaltyWeight = 0.9 (default)
+    // Go: lengthDifferenceCutoffFactor = 0.9 (default)
+    private static final double DIFFERENT_LETTER_PENALTY_WEIGHT = 0.9;
+    private static final double LENGTH_DIFFERENCE_CUTOFF_FACTOR = 0.9;
+    
     // Stopwords to ignore when calculating penalties
     private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
         "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
@@ -76,14 +82,14 @@ public class JaroWinklerSimilarity implements SimilarityService {
         String[] tokens2 = normalizer.tokenize(norm2);
         
         // Calculate best-pair Jaro-Winkler score
-        double jaroScore = bestPairJaro(tokens1, tokens2);
+        // Note: customJaroWinkler already applies Winkler boost and token-level penalties
+        double score = bestPairJaro(tokens1, tokens2);
         
-        // Apply Winkler prefix boost
-        double score = applyWinklerBoost(jaroScore, norm1, norm2);
-        
-        // Apply penalties
-        score = applyLengthPenalty(score, tokens1, tokens2);
-        score = applyUnmatchedTokenPenalty(score, tokens1, tokens2);
+        // Apply phrase-level penalties only for multi-token names
+        // (single-token comparisons already handled in customJaroWinkler)
+        if (tokens1.length > 1 || tokens2.length > 1) {
+            score = applyUnmatchedTokenPenalty(score, tokens1, tokens2);
+        }
         
         return Math.max(0.0, Math.min(1.0, score));
     }
@@ -219,6 +225,62 @@ public class JaroWinklerSimilarity implements SimilarityService {
     }
     
     /**
+     * Custom Jaro-Winkler with additional penalties for token-level comparison.
+     * 
+     * Ported from Go: internal/stringscore/jaro_winkler.go:129-142
+     * 
+     * Applies two penalties:
+     * 1. Length difference penalty (if length ratio < 0.9)
+     * 2. Different first character penalty (0.9x multiplier)
+     * 
+     * @param s1 First token
+     * @param s2 Second token
+     * @return Similarity score [0.0, 1.0]
+     */
+    private double customJaroWinkler(String s1, String s2) {
+        if (s1 == null || s2 == null || s1.isEmpty() || s2.isEmpty()) {
+            return 0.0;
+        }
+        
+        // Start with base Jaro score
+        double score = jaro(s1, s2);
+        
+        // Apply Winkler prefix boost
+        score = applyWinklerBoost(score, s1, s2);
+        
+        // Apply length difference penalty if ratio < cutoff (0.9)
+        double lengthMetric = lengthDifferenceFactor(s1, s2);
+        if (lengthMetric < LENGTH_DIFFERENCE_CUTOFF_FACTOR) {
+            // scalingFactor(metric, weight) = 1.0 - (1.0 - metric) * weight
+            double scalingFactor = 1.0 - (1.0 - lengthMetric) * LENGTH_DIFFERENCE_PENALTY_WEIGHT;
+            score = score * scalingFactor;
+        }
+        
+        // Apply different first character penalty
+        if (s1.charAt(0) != s2.charAt(0)) {
+            score = score * DIFFERENT_LETTER_PENALTY_WEIGHT;
+        }
+        
+        return score;
+    }
+    
+    /**
+     * Calculate length difference factor.
+     * Returns ratio of shorter to longer string length [0.0, 1.0].
+     * 
+     * @param s1 First string
+     * @param s2 Second string
+     * @return Length ratio (min/max)
+     */
+    private double lengthDifferenceFactor(String s1, String s2) {
+        double len1 = s1.length();
+        double len2 = s2.length();
+        double min = Math.min(len1, len2);
+        double max = Math.max(len1, len2);
+        return min / max;
+    }
+    
+    /**
      * Apply Winkler prefix boost to Jaro score.
      * Boosts score for strings that share a common prefix.
      */
@@ -250,7 +312,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
         
         // Single token comparison
         if (tokens1.length == 1 && tokens2.length == 1) {
-            return jaro(tokens1[0], tokens2[0]);
+            return customJaroWinkler(tokens1[0], tokens2[0]);
         }
         
         // For multi-token, find best matching pairs
@@ -276,7 +338,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
                     continue;
                 }
                 
-                double score = jaro(indexToken, queryTokens[j]);
+                double score = customJaroWinkler(indexToken, queryTokens[j]);
                 if (score > bestScore) {
                     bestScore = score;
                     bestIdx = j;
