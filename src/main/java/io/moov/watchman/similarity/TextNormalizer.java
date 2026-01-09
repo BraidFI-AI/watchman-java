@@ -35,14 +35,107 @@ public class TextNormalizer {
     // Pattern to match non-alphanumeric characters (for ID normalization)
     private static final Pattern NON_ALPHANUMERIC_PATTERN = Pattern.compile("[^a-zA-Z0-9]");
     
-    // English stopwords (will be expanded for multilingual support)
+    // English stopwords
+    private static final Set<String> ENGLISH_STOPWORDS = Set.of(
+        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+        "has", "he", "in", "is", "it", "its", "of", "on", "or", "that",
+        "the", "to", "was", "were", "will", "with", "about", "above", "after",
+        "all", "also", "am", "any", "because", "been", "but", "can", "could",
+        "did", "do", "does", "each", "had", "have", "her", "here", "him", "his",
+        "how", "if", "into", "me", "more", "most", "my", "no", "not", "now",
+        "only", "other", "our", "out", "over", "said", "she", "so", "some",
+        "such", "than", "them", "then", "there", "these", "they", "this",
+        "through", "up", "very", "we", "what", "when", "where", "which",
+        "who", "why", "would", "you", "your"
+    );
+    
+    // Spanish stopwords
+    private static final Set<String> SPANISH_STOPWORDS = Set.of(
+        "el", "la", "de", "del", "los", "las", "un", "una", "unos", "unas",
+        "y", "o", "pero", "por", "para", "en", "con", "sin", "sobre", "entre",
+        "a", "al", "como", "cuando", "donde", "que", "cual", "quien", "se",
+        "su", "sus", "mi", "mis", "tu", "tus", "le", "les", "lo", "me", "te",
+        "nos", "es", "son", "está", "están", "ser", "estar", "ha", "han",
+        "fue", "fueron", "era", "eran", "más", "muy", "todo", "todos", "toda",
+        "todas", "este", "esta", "estos", "estas", "ese", "esa", "esos", "esas",
+        "aquel", "aquella", "aquellos", "aquellas", "ya", "si", "no", "ni"
+    );
+    
+    // French stopwords
+    private static final Set<String> FRENCH_STOPWORDS = Set.of(
+        "le", "la", "les", "l", "un", "une", "des", "du", "de", "d",
+        "et", "ou", "mais", "car", "donc", "ni", "or", "pour", "par", "dans",
+        "en", "sur", "sous", "avec", "sans", "chez", "vers", "parmi", "pendant",
+        "au", "aux", "à", "a", "ce", "cet", "cette", "ces", "mon", "ma", "mes",
+        "ton", "ta", "tes", "son", "sa", "ses", "notre", "nos", "votre", "vos",
+        "leur", "leurs", "qui", "que", "qu", "quoi", "où", "se", "s", "y",
+        "il", "elle", "on", "nous", "vous", "ils", "elles", "je", "tu", "me",
+        "te", "lui", "est", "sont", "était", "étaient", "être", "avoir",
+        "ont", "avait", "avaient", "eu", "fait", "faire", "dit", "dire", "tout",
+        "tous", "toute", "toutes", "autre", "autres", "même", "mêmes", "tel",
+        "telle", "tels", "telles", "si", "plus", "moins", "très", "bien", "ne", "pas"
+    );
+    
+    // German stopwords
+    private static final Set<String> GERMAN_STOPWORDS = Set.of(
+        "der", "die", "das", "den", "dem", "des", "ein", "eine", "einer", "eines",
+        "einem", "einen", "und", "oder", "aber", "denn", "für", "von", "mit",
+        "zu", "bei", "in", "an", "auf", "aus", "um", "nach", "vor", "über",
+        "unter", "durch", "gegen", "ohne", "bis", "seit", "während", "als",
+        "wie", "wenn", "weil", "dass", "ob", "ich", "du", "er", "sie", "es",
+        "wir", "ihr", "mein", "dein", "sein", "unser", "euer", "ist",
+        "sind", "war", "waren", "haben", "hat", "hatte", "hatten",
+        "wird", "werden", "wurde", "wurden", "dieser", "diese", "dieses",
+        "jener", "jene", "jenes", "welcher", "welche", "welches", "alle",
+        "aller", "alles", "einige", "einiger", "einiges", "manche", "mancher",
+        "manches", "mehr", "viel", "viele", "vieler", "vieles", "wenig",
+        "wenige", "weniger", "weniges", "nicht", "kein", "keine", "keiner",
+        "keines", "nichts", "nie", "niemals", "doch", "schon", "noch", "auch",
+        "nur", "sehr", "so", "dann", "hier", "da", "dort", "wo", "wann", "wer", "was"
+    );
+    
+    // Russian stopwords (transliterated and Cyrillic)
+    private static final Set<String> RUSSIAN_STOPWORDS = Set.of(
+        // Cyrillic
+        "в", "во", "не", "что", "он", "на", "я", "с", "со", "как", "а", "то",
+        "все", "она", "так", "его", "но", "да", "ты", "к", "у", "же", "вы",
+        "за", "бы", "по", "только", "ее", "мне", "было", "вот", "от", "меня",
+        "еще", "нет", "о", "из", "ему", "теперь", "когда", "даже", "ну", "и",
+        "для", "или", "ни", "быть", "был", "была", "были", "будет", "можно",
+        "при", "без", "до", "под", "над", "об", "если", "они", "мы", "тебя",
+        "тебе", "себя", "себе", "этот", "эта", "эти", "это", "тот", "та",
+        "те", "весь", "вся", "всё", "который", "которая",
+        "которое", "которые", "какой", "какая", "какое", "какие"
+    );
+    
+    // Arabic stopwords
+    private static final Set<String> ARABIC_STOPWORDS = Set.of(
+        "في", "من", "إلى", "على", "هذا", "هذه", "ذلك", "التي", "الذي",
+        "التى", "هو", "هي", "أن", "كان", "قد", "لم", "ما", "لا", "إن",
+        "أو", "عن", "مع", "أي", "كل", "بعض", "غير", "حتى", "منذ", "بعد",
+        "قبل", "عند", "فوق", "تحت", "أمام", "خلف", "بين", "ضد", "نحو",
+        "لدى", "سوى", "هل", "لن", "لو", "كي", "ليس", "ليست", "كأن", "إذا",
+        "ال", "و", "ف", "ب", "ل", "ك"
+    );
+    
+    // Chinese stopwords
+    private static final Set<String> CHINESE_STOPWORDS = Set.of(
+        "的", "了", "在", "是", "我", "有", "和", "就", "不", "人", "都",
+        "一", "一个", "上", "也", "很", "到", "说", "要", "去", "你", "会",
+        "着", "没有", "看", "好", "自己", "这", "那", "里", "那个", "这个",
+        "他", "她", "它", "们", "之", "与", "及", "于", "但", "或", "则",
+        "而", "且", "因", "为", "以", "所", "其", "并", "从", "对", "由",
+        "此", "让", "给", "把", "被", "又", "将", "更", "已", "等", "些"
+    );
+    
+    // Legacy combined stopwords for backward compatibility with existing removeStopwords() method
     private static final Set<String> STOPWORDS = Set.of(
         "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
         "has", "he", "in", "is", "it", "its", "of", "on", "or", "that",
         "the", "to", "was", "were", "will", "with",
-        // Spanish stopwords
+        // Spanish stopwords (subset)
         "el", "la", "de", "del", "los", "las", "un", "una", "y", "o", "en", "por", "para",
-        // French stopwords  
+        // French stopwords (subset)
         "le", "les", "du", "des", "au", "aux", "et", "ou", "dans"
     );
 
@@ -204,7 +297,7 @@ public class TextNormalizer {
     }
     
     /**
-     * Removes stopwords from text.
+     * Removes stopwords from text using default English stopwords.
      * 
      * Stopwords are common words like "the", "and", "of" that don't contribute to matching.
      * Removing them improves matching for names like "Bank of America" vs "America Bank".
@@ -215,15 +308,75 @@ public class TextNormalizer {
      * @return Text with stopwords removed
      */
     public String removeStopwords(String input) {
+        return removeStopwords(input, "en"); // Default to English
+    }
+    
+    /**
+     * Removes stopwords based on the specified language.
+     * 
+     * @param input Text to process
+     * @param language ISO 639-1 language code (en, es, fr, de, ru, ar, zh)
+     * @return Text with language-specific stopwords removed
+     */
+    public String removeStopwords(String input, String language) {
         if (input == null || input.isBlank()) {
             return "";
         }
         
+        // Select appropriate stopword list
+        Set<String> stopwordList = getStopwordsForLanguage(language);
+        
         String[] tokens = input.split("\\s+");
         String result = Arrays.stream(tokens)
-            .filter(token -> !STOPWORDS.contains(token.toLowerCase()))
+            .filter(token -> !stopwordList.contains(token.toLowerCase()))
             .collect(Collectors.joining(" "));
         
         return result.trim();
+    }
+    
+    /**
+     * Removes stopwords by auto-detecting the language first.
+     * 
+     * @param input Text to process
+     * @return Text with language-appropriate stopwords removed
+     */
+    public String removeStopwordsWithDetection(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+        
+        // Auto-detect language
+        LanguageDetector detector = new LanguageDetector();
+        String language = detector.detect(input);
+        
+        // Default to English if detection fails
+        if (language == null) {
+            language = "en";
+        }
+        
+        return removeStopwords(input, language);
+    }
+    
+    /**
+     * Gets the appropriate stopword set for a given language.
+     * 
+     * @param language ISO 639-1 language code
+     * @return Set of stopwords for the language
+     */
+    private Set<String> getStopwordsForLanguage(String language) {
+        if (language == null) {
+            return ENGLISH_STOPWORDS;
+        }
+        
+        return switch (language.toLowerCase()) {
+            case "en" -> ENGLISH_STOPWORDS;
+            case "es" -> SPANISH_STOPWORDS;
+            case "fr" -> FRENCH_STOPWORDS;
+            case "de" -> GERMAN_STOPWORDS;
+            case "ru" -> RUSSIAN_STOPWORDS;
+            case "ar" -> ARABIC_STOPWORDS;
+            case "zh" -> CHINESE_STOPWORDS;
+            default -> ENGLISH_STOPWORDS; // Fallback to English
+        };
     }
 }
