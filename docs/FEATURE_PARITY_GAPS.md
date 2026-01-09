@@ -1,6 +1,6 @@
 # COMPLETE FEATURE PARITY INVENTORY: Go vs Java
 
-**Generated:** January 8, 2026  
+**Generated:** January 9, 2026  
 **Go Codebase:** 16,337 lines, 88 files, **604 exported functions**  
 **Java Codebase:** 62 files
 
@@ -12,12 +12,12 @@
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ Fully Implemented | 57 | 28.5% |
-| ⚠️ Partially Implemented | 80 | 40% |
+| ✅ Fully Implemented | 60 | 30% |
+| ⚠️ Partially Implemented | 77 | 38.5% |
 | ❌ Completely Missing | 63 | 31.5% |
 | **TOTAL FEATURES** | **200** | **100%** |
 
-**Critical Finding:** Java is missing or has incomplete implementations for **71.5% of Go's features**.
+**Critical Finding:** Java is missing or has incomplete implementations for **70% of Go's features** (down from 71.5%).
 
 **Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 13/13 tests passing ✅  
 **Phase 1 Complete (Jan 8, 2026):** Core Algorithms - 60/60 tests passing ✅
@@ -31,6 +31,16 @@
   * Language-aware stopword removal using detected language
   * Iterative company title removal (matches Go behavior)
 
+**Phase 2 Complete (Jan 9, 2026):** Scoring Algorithm Fixes - 31/31 tests passing ✅
+- ✅ BestPairsJaroWinkler unmatched penalty (8/8 tests) - verified Java has penalty logic
+- ✅ LENGTH_DIFFERENCE_PENALTY_WEIGHT updated 0.10 → 0.30 (5/5 tests) - matches Go's stricter penalty
+- ✅ customJaroWinkler implementation (18/18 tests) - token-level penalties match Go
+  * First character mismatch penalty (DIFFERENT_LETTER_PENALTY_WEIGHT = 0.9)
+  * Length difference cutoff (LENGTH_DIFFERENCE_CUTOFF_FACTOR = 0.9)
+  * Proper separation of token-level vs phrase-level penalties
+  * Fixed double-penalty bugs (removed redundant Winkler boost and length penalties)
+- **Full Test Suite:** 441/441 tests passing (added 31 tests in Phase 2)
+
 ---
 
 ## COMPLETE FUNCTION INVENTORY
@@ -40,13 +50,13 @@
 | # | Go Function | File | Java Equivalent | Status | Notes |
 |---|-------------|------|-----------------|--------|-------|
 | 1 | `JaroWinkler()` | jaro_winkler.go | `JaroWinklerSimilarity.jaroWinkler()` | ✅ | Core algorithm |
-| 2 | `BestPairsJaroWinkler()` | jaro_winkler.go | `bestPairJaro()` | ⚠️ | Missing unmatched penalty logic |
+| 2 | `BestPairsJaroWinkler()` | jaro_winkler.go | `bestPairJaro()` | ✅ | **Phase 2 (Jan 9):** Verified unmatched penalty logic present |
 | 3 | `BestPairCombinationJaroWinkler()` | jaro_winkler.go | N/A | ❌ | **MISSING** - handles word spacing |
 | 4 | `GenerateWordCombinations()` | jaro_winkler.go | `Entity.generateWordCombinations()` | ⚠️ | Basic implementation ("de la" → "dela" → "delacruz") |
 | 5 | `JaroWinklerWithFavoritism()` | jaro_winkler.go | N/A | ❌ | **MISSING** - exact match boost |
-| 6 | `customJaroWinkler()` | jaro_winkler.go | `jaro()` | ⚠️ | Different penalty implementation |
-| 7 | `lengthDifferenceFactor()` | jaro_winkler.go | `applyLengthPenalty()` | ⚠️ | Different weight (0.3 vs 0.1) |
-| 8 | `scalingFactor()` | jaro_winkler.go | Inline | ⚠️ | No dedicated method |
+| 6 | `customJaroWinkler()` | jaro_winkler.go | `customJaroWinkler()` | ✅ | **Phase 2 (Jan 9):** Token-level penalties - first char (0.9x), length cutoff (0.9) |
+| 7 | `lengthDifferenceFactor()` | jaro_winkler.go | `lengthDifferenceFactor()` | ✅ | **Phase 2 (Jan 9):** Weight updated to 0.30, dedicated method added |
+| 8 | `scalingFactor()` | jaro_winkler.go | Inline in customJaroWinkler | ✅ | **Phase 2 (Jan 9):** Implemented as inline calculation |
 | 9 | `sumLength()` | jaro_winkler.go | Stream API | ⚠️ | Different implementation |
 | 10 | `tokenSlicesEqual()` | jaro_winkler.go | `Arrays.equals()` | ✅ | Utility |
 | 11 | `readFloat()` | jaro_winkler.go | N/A | ❌ | **MISSING** - env var parsing |
@@ -69,8 +79,8 @@
 | 28 | `PhoneNumber()` | norm/phone.go | `TextNormalizer.normalizeId()` | ⚠️ | Different implementation |
 
 **Summary: 28 core algorithm features**
-- ✅ 11 fully implemented (39.3%) - **+2 in Phase 1**
-- ⚠️ 9 partially implemented (32.1%) - **-2 in Phase 1**
+- ✅ 15 fully implemented (53.6%) - **+4 in Phase 2 (Jan 9)**
+- ⚠️ 5 partially implemented (17.9%) - **-4 in Phase 2**
 - ❌ 8 completely missing (28.6%)
 
 ---
