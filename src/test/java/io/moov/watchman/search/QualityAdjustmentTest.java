@@ -113,6 +113,7 @@ public class QualityAdjustmentTest {
         EntityFields fields = new EntityFields();
         fields.setRequired(3);
         fields.setHasName(true);
+        fields.setHasAddress(true); // Avoid name-only penalty
 
         double adjustedScore = EntityScorer.applyPenaltiesAndBonuses(baseScore, coverage, fields);
         
@@ -130,6 +131,7 @@ public class QualityAdjustmentTest {
         EntityFields fields = new EntityFields();
         fields.setRequired(3);
         fields.setHasName(true);
+        fields.setHasAddress(true); // Avoid name-only penalty
 
         double adjustedScore = EntityScorer.applyPenaltiesAndBonuses(baseScore, coverage, fields);
         
@@ -147,6 +149,7 @@ public class QualityAdjustmentTest {
         EntityFields fields = new EntityFields();
         fields.setRequired(1); // Only 1 required field
         fields.setHasName(true);
+        fields.setHasAddress(true); // Avoid name-only penalty
 
         double adjustedScore = EntityScorer.applyPenaltiesAndBonuses(baseScore, coverage, fields);
         

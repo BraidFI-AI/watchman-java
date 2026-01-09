@@ -197,7 +197,30 @@ public interface EntityScorer {
      * @return Adjusted score (may be penalized for poor quality)
      */
     static double adjustScoreBasedOnQuality(NameMatch match, int queryTermCount) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // Constants from Go implementation
+        final int minMatchingTerms = 2;
+        
+        // Don't apply minimum term requirement if query has fewer than minMatchingTerms
+        if (queryTermCount < minMatchingTerms) {
+            return match.getScore();
+        }
+        
+        // Don't penalize exact matches
+        if (match.isExact()) {
+            return match.getScore();
+        }
+        
+        // Don't apply additional penalty to historical names (already penalized)
+        if (match.isHistorical()) {
+            return match.getScore();
+        }
+        
+        // Apply penalty if insufficient terms matched
+        if (match.getMatchingTerms() < minMatchingTerms) {
+            return match.getScore() * 0.8; // 20% penalty
+        }
+        
+        return match.getScore();
     }
 
     /**
@@ -220,7 +243,51 @@ public interface EntityScorer {
      * @return Adjusted score with penalties/bonuses applied
      */
     static double applyPenaltiesAndBonuses(double baseScore, Coverage coverage, EntityFields fields) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        double adjustedScore = baseScore;
+        
+        // Constants from Go implementation
+        final double minCoverageRatio = 0.35;
+        final double minCriticalCoverageRatio = 0.7;
+        final int minRequiredFields = 2;
+        final double perfectMatchThreshold = 0.95;
+        final double perfectCoverageThreshold = 0.70;
+        
+        // Penalty: Low coverage ratio
+        if (coverage.getRatio() < minCoverageRatio) {
+            adjustedScore *= 0.95;
+        }
+        
+        // Penalty: Low critical field coverage
+        if (coverage.getCriticalRatio() < minCriticalCoverageRatio) {
+            adjustedScore *= 0.90;
+        }
+        
+        // Penalty: Insufficient required fields
+        if (fields.getRequired() < minRequiredFields) {
+            adjustedScore *= 0.90;
+        }
+        
+        // Penalty: Name-only match (no ID or address)
+        if (fields.isHasName() && !fields.isHasID() && !fields.isHasAddress()) {
+            adjustedScore *= 0.95;
+        }
+        
+        // Bonus: Perfect match conditions
+        // - Has name match
+        // - Has exact ID match
+        // - Has critical field match
+        // - High coverage (> 70%)
+        // - High base score (> 0.95)
+        if (fields.isHasName() 
+                && fields.isHasID() 
+                && fields.isHasCritical() 
+                && coverage.getRatio() > perfectCoverageThreshold 
+                && baseScore > perfectMatchThreshold) {
+            adjustedScore *= 1.15;
+        }
+        
+        // Cap at 1.0
+        return Math.min(adjustedScore, 1.0);
     }
 
     // Helper methods for counting type-specific fields
