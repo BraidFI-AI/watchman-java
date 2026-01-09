@@ -12,18 +12,22 @@
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ Fully Implemented | 54 | 27% |
-| ⚠️ Partially Implemented | 83 | 41.5% |
+| ✅ Fully Implemented | 55 | 27.5% |
+| ⚠️ Partially Implemented | 82 | 41% |
 | ❌ Completely Missing | 63 | 31.5% |
 | **TOTAL FEATURES** | **200** | **100%** |
 
-**Critical Finding:** Java is missing or has incomplete implementations for **73% of Go's features**.
+**Critical Finding:** Java is missing or has incomplete implementations for **72.5% of Go's features**.
 
 **Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 13/13 tests passing ✅  
 **Phase 1 In Progress (Jan 8, 2026):**
 - ✅ Language Detection (Apache Tika, 70+ languages) - 21/21 tests passing
-- ⏳ Multilingual Stopwords Expansion - TODO
-- ⏳ PreparedFields Integration with EntityScorer - TODO
+- ✅ Multilingual Stopwords (6 languages: EN, ES, FR, DE, RU, AR, ZH) - 18/18 tests passing
+- ✅ PreparedFields Refactoring (separate primary/alt names for compliance) - 27/29 tests passing
+  * Matches Go PreparedFields structure (Name vs AltNames separation)
+  * EntityScorer uses pre-normalized fields
+  * 2 expected failures: company title removal, multilingual stopwords in normalize()
+- ⏳ Remaining Phase 1 tasks: Integrate multilingual stopwords into Entity.normalize()
 
 ---
 
@@ -51,9 +55,9 @@
 | 16 | `getTransformChain()` | pipeline_normalize.go | N/A | ❌ | **MISSING** - Unicode NFD/NFC chain |
 | 17 | `newTransformChain()` | pipeline_normalize.go | N/A | ❌ | **MISSING** - sync.Pool optimization |
 | 18 | `saveBuffer()` | pipeline_normalize.go | N/A | ❌ | **MISSING** - buffer pooling |
-| 19 | `RemoveStopwords()` (main) | pipeline_stopwords.go | `TextNormalizer.removeStopwords()` | ⚠️ | **Multilingual (EN/ES/FR), basic language detection** |
+| 19 | `RemoveStopwords()` (main) | pipeline_stopwords.go | `TextNormalizer.removeStopwords()` | ✅ | **Phase 1 (Jan 8): 6 languages (EN/ES/FR/DE/RU/AR/ZH), 500+ stopwords, auto-detection** |
 | 20 | `RemoveStopwordsCountry()` | pipeline_stopwords.go | N/A | ❌ | **MISSING** - country-aware fallback |
-| 21 | `detectLanguage()` | pipeline_stopwords.go | `LanguageDetector.detect()` | ✅ | **Phase 1: Apache Tika (70+ languages), character-based + ML detection** |
+| 21 | `detectLanguage()` | pipeline_stopwords.go | `LanguageDetector.detect()` | ✅ | **Phase 1 (Jan 8): Apache Tika (70+ languages), character-based + ML detection** |
 | 22 | `removeStopwords()` (helper) | pipeline_stopwords.go | `isStopword()` | ⚠️ | Different approach |
 | 23 | `ReorderSDNName()` | pipeline_reorder.go | `Entity.reorderSDNName()` | ✅ | "LAST, FIRST" → "FIRST LAST" |
 | 24 | `ReorderSDNNames()` | pipeline_reorder.go | `Entity.normalize()` | ⚠️ | Batch via normalize() pipeline |
@@ -63,8 +67,8 @@
 | 28 | `PhoneNumber()` | norm/phone.go | `TextNormalizer.normalizeId()` | ⚠️ | Different implementation |
 
 **Summary: 28 core algorithm features**
-- ✅ 8 fully implemented (28.6%)
-- ⚠️ 12 partially implemented (42.8%)
+- ✅ 9 fully implemented (32.1%)
+- ⚠️ 11 partially implemented (39.3%)
 - ❌ 8 completely missing (28.6%)
 
 ---
@@ -155,8 +159,8 @@
 | # | Go Feature | Type | Java Equivalent | Status | Notes |
 |---|------------|------|-----------------|--------|-------|
 | 98 | `Entity[T]` struct | Model | `Entity` record | ✅ | Core model |
-| 99 | `PreparedFields` struct | **CRITICAL** | `PreparedFields` record | ✅ | Pre-computed: normalizedNames, wordCombinations, addresses, language |
-| 100 | `Entity.Normalize()` | **CRITICAL** | `Entity.normalize()` | ✅ | Full pipeline: reorder → normalize → combinations → stopwords → titles |
+| 99 | `PreparedFields` struct | **CRITICAL** | `PreparedFields` record | ✅ | **REFACTORED (Jan 8):** Separated normalizedPrimaryName + normalizedAltNames (matches Go: Name + AltNames). Enables compliance transparency. |
+| 100 | `Entity.Normalize()` | **CRITICAL** | `Entity.normalize()` | ✅ | Full pipeline: reorder → normalize → separate primary/alts → combinations → stopwords → titles |
 | 101 | `Entity.merge()` | Method | N/A | ❌ | **MISSING** - entity merging |
 | 102 | `removeStopwords()` helper | Function | Inline in `bestPairJaro()` | ⚠️ | Different timing |
 | 103 | `normalizeNames()` | Function | `TextNormalizer` | ⚠️ | Per-search, not cached |
