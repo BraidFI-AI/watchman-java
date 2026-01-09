@@ -1,5 +1,6 @@
 package io.moov.watchman.model;
 
+import io.moov.watchman.similarity.LanguageDetector;
 import io.moov.watchman.similarity.TextNormalizer;
 
 import java.util.ArrayList;
@@ -52,12 +53,17 @@ public record Entity(
      * @return A new Entity with preparedFields populated
      */
     public Entity normalize() {
+        return normalize(new LanguageDetector(), new TextNormalizer());
+    }
+    
+    /**
+     * Normalizes with injected dependencies (for testing).
+     */
+    Entity normalize(LanguageDetector languageDetector, TextNormalizer normalizer) {
         // If already normalized, return as-is
         if (this.preparedFields != null && !this.preparedFields.normalizedNames().isEmpty()) {
             return this;
         }
-        
-        TextNormalizer normalizer = new TextNormalizer();
         
         // Collect all names (primary + alternates)
         List<String> allNames = new ArrayList<>();
@@ -122,8 +128,8 @@ public record Entity(
             .distinct()
             .collect(Collectors.toList()) : List.of();
         
-        // Simple language detection (check for Spanish characters as a basic heuristic)
-        String detectedLanguage = detectLanguage(name);
+        // Proper language detection using Tika
+        String detectedLanguage = languageDetector.detect(name);
         
         PreparedFields prepared = new PreparedFields(
             normalizedNames,
@@ -256,25 +262,5 @@ public record Entity(
         }
         
         return cleaned;
-    }
-    
-    /**
-     * Basic language detection. Returns ISO 639-1 code or null.
-     * 
-     * Simplified version - in production would use library like ICU4J or Apache Tika.
-     * For now, detect Spanish by common Spanish characters.
-     */
-    private String detectLanguage(String text) {
-        if (text == null || text.isEmpty()) {
-            return null;
-        }
-        
-        // Simple heuristic: if has Spanish-specific characters, likely Spanish
-        if (text.matches(".*[áéíóúñü¿¡].*")) {
-            return "es";
-        }
-        
-        // Default to English (would use proper detection library in production)
-        return "en";
     }
 }
