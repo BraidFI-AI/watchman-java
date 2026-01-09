@@ -26,7 +26,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
     private static final int WINKLER_PREFIX_LENGTH = 4;
     
     // Custom penalty weights (from Go implementation)
-    private static final double LENGTH_DIFFERENCE_PENALTY_WEIGHT = 0.10;
+    // Go: lengthDifferencePenaltyWeight = 0.3 (default)
+    // Updated Jan 9, 2026 - Phase 2: Match Go's stricter length penalty
+    private static final double LENGTH_DIFFERENCE_PENALTY_WEIGHT = 0.30;
     private static final double UNMATCHED_INDEX_TOKEN_PENALTY_WEIGHT = 0.15;
     
     // Stopwords to ignore when calculating penalties
