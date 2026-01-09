@@ -156,7 +156,7 @@ class EntityNameComparisonTest {
                 "1", "JOHN MICHAEL SMITH", EntityType.PERSON, SourceList.US_OFAC, "1",
                 queryPerson, null, null, null, null,
                 null, List.of(), List.of(), List.of(), List.of(),
-                null, null
+                null, null, null
             );
 
             Person indexPerson = new Person(
@@ -168,7 +168,7 @@ class EntityNameComparisonTest {
                 "2", "JOHN SMITH", EntityType.PERSON, SourceList.US_OFAC, "2",
                 indexPerson, null, null, null, null,
                 null, List.of(), List.of(), List.of(), List.of(),
-                null, null
+                null, null, null
             );
 
             // Score should be ~0.95, Matched=true, Exact=true (matches alt name)

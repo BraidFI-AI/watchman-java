@@ -1,7 +1,10 @@
 package io.moov.watchman.similarity;
 
 import java.text.Normalizer;
+import java.util.Arrays;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Text normalization utilities for preparing strings for comparison.
@@ -12,6 +15,7 @@ import java.util.regex.Pattern;
  * - Unicode normalization (accents, diacritics)
  * - Whitespace normalization
  * - ID/phone number normalization
+ * - Stopword removal
  * 
  * This is the foundation of fuzzy matching - before comparing two names,
  * we normalize them so superficial differences don't affect the score.
@@ -30,6 +34,17 @@ public class TextNormalizer {
     
     // Pattern to match non-alphanumeric characters (for ID normalization)
     private static final Pattern NON_ALPHANUMERIC_PATTERN = Pattern.compile("[^a-zA-Z0-9]");
+    
+    // English stopwords (will be expanded for multilingual support)
+    private static final Set<String> STOPWORDS = Set.of(
+        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+        "has", "he", "in", "is", "it", "its", "of", "on", "or", "that",
+        "the", "to", "was", "were", "will", "with",
+        // Spanish stopwords
+        "el", "la", "de", "del", "los", "las", "un", "una", "y", "o", "en", "por", "para",
+        // French stopwords  
+        "le", "les", "du", "des", "au", "aux", "et", "ou", "dans"
+    );
 
     /**
      * Normalize a string for comparison: lowercase, remove punctuation, 
@@ -186,5 +201,29 @@ public class TextNormalizer {
             }
         }
         return digits.toString();
+    }
+    
+    /**
+     * Removes stopwords from text.
+     * 
+     * Stopwords are common words like "the", "and", "of" that don't contribute to matching.
+     * Removing them improves matching for names like "Bank of America" vs "America Bank".
+     * 
+     * Ported from Go: internal/prepare/pipeline_stopwords.go RemoveStopwords()
+     * 
+     * @param input Text to process
+     * @return Text with stopwords removed
+     */
+    public String removeStopwords(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+        
+        String[] tokens = input.split("\\s+");
+        String result = Arrays.stream(tokens)
+            .filter(token -> !STOPWORDS.contains(token.toLowerCase()))
+            .collect(Collectors.joining(" "));
+        
+        return result.trim();
     }
 }

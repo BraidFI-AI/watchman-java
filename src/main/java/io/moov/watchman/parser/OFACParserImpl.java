@@ -303,7 +303,8 @@ public class OFACParserImpl implements OFACParser {
             altNames,
             List.of(), // governmentIds
             sanctions,
-            remarks
+            remarks,
+            null // preparedFields - computed at index time
         );
     }
     

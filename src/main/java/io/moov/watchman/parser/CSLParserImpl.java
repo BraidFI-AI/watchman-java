@@ -154,7 +154,8 @@ public class CSLParserImpl implements CSLParser {
             altNames,
             List.of(), // governmentIds
             sanctions,
-            remarks
+            remarks,
+            null // preparedFields - computed at index time
         );
     }
 

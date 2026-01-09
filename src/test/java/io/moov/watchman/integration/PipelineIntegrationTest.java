@@ -209,7 +209,7 @@ class PipelineIntegrationTest {
                 "1", null, null, null, null, null, null,
                 List.of(), List.of(),
                 List.of("Nicolas Maduro", "El Presidente"),
-                List.of(), null, null
+                List.of(), null, null, null
             );
             entityIndex.add(entityWithAlt);
 
