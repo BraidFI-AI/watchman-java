@@ -434,9 +434,65 @@ public class JaroWinklerSimilarity implements SimilarityService {
      * @return List of token array variations
      */
     public static List<List<String>> generateWordCombinations(String[] tokens) {
-        // TODO: Phase 3 - implement Go's GenerateWordCombinations logic
-        List<List<String>> result = new ArrayList<>();
+        // Return early if there's nothing to combine
+        if (tokens.length <= 1) {
+            return List.of(Arrays.asList(tokens));
+        }
+        
+        // Pre-allocate result list (original + forward + backward = max 3)
+        List<List<String>> result = new ArrayList<>(3);
+        
+        // Always include original tokens
         result.add(Arrays.asList(tokens));
+        
+        // Create forward combinations (combine short words with next word)
+        List<String> combinedForward = new ArrayList<>(tokens.length);
+        boolean skipNext = false;
+        
+        for (int i = 0; i < tokens.length; i++) {
+            if (skipNext) {
+                skipNext = false;
+                continue;
+            }
+            
+            // If this is a short word (≤3 chars) and not the last one, combine with next
+            if (i < tokens.length - 1 && tokens[i].length() <= 3) {
+                combinedForward.add(tokens[i] + tokens[i + 1]);
+                skipNext = true;
+            } else {
+                combinedForward.add(tokens[i]);
+            }
+        }
+        
+        // Only add if different from original (has at least one combination)
+        if (combinedForward.size() < tokens.length) {
+            result.add(combinedForward);
+        }
+        
+        // Create backward combinations (combine short words with previous word)
+        // Only process if forward combinations were found (optimization)
+        if (combinedForward.size() < tokens.length) {
+            List<String> combinedBackward = new ArrayList<>(tokens.length);
+            
+            for (int i = 0; i < tokens.length; i++) {
+                if (i > 0 && tokens[i].length() <= 3) {
+                    // Ensure we're not accessing beyond list bounds
+                    if (!combinedBackward.isEmpty()) {
+                        // Combine with previous token
+                        int lastIdx = combinedBackward.size() - 1;
+                        combinedBackward.set(lastIdx, combinedBackward.get(lastIdx) + tokens[i]);
+                    }
+                } else {
+                    combinedBackward.add(tokens[i]);
+                }
+            }
+            
+            // Only add if backward combinations are different from both original and forward
+            if (combinedBackward.size() < tokens.length && !combinedBackward.equals(combinedForward)) {
+                result.add(combinedBackward);
+            }
+        }
+        
         return result;
     }
 }

@@ -93,25 +93,31 @@ public class WordCombinationsTest {
         @Test
         @DisplayName("Short word in middle")
         void shortWordInMiddle() {
-            // ["John", "de", "Silva"] → [original, forward: ["John", "deSilva"]]
+            // ["John", "de", "Silva"] 
+            // Forward: ["John", "deSilva"] (de+Silva)
+            // Backward: ["Johnde", "Silva"] (John+de)
             String[] tokens = {"John", "de", "Silva"};
             List<List<String>> result = generateWordCombinations(tokens);
             
-            assertThat(result).hasSize(2);
+            assertThat(result).hasSize(3); // original + forward + backward
             assertThat(result.get(0)).containsExactly("John", "de", "Silva");
-            assertThat(result.get(1)).containsExactly("John", "deSilva");
+            assertThat(result.get(1)).containsExactly("John", "deSilva"); // Forward
+            assertThat(result.get(2)).containsExactly("Johnde", "Silva"); // Backward
         }
 
         @Test
         @DisplayName("Multiple non-consecutive short words")
         void nonConsecutiveShortWords() {
-            // ["de", "Silva", "van", "Berg"] → [original, forward: ["deSilva", "vanBerg"]]
+            // ["de", "Silva", "van", "Berg"]
+            // Forward: ["deSilva", "vanBerg"] (de+Silva, van+Berg)
+            // Backward: ["de", "Silvavan", "Berg"] (Silva+van)
             String[] tokens = {"de", "Silva", "van", "Berg"};
             List<List<String>> result = generateWordCombinations(tokens);
             
-            assertThat(result).hasSize(2);
+            assertThat(result).hasSize(3); // original + forward + backward
             assertThat(result.get(0)).containsExactly("de", "Silva", "van", "Berg");
-            assertThat(result.get(1)).containsExactly("deSilva", "vanBerg");
+            assertThat(result.get(1)).containsExactly("deSilva", "vanBerg"); // Forward
+            assertThat(result.get(2)).containsExactly("de", "Silvavan", "Berg"); // Backward
         }
     }
 
@@ -122,20 +128,17 @@ public class WordCombinationsTest {
         @Test
         @DisplayName("Short word at end - combine with previous")
         void shortWordAtEnd() {
-            // ["Silva", "de"] → [original, backward: ["Silvade"]]
-            // Note: forward would keep "Silva", "de" (short word is last, can't combine with next)
+            // ["Silva", "de"] → [original] only
+            // Forward: no change ("de" is last, can't combine with next)
+            // Backward: would create ["Silvade"] but only if forward created a variation
+            // Since forward doesn't create a variation, backward optimization skips
             String[] tokens = {"Silva", "de"};
             List<List<String>> result = generateWordCombinations(tokens);
             
-            // Should have: original, backward
-            // Forward doesn't apply (short word is last)
-            assertThat(result).hasSizeGreaterThanOrEqualTo(2);
-            assertThat(result.get(0)).containsExactly("Silva", "de"); // Original
-            
-            // Check if backward combination exists
-            boolean hasBackward = result.stream()
-                .anyMatch(combo -> combo.size() == 1 && combo.get(0).equals("Silvade"));
-            assertThat(hasBackward).isTrue();
+            // Go's optimization: only creates backward if forward was created
+            // Since "de" is last, no forward combination, so no backward either
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0)).containsExactly("Silva", "de"); // Original only
         }
 
         @Test
