@@ -19,8 +19,11 @@
 
 **Critical Finding:** Java is missing or has incomplete implementations for **73% of Go's features**.
 
-**Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 13/13 tests passing.  
-**Phase 1 In Progress (Jan 8, 2026):** Language Detection with Apache Tika - 21/21 tests passing ✅
+**Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 13/13 tests passing ✅  
+**Phase 1 In Progress (Jan 8, 2026):**
+- ✅ Language Detection (Apache Tika, 70+ languages) - 21/21 tests passing
+- ⏳ Multilingual Stopwords Expansion - TODO
+- ⏳ PreparedFields Integration with EntityScorer - TODO
 
 ---
 
