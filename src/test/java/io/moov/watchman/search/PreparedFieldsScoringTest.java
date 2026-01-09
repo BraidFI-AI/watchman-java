@@ -94,12 +94,12 @@ class PreparedFieldsScoringTest {
         Entity normalized = entity.normalize();
         
         // WHEN: Query without company suffix
-        String query = "acme corporation";
+        String query = "acme";
         
-        // THEN: Should match using normalizedNamesWithoutCompanyTitles
+        // THEN: Should match using normalizedNamesWithoutCompanyTitles (all titles removed iteratively)
         PreparedFields prepared = normalized.preparedFields();
-        assertTrue(prepared.normalizedNamesWithoutCompanyTitles().contains("acme corporation"),
-            "Should have version without company titles");
+        assertTrue(prepared.normalizedNamesWithoutCompanyTitles().contains("acme"),
+            "Should have version without company titles (all removed iteratively)");
         
         // EXPECTED TO PASS: Validates company title removal in PreparedFields
     }

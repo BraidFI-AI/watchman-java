@@ -1,5 +1,7 @@
 package io.moov.watchman.model;
 
+import io.moov.watchman.similarity.LanguageDetector;
+import io.moov.watchman.similarity.TextNormalizer;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -167,13 +169,15 @@ class EntityNormalizationTest {
         // WHEN: Normalized
         Entity normalized = entity.normalize();
         
-        // THEN: Company titles should be removed in one variation
+        // THEN: Company titles should be removed iteratively
         PreparedFields prepared = normalized.preparedFields();
-        assertTrue(prepared.normalizedNamesWithoutCompanyTitles().stream()
-            .anyMatch(name -> name.equals("acme corporation")), 
-            "Should remove LLC from name");
         
-        // EXPECTED TO FAIL: normalizedNamesWithoutCompanyTitles() doesn't exist
+        // DEBUG
+        System.out.println("Company titles test - Names without titles: " + prepared.normalizedNamesWithoutCompanyTitles());
+        
+        assertTrue(prepared.normalizedNamesWithoutCompanyTitles().stream()
+            .anyMatch(name -> name.equals("acme")), 
+            "Should remove all company titles (LLC, Corporation) iteratively");
     }
 
     @Test
@@ -248,15 +252,27 @@ class EntityNormalizationTest {
         // GIVEN: Entity with Spanish stopwords
         Entity entity = Entity.of("test-12", "Juan de la Rosa", EntityType.PERSON, SourceList.US_OFAC);
         
-        // WHEN: Normalized
-        Entity normalized = entity.normalize();
+        // Mock language detector to return Spanish (since "Juan de la Rosa" may be too short for accurate detection)
+        LanguageDetector mockDetector = new LanguageDetector() {
+            @Override
+            public String detect(String text) {
+                return "es"; // Force Spanish detection
+            }
+        };
+        
+        // WHEN: Normalized with mocked language detector
+        Entity normalized = entity.normalize(mockDetector, new TextNormalizer());
         
         // THEN: Spanish stopwords should be removed
         PreparedFields prepared = normalized.preparedFields();
+        
+        // DEBUG
+        System.out.println("Detected Language: " + prepared.detectedLanguage());
+        System.out.println("Normalized Primary: " + prepared.normalizedPrimaryName());
+        System.out.println("Names Without Stopwords: " + prepared.normalizedNamesWithoutStopwords());
+        
         assertTrue(prepared.normalizedNamesWithoutStopwords().stream()
             .anyMatch(name -> name.equals("juan rosa")), 
             "Should remove Spanish stopwords 'de la'");
-        
-        // EXPECTED TO FAIL: Multi-language stopword support doesn't exist
     }
 }

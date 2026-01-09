@@ -88,6 +88,9 @@ public record Entity(
                 .collect(Collectors.toList());
         }
         
+        // Detect language (needed for stopword removal)
+        String detectedLanguage = languageDetector.detect(name);
+        
         // Collect ALL names for generating combinations/stopwords/titles
         List<String> allNormalizedNames = new ArrayList<>();
         if (!normalizedPrimary.isEmpty()) {
@@ -101,9 +104,9 @@ public record Entity(
             .distinct()
             .collect(Collectors.toList());
         
-        // Remove stopwords
+        // Remove stopwords (use detected language)
         List<String> namesWithoutStopwords = allNormalizedNames.stream()
-            .map(normalizer::removeStopwords)
+            .map(n -> normalizer.removeStopwords(n, detectedLanguage))
             .filter(s -> !s.isEmpty())
             .distinct()
             .collect(Collectors.toList());
@@ -130,9 +133,6 @@ public record Entity(
             .filter(s -> !s.isEmpty())
             .distinct()
             .collect(Collectors.toList()) : List.of();
-        
-        // Proper language detection using Tika
-        String detectedLanguage = languageDetector.detect(name);
         
         PreparedFields prepared = new PreparedFields(
             normalizedPrimary,
@@ -244,24 +244,29 @@ public record Entity(
     
     /**
      * Removes common company titles like LLC, INC, CORP, etc.
-     * Only removes the rightmost suffix, not iteratively.
+     * Iteratively removes all matching suffixes until none remain.
      * 
      * Ported from Go: internal/prepare/pipeline_company_name_cleanup.go RemoveCompanyTitles()
      */
     private String removeCompanyTitles(String name) {
         String cleaned = name;
+        boolean changed = true;
         
-        // Common company suffixes to remove (check most specific first)
+        // Common company suffixes to remove (check most specific/longest first)
         String[] titles = {
-            " llc", " l l c", " inc", " incorporated", " corp", 
-            " ltd", " limited", " company", " co", " sa", " srl", " gmbh"
+            " incorporated", " corporation", " l l c", " limited", " company",
+            " llc", " inc", " corp", " ltd", " co", " sa", " srl", " gmbh"
         };
         
-        // Only remove ONE suffix (the rightmost one)
-        for (String title : titles) {
-            if (cleaned.endsWith(title)) {
-                cleaned = cleaned.substring(0, cleaned.length() - title.length()).trim();
-                break;  // Stop after first match
+        // Keep removing suffixes until no more matches found
+        while (changed) {
+            changed = false;
+            for (String title : titles) {
+                if (cleaned.endsWith(title)) {
+                    cleaned = cleaned.substring(0, cleaned.length() - title.length()).trim();
+                    changed = true;
+                    break;  // Start over with the new cleaned string
+                }
             }
         }
         
