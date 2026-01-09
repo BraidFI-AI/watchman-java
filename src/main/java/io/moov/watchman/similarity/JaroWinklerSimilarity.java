@@ -82,15 +82,10 @@ public class JaroWinklerSimilarity implements SimilarityService {
         String[] tokens1 = normalizer.tokenize(norm1);
         String[] tokens2 = normalizer.tokenize(norm2);
         
-        // Calculate best-pair Jaro-Winkler score
-        // Note: customJaroWinkler already applies Winkler boost and token-level penalties
-        double score = bestPairJaro(tokens1, tokens2);
-        
-        // Apply phrase-level penalties only for multi-token names
-        // (single-token comparisons already handled in customJaroWinkler)
-        if (tokens1.length > 1 || tokens2.length > 1) {
-            score = applyUnmatchedTokenPenalty(score, tokens1, tokens2);
-        }
+        // Use BestPairCombinationJaroWinkler to handle spacing variations
+        // (e.g., "JSC ARGUMENT" vs "JSCARGUMENT")
+        // Note: This already includes unmatched token penalties via bestPairJaro
+        double score = bestPairCombinationJaroWinkler(tokens1, tokens2);
         
         return Math.max(0.0, Math.min(1.0, score));
     }
@@ -413,6 +408,42 @@ public class JaroWinklerSimilarity implements SimilarityService {
     
     private boolean isStopword(String token) {
         return STOPWORDS.contains(token.toLowerCase());
+    }
+    
+    /**
+     * Compares search and indexed terms with improved handling of short words and spacing variations.
+     * 
+     * Ported from Go: internal/stringscore/jaro_winkler.go BestPairCombinationJaroWinkler()
+     * 
+     * Generates word combinations for both inputs and tries all pairs, returning the maximum score.
+     * This handles cases like:
+     * - "JSC ARGUMENT" vs "JSCARGUMENT"
+     * - "de la Cruz" vs "dela Cruz" vs "delacruz"
+     * - "van der Berg" vs "vanderBerg"
+     * 
+     * @param searchTokens Search query tokens
+     * @param indexedTokens Indexed term tokens
+     * @return Maximum similarity score across all combination pairs
+     */
+    private double bestPairCombinationJaroWinkler(String[] searchTokens, String[] indexedTokens) {
+        // Generate variations with different word combinations
+        List<List<String>> searchCombinations = generateWordCombinations(searchTokens);
+        List<List<String>> indexedCombinations = generateWordCombinations(indexedTokens);
+        
+        // Try all combinations and take the highest score
+        double maxScore = 0.0;
+        for (List<String> searchVariation : searchCombinations) {
+            for (List<String> indexedVariation : indexedCombinations) {
+                String[] searchArray = searchVariation.toArray(new String[0]);
+                String[] indexedArray = indexedVariation.toArray(new String[0]);
+                double score = bestPairJaro(searchArray, indexedArray);
+                if (score > maxScore) {
+                    maxScore = score;
+                }
+            }
+        }
+        
+        return maxScore;
     }
     
     /**
