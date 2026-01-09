@@ -12,12 +12,12 @@
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ Fully Implemented | 55 | 27.5% |
-| ⚠️ Partially Implemented | 82 | 41% |
+| ✅ Fully Implemented | 57 | 28.5% |
+| ⚠️ Partially Implemented | 80 | 40% |
 | ❌ Completely Missing | 63 | 31.5% |
 | **TOTAL FEATURES** | **200** | **100%** |
 
-**Critical Finding:** Java is missing or has incomplete implementations for **72.5% of Go's features**.
+**Critical Finding:** Java is missing or has incomplete implementations for **71.5% of Go's features**.
 
 **Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 13/13 tests passing ✅  
 **Phase 1 Complete (Jan 8, 2026):** Core Algorithms - 60/60 tests passing ✅
@@ -69,8 +69,8 @@
 | 28 | `PhoneNumber()` | norm/phone.go | `TextNormalizer.normalizeId()` | ⚠️ | Different implementation |
 
 **Summary: 28 core algorithm features**
-- ✅ 9 fully implemented (32.1%)
-- ⚠️ 11 partially implemented (39.3%)
+- ✅ 11 fully implemented (39.3%) - **+2 in Phase 1**
+- ⚠️ 9 partially implemented (32.1%) - **-2 in Phase 1**
 - ❌ 8 completely missing (28.6%)
 
 ---
@@ -420,5 +420,53 @@ The port is missing:
 - Normalization pipeline: Reorder SDN → Remove apostrophes → Normalize → Combinations → Stopwords → Company titles
 - PreparedFields computed once at index time for 10-100x performance gain
 - Idempotent: normalize(normalize(entity)) == normalize(entity)
+
+---
+
+## PHASE 1 COMPLETION SUMMARY (Jan 8, 2026)
+
+**Implemented Features (2 upgraded from ⚠️ to ✅):**
+1. ✅ `LanguageDetector.detect()` - **UPGRADED** from basic heuristic to Apache Tika (70+ languages)
+   - Character-based detection + ML models
+   - Supports Arabic, Chinese, Cyrillic, Latin scripts
+   - Integrated with Entity.normalize() for language-aware processing
+2. ✅ `TextNormalizer.removeStopwords()` - **UPGRADED** from 3 languages to 6 languages + auto-detection
+   - Languages: English (174), Spanish (71), French (88), German (59), Russian (151), Arabic (119), Chinese (72)
+   - 734+ total stopwords across all languages
+   - Language-aware removal: uses detected language from Entity.normalize()
+3. ✅ `Entity.removeCompanyTitles()` - **ENHANCED** to iterative removal
+   - Was: Removes only rightmost suffix ("Corporation Inc" → "Corporation")
+   - Now: Removes ALL suffixes iteratively ("Corporation Inc" → "Acme")
+   - Matches Go's strings.NewReplacer() multi-replacement behavior
+4. ✅ `PreparedFields` refactoring - Separated primary/alt names for compliance
+   - Was: `normalizedNames` (mixed primary + alts)
+   - Now: `normalizedPrimaryName` + `normalizedAltNames` (separate)
+   - Matches Go PreparedFields structure (Name vs AltNames)
+   - Compliance value: Distinguish primary name matches from AKA/alias matches for risk assessment
+
+**Test Coverage:**
+- ✅ 60/60 Phase 1 tests passing (100%)
+  - EntityNormalizationTest: 13/13 ✅
+  - PreparedFieldsScoringTest: 10/10 ✅
+  - PreparedFieldsIntegrationTest: 8/8 ✅
+  - LanguageDetectionTest: 21/21 ✅
+  - MultilingualStopwordsTest: 8/8 ✅
+
+**Key Implementation Details:**
+- Language detection happens BEFORE stopword removal in Entity.normalize() pipeline
+- Stopword removal uses detected language: `removeStopwords(text, detectedLanguage)`
+- Company title removal is iterative: removes "inc" then "corporation" then "llc" in sequence
+- PreparedFields API breaking change: all consumers updated to use separate primary/alt fields
+- Mock LanguageDetector in tests for deterministic Spanish detection (short names don't detect reliably)
+
+**Performance Analysis:**
+- PreparedFields optimization shows ~1.0x speedup (neutral, not 2-10x expected)
+- Root cause: Text normalization is extremely fast (~microseconds) compared to Jaro-Winkler similarity (~milliseconds)
+- Real value: Compliance transparency (primary vs AKA matches), not performance
+
+**Feature Parity Progress:**
+- Before Phase 1: 55/200 fully implemented (27.5%)
+- After Phase 1: 57/200 fully implemented (28.5%)
+- Gap reduced: 72.5% → 71.5%
 
 **Next: Phase 1 - Core Algorithms** (language detection library, advanced word combinations, full scoring integration)
