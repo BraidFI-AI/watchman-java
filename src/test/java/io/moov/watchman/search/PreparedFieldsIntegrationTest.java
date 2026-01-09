@@ -134,12 +134,6 @@ class PreparedFieldsIntegrationTest {
         
         // Verify company titles were removed
         PreparedFields prepared = normalized.preparedFields();
-        
-        // DEBUG
-        System.out.println("Primary name: " + entity.name());
-        System.out.println("Normalized primary: " + prepared.normalizedPrimaryName());
-        System.out.println("Names without company titles: " + prepared.normalizedNamesWithoutCompanyTitles());
-        
         assertFalse(prepared.normalizedNamesWithoutCompanyTitles().isEmpty(),
             "Should have names without company titles");
         String primaryWithoutTitles = prepared.normalizedNamesWithoutCompanyTitles().get(0);

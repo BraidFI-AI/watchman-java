@@ -171,10 +171,6 @@ class EntityNormalizationTest {
         
         // THEN: Company titles should be removed iteratively
         PreparedFields prepared = normalized.preparedFields();
-        
-        // DEBUG
-        System.out.println("Company titles test - Names without titles: " + prepared.normalizedNamesWithoutCompanyTitles());
-        
         assertTrue(prepared.normalizedNamesWithoutCompanyTitles().stream()
             .anyMatch(name -> name.equals("acme")), 
             "Should remove all company titles (LLC, Corporation) iteratively");
@@ -265,12 +261,6 @@ class EntityNormalizationTest {
         
         // THEN: Spanish stopwords should be removed
         PreparedFields prepared = normalized.preparedFields();
-        
-        // DEBUG
-        System.out.println("Detected Language: " + prepared.detectedLanguage());
-        System.out.println("Normalized Primary: " + prepared.normalizedPrimaryName());
-        System.out.println("Names Without Stopwords: " + prepared.normalizedNamesWithoutStopwords());
-        
         assertTrue(prepared.normalizedNamesWithoutStopwords().stream()
             .anyMatch(name -> name.equals("juan rosa")), 
             "Should remove Spanish stopwords 'de la'");
