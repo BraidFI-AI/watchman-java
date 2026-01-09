@@ -186,6 +186,43 @@ public interface EntityScorer {
         return fields;
     }
 
+    /**
+     * Adjust base score based on match quality (number of matching terms).
+     * Applies penalty if too few terms match relative to query complexity.
+     * 
+     * Ported from Go: pkg/search/similarity_fuzzy.go adjustScoreBasedOnQuality()
+     * 
+     * @param match The name match result with score and term counts
+     * @param queryTermCount Number of terms in the query
+     * @return Adjusted score (may be penalized for poor quality)
+     */
+    static double adjustScoreBasedOnQuality(NameMatch match, int queryTermCount) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    /**
+     * Apply penalties and bonuses based on field coverage and match quality.
+     * 
+     * Penalties:
+     * - Low coverage ratio (< 0.35): 0.95x
+     * - Low critical coverage (< 0.7): 0.90x
+     * - Insufficient required fields (< 2): 0.90x
+     * - Name-only match (no ID/address): 0.95x
+     * 
+     * Bonuses:
+     * - Perfect match (name + ID + critical + high coverage + high score): 1.15x
+     * 
+     * Ported from Go: pkg/search/similarity.go applyPenaltiesAndBonuses()
+     * 
+     * @param baseScore The base match score before adjustments
+     * @param coverage Coverage metrics (ratio, criticalRatio)
+     * @param fields Field importance information (hasName, hasID, etc.)
+     * @return Adjusted score with penalties/bonuses applied
+     */
+    static double applyPenaltiesAndBonuses(double baseScore, Coverage coverage, EntityFields fields) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
     // Helper methods for counting type-specific fields
 
     private static int countPersonFields(io.moov.watchman.model.Person person) {
