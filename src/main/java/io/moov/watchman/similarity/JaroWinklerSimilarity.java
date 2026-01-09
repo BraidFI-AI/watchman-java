@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -412,5 +413,30 @@ public class JaroWinklerSimilarity implements SimilarityService {
     
     private boolean isStopword(String token) {
         return STOPWORDS.contains(token.toLowerCase());
+    }
+    
+    /**
+     * Generates word combinations by merging short words (≤3 chars) with adjacent words.
+     * 
+     * Ported from Go: internal/stringscore/jaro_winkler.go GenerateWordCombinations()
+     * 
+     * Creates up to 3 variations:
+     * 1. Original tokens
+     * 2. Forward: combine short words with NEXT word
+     * 3. Backward: combine short words with PREVIOUS word
+     * 
+     * Example:
+     * - ["JSC", "ARGUMENT"] → [["JSC", "ARGUMENT"], ["JSCARGUMENT"]]
+     * - ["de", "la", "Cruz"] → [["de", "la", "Cruz"], ["dela", "Cruz"], ["delaCruz"]]
+     * - ["John", "Smith"] → [["John", "Smith"]] (no short words)
+     * 
+     * @param tokens Array of tokens to generate combinations from
+     * @return List of token array variations
+     */
+    public static List<List<String>> generateWordCombinations(String[] tokens) {
+        // TODO: Phase 3 - implement Go's GenerateWordCombinations logic
+        List<List<String>> result = new ArrayList<>();
+        result.add(Arrays.asList(tokens));
+        return result;
     }
 }
