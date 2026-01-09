@@ -2,6 +2,7 @@ package io.moov.watchman.similarity;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -107,6 +108,43 @@ public class JaroWinklerSimilarity implements SimilarityService {
         }
         
         return bestPairJaro(tokens1, tokens2);
+    }
+    
+    @Override
+    public double tokenizedSimilarityWithPrepared(String query, List<String> preparedNames) {
+        if (query == null || query.isEmpty() || preparedNames == null || preparedNames.isEmpty()) {
+            return 0.0;
+        }
+        
+        // Normalize the query once
+        String normalizedQuery = normalizer.lowerAndRemovePunctuation(query);
+        String[] queryTokens = normalizer.tokenize(normalizedQuery);
+        
+        // Compare against each pre-normalized name and take the best score
+        double maxScore = 0.0;
+        for (String preparedName : preparedNames) {
+            if (preparedName == null || preparedName.isEmpty()) {
+                continue;
+            }
+            
+            // PreparedName is already normalized, just tokenize
+            String[] candidateTokens = normalizer.tokenize(preparedName);
+            
+            // Check for exact match (reordered)
+            if (queryTokens.length == candidateTokens.length) {
+                Set<String> set1 = new HashSet<>(Arrays.asList(queryTokens));
+                Set<String> set2 = new HashSet<>(Arrays.asList(candidateTokens));
+                if (set1.equals(set2)) {
+                    return 1.0; // Perfect match found
+                }
+            }
+            
+            // Calculate similarity
+            double score = bestPairJaro(queryTokens, candidateTokens);
+            maxScore = Math.max(maxScore, score);
+        }
+        
+        return maxScore;
     }
 
     @Override

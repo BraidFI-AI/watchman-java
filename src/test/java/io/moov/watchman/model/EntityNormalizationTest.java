@@ -47,9 +47,12 @@ class EntityNormalizationTest {
         
         // THEN: All names should be normalized and stored
         PreparedFields prepared = normalized.preparedFields();
-        assertNotNull(prepared.normalizedNames(), "Normalized names should exist");
-        assertTrue(prepared.normalizedNames().size() >= 3, "Should have at least 3 normalized name variations");
-        assertTrue(prepared.normalizedNames().contains("john smith"), "Should contain normalized primary name");
+        assertNotNull(prepared.normalizedPrimaryName(), "Normalized primary name should exist");
+        assertEquals("john smith", prepared.normalizedPrimaryName(), "Should contain normalized primary name");
+        assertNotNull(prepared.normalizedAltNames(), "Normalized alt names should exist");
+        assertEquals(2, prepared.normalizedAltNames().size(), "Should have 2 normalized alt names");
+        assertTrue(prepared.normalizedAltNames().contains("juan smith"), "Should contain first alt name");
+        assertTrue(prepared.normalizedAltNames().contains("j smith"), "Should contain second alt name");
         
         // EXPECTED TO FAIL: PreparedFields class doesn't exist
     }
@@ -64,12 +67,11 @@ class EntityNormalizationTest {
         
         // THEN: Punctuation should be removed
         PreparedFields prepared = normalized.preparedFields();
-        assertTrue(prepared.normalizedNames().stream()
-            .anyMatch(name -> name.contains("obrien")), 
-            "Should remove apostrophe");
-        assertTrue(prepared.normalizedNames().stream()
-            .anyMatch(name -> name.contains("james michael")), 
-            "Should remove hyphen");
+        String primary = prepared.normalizedPrimaryName();
+        assertTrue(primary.contains("obrien"), 
+            "Should remove apostrophe, got: " + primary);
+        assertTrue(primary.contains("james michael"), 
+            "Should remove hyphen, got: " + primary);
         
         // EXPECTED TO FAIL: normalize() method doesn't exist
     }
@@ -122,9 +124,9 @@ class EntityNormalizationTest {
         
         // THEN: Name should be reordered to "FIRST LAST"
         PreparedFields prepared = normalized.preparedFields();
-        assertTrue(prepared.normalizedNames().stream()
-            .anyMatch(name -> name.startsWith("john michael")), 
-            "Should reorder SDN name to standard format");
+        String primary = prepared.normalizedPrimaryName();
+        assertTrue(primary.startsWith("john michael"), 
+            "Should reorder SDN name to standard format, got: " + primary);
         
         // EXPECTED TO FAIL: SDN reordering logic doesn't exist
     }
@@ -219,9 +221,8 @@ class EntityNormalizationTest {
         
         // THEN: Should handle gracefully without errors
         assertNotNull(normalized.preparedFields());
-        assertTrue(normalized.preparedFields().normalizedNames().isEmpty() || 
-                   normalized.preparedFields().normalizedNames().stream().allMatch(String::isEmpty),
-            "Empty name should result in empty normalized names");
+        assertTrue(normalized.preparedFields().normalizedPrimaryName().isEmpty(),
+            "Empty name should result in empty primary name");
         
         // EXPECTED TO FAIL: normalize() doesn't exist
     }

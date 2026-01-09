@@ -12,8 +12,8 @@ public class DebugNormalizationTest {
         
         System.out.println("\n=== PUNCTUATION TEST ===");
         System.out.println("Input: O'Brien, James-Michael");
-        System.out.println("Normalized names:");
-        prepared.normalizedNames().forEach(name -> System.out.println("  - " + name));
+        System.out.println("Primary: " + prepared.normalizedPrimaryName());
+        System.out.println("Alts: " + prepared.normalizedAltNames());
     }
     
     @Test

@@ -32,6 +32,16 @@ public interface SimilarityService {
      * @return Best similarity score across token pairings
      */
     double tokenizedSimilarity(String s1, String s2);
+    
+    /**
+     * Calculate similarity using pre-normalized tokens.
+     * This is the optimized path that avoids re-normalization when PreparedFields exist.
+     * 
+     * @param normalizedQuery Normalized query string
+     * @param preparedNames List of pre-normalized candidate names from PreparedFields
+     * @return Best similarity score across all prepared names
+     */
+    double tokenizedSimilarityWithPrepared(String normalizedQuery, java.util.List<String> preparedNames);
 
     /**
      * Check if two strings have phonetically similar first characters.

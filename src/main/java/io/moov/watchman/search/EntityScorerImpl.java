@@ -161,6 +161,18 @@ public class EntityScorerImpl implements EntityScorer {
         if (queryName == null || queryName.isBlank() || candidate == null || candidate.name() == null) {
             return 0.0;
         }
+        
+        // Use PreparedFields if available for optimized scoring
+        // PreparedFields.normalizedPrimaryName contains ONLY the primary name
+        if (candidate.preparedFields() != null && candidate.preparedFields().normalizedPrimaryName() != null 
+                && !candidate.preparedFields().normalizedPrimaryName().isEmpty()) {
+            return similarityService.tokenizedSimilarityWithPrepared(
+                queryName, 
+                java.util.List.of(candidate.preparedFields().normalizedPrimaryName())
+            );
+        }
+        
+        // Fallback to on-the-fly normalization
         return similarityService.tokenizedSimilarity(queryName, candidate.name());
     }
 
@@ -169,6 +181,17 @@ public class EntityScorerImpl implements EntityScorer {
             return 0.0;
         }
         
+        // Use PreparedFields if available for optimized scoring
+        // PreparedFields.normalizedAltNames contains ONLY alternate names (not primary)
+        if (candidate.preparedFields() != null && candidate.preparedFields().normalizedAltNames() != null 
+                && !candidate.preparedFields().normalizedAltNames().isEmpty()) {
+            return similarityService.tokenizedSimilarityWithPrepared(
+                queryName, 
+                candidate.preparedFields().normalizedAltNames()
+            );
+        }
+        
+        // Fallback to on-the-fly normalization with altNames
         List<String> altNames = candidate.altNames();
         if (altNames == null || altNames.isEmpty()) {
             return 0.0;

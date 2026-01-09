@@ -41,11 +41,11 @@ class PreparedFieldsScoringTest {
         // WHEN: Scoring against query
         String query = "anglo caribbean";
         
-        // THEN: Should use PreparedFields.normalizedNames for comparison
+        // THEN: Should use PreparedFields.normalizedPrimaryName for comparison
         // (not re-normalize at search time)
         PreparedFields prepared = normalized.preparedFields();
-        assertTrue(prepared.normalizedNames().contains("ltd anglo caribbean co"),
-            "PreparedFields should contain normalized name with company titles reordered");
+        assertEquals("ltd anglo caribbean co", prepared.normalizedPrimaryName(),
+            "PreparedFields should contain normalized primary name with company titles reordered");
         
         // EXPECTED TO PASS: This just validates PreparedFields structure
     }
@@ -112,8 +112,8 @@ class PreparedFieldsScoringTest {
         Entity normalized = entity.normalize();
         
         assertNotNull(normalized.preparedFields(), "PreparedFields should be populated");
-        assertFalse(normalized.preparedFields().normalizedNames().isEmpty(), 
-            "Should have normalized names");
+        assertNotNull(normalized.preparedFields().normalizedPrimaryName(), 
+            "Should have normalized primary name");
         
         // THEN: Scoring logic should use these pre-computed values
         // (This is a documentation test - actual implementation will validate)

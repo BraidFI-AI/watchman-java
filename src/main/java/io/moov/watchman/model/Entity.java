@@ -61,52 +61,55 @@ public record Entity(
      */
     Entity normalize(LanguageDetector languageDetector, TextNormalizer normalizer) {
         // If already normalized, return as-is
-        if (this.preparedFields != null && !this.preparedFields.normalizedNames().isEmpty()) {
+        if (this.preparedFields != null && this.preparedFields.normalizedPrimaryName() != null 
+                && !this.preparedFields.normalizedPrimaryName().isEmpty()) {
             return this;
         }
         
-        // Collect all names (primary + alternates)
-        List<String> allNames = new ArrayList<>();
+        // Normalize primary name
+        String normalizedPrimary = "";
         if (name != null && !name.isEmpty()) {
-            allNames.add(name);
+            String reordered = reorderSDNName(name);
+            String preprocessed = reordered.replace("'", "").replace("'", "");
+            normalizedPrimary = normalizer.lowerAndRemovePunctuation(preprocessed);
+            normalizedPrimary = normalizedPrimary.replaceAll("\\s+", " ").trim();
         }
-        if (altNames != null) {
-            allNames.addAll(altNames);
+        
+        // Normalize alternate names (separate from primary)
+        List<String> normalizedAlts = List.of();
+        if (altNames != null && !altNames.isEmpty()) {
+            normalizedAlts = altNames.stream()
+                .map(this::reorderSDNName)
+                .map(s -> s.replace("'", "").replace("'", ""))
+                .map(normalizer::lowerAndRemovePunctuation)
+                .map(s -> s.replaceAll("\\s+", " ").trim())
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
         }
         
-        // Reorder SDN-style names ("LAST, FIRST" -> "FIRST LAST") before normalization
-        List<String> reorderedNames = allNames.stream()
-            .map(this::reorderSDNName)
-            .collect(Collectors.toList());
-        
-        // Remove apostrophes and hyphens BEFORE normalization to prevent "O'Brien" -> "o brien"
-        List<String> preprocessed = reorderedNames.stream()
-            .map(s -> s.replace("'", "").replace("'", ""))  // Remove both types of apostrophes
-            .collect(Collectors.toList());
-        
-        // Normalize names (lowercase, remove punctuation, collapse multiple spaces)
-        List<String> normalizedNames = preprocessed.stream()
-            .map(normalizer::lowerAndRemovePunctuation)
-            .map(s -> s.replaceAll("\\s+", " ").trim())  // Collapse multiple spaces
-            .filter(s -> !s.isEmpty())
-            .distinct()
-            .collect(Collectors.toList());
+        // Collect ALL names for generating combinations/stopwords/titles
+        List<String> allNormalizedNames = new ArrayList<>();
+        if (!normalizedPrimary.isEmpty()) {
+            allNormalizedNames.add(normalizedPrimary);
+        }
+        allNormalizedNames.addAll(normalizedAlts);
         
         // Generate word combinations (e.g., "de la" -> "dela")
-        List<String> wordCombinations = normalizedNames.stream()
+        List<String> wordCombinations = allNormalizedNames.stream()
             .flatMap(name -> generateWordCombinations(name).stream())
             .distinct()
             .collect(Collectors.toList());
         
         // Remove stopwords
-        List<String> namesWithoutStopwords = normalizedNames.stream()
+        List<String> namesWithoutStopwords = allNormalizedNames.stream()
             .map(normalizer::removeStopwords)
             .filter(s -> !s.isEmpty())
             .distinct()
             .collect(Collectors.toList());
         
         // Remove company titles
-        List<String> namesWithoutCompanyTitles = normalizedNames.stream()
+        List<String> namesWithoutCompanyTitles = allNormalizedNames.stream()
             .map(this::removeCompanyTitles)
             .filter(s -> !s.isEmpty())
             .distinct()
@@ -132,7 +135,8 @@ public record Entity(
         String detectedLanguage = languageDetector.detect(name);
         
         PreparedFields prepared = new PreparedFields(
-            normalizedNames,
+            normalizedPrimary,
+            normalizedAlts,
             namesWithoutStopwords,
             namesWithoutCompanyTitles,
             wordCombinations,
