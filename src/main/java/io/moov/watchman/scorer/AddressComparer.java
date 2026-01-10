@@ -72,21 +72,27 @@ public class AddressComparer {
         }
         
         // Compare state (exact match)
-        if (!query.state().isEmpty() && !index.state().isEmpty()) {
+        // Phase 17: Null-safe check
+        if (query.state() != null && !query.state().isEmpty() && 
+            index.state() != null && !index.state().isEmpty()) {
             double score = query.state().equalsIgnoreCase(index.state()) ? 1.0 : 0.0;
             totalScore += score * STATE_WEIGHT;
             totalWeight += STATE_WEIGHT;
         }
         
         // Compare postal code (exact match)
-        if (!query.postalCode().isEmpty() && !index.postalCode().isEmpty()) {
+        // Phase 17: Null-safe check
+        if (query.postalCode() != null && !query.postalCode().isEmpty() && 
+            index.postalCode() != null && !index.postalCode().isEmpty()) {
             double score = query.postalCode().equalsIgnoreCase(index.postalCode()) ? 1.0 : 0.0;
             totalScore += score * POSTAL_WEIGHT;
             totalWeight += POSTAL_WEIGHT;
         }
         
         // Compare country (exact match)
-        if (!query.country().isEmpty() && !index.country().isEmpty()) {
+        // Phase 17: Null-safe check
+        if (query.country() != null && !query.country().isEmpty() && 
+            index.country() != null && !index.country().isEmpty()) {
             double score = query.country().equalsIgnoreCase(index.country()) ? 1.0 : 0.0;
             totalScore += score * COUNTRY_WEIGHT;
             totalWeight += COUNTRY_WEIGHT;

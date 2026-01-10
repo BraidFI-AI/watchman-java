@@ -110,6 +110,10 @@ class EntityNormalizationTest {
         PreparedFields prepared = normalized.preparedFields();
         List<String> combinations = prepared.wordCombinations();
         
+        // DEBUG: Print what we actually got
+        System.out.println("Normalized primary: " + prepared.normalizedPrimaryName());
+        System.out.println("Word combinations: " + combinations);
+        
         assertTrue(combinations.contains("jean dela cruz"), "Should combine 'de la'");
         assertTrue(combinations.contains("jean delacruz"), "Should combine all particles");
         

@@ -217,8 +217,9 @@ class EntityMergerTest {
             assertThat(result.person().governmentIds()).hasSize(1);
 
             // Contact merged (both emails)
+            // Phase 17: Phone normalization strips punctuation
             assertThat(result.contact().emailAddress()).isIn("john.doe@example.com", "johnny.doe@example.com");
-            assertThat(result.contact().phoneNumber()).isEqualTo("123.456.7890");
+            assertThat(result.contact().phoneNumber()).isEqualTo("1234567890");
             assertThat(result.contact().website()).isEqualTo("http://johnnydoe.com");
 
             // Addresses merged (2 different addresses - different line2)
@@ -1053,7 +1054,8 @@ class EntityMergerTest {
             assertThat(result.person().birthDate()).isEqualTo(LocalDate.of(1937, 4, 28));
             assertThat(result.person().placeOfBirth()).isEqualTo("al-Awja, near Tikrit");
             assertThat(result.addresses()).hasSize(1);
-            assertThat(result.addresses().get(0).country()).isEqualTo("IQ");
+            // Phase 17: Country normalization uses lowercase
+            assertThat(result.addresses().get(0).country()).isEqualTo("iq");
         }
 
         @Test

@@ -72,49 +72,67 @@ public record Entity(
         // Detect language (needed for stopword removal)
         String detectedLanguage = languageDetector.detect(name);
         
-        // Normalize primary name (with stopword removal)
-        String normalizedPrimary = "";
+        // Phase 17 Fix: Normalize WITHOUT stopword removal first (for word combinations)
+        String normalizedPrimaryBeforeStopwords = "";
         if (name != null && !name.isEmpty()) {
             String reordered = reorderSDNName(name);
             String preprocessed = reordered.replace("'", "").replace("'", "");
             String withPunctRemoved = normalizer.lowerAndRemovePunctuation(preprocessed);
-            withPunctRemoved = withPunctRemoved.replaceAll("\\s+", " ").trim();
-            // Phase 17: Remove stopwords from normalized primary name
-            normalizedPrimary = normalizer.removeStopwords(withPunctRemoved, detectedLanguage);
+            normalizedPrimaryBeforeStopwords = withPunctRemoved.replaceAll("\\s+", " ").trim();
         }
         
-        // Normalize alternate names (with stopword removal, per-name language detection)
+        // Then remove stopwords for final normalized primary
+        String normalizedPrimary = "";
+        if (!normalizedPrimaryBeforeStopwords.isEmpty()) {
+            normalizedPrimary = normalizer.removeStopwords(normalizedPrimaryBeforeStopwords, detectedLanguage);
+        }
+        
+        // Normalize alternate names (preserve intermediate versions for word combinations)
+        List<String> normalizedAltsBeforeStopwords = new ArrayList<>();
         List<String> normalizedAlts = List.of();
         if (altNames != null && !altNames.isEmpty()) {
-            normalizedAlts = altNames.stream()
+            normalizedAltsBeforeStopwords = altNames.stream()
                 .map(altName -> {
-                    // Detect language on original alt name
-                    String altLang = languageDetector.detect(altName);
-                    // Then normalize
                     String reordered = reorderSDNName(altName);
                     String preprocessed = reordered.replace("'", "").replace("'", "");
                     String withPunctRemoved = normalizer.lowerAndRemovePunctuation(preprocessed);
-                    withPunctRemoved = withPunctRemoved.replaceAll("\\s+", " ").trim();
-                    // Remove stopwords using detected language for this alt name
-                    return normalizer.removeStopwords(withPunctRemoved, altLang);
+                    return withPunctRemoved.replaceAll("\\s+", " ").trim();
+                })
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+            
+            // Then remove stopwords
+            normalizedAlts = normalizedAltsBeforeStopwords.stream()
+                .map(norm -> {
+                    // Detect language on the intermediate normalized form
+                    String altLang = languageDetector.detect(norm);
+                    return normalizer.removeStopwords(norm, altLang);
                 })
                 .filter(s -> !s.isEmpty())
                 .distinct()
                 .collect(Collectors.toList());
         }
         
-        // Collect ALL names for generating combinations/stopwords/titles
+        // Collect ALL names (BEFORE stopword removal) for generating combinations
+        List<String> allNamesBeforeStopwords = new ArrayList<>();
+        if (!normalizedPrimaryBeforeStopwords.isEmpty()) {
+            allNamesBeforeStopwords.add(normalizedPrimaryBeforeStopwords);
+        }
+        allNamesBeforeStopwords.addAll(normalizedAltsBeforeStopwords);
+        
+        // Generate word combinations from PRE-stopword names (preserves particles like "de la")
+        List<String> wordCombinations = allNamesBeforeStopwords.stream()
+            .flatMap(name -> generateWordCombinations(name).stream())
+            .distinct()
+            .collect(Collectors.toList());
+        
+        // Collect stopword-removed names for other uses
         List<String> allNormalizedNames = new ArrayList<>();
         if (!normalizedPrimary.isEmpty()) {
             allNormalizedNames.add(normalizedPrimary);
         }
         allNormalizedNames.addAll(normalizedAlts);
-        
-        // Generate word combinations (e.g., "de la" -> "dela")
-        List<String> wordCombinations = allNormalizedNames.stream()
-            .flatMap(name -> generateWordCombinations(name).stream())
-            .distinct()
-            .collect(Collectors.toList());
         
         // Remove stopwords (use detected language)
         List<String> namesWithoutStopwords = allNormalizedNames.stream()

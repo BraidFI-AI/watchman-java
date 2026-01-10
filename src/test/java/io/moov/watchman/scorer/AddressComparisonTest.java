@@ -133,8 +133,8 @@ class AddressComparisonTest {
             // WHEN: Normalized
             PreparedAddress prepared = AddressNormalizer.normalizeAddress(addr);
             
-            // THEN: line1 should be empty, line1Fields should be empty
-            assertEquals("", prepared.line1());
+            // THEN: Phase 17 - line1 stays null, line1Fields should be empty
+            assertNull(prepared.line1());
             assertTrue(prepared.line1Fields().isEmpty());
         }
         
@@ -147,8 +147,8 @@ class AddressComparisonTest {
             // WHEN: Normalized
             PreparedAddress prepared = AddressNormalizer.normalizeAddress(addr);
             
-            // THEN: line2 should be empty, line2Fields should be empty
-            assertEquals("", prepared.line2());
+            // THEN: Phase 17 - line2 stays null, line2Fields should be empty
+            assertNull(prepared.line2());
             assertTrue(prepared.line2Fields().isEmpty());
         }
         
@@ -177,8 +177,8 @@ class AddressComparisonTest {
             PreparedAddress prep1 = AddressNormalizer.normalizeAddress(addr1);
             PreparedAddress prep2 = AddressNormalizer.normalizeAddress(addr2);
             
-            // THEN: Both should normalize to same country code (lowercase ISO-3166)
-            assertEquals("united states", prep1.country());
+            // THEN: Phase 17 - Just lowercase, no expansion ("usa" vs "united states")
+            assertEquals("usa", prep1.country());
             assertEquals("united states", prep2.country());
         }
         
@@ -191,13 +191,13 @@ class AddressComparisonTest {
             // WHEN: Normalized
             PreparedAddress prepared = AddressNormalizer.normalizeAddress(addr);
             
-            // THEN: Should return empty PreparedAddress without NPE
-            assertEquals("", prepared.line1());
-            assertEquals("", prepared.line2());
-            assertEquals("", prepared.city());
-            assertEquals("", prepared.state());
-            assertEquals("", prepared.postalCode());
-            assertEquals("", prepared.country());
+            // THEN: Phase 17 - Null fields stay null (not converted to empty strings)
+            assertNull(prepared.line1());
+            assertNull(prepared.line2());
+            assertNull(prepared.city());
+            assertNull(prepared.state());
+            assertNull(prepared.postalCode());
+            assertNull(prepared.country());
         }
     }
     
@@ -717,7 +717,8 @@ class AddressComparisonTest {
                 AddressNormalizer.normalizeAddress(new Address("PO Box 789", null, "New York", "NY", "10001", "USA"))
             );
             List<PreparedAddress> index = List.of(
-                AddressNormalizer.normalizeAddress(new Address("1234 Broadway, Suite 500", null, "New York", "NY", "10013", "United States")),  // Should match first query
+                // Phase 17: Use same country format since expansion was removed
+                AddressNormalizer.normalizeAddress(new Address("1234 Broadway, Suite 500", null, "New York", "NY", "10013", "USA")),  // Should match first query
                 AddressNormalizer.normalizeAddress(new Address("456 Different St", null, "Los Angeles", "CA", "90001", "USA"))
             );
             
@@ -737,8 +738,9 @@ class AddressComparisonTest {
         @DisplayName("End-to-end: Normalize and compare workflow")
         void endToEndWorkflow() {
             // GIVEN: Raw addresses
+            // Phase 17: Use same country format since expansion was removed
             Address query = new Address("123 MAIN STREET", "SUITE 100", "NEW YORK", "NY", "10001", "USA");
-            Address index = new Address("123 Main St", "Suite 100", "New York", "NY", "10001", "United States");
+            Address index = new Address("123 Main St", "Suite 100", "New York", "NY", "10001", "USA");
             
             // WHEN: Normalize
             PreparedAddress prepQuery = AddressNormalizer.normalizeAddress(query);
@@ -755,12 +757,13 @@ class AddressComparisonTest {
         @DisplayName("Batch processing: Multiple addresses end-to-end")
         void batchProcessingWorkflow() {
             // GIVEN: Multiple raw addresses
+            // Phase 17: Use same country format
             List<Address> queryAddrs = List.of(
                 new Address("123 Main St", null, "New York", "NY", "10001", "US"),
                 new Address("456 Oak Ave", null, "Los Angeles", "CA", "90001", "US")
             );
             List<Address> indexAddrs = List.of(
-                new Address("123 Main Street", null, "New York", "NY", "10001", "United States"),
+                new Address("123 Main Street", null, "New York", "NY", "10001", "US"),
                 new Address("789 Elm St", null, "Chicago", "IL", "60601", "US")
             );
             
