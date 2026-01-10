@@ -283,6 +283,9 @@ public class EntityMerger {
     /**
      * Merge government ID lists with deduplication by country/type/identifier.
      * 
+     * Phase 18 Enhancement: Now normalizes identifiers to recognize format variations
+     * (e.g., "123-45-6789" and "123456789" are considered the same)
+     * 
      * Go equivalent: func mergeGovernmentIDs(ids1, ids2 []GovernmentID) []GovernmentID
      * 
      * @param ids1 first list
@@ -294,9 +297,29 @@ public class EntityMerger {
                 id -> String.format("%s/%s/%s", 
                         id.country(), 
                         id.type(), 
-                        id.identifier()).toLowerCase(),
+                        normalizeId(id.identifier())).toLowerCase(),
                 ids1, ids2
         );
+    }
+
+    /**
+     * Normalize an identifier by removing spaces and hyphens.
+     * 
+     * Phase 18: ID format normalization (A2 proposal)
+     * 
+     * This enables deduplication of IDs that differ only in formatting:
+     * - "123-45-6789" → "123456789"
+     * - "AB 12 34 56 C" → "AB123456C"
+     * - "ab-123-456" → "ab123456"
+     * 
+     * @param identifier the identifier to normalize (can be null)
+     * @return normalized identifier (lowercase, no spaces/hyphens)
+     */
+    private static String normalizeId(String identifier) {
+        if (identifier == null) {
+            return "";
+        }
+        return identifier.replaceAll("[ -]", "").toLowerCase();
     }
 
     /**
