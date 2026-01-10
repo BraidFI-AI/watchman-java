@@ -290,6 +290,25 @@ public interface EntityScorer {
         return Math.min(adjustedScore, 1.0);
     }
 
+    /**
+     * Determine if a name match qualifies as high confidence.
+     * 
+     * High confidence requires BOTH:
+     * - At least 2 matching terms (minMatchingTerms = 2)
+     * - Final score > 0.85 (nameMatchThreshold = 0.85)
+     * 
+     * This prevents false positives from single-word matches or low-quality scores.
+     * 
+     * Ported from Go: pkg/search/similarity_fuzzy.go isHighConfidenceMatch()
+     * 
+     * @param match The name match result with term counts
+     * @param finalScore The final adjusted score (after all penalties/bonuses)
+     * @return true if match meets high confidence criteria
+     */
+    static boolean isHighConfidenceMatch(NameMatch match, double finalScore) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
     // Helper methods for counting type-specific fields
 
     private static int countPersonFields(io.moov.watchman.model.Person person) {
