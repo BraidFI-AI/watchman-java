@@ -1,20 +1,66 @@
-# COMPLETE FEATURE PARITY INVENTORY: Go vs Java
+# WATCHMAN FEATURE PARITY: Go vs Java
 
-**Generated:** January 9, 2026  
-**Go Codebase:** 16,337 lines, 88 files, **604 exported functions**  
-**Java Codebase:** 62 files
+**Last Updated:** January 9, 2026  
+**Status:** 62/177 features (35%) ✅ | 27 features (15%) ⚠️ | 88 features (50%) ❌  
+**Test Suite:** 721/721 passing (100%) ✅
 
 ---
 
-## DOCUMENT OVERVIEW
+## QUICK NAVIGATION
 
-This document provides a comprehensive feature-by-feature inventory comparing the Go and Java implementations of Watchman. The analysis was conducted through systematic code review of the Go codebase (16,337 lines, 88 files, 604 exported functions) to identify all scoring algorithms, utility functions, entity models, and configuration options. Each feature is mapped to its Java equivalent with implementation status tracked as fully implemented (✅), partially implemented (⚠️), or completely missing (❌).
+- [Current Status](#current-status) - Implementation statistics
+- [Feature Inventory](#complete-function-inventory) - Complete 177-feature table
+- [Category Summary](#summary-by-category) - Breakdown by feature type
+- [Remaining Work](#remaining-work) - What's left to implement
+- [Implementation History](#implementation-history) - Phases 0-8 completion summaries
 
-The development process follows Test-Driven Development (TDD): analyze Go implementation behavior by reading source code and understanding edge cases, write comprehensive failing tests (RED phase) that capture expected behavior, implement the feature to make tests pass (GREEN phase), and verify with full test suite execution. Each phase is documented with detailed completion summaries at the end of this document, including test counts, implementation notes, bug fixes, and git commit references. This methodology ensures 100% behavioral parity between implementations and provides a clear audit trail of all changes.
+---
 
-**Current Status (symbol count):** 62/177 features fully implemented (35%), 27 partially implemented (15%), 88 completely missing (50%). Test coverage: 721/721 passing (100%).
+## CURRENT STATUS
 
-**Note:** This document inventories 177 curated features from Go's 604 exported functions, focusing on scoring algorithms, entity models, and configuration relevant to the Java port.
+**Go Codebase:** 16,337 lines, 88 files, 604 exported functions  
+**Java Codebase:** 62 files, 721 test cases
+
+### Implementation Progress
+
+| Status | Count | Percentage | Description |
+|--------|-------|------------|-------------|
+| ✅ Fully Implemented | 62/177 | 35% | Complete behavioral parity with Go |
+| ⚠️ Partially Implemented | 27/177 | 15% | Core logic present, missing edge cases |
+| ❌ Not Implemented | 88/177 | 50% | Completely missing from Java codebase |
+
+### Recent Phases (Jan 8-9, 2026)
+
+- ✅ **Phase 0:** PreparedFields, Entity normalization pipeline
+- ✅ **Phase 1:** Multilingual stopword removal (6 languages, 500+ words)
+- ✅ **Phase 2:** Custom Jaro-Winkler with penalties
+- ✅ **Phase 3:** Word combination generation
+- ✅ **Phase 4:** Quality/coverage scoring (12 functions)
+- ✅ **Phase 5:** Title normalization & comparison (9 functions)
+- ✅ **Phase 6:** Affiliation matching (3 functions)
+- ✅ **Phase 7:** Address normalization & comparison (4 functions)
+- ✅ **Phase 8:** Date comparison enhancement (7 functions)
+
+**Velocity:** 8 phases, 45 functions, 721 tests in 2 days
+
+---
+
+## METHODOLOGY
+
+This document tracks feature-by-feature parity between Go and Java implementations. Each entry maps Go functions to Java equivalents with status tracking.
+
+**Development Process (TDD):**
+1. Analyze Go implementation by reading source code
+2. Write comprehensive failing tests (RED phase)
+3. Implement feature to pass tests (GREEN phase)
+4. Verify with full test suite execution
+
+**Status Definitions:**
+- ✅ **Full:** Complete behavioral parity, all edge cases handled
+- ⚠️ **Partial:** Core logic present, missing edge cases or optimizations
+- ❌ **Missing:** No Java implementation exists
+
+**Note:** This document tracks 177 curated features from Go's 604 exported functions, focusing on scoring algorithms, entity models, and configuration relevant to the Java port.
 
 ---
 
@@ -267,60 +313,51 @@ The development process follows Test-Driven Development (TDD): analyze Go implem
 
 ---
 
-## CRITICAL MISSING FEATURES (Highest Impact)
+## REMAINING WORK
 
-### 🔴 CRITICAL - Core Algorithm Bugs
+### High-Priority Features (28% missing from Scoring Functions)
 
-| Priority | Feature | Impact | Effort |
-|----------|---------|--------|--------|
-| P0 | `PreparedFields` pre-computation | 10-100x performance | 4 hours |
-| P0 | `GenerateWordCombinations()` | Fixes spacing variations | 3 hours |
-| P0 | Token overlap requirement | Prevents false positives | 2 hours |
-| P1 | Language detection | International support | 6 hours |
-| P1 | Multi-language stopwords | Accurate international matching | 4 hours |
-| P1 | `ReorderSDNName()` | OFAC name matching | 3 hours |
-| P1 | `RemoveCompanyTitles()` | Business name cleanup | 2 hours |
+**Exact Matching (11 functions):**
+- `compareGovernmentIDs()` - Government ID exact matching
+- `compareCryptoWallets()` - Cryptocurrency address matching
+- `comparePersonExactIDs()`, `compareBusinessExactIDs()`, `compareOrgExactIDs()`, `compareAircraftExactIDs()`, `compareVesselExactIDs()` - Type-specific ID matching
+- `comparePersonGovernmentIDs()`, `compareBusinessGovernmentIDs()`, `compareOrgGovernmentIDs()` - Type-specific gov ID matching
 
-**Total Critical Fixes:** ~24 hours (3 days)
+**Fuzzy Matching (8 functions):**
+- `compareEntityTitlesFuzzy()` - Entity title comparison
+- `isNameCloseEnough()` - Name proximity check
+- `compareHistoricalValues()` - Historical data comparison
+- `compareSanctionsPrograms()` - Sanctions program matching
+- `compareSupportingInfo()` - Aggregate supporting data
+- `compareContactField()` - Generic contact comparison
+- Plus 2 partial implementations needing completion
 
-### 🟡 HIGH - Scoring Accuracy
+**Configuration & Utilities (7 functions):**
+- `debug()`, `DebugSimilarity()` - Debug output helpers
+- `readFloat()`, `readInt()` - Environment variable parsing
+- `Country()`, `NormalizeGender()` - Data normalization
+- `RemoveStopwordsCountry()` - Country-aware stopword removal
 
-| Priority | Feature | Impact | Effort |
-|----------|---------|--------|--------|
-| P2 | `DebugSimilarity()` | Debugging capability | 4 hours |
-| P2 | Quality-based adjustments | Better score accuracy | 6 hours |
-| P2 | Field coverage metrics | Confidence scoring | 4 hours |
-| P2 | Entity-specific ID comparisons | Type-aware matching | 8 hours |
-| P2 | Historical value comparison | Temporal matching | 4 hours |
-| P2 | Affiliation matching | Related entity support | 6 hours |
-| P2 | Title normalization | Job title handling | 3 hours |
+### Missing Modules (21 modules, ~6,450 lines)
 
-**Total High Priority:** ~35 hours (1 week)
+**Core Infrastructure:**
+- Database persistence (internal/db/, internal/indices/)
+- Geocoding services (internal/geocoding/)
+- Address parsing (pkg/address/, pkg/usaddress/)
+- Download management (internal/download/)
+- Data ingestion (internal/ingest/)
 
-### 🟢 MEDIUM - Feature Completeness
+**Optional Features:**
+- Web UI (cmd/ui/)
+- Address parsing service (cmd/postal-server/)
+- Additional source parsers (pkg/sources/)
+- Supporting utilities (compression, concurrency, integrity checks)
 
-| Priority | Feature | Impact | Effort |
-|----------|---------|--------|--------|
-| P3 | Address abbreviation expansion | Address matching | 4 hours |
-| P3 | Gender normalization | Person matching | 2 hours |
-| P3 | All exact match methods | Complete exact matching | 8 hours |
-| P3 | All date comparison methods | Complete date handling | 6 hours |
-| P3 | All address methods | Complete address matching | 6 hours |
-| P3 | Query parameter builders | Full API support | 6 hours |
+**Note:** These modules represent enterprise features not critical for core matching functionality.
 
-**Total Medium Priority:** ~32 hours (1 week)
+### Environment Variables (20 missing, 74%)
 
-### ⚪ LOW - Optional/Enterprise
-
-| Priority | Feature | Impact | Effort |
-|----------|---------|--------|--------|
-| P4 | Database persistence | Enterprise deployments | 2 weeks |
-| P4 | Geocoding services | Location-based matching | 1 week |
-| P4 | Address parsing (libpostal) | Advanced address handling | 2 weeks |
-| P4 | Web UI | User interface | 2 weeks |
-| P4 | Custom data ingestion | Advanced workflows | 1 week |
-
-**Total Optional:** ~8 weeks
+Most environment variables control optional features (database connections, geocoding APIs, UI settings) not required for core matching. Critical variables for scoring behavior are implemented.
 
 ---
 
@@ -338,57 +375,13 @@ The development process follows Test-Driven Development (TDD): analyze Go implem
 
 ---
 
-## ACTION PLAN
+## IMPLEMENTATION HISTORY
 
-### Phase 1: Fix Critical Bugs (3 days)
-1. Add token overlap requirement (2h)
-2. Port `GenerateWordCombinations()` (3h)
-3. Add `PreparedFields` to Entity (4h)
-4. Call `normalize()` at index time (2h)
-5. Port language detection (6h)
-6. Add multi-language stopwords (4h)
-7. Port `ReorderSDNName()` (3h)
-
-### Phase 2: Scoring Accuracy (1 week)
-- Port all missing scoring functions
-- Add debug capabilities
-- Implement quality adjustments
-
-### Phase 3: Feature Completeness (1 week)
-- Port remaining utility functions
-- Add missing query builders
-- Complete exact matching
-
-### Phase 4: Optional Features (8 weeks)
-- Database, geocoding, UI (if needed)
+All phases follow TDD methodology: analyze Go source → write failing tests (RED) → implement features (GREEN) → verify full suite.
 
 ---
 
-## CONCLUSION
-
-**Java has implemented 33% of Go's features completely** (58/177, up from 51/177 before Phase 0).
-
-The port is missing or incomplete:
-- **90 functions completely missing** (51% of inventory)
-- **29 functions partially implemented** (16% of inventory)
-- **21 entire modules** (6,450 lines of code)
-- **16 environment variables** (59% of configuration)
-
-**Progress Summary:**
-- ✅ **Phase 0-7 COMPLETE (Jan 8-9, 2026)** - Core algorithms, scoring, quality/coverage, title/affiliation matching, affiliation comparison, address normalization
-- 🔄 **Gap reduction: Implementation rate improved significantly** - 7 phases completed in 2 days
-- 📊 **Test coverage: 684/684 passing (100%)** - 38 new tests in Phase 7
-
-**This is why we missed the bugs:** We never did a function-by-function audit.
-
-**Time to achieve parity:**
-- ~~Core fixes: 3 days~~ ✅ **Phases 0-5 COMPLETE (Jan 8-9, 2026)**
-- Remaining features: 1-2 weeks (address normalization, date comparison, affiliation comparison)
-- Optional features: 8+ weeks (database, geocoding, UI)
-
----
-
-## PHASE 0 COMPLETION SUMMARY (Jan 8, 2026)
+### PHASE 0 COMPLETE (January 8, 2026): Core Normalization Pipeline
 
 **Implemented Features (7 new):**
 1. ✅ `PreparedFields` record - 6 fields with defensive copying
@@ -1319,19 +1312,3 @@ The port is missing or incomplete:
 - Digit similarity detection catches common OCR and data entry mistakes
 - Foundation for historical entity tracking and temporal sanctions screening
 - Completes Go's date comparison feature parity
-
----
-
-## NEXT STEPS
-
-**Remaining High-Priority Features:**
-- ~~Title & affiliation matching (12 features)~~ ✅ **COMPLETE (Phases 5-6)** - Title normalization/comparison (9 functions), affiliation comparison (3 functions)
-- ~~Quality/coverage scoring (12 features)~~ ✅ **COMPLETE (Phase 4)** - calculateCoverage, countAvailableFields, adjustScoreBasedOnQuality, applyPenaltiesAndBonuses, isHighConfidenceMatch, 5 type-specific counters, countCommonFields, countFieldsByImportance
-- ~~Address normalization (4 features)~~ ✅ **COMPLETE (Phase 7)** - normalizeAddress, normalizeAddresses, compareAddress, findBestAddressMatch
-- ~~Date comparison enhancements (8 features)~~ ✅ **COMPLETE (Phase 8)** - compareDates, areDatesLogical, areDaysSimilar, comparePersonDates, compareBusinessDates, compareOrgDates, compareAssetDates
-
-**Estimated Time to 100% Parity:**
-- Core algorithm fixes: COMPLETE ✅
-- Scoring accuracy: EXCELLENT PROGRESS ✅ (40/69 = 58% complete, up from 7%)
-- Feature completeness: 1-2 weeks
-- Optional features (DB, geocoding, UI): 8+ weeks
