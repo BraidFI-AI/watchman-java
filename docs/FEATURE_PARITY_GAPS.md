@@ -27,7 +27,7 @@
 |--------|-------|------------|-------------|
 | ✅ Fully Implemented | 62/177 | 35% | Complete behavioral parity with Go |
 | ⚠️ Partially Implemented | 27/177 | 15% | Core logic present, missing edge cases |
-| ❌ Not Implemented | 88/177 | 50% | Completely missing from Java codebase |
+| ❌ Not Implemented | 88/177 | 50% | Pending implementation in Java codebase |
 
 ### Recent Phases (Jan 8-9, 2026)
 
@@ -58,7 +58,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 **Status Definitions:**
 - ✅ **Full:** Complete behavioral parity, all edge cases handled
 - ⚠️ **Partial:** Core logic present, missing edge cases or optimizations
-- ❌ **Missing:** No Java implementation exists
+- ❌ **Pending:** No Java implementation exists
 
 **Note:** This document tracks 177 curated features from Go's 604 exported functions, focusing on scoring algorithms, entity models, and configuration relevant to the Java port.
 
@@ -74,35 +74,35 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 2 | `BestPairsJaroWinkler()` | jaro_winkler.go | `bestPairJaro()` | ✅ | **Phase 2 (Jan 9):** Verified unmatched penalty logic present |
 | 3 | `BestPairCombinationJaroWinkler()` | jaro_winkler.go | `bestPairCombinationJaroWinkler()` | ✅ | **Phase 3 (Jan 9):** Generates word combinations for both inputs, tries all pairs, returns max score |
 | 4 | `GenerateWordCombinations()` | jaro_winkler.go | `generateWordCombinations()` | ✅ | **Phase 3 (Jan 9):** Token array-based (String[] → List<List<String>>), generic ≤3 char rule, forward/backward combinations |
-| 5 | `JaroWinklerWithFavoritism()` | jaro_winkler.go | N/A | ❌ | **MISSING** - exact match boost |
+| 5 | `JaroWinklerWithFavoritism()` | jaro_winkler.go | N/A | ❌ | **PENDING** - exact match boost |
 | 6 | `customJaroWinkler()` | jaro_winkler.go | `customJaroWinkler()` | ✅ | **Phase 2 (Jan 9):** Token-level penalties - first char (0.9x), length cutoff (0.9) |
 | 7 | `lengthDifferenceFactor()` | jaro_winkler.go | `lengthDifferenceFactor()` | ✅ | **Phase 2 (Jan 9):** Weight updated to 0.30, dedicated method added |
 | 8 | `scalingFactor()` | jaro_winkler.go | Inline in customJaroWinkler | ✅ | **Phase 2 (Jan 9):** Implemented as inline calculation |
 | 9 | `sumLength()` | jaro_winkler.go | Stream API | ⚠️ | Different implementation |
 | 10 | `tokenSlicesEqual()` | jaro_winkler.go | `Arrays.equals()` | ✅ | Utility |
-| 11 | `readFloat()` | jaro_winkler.go | N/A | ❌ | **MISSING** - env var parsing |
-| 12 | `readInt()` | jaro_winkler.go | N/A | ❌ | **MISSING** - env var parsing |
+| 11 | `readFloat()` | jaro_winkler.go | N/A | ❌ | **PENDING** - env var parsing |
+| 12 | `readInt()` | jaro_winkler.go | N/A | ❌ | **PENDING** - env var parsing |
 | 13 | `firstCharacterSoundexMatch()` | phonetics.go | `PhoneticFilter.arePhonteticallyCompatible()` | ✅ | Phonetic filter |
 | 14 | `getPhoneticClass()` | phonetics.go | `PhoneticFilter.soundex()` | ✅ | Soundex encoding |
 | 15 | `LowerAndRemovePunctuation()` | pipeline_normalize.go | `TextNormalizer.lowerAndRemovePunctuation()` | ✅ | Text normalization |
-| 16 | `getTransformChain()` | pipeline_normalize.go | N/A | ❌ | **MISSING** - Unicode NFD/NFC chain |
-| 17 | `newTransformChain()` | pipeline_normalize.go | N/A | ❌ | **MISSING** - sync.Pool optimization |
-| 18 | `saveBuffer()` | pipeline_normalize.go | N/A | ❌ | **MISSING** - buffer pooling |
+| 16 | `getTransformChain()` | pipeline_normalize.go | N/A | ❌ | **PENDING** - Unicode NFD/NFC chain |
+| 17 | `newTransformChain()` | pipeline_normalize.go | N/A | ❌ | **PENDING** - sync.Pool optimization |
+| 18 | `saveBuffer()` | pipeline_normalize.go | N/A | ❌ | **PENDING** - buffer pooling |
 | 19 | `RemoveStopwords()` (main) | pipeline_stopwords.go | `TextNormalizer.removeStopwords()` | ✅ | **Phase 1 Complete (Jan 8): 6 languages (EN/ES/FR/DE/RU/AR/ZH), 500+ stopwords, integrated with Entity.normalize()** |
-| 20 | `RemoveStopwordsCountry()` | pipeline_stopwords.go | N/A | ❌ | **MISSING** - country-aware fallback |
+| 20 | `RemoveStopwordsCountry()` | pipeline_stopwords.go | N/A | ❌ | **PENDING** - country-aware fallback |
 | 21 | `detectLanguage()` | pipeline_stopwords.go | `LanguageDetector.detect()` | ✅ | **Phase 1 Complete (Jan 8): Apache Tika (70+ languages), integrated with Entity.normalize() for language-aware stopword removal** |
 | 22 | `removeStopwords()` (helper) | pipeline_stopwords.go | `isStopword()` | ⚠️ | Different approach |
 | 23 | `ReorderSDNName()` | pipeline_reorder.go | `Entity.reorderSDNName()` | ✅ | "LAST, FIRST" → "FIRST LAST" |
 | 24 | `ReorderSDNNames()` | pipeline_reorder.go | `Entity.normalize()` | ⚠️ | Batch via normalize() pipeline |
 | 25 | `RemoveCompanyTitles()` | pipeline_company_name_cleanup.go | `Entity.removeCompanyTitles()` | ✅ | **Phase 1 Complete (Jan 8): Iterative removal** - removes all company titles (LLC, INC, CORP, LTD, etc.) |
-| 26 | `NormalizeGender()` | prepare_gender.go | N/A | ❌ | **MISSING** - "M"/"MALE" → "male" |
-| 27 | `Country()` | norm/country.go | N/A | ❌ | **MISSING** - country name normalization |
+| 26 | `NormalizeGender()` | prepare_gender.go | N/A | ❌ | **PENDING** - "M"/"MALE" → "male" |
+| 27 | `Country()` | norm/country.go | N/A | ❌ | **PENDING** - country name normalization |
 | 28 | `PhoneNumber()` | norm/phone.go | `TextNormalizer.normalizeId()` | ⚠️ | Different implementation |
 
 **Summary: 28 core algorithm features**
 - ✅ 17 fully implemented (60.7%) - **+2 in Phase 3 (Jan 9)**
 - ⚠️ 4 partially implemented (14.3%) - **-1 in Phase 3**
-- ❌ 7 completely missing (25%)
+- ❌ 7 pending implementation (25%)
 
 ---
 
@@ -111,10 +111,10 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | # | Go Function | File | Java Equivalent | Status | Notes |
 |---|-------------|------|-----------------|--------|-------|
 | 29 | `Similarity()` | similarity.go | `EntityScorer.score()` | ✅ | Main entry point |
-| 30 | `DebugSimilarity()` | similarity.go | N/A | ❌ | **MISSING** - debug output |
+| 30 | `DebugSimilarity()` | similarity.go | N/A | ❌ | **PENDING** - debug output |
 | 31 | `DetailedSimilarity()` | similarity.go | `scoreWithBreakdown()` | ⚠️ | Partial |
 | 32 | `calculateFinalScore()` | similarity.go | Inline | ⚠️ | Different logic |
-| 33 | `calculateBaseScore()` | similarity.go | N/A | ❌ | **MISSING** |
+| 33 | `calculateBaseScore()` | similarity.go | N/A | ❌ | **PENDING** |
 | 34 | `applyPenaltiesAndBonuses()` | similarity.go | `EntityScorer.applyPenaltiesAndBonuses()` | ✅ | **Phase 4 (Jan 9):** Coverage-based penalties (low coverage, low critical, insufficient fields, name-only) + perfect match bonus |
 | 35 | `adjustScoreBasedOnQuality()` | similarity_fuzzy.go | `EntityScorer.adjustScoreBasedOnQuality()` | ✅ | **Phase 4 (Jan 9):** Term-based quality penalty (matchingTerms < 2 → 0.8x) |
 | 36 | `isHighConfidenceMatch()` | similarity_fuzzy.go | `EntityScorer.isHighConfidenceMatch()` | ✅ | **Phase 4 (Jan 9):** Confidence determination (matchingTerms >= 2 AND score > 0.85) |
@@ -124,14 +124,14 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 40 | `countFieldsByImportance()` | similarity.go | `EntityScorer.countFieldsByImportance()` | ✅ | **Phase 4 (Jan 9):** Field importance categorization (hasName, hasID, hasAddress, hasCritical) |
 | 41 | `boolToScore()` | similarity.go | Ternary | ✅ | Utility |
 | 42 | `calculateAverage()` | similarity.go | Stream API | ✅ | Utility |
-| 43 | `debug()` | similarity.go | N/A | ❌ | **MISSING** - debug output helper |
+| 43 | `debug()` | similarity.go | N/A | ❌ | **PENDING** - debug output helper |
 | 44 | `compareName()` | similarity_fuzzy.go | `compareNames()` | ✅ | Primary name matching |
 | 45 | `compareNameTerms()` | similarity_fuzzy.go | `bestPairJaro()` | ⚠️ | Token-based matching |
 | 46 | `calculateNameScore()` | similarity_fuzzy.go | Inline | ⚠️ | Name score calculation |
 | 47 | `calculateTitleSimilarity()` | similarity_fuzzy.go | `TitleMatcher.calculateTitleSimilarity()` | ✅ | **Phase 5 (Jan 9):** Jaro-Winkler + term filtering (<2 chars) + length penalty (0.1 per term diff) |
 | 48 | `normalizeTitle()` | similarity_fuzzy.go | `TitleMatcher.normalizeTitle()` | ✅ | **Phase 5 (Jan 9):** Lowercase + punctuation removal (except hyphens) + whitespace normalization |
 | 49 | `expandAbbreviations()` | similarity_fuzzy.go | `TitleMatcher.expandAbbreviations()` | ✅ | **Phase 5 (Jan 9):** 16 abbreviations (ceo, cfo, coo, pres, vp, dir, exec, mgr, sr, jr, asst, assoc, tech, admin, eng, dev) |
-| 50 | `compareEntityTitlesFuzzy()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - entity title comparison |
+| 50 | `compareEntityTitlesFuzzy()` | similarity_fuzzy.go | N/A | ❌ | **PENDING** - entity title comparison |
 | 51 | `findBestTitleMatch()` | similarity_fuzzy.go | `TitleMatcher.findBestTitleMatch()` | ✅ | **Phase 5 (Jan 9):** Best title pair selection with early exit at 0.92+ threshold |
 | 52 | `compareAffiliationsFuzzy()` | similarity_fuzzy.go | `AffiliationComparer.compareAffiliationsFuzzy()` | ✅ | **Phase 6 (Jan 9):** Affiliation list comparison with weighted scoring, returns ScorePiece |
 | 53 | `findBestAffiliationMatch()` | similarity_fuzzy.go | `AffiliationComparer.findBestAffiliationMatch()` | ✅ | **Phase 6 (Jan 9):** Best match selection with type-aware scoring, tiebreaker prefers exact type match |
@@ -140,40 +140,40 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 56 | `calculateFinalAffiliateScore()` | similarity_fuzzy.go | `AffiliationComparer.calculateFinalAffiliateScore()` | ✅ | **Phase 6 (Jan 9):** Weighted average with squared weighting (weight = finalScore²), emphasizes quality |
 | 57 | `calculateTypeScore()` | similarity_fuzzy.go | `AffiliationMatcher.calculateTypeScore()` | ✅ | **Phase 5 (Jan 9):** Type similarity (exact: 1.0, same group: 0.8, different: 0.0) |
 | 58 | `getTypeGroup()` | similarity_fuzzy.go | `AffiliationMatcher.getTypeGroup()` | ✅ | **Phase 5 (Jan 9):** 4 groups (ownership, control, association, leadership) with 26 total types |
-| 59 | `isNameCloseEnough()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - proximity check |
+| 59 | `isNameCloseEnough()` | similarity_fuzzy.go | N/A | ❌ | **PENDING** - proximity check |
 | 60 | `filterTerms()` | similarity_fuzzy.go | `TitleMatcher.filterTerms()` | ✅ | **Phase 5 (Jan 9):** Private helper - removes terms with length < 2 |
 | 61 | `compareAddresses()` | similarity_address.go | `compareAddresses()` | ⚠️ | Basic implementation |
 | 62 | `compareAddress()` | similarity_address.go | `AddressComparer.compareAddress()` | ✅ | **Phase 7 (Jan 9):** Weighted field comparison, JaroWinkler for fuzzy fields, exact match for state/postal/country |
 | 63 | `findBestAddressMatch()` | similarity_address.go | `AddressComparer.findBestAddressMatch()` | ✅ | **Phase 7 (Jan 9):** Best pair selection with early exit at 0.92+ confidence |
 | 64 | `normalizeAddress()` | similarity_address.go | `AddressNormalizer.normalizeAddress()` | ✅ | **Phase 7 (Jan 9):** Lowercase, comma removal, country normalization, field tokenization |
 | 65 | `normalizeAddresses()` | similarity_address.go | `AddressNormalizer.normalizeAddresses()` | ✅ | **Phase 7 (Jan 9):** Batch normalization with null/empty handling |
-| 66 | `compareExactSourceList()` | similarity_exact.go | N/A | ❌ | **MISSING** - source list matching |
+| 66 | `compareExactSourceList()` | similarity_exact.go | N/A | ❌ | **PENDING** - source list matching |
 | 67 | `compareExactIdentifiers()` | similarity_exact.go | `sourceId.equals()` | ⚠️ | Partial |
 | 68 | `compareExactGovernmentIDs()` | similarity_exact.go | `compareGovernmentIds()` | ⚠️ | Partial |
 | 69 | `compareExactCryptoAddresses()` | similarity_exact.go | `compareCryptoAddresses()` | ⚠️ | Partial |
 | 70 | `compareExactContactInfo()` | similarity_exact.go | `compareContactInfo()` | ⚠️ | Partial |
-| 71 | `compareIdentifiers()` | similarity_exact.go | N/A | ❌ | **MISSING** - generic ID comparison |
+| 71 | `compareIdentifiers()` | similarity_exact.go | N/A | ❌ | **PENDING** - generic ID comparison |
 | 72 | `normalizeIdentifier()` | similarity_exact.go | `normalizeId()` | ⚠️ | Partial |
-| 73 | `comparePersonExactIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - person-specific IDs |
-| 74 | `compareBusinessExactIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - business-specific IDs |
-| 75 | `compareOrgExactIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - org-specific IDs |
-| 76 | `compareAircraftExactIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - aircraft-specific IDs |
-| 77 | `compareVesselExactIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - vessel-specific IDs |
-| 78 | `comparePersonGovernmentIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - person gov IDs |
-| 79 | `compareBusinessGovernmentIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - business gov IDs |
-| 80 | `compareOrgGovernmentIDs()` | similarity_exact.go | N/A | ❌ | **MISSING** - org gov IDs |
+| 73 | `comparePersonExactIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - person-specific IDs |
+| 74 | `compareBusinessExactIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - business-specific IDs |
+| 75 | `compareOrgExactIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - org-specific IDs |
+| 76 | `compareAircraftExactIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - aircraft-specific IDs |
+| 77 | `compareVesselExactIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - vessel-specific IDs |
+| 78 | `comparePersonGovernmentIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - person gov IDs |
+| 79 | `compareBusinessGovernmentIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - business gov IDs |
+| 80 | `compareOrgGovernmentIDs()` | similarity_exact.go | N/A | ❌ | **PENDING** - org gov IDs |
 | 81 | `compareDates()` | similarity_close.go | `DateComparer.compareDates()` | ✅ | **Phase 8 (Jan 9):** Year/month/day weighted (40/30/30), ±5yr/±1mo/±3day tolerance, special 1 vs 10/11/12 month handling |
 | 82 | `areDatesLogical()` | similarity_close.go | `DateComparer.areDatesLogical()` | ✅ | **Phase 8 (Jan 9):** Birth before death validation + lifespan ratio ≤1.21 (20% tolerance) |
 | 83 | `areDaysSimilar()` | similarity_close.go | `DateComparer.areDaysSimilar()` | ✅ | **Phase 8 (Jan 9):** Digit pattern detection: same digit (1↔11, 2↔22) + transposed (12↔21, 13↔31) |
-| 84 | `compareEntityDates()` | similarity_close.go | N/A | ❌ | **MISSING** - type dispatcher (calls comparePersonDates/compareBusinessDates/compareOrgDates/compareAssetDates) |
+| 84 | `compareEntityDates()` | similarity_close.go | N/A | ❌ | **PENDING** - type dispatcher (calls comparePersonDates/compareBusinessDates/compareOrgDates/compareAssetDates) |
 | 85 | `comparePersonDates()` | similarity_close.go | `DateComparer.comparePersonDates()` | ✅ | **Phase 8 (Jan 9):** Birth/death comparison with 50% penalty for illogical dates, returns (score, matched, fieldsCompared) |
 | 86 | `compareBusinessDates()` | similarity_close.go | `DateComparer.compareBusinessDates()` | ✅ | **Phase 8 (Jan 9):** Created/dissolved date comparison, matched if score >0.7 |
 | 87 | `compareOrgDates()` | similarity_close.go | `DateComparer.compareOrgDates()` | ✅ | **Phase 8 (Jan 9):** Organization created/dissolved dates, identical logic to compareBusinessDates |
 | 88 | `compareAssetDates()` | similarity_close.go | `DateComparer.compareAssetDates()` | ✅ | **Phase 8 (Jan 9):** Vessel/aircraft built date comparison, returns single field result |
-| 89 | `compareHistoricalValues()` | similarity_close.go | N/A | ❌ | **MISSING** - historical data |
-| 90 | `compareSanctionsPrograms()` | similarity_close.go | N/A | ❌ | **MISSING** - sanctions programs |
-| 91 | `compareSupportingInfo()` | similarity_supporting.go | N/A | ❌ | **MISSING** - aggregate supporting data |
-| 92 | `compareContactField()` | similarity_supporting.go | N/A | ❌ | **MISSING** - generic contact comparison |
+| 89 | `compareHistoricalValues()` | similarity_close.go | N/A | ❌ | **PENDING** - historical data |
+| 90 | `compareSanctionsPrograms()` | similarity_close.go | N/A | ❌ | **PENDING** - sanctions programs |
+| 91 | `compareSupportingInfo()` | similarity_supporting.go | N/A | ❌ | **PENDING** - aggregate supporting data |
+| 92 | `compareContactField()` | similarity_supporting.go | N/A | ❌ | **PENDING** - generic contact comparison |
 | 93 | `countPersonFields()` | similarity_supporting.go | `EntityScorer.countPersonFields()` | ✅ | **Phase 4 (Jan 9):** Private helper - 7 fields (birthDate, deathDate, gender, birthPlace, titles, govIds, altNames) |
 | 94 | `countBusinessFields()` | similarity_supporting.go | `EntityScorer.countBusinessFields()` | ✅ | **Phase 4 (Jan 9):** Private helper - 5 fields (name, altNames, created, dissolved, govIds) |
 | 95 | `countOrganizationFields()` | similarity_supporting.go | `EntityScorer.countOrganizationFields()` | ✅ | **Phase 4 (Jan 9):** Private helper - 5 fields (name, altNames, created, dissolved, govIds) |
@@ -183,7 +183,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 **Summary: 69 scoring functions**
 - ✅ 33 fully implemented (48%) - **+4 in Phase 7 (Jan 9)**
 - ⚠️ 11 partially implemented (16%)
-- ❌ 25 completely missing (36%) - **-4 in Phase 7**
+- ❌ 25 pending implementation (36%) - **-4 in Phase 7**
 
 ---
 
@@ -194,24 +194,24 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 98 | `Entity[T]` struct | Model | `Entity` record | ✅ | Core model |
 | 99 | `PreparedFields` struct | **CRITICAL** | `PreparedFields` record | ✅ | **REFACTORED (Jan 8):** Separated normalizedPrimaryName + normalizedAltNames (matches Go: Name + AltNames). Enables compliance transparency. |
 | 100 | `Entity.Normalize()` | **CRITICAL** | `Entity.normalize()` | ✅ | Full pipeline: reorder → normalize → separate primary/alts → combinations → stopwords → titles |
-| 101 | `Entity.merge()` | Method | N/A | ❌ | **MISSING** - entity merging |
+| 101 | `Entity.merge()` | Method | N/A | ❌ | **PENDING** - entity merging |
 | 102 | `removeStopwords()` helper | Function | Inline in `bestPairJaro()` | ⚠️ | Different timing |
 | 103 | `normalizeNames()` | Function | `TextNormalizer` | ⚠️ | Per-search, not cached |
 | 104 | `normalizePhoneNumbers()` | Function | `normalizeId()` | ⚠️ | Different implementation |
 | 105 | `normalizeAddresses()` | Function | `Entity.normalize()` | ⚠️ | Basic address normalization in pipeline |
-| 106 | `mergeAddresses()` | Function | N/A | ❌ | **MISSING** - combine duplicates |
-| 107 | `mergeAffiliations()` | Function | N/A | ❌ | **MISSING** |
-| 108 | `mergeCryptoAddresses()` | Function | N/A | ❌ | **MISSING** |
-| 109 | `mergeGovernmentIDs()` | Function | N/A | ❌ | **MISSING** |
-| 110 | `mergeHistoricalInfo()` | Function | N/A | ❌ | **MISSING** |
-| 111 | `mergeStrings()` | Function | N/A | ❌ | **MISSING** - dedupe utility |
-| 112 | `Merge()` | Function | N/A | ❌ | **MISSING** - merge entity lists |
-| 113 | `getMergeKey()` | Function | N/A | ❌ | **MISSING** - entity key generation |
+| 106 | `mergeAddresses()` | Function | N/A | ❌ | **PENDING** - combine duplicates |
+| 107 | `mergeAffiliations()` | Function | N/A | ❌ | **PENDING** |
+| 108 | `mergeCryptoAddresses()` | Function | N/A | ❌ | **PENDING** |
+| 109 | `mergeGovernmentIDs()` | Function | N/A | ❌ | **PENDING** |
+| 110 | `mergeHistoricalInfo()` | Function | N/A | ❌ | **PENDING** |
+| 111 | `mergeStrings()` | Function | N/A | ❌ | **PENDING** - dedupe utility |
+| 112 | `Merge()` | Function | N/A | ❌ | **PENDING** - merge entity lists |
+| 113 | `getMergeKey()` | Function | N/A | ❌ | **PENDING** - entity key generation |
 
 **Summary: 16 model features**
 - ✅ 3 fully implemented (19%)
 - ⚠️ 4 partially implemented (25%)
-- ❌ 9 completely missing (56%)
+- ❌ 9 pending implementation (56%)
 
 ---
 
@@ -221,25 +221,25 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 |---|------------|------|-----------------|--------|-------|
 | 114 | `NewClient()` | client.go | Constructor | ✅ | Client creation |
 | 115 | `SearchByEntity()` | client.go | `search()` | ⚠️ | Simplified in Java |
-| 116 | `IngestFile()` | client.go | N/A | ❌ | **MISSING** - custom ingestion |
+| 116 | `IngestFile()` | client.go | N/A | ❌ | **PENDING** - custom ingestion |
 | 117 | `ListInfo()` | client.go | `/v2/listinfo` | ⚠️ | Different response format |
-| 118 | `BuildQueryParameters()` | client.go | N/A | ❌ | **MISSING** - query builder |
-| 119 | `SetSearchOpts()` | client.go | N/A | ❌ | **MISSING** - options setter |
-| 120 | `setPersonParameters()` | client.go | N/A | ❌ | **MISSING** - person query params |
-| 121 | `setBusinessParameters()` | client.go | N/A | ❌ | **MISSING** - business query params |
-| 122 | `setOrganizationParameters()` | client.go | N/A | ❌ | **MISSING** - org query params |
-| 123 | `setAircraftParameters()` | client.go | N/A | ❌ | **MISSING** - aircraft query params |
-| 124 | `setVesselParameters()` | client.go | N/A | ❌ | **MISSING** - vessel query params |
-| 125 | `setAddresses()` | client.go | N/A | ❌ | **MISSING** - address query params |
-| 126 | `setContactInfo()` | client.go | N/A | ❌ | **MISSING** - contact query params |
-| 127 | `setCryptoAddresses()` | client.go | N/A | ❌ | **MISSING** - crypto query params |
-| 128 | `setGovernmentIDs()` | client.go | N/A | ❌ | **MISSING** - gov ID query params |
+| 118 | `BuildQueryParameters()` | client.go | N/A | ❌ | **PENDING** - query builder |
+| 119 | `SetSearchOpts()` | client.go | N/A | ❌ | **PENDING** - options setter |
+| 120 | `setPersonParameters()` | client.go | N/A | ❌ | **PENDING** - person query params |
+| 121 | `setBusinessParameters()` | client.go | N/A | ❌ | **PENDING** - business query params |
+| 122 | `setOrganizationParameters()` | client.go | N/A | ❌ | **PENDING** - org query params |
+| 123 | `setAircraftParameters()` | client.go | N/A | ❌ | **PENDING** - aircraft query params |
+| 124 | `setVesselParameters()` | client.go | N/A | ❌ | **PENDING** - vessel query params |
+| 125 | `setAddresses()` | client.go | N/A | ❌ | **PENDING** - address query params |
+| 126 | `setContactInfo()` | client.go | N/A | ❌ | **PENDING** - contact query params |
+| 127 | `setCryptoAddresses()` | client.go | N/A | ❌ | **PENDING** - crypto query params |
+| 128 | `setGovernmentIDs()` | client.go | N/A | ❌ | **PENDING** - gov ID query params |
 | 129 | `NewMockClient()` | mock_client.go | Test utilities | ⚠️ | Different mocking approach |
 
 **Summary: 16 client features**
 - ✅ 1 fully implemented (6%)
 - ⚠️ 3 partially implemented (19%)
-- ❌ 12 completely missing (75%)
+- ❌ 12 pending implementation (75%)
 
 ---
 
@@ -278,7 +278,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 **Summary: 27 environment variables**
 - ✅ 4 fully supported (15%)
 - ⚠️ 7 partially supported (26%)
-- ❌ 16 completely missing (59%)
+- ❌ 16 pending implementation (59%)
 
 ---
 
@@ -315,7 +315,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 
 ## REMAINING WORK
 
-### High-Priority Features (28% missing from Scoring Functions)
+### High-Priority Features (28% pending from Scoring Functions)
 
 **Exact Matching (11 functions):**
 - `compareGovernmentIDs()` - Government ID exact matching
@@ -338,7 +338,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 - `Country()`, `NormalizeGender()` - Data normalization
 - `RemoveStopwordsCountry()` - Country-aware stopword removal
 
-### Missing Modules (21 modules, ~6,450 lines)
+### Pending Modules (21 modules, ~6,450 lines)
 
 **Core Infrastructure:**
 - Database persistence (internal/db/, internal/indices/)
@@ -355,7 +355,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 
 **Note:** These modules represent enterprise features not critical for core matching functionality.
 
-### Environment Variables (20 missing, 74%)
+### Environment Variables (20 pending, 74%)
 
 Most environment variables control optional features (database connections, geocoding APIs, UI settings) not required for core matching. Critical variables for scoring behavior are implemented.
 
@@ -363,14 +363,14 @@ Most environment variables control optional features (database connections, geoc
 
 ## SUMMARY BY CATEGORY
 
-| Category | Total | ✅ Full | ⚠️ Partial | ❌ Missing | % Missing |
+| Category | Total | ✅ Full | ⚠️ Partial | ❌ Pending | % Pending |
 |----------|-------|---------|-----------|-----------|-----------|
 | **Core Algorithms** | 28 | 17 | 4 | 7 | 25% |
 | **Scoring Functions** | 69 | 40 | 10 | 19 | 28% |
 | **Entity Models** | 16 | 2 | 5 | 9 | 56% |
 | **Client & API** | 16 | 1 | 3 | 12 | 75% |
 | **Environment Variables** | 27 | 2 | 5 | 20 | 74% |
-| **Missing Modules** | 21 | 0 | 0 | 21 | 100% |
+| **Pending Modules** | 21 | 0 | 0 | 21 | 100% |
 | **TOTAL** | **177** | **62** | **27** | **88** | **49.7%** |
 
 ---
