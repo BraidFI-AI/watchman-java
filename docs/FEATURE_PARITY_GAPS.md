@@ -280,8 +280,8 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 
 **Summary: 27 environment variables**
 - ✅ 4 fully supported (15%)
-- ⚠️ 7 partially supported (26%)
-- ❌ 16 pending implementation (59%)
+- ⚠️ 6 partially supported (22%)
+- ❌ 17 pending implementation (63%)
 
 ---
 
@@ -370,9 +370,9 @@ Most environment variables control optional features (database connections, geoc
 |----------|-------|---------|-----------|-----------|-----------|
 | **Core Algorithms** | 28 | 17 | 4 | 7 | 25% |
 | **Scoring Functions** | 69 | 54 | 5 | 10 | 14% |
-| **Entity Models** | 16 | 2 | 5 | 9 | 56% |
+| **Entity Models** | 16 | 3 | 4 | 9 | 56% |
 | **Client & API** | 16 | 1 | 3 | 12 | 75% |
-| **Environment Variables** | 27 | 2 | 5 | 20 | 74% |
+| **Environment Variables** | 27 | 4 | 6 | 17 | 63% |
 | **Pending Modules** | 21 | 0 | 0 | 21 | 100% |
 | **TOTAL** | **177** | **79** | **21** | **77** | **43.5%** |
 
