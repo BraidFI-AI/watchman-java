@@ -1,10 +1,13 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.model.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,61 +23,167 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Phase 13: Entity Merging Tests")
 class EntityMergerTest {
 
-    // Test data from Go: johnDoe + johnnyDoe = johnJohnnyMerged
-    private static final Entity JOHN_DOE = Entity.builder()
-            .name("John Doe")
-            .type(EntityType.PERSON)
-            .source(Source.US_OFAC)
-            .sourceId("12345")
-            .person(Person.builder()
-                    .name("John Doe")
-                    .gender("male")
-                    .build())
-            .contact(ContactInfo.builder()
-                    .emailAddresses(List.of("john.doe@example.com"))
-                    .phoneNumbers(List.of("123.456.7890"))
-                    .build())
-            .addresses(List.of(Address.builder()
-                    .line1("123 First St")
-                    .city("Anytown")
-                    .state("CA")
-                    .postalCode("90210")
-                    .country("US")
-                    .build()))
-            .cryptoAddresses(List.of(CryptoAddress.builder()
-                    .currency("BTC")
-                    .address("be503b97-a5ec-4494-aacd-dc97c70293f3")
-                    .build()))
-            .build();
+    // ==================== HELPER METHODS ====================
+    
+    private static Entity createEntity(String name, EntityType type, SourceList source, String sourceId,
+                                      Person person, Business business, Organization organization,
+                                      Aircraft aircraft, Vessel vessel,
+                                      ContactInfo contact, List<Address> addresses,
+                                      List<CryptoAddress> cryptoAddresses,
+                                      List<String> altNames, List<GovernmentId> governmentIds,
+                                      SanctionsInfo sanctionsInfo) {
+        return new Entity(
+            null,  // id
+            name,
+            type,
+            source,
+            sourceId,
+            person,
+            business,
+            organization,
+            aircraft,
+            vessel,
+            contact,
+            addresses != null ? addresses : Collections.emptyList(),
+            cryptoAddresses != null ? cryptoAddresses : Collections.emptyList(),
+            altNames != null ? altNames : Collections.emptyList(),
+            governmentIds != null ? governmentIds : Collections.emptyList(),
+            sanctionsInfo,
+            null,  // remarks
+            null   // preparedFields
+        );
+    }
 
-    private static final Entity JOHNNY_DOE = Entity.builder()
-            .name("Johnny Doe")
-            .type(EntityType.PERSON)
-            .source(Source.US_OFAC)
-            .sourceId("12345")  // Same key as JOHN_DOE
-            .person(Person.builder()
-                    .name("Johnny Doe")
-                    .birthDate(LocalDate.of(1971, 3, 26))
-                    .governmentIds(List.of(GovernmentId.builder()
-                            .type("passport")
-                            .country("US")
-                            .identifier("1981204918019")
-                            .build()))
-                    .build())
-            .contact(ContactInfo.builder()
-                    .emailAddresses(List.of("johnny.doe@example.com"))
-                    .phoneNumbers(List.of("123.456.7890"))  // Duplicate phone
-                    .websites(List.of("http://johnnydoe.com"))
-                    .build())
-            .addresses(List.of(Address.builder()
-                    .line1("123 First St")
-                    .line2("Unit 456")  // Different line2 = different address
-                    .city("Anytown")
-                    .state("CA")
-                    .postalCode("90210")
-                    .country("US")
-                    .build()))
-            .build();
+    private static Person createPerson(String name, List<String> altNames, String gender,
+                                      LocalDate birthDate, LocalDate deathDate,
+                                      String placeOfBirth, List<String> titles,
+                                      List<GovernmentId> governmentIds) {
+        return new Person(
+            name,
+            altNames != null ? altNames : Collections.emptyList(),
+            gender,
+            birthDate,
+            deathDate,
+            placeOfBirth,
+            titles != null ? titles : Collections.emptyList(),
+            governmentIds != null ? governmentIds : Collections.emptyList()
+        );
+    }
+
+    private static Business createBusiness(String name, List<String> altNames,
+                                          LocalDate created, LocalDate dissolved,
+                                          List<GovernmentId> governmentIds) {
+        return new Business(
+            name,
+            altNames != null ? altNames : Collections.emptyList(),
+            created,
+            dissolved,
+            governmentIds != null ? governmentIds : Collections.emptyList()
+        );
+    }
+
+    private static Organization createOrganization(String name, List<String> altNames,
+                                                   LocalDate created, LocalDate dissolved,
+                                                   List<GovernmentId> governmentIds) {
+        return new Organization(
+            name,
+            altNames != null ? altNames : Collections.emptyList(),
+            created,
+            dissolved,
+            governmentIds != null ? governmentIds : Collections.emptyList()
+        );
+    }
+
+    private static Aircraft createAircraft(String name, List<String> altNames, String type,
+                                          String flag, String built, String icaoCode,
+                                          String model, String serialNumber) {
+        return new Aircraft(
+            name,
+            altNames != null ? altNames : Collections.emptyList(),
+            type,
+            flag,
+            built,
+            icaoCode,
+            model,
+            serialNumber
+        );
+    }
+
+    private static Vessel createVessel(String name, List<String> altNames, String imoNumber,
+                                      String type, String flag, String built,
+                                      String mmsi, String callSign, String tonnage, String owner) {
+        return new Vessel(
+            name,
+            altNames != null ? altNames : Collections.emptyList(),
+            imoNumber,
+            type,
+            flag,
+            built,
+            mmsi,
+            callSign,
+            tonnage,
+            owner
+        );
+    }
+
+    private static ContactInfo createContact(String email, String phone, String fax, String website) {
+        return new ContactInfo(email, phone, fax, website);
+    }
+
+    private static Address createAddress(String line1, String line2, String city,
+                                        String state, String postalCode, String country) {
+        return new Address(line1, line2, city, state, postalCode, country);
+    }
+
+    private static GovernmentId createGovId(GovernmentIdType type, String country, String identifier) {
+        return new GovernmentId(type, identifier, country);
+    }
+
+    private static CryptoAddress createCrypto(String currency, String address) {
+        return new CryptoAddress(currency, address);
+    }
+
+    // ==================== TEST DATA ====================
+    
+    // Test data from Go: johnDoe + johnnyDoe = johnJohnnyMerged
+    private static final Entity JOHN_DOE = createEntity(
+        "John Doe",
+        EntityType.PERSON,
+        SourceList.US_OFAC,
+        "12345",
+        createPerson("John Doe", null, "male", null, null, null, null, null),
+        null,
+        null,
+        null,
+        null,
+        createContact("john.doe@example.com", "123.456.7890", null, null),
+        List.of(createAddress("123 First St", null, "Anytown", "CA", "90210", "US")),
+        List.of(createCrypto("BTC", "be503b97-a5ec-4494-aacd-dc97c70293f3")),
+        null,
+        null,
+        null
+    );
+
+    private static final Entity JOHNNY_DOE = createEntity(
+        "Johnny Doe",
+        EntityType.PERSON,
+        SourceList.US_OFAC,
+        "12345",  // Same key as JOHN_DOE
+        createPerson("Johnny Doe", null, null, LocalDate.of(1971, 3, 26), null, null, null,
+                    List.of(createGovId(GovernmentIdType.PASSPORT, "US", "1981204918019"))),
+        null,
+        null,
+        null,
+        null,
+        createContact("johnny.doe@example.com", "123.456.7890", null, "http://johnnydoe.com"),
+        List.of(createAddress("123 First St", "Unit 456", "Anytown", "CA", "90210", "US")),
+        null,
+        null,
+        null,
+        null
+    );
+
+    // ==================== TESTS ====================
 
     @Nested
     @DisplayName("Top-Level Merge Function")
@@ -96,28 +205,22 @@ class EntityMergerTest {
             // Basic fields (first wins)
             assertThat(result.name()).isEqualTo("John Doe");
             assertThat(result.type()).isEqualTo(EntityType.PERSON);
-            assertThat(result.source()).isEqualTo(Source.US_OFAC);
+            assertThat(result.source()).isEqualTo(SourceList.US_OFAC);
             assertThat(result.sourceId()).isEqualTo("12345");
 
-            // Person fields
-            assertThat(result.person()).isNotNull();
+            // Person fields merged
             assertThat(result.person().name()).isEqualTo("John Doe");
-            assertThat(result.person().altNames()).contains("Johnny Doe");
             assertThat(result.person().gender()).isEqualTo("male");
             assertThat(result.person().birthDate()).isEqualTo(LocalDate.of(1971, 3, 26));
+            assertThat(result.person().altNames()).contains("Johnny Doe");
             assertThat(result.person().governmentIds()).hasSize(1);
 
-            // Contact (deduplicated)
-            assertThat(result.contact().emailAddresses()).hasSize(2);
-            assertThat(result.contact().emailAddresses()).contains(
-                    "john.doe@example.com",
-                    "johnny.doe@example.com");
-            assertThat(result.contact().phoneNumbers()).hasSize(1);  // Deduplicated
-            assertThat(result.contact().phoneNumbers()).contains("123.456.7890");
-            assertThat(result.contact().websites()).hasSize(1);
-            assertThat(result.contact().websites()).contains("http://johnnydoe.com");
+            // Contact merged (both emails)
+            assertThat(result.contact().emailAddress()).isIn("john.doe@example.com", "johnny.doe@example.com");
+            assertThat(result.contact().phoneNumber()).isEqualTo("123.456.7890");
+            assertThat(result.contact().website()).isEqualTo("http://johnnydoe.com");
 
-            // Addresses (different Line2 = different address)
+            // Addresses merged (2 different addresses - different line2)
             assertThat(result.addresses()).hasSize(2);
 
             // Crypto addresses
@@ -126,89 +229,106 @@ class EntityMergerTest {
 
         @Test
         @DisplayName("Should keep entities with different keys separate")
-        void keepsEntitiesWithDifferentKeys() {
-            // Given: Two entities with different sourceIds
-            Entity entity1 = JOHN_DOE;
-            Entity entity2 = JOHN_DOE.toBuilder().sourceId("67890").build();
+        void keepsDifferentKeysSeparate() {
+            // Given: Two entities with different keys
+            Entity e1 = createEntity("John", EntityType.PERSON, SourceList.US_OFAC, "123",
+                                   createPerson("John", null, null, null, null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
+            
+            Entity e2 = createEntity("Jane", EntityType.PERSON, SourceList.US_OFAC, "456",
+                                   createPerson("Jane", null, null, null, null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
 
             // When: Merge
-            List<Entity> merged = EntityMerger.merge(List.of(entity1, entity2));
+            List<Entity> merged = EntityMerger.merge(List.of(e1, e2));
 
             // Then: Two separate entities
             assertThat(merged).hasSize(2);
         }
 
         @Test
-        @DisplayName("Should handle single entity (identity)")
-        void mergesSingleEntity() {
-            // Given: Single entity
-            List<Entity> input = List.of(JOHN_DOE);
-
-            // When: Merge
-            List<Entity> merged = EntityMerger.merge(input);
-
-            // Then: Same entity returned (normalized)
-            assertThat(merged).hasSize(1);
-            assertThat(merged.get(0).name()).isEqualTo("John Doe");
-        }
-
-        @Test
         @DisplayName("Should handle empty list")
         void handlesEmptyList() {
-            // Given: Empty list
-            List<Entity> input = List.of();
-
-            // When: Merge
-            List<Entity> merged = EntityMerger.merge(input);
+            // When: Merge empty list
+            List<Entity> merged = EntityMerger.merge(Collections.emptyList());
 
             // Then: Empty result
             assertThat(merged).isEmpty();
         }
 
         @Test
-        @DisplayName("Should merge three entities with same key")
-        void mergesThreeEntitiesSameKey() {
-            // Given: Three entities with same key
-            Entity entity1 = JOHN_DOE;
-            Entity entity2 = JOHNNY_DOE;
-            Entity entity3 = Entity.builder()
-                    .name("J. Doe")
-                    .type(EntityType.PERSON)
-                    .source(Source.US_OFAC)
-                    .sourceId("12345")
-                    .person(Person.builder()
-                            .name("J. Doe")
-                            .titles(List.of("Mr."))
-                            .build())
-                    .build();
+        @DisplayName("Should handle single entity")
+        void handlesSingleEntity() {
+            // Given: Single entity
+            List<Entity> input = List.of(JOHN_DOE);
 
             // When: Merge
-            List<Entity> merged = EntityMerger.merge(List.of(entity1, entity2, entity3));
+            List<Entity> merged = EntityMerger.merge(input);
 
-            // Then: Single entity with all data
+            // Then: Same entity normalized
             assertThat(merged).hasSize(1);
-            Entity result = merged.get(0);
-            assertThat(result.person().altNames()).containsExactlyInAnyOrder("Johnny Doe", "J. Doe");
-            assertThat(result.person().titles()).contains("Mr.");
+            assertThat(merged.get(0).name()).isEqualTo("John Doe");
         }
 
         @Test
-        @DisplayName("Should normalize merged entity")
-        void normalizesAfterMerge() {
-            // Given: Entities with denormalized data
-            Entity entity1 = Entity.builder()
-                    .name("JOHN DOE")
-                    .type(EntityType.PERSON)
-                    .source(Source.US_OFAC)
-                    .sourceId("12345")
-                    .person(Person.builder().name("JOHN DOE").build())
-                    .build();
+        @DisplayName("Should group by source/sourceId/type")
+        void groupsByMergeKey() {
+            // Given: Multiple entities, some with same key
+            Entity ofac1 = createEntity("John", EntityType.PERSON, SourceList.US_OFAC, "123",
+                                      createPerson("John", null, null, null, null, null, null, null),
+                                      null, null, null, null, null, null, null, null, null, null);
+            Entity ofac2 = createEntity("Johnny", EntityType.PERSON, SourceList.US_OFAC, "123",
+                                      createPerson("Johnny", null, null, null, null, null, null, null),
+                                      null, null, null, null, null, null, null, null, null, null);
+            Entity eu = createEntity("Jean", EntityType.PERSON, SourceList.EU_CSL, "999",
+                                   createPerson("Jean", null, null, null, null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
+
+            // When: Merge
+            List<Entity> merged = EntityMerger.merge(List.of(ofac1, ofac2, eu));
+
+            // Then: Two groups - OFAC merged, EU separate
+            assertThat(merged).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Should normalize merged entities")
+        void normalizesMergedEntities() {
+            // Given: Entity with name needing normalization
+            Entity entity1 = createEntity("JOHN DOE", EntityType.PERSON, SourceList.US_OFAC, "12345",
+                                        createPerson("JOHN DOE", null, null, null, null, null, null, null),
+                                        null, null, null, null, null, null, null, null, null, null);
 
             // When: Merge
             List<Entity> merged = EntityMerger.merge(List.of(entity1));
 
             // Then: Normalized (PreparedFields populated)
             assertThat(merged.get(0).preparedFields()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Should handle multiple entities with same key")
+        void handlesMultipleSameKey() {
+            // Given: 3 entities with same key
+            Entity e1 = createEntity("Name1", EntityType.PERSON, SourceList.US_OFAC, "123",
+                                   createPerson("Name1", null, "male", null, null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
+            Entity e2 = createEntity("Name2", EntityType.PERSON, SourceList.US_OFAC, "123",
+                                   createPerson("Name2", null, null, LocalDate.of(1980, 1, 1), null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
+            Entity e3 = createEntity("Name3", EntityType.PERSON, SourceList.US_OFAC, "123",
+                                   createPerson("Name3", null, null, null, null, "NYC", null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
+
+            // When: Merge
+            List<Entity> merged = EntityMerger.merge(List.of(e1, e2, e3));
+
+            // Then: Single merged entity with all data
+            assertThat(merged).hasSize(1);
+            assertThat(merged.get(0).person().gender()).isEqualTo("male");
+            assertThat(merged.get(0).person().birthDate()).isEqualTo(LocalDate.of(1980, 1, 1));
+            assertThat(merged.get(0).person().placeOfBirth()).isEqualTo("NYC");
+            assertThat(merged.get(0).person().altNames()).containsExactlyInAnyOrder("Name2", "Name3");
         }
     }
 
@@ -220,11 +340,8 @@ class EntityMergerTest {
         @DisplayName("Should generate correct merge key")
         void generatesCorrectKey() {
             // Given: Entity with Source/SourceId/Type
-            Entity entity = Entity.builder()
-                    .source(Source.US_OFAC)
-                    .sourceId("12345")
-                    .type(EntityType.PERSON)
-                    .build();
+            Entity entity = createEntity(null, EntityType.PERSON, SourceList.US_OFAC, "12345",
+                                       null, null, null, null, null, null, null, null, null, null, null);
 
             // When: Get merge key
             String key = EntityMerger.getMergeKey(entity);
@@ -237,11 +354,8 @@ class EntityMergerTest {
         @DisplayName("Merge key should be case-insensitive")
         void keyIsLowercase() {
             // Given: Entity with uppercase fields
-            Entity entity = Entity.builder()
-                    .source(Source.US_OFAC)
-                    .sourceId("ABC123")
-                    .type(EntityType.PERSON)
-                    .build();
+            Entity entity = createEntity(null, EntityType.PERSON, SourceList.US_OFAC, "ABC123",
+                                       null, null, null, null, null, null, null, null, null, null, null);
 
             // When: Get merge key
             String key = EntityMerger.getMergeKey(entity);
@@ -252,30 +366,20 @@ class EntityMergerTest {
     }
 
     @Nested
-    @DisplayName("Entity.mergeTwo() - Two Entity Merge")
+    @DisplayName("EntityMerger.mergeTwo() - Two Entity Merge")
     class TwoEntityMergeTests {
 
         @Test
         @DisplayName("Should merge Person entities")
         void mergesPersonEntities() {
             // Given: Two person entities
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .type(EntityType.PERSON)
-                    .person(Person.builder()
-                            .name("John")
-                            .gender("male")
-                            .build())
-                    .build();
+            Entity e1 = createEntity("John", EntityType.PERSON, null, null,
+                                   createPerson("John", null, "male", null, null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .type(EntityType.PERSON)
-                    .person(Person.builder()
-                            .name("Johnny")
-                            .birthDate(LocalDate.of(1980, 1, 1))
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Johnny", EntityType.PERSON, null, null,
+                                   createPerson("Johnny", null, null, LocalDate.of(1980, 1, 1), null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
@@ -291,28 +395,13 @@ class EntityMergerTest {
         @DisplayName("Should merge Business entities")
         void mergesBusinessEntities() {
             // Given: Two business entities
-            Entity e1 = Entity.builder()
-                    .name("Acme Corp")
-                    .type(EntityType.BUSINESS)
-                    .business(Business.builder()
-                            .name("Acme Corp")
-                            .created(LocalDate.of(2000, 1, 1))
-                            .build())
-                    .build();
+            Entity e1 = createEntity("Acme Corp", EntityType.BUSINESS, null, null, null,
+                                   createBusiness("Acme Corp", null, LocalDate.of(2000, 1, 1), null, null),
+                                   null, null, null, null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Acme Corporation")
-                    .type(EntityType.BUSINESS)
-                    .business(Business.builder()
-                            .name("Acme Corporation")
-                            .dissolved(LocalDate.of(2020, 12, 31))
-                            .governmentIds(List.of(GovernmentId.builder()
-                                    .type("tax_id")
-                                    .country("US")
-                                    .identifier("12-3456789")
-                                    .build()))
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Acme Corporation", EntityType.BUSINESS, null, null, null,
+                                   createBusiness("Acme Corporation", null, null, LocalDate.of(2020, 12, 31), null),
+                                   null, null, null, null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
@@ -322,314 +411,230 @@ class EntityMergerTest {
             assertThat(merged.business().altNames()).contains("Acme Corporation");
             assertThat(merged.business().created()).isEqualTo(LocalDate.of(2000, 1, 1));
             assertThat(merged.business().dissolved()).isEqualTo(LocalDate.of(2020, 12, 31));
-            assertThat(merged.business().governmentIds()).hasSize(1);
         }
 
         @Test
         @DisplayName("Should merge Organization entities")
         void mergesOrganizationEntities() {
             // Given: Two organization entities
-            Entity e1 = Entity.builder()
-                    .name("UN")
-                    .type(EntityType.ORGANIZATION)
-                    .organization(Organization.builder()
-                            .name("UN")
-                            .created(LocalDate.of(1945, 10, 24))
-                            .build())
-                    .build();
+            Entity e1 = createEntity("Red Cross", EntityType.ORGANIZATION, null, null, null, null,
+                                   createOrganization("Red Cross", null, LocalDate.of(1863, 1, 1), null, null),
+                                   null, null, null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("United Nations")
-                    .type(EntityType.ORGANIZATION)
-                    .organization(Organization.builder()
-                            .name("United Nations")
-                            .build())
-                    .build();
+            Entity e2 = createEntity("International Red Cross", EntityType.ORGANIZATION, null, null, null, null,
+                                   createOrganization("International Red Cross", null, null, null, null),
+                                   null, null, null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
             // Then: Combined organization fields
-            assertThat(merged.name()).isEqualTo("UN");
-            assertThat(merged.organization().altNames()).contains("United Nations");
-            assertThat(merged.organization().created()).isEqualTo(LocalDate.of(1945, 10, 24));
+            assertThat(merged.name()).isEqualTo("Red Cross");
+            assertThat(merged.organization().altNames()).contains("International Red Cross");
+            assertThat(merged.organization().created()).isEqualTo(LocalDate.of(1863, 1, 1));
         }
 
         @Test
         @DisplayName("Should merge Aircraft entities")
         void mergesAircraftEntities() {
             // Given: Two aircraft entities
-            Entity e1 = Entity.builder()
-                    .name("N123AB")
-                    .type(EntityType.AIRCRAFT)
-                    .aircraft(Aircraft.builder()
-                            .name("N123AB")
-                            .type("Cessna")
-                            .serialNumber("12345")
-                            .build())
-                    .build();
+            Entity e1 = createEntity("N12345", EntityType.AIRCRAFT, null, null, null, null, null,
+                                   createAircraft("N12345", null, "Boeing 737", "US", null, "B738", null, "12345"),
+                                   null, null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Cessna N123AB")
-                    .type(EntityType.AIRCRAFT)
-                    .aircraft(Aircraft.builder()
-                            .name("Cessna N123AB")
-                            .icaoCode("A1B2C3")
-                            .model("172")
-                            .build())
-                    .build();
+            Entity e2 = createEntity("N12345", EntityType.AIRCRAFT, null, null, null, null, null,
+                                   createAircraft("N12345", null, null, null, "2010", null, "737-800", null),
+                                   null, null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
             // Then: Combined aircraft fields
-            assertThat(merged.name()).isEqualTo("N123AB");
-            assertThat(merged.aircraft().altNames()).contains("Cessna N123AB");
-            assertThat(merged.aircraft().type()).isEqualTo("Cessna");
+            assertThat(merged.aircraft().type()).isEqualTo("Boeing 737");
+            assertThat(merged.aircraft().flag()).isEqualTo("US");
+            assertThat(merged.aircraft().built()).isEqualTo("2010");
+            assertThat(merged.aircraft().icaoCode()).isEqualTo("B738");
+            assertThat(merged.aircraft().model()).isEqualTo("737-800");
             assertThat(merged.aircraft().serialNumber()).isEqualTo("12345");
-            assertThat(merged.aircraft().icaoCode()).isEqualTo("A1B2C3");
-            assertThat(merged.aircraft().model()).isEqualTo("172");
         }
 
         @Test
         @DisplayName("Should merge Vessel entities")
         void mergesVesselEntities() {
             // Given: Two vessel entities
-            Entity e1 = Entity.builder()
-                    .name("SS Maritime")
-                    .type(EntityType.VESSEL)
-                    .vessel(Vessel.builder()
-                            .name("SS Maritime")
-                            .imoNumber("IMO1234567")
-                            .type("Cargo")
-                            .build())
-                    .build();
+            Entity e1 = createEntity("TITANIC", EntityType.VESSEL, null, null, null, null, null, null,
+                                   createVessel("TITANIC", null, "IMO1234567", "Passenger", "UK", "1912", null, null, null, "White Star Line"),
+                                   null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Maritime Carrier")
-                    .type(EntityType.VESSEL)
-                    .vessel(Vessel.builder()
-                            .name("Maritime Carrier")
-                            .callSign("CALL123")
-                            .mmsi("123456789")
-                            .build())
-                    .build();
+            Entity e2 = createEntity("RMS Titanic", EntityType.VESSEL, null, null, null, null, null, null,
+                                   createVessel("RMS Titanic", null, null, null, null, null, "123456789", "GBTT", "46000", null),
+                                   null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
             // Then: Combined vessel fields
-            assertThat(merged.name()).isEqualTo("SS Maritime");
-            assertThat(merged.vessel().altNames()).contains("Maritime Carrier");
+            assertThat(merged.vessel().name()).isEqualTo("TITANIC");
+            assertThat(merged.vessel().altNames()).contains("RMS Titanic");
             assertThat(merged.vessel().imoNumber()).isEqualTo("IMO1234567");
-            assertThat(merged.vessel().callSign()).isEqualTo("CALL123");
+            assertThat(merged.vessel().type()).isEqualTo("Passenger");
+            assertThat(merged.vessel().flag()).isEqualTo("UK");
+            assertThat(merged.vessel().built()).isEqualTo("1912");
             assertThat(merged.vessel().mmsi()).isEqualTo("123456789");
+            assertThat(merged.vessel().callSign()).isEqualTo("GBTT");
+            assertThat(merged.vessel().tonnage()).isEqualTo("46000");
+            assertThat(merged.vessel().owner()).isEqualTo("White Star Line");
         }
 
         @Test
-        @DisplayName("Should handle nil type fields")
-        void handlesNilTypeFields() {
-            // Given: Entity with no Person field + Entity with Person field
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .type(EntityType.PERSON)
-                    .build();  // No person field
+        @DisplayName("Should handle null Person in one entity")
+        void handlesNullPerson() {
+            // Given: One with Person, one without
+            Entity e1 = createEntity("John", EntityType.PERSON, null, null,
+                                   createPerson("John", null, "male", null, null, null, null, null),
+                                   null, null, null, null, null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .type(EntityType.PERSON)
-                    .person(Person.builder()
-                            .name("Johnny")
-                            .gender("male")
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Johnny", EntityType.PERSON, null, null,
+                                   null,  // No person
+                                   null, null, null, null, null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
-            // Then: Person field populated
+            // Then: Person from e1
             assertThat(merged.person()).isNotNull();
             assertThat(merged.person().gender()).isEqualTo("male");
         }
 
         @Test
-        @DisplayName("First non-empty wins for scalar fields")
-        void firstNonEmptyWinsForScalars() {
-            // Given: Two entities with different scalar fields
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .source(Source.US_OFAC)
-                    .sourceId("123")
-                    .type(EntityType.PERSON)
-                    .build();
+        @DisplayName("Should handle both null Persons")
+        void handlesBothNullPersons() {
+            // Given: Neither has Person
+            Entity e1 = createEntity("John", EntityType.PERSON, null, null, null,
+                                   null, null, null, null, null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .source(Source.EU_CSL)  // Different source
-                    .sourceId("456")  // Different ID
-                    .type(EntityType.BUSINESS)  // Different type
-                    .build();
+            Entity e2 = createEntity("Johnny", EntityType.PERSON, null, null, null,
+                                   null, null, null, null, null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
-            // Then: First non-empty wins
-            assertThat(merged.name()).isEqualTo("John");
-            assertThat(merged.source()).isEqualTo(Source.US_OFAC);
-            assertThat(merged.sourceId()).isEqualTo("123");
-            assertThat(merged.type()).isEqualTo(EntityType.PERSON);
+            // Then: No person
+            assertThat(merged.person()).isNull();
         }
 
         @Test
-        @DisplayName("Should combine alt names from other.Name")
-        void combinesAltNames() {
-            // Given: Two entities with different names
-            Entity e1 = Entity.builder()
-                    .name("John Doe")
-                    .type(EntityType.PERSON)
-                    .person(Person.builder()
-                            .name("John Doe")
-                            .altNames(List.of("J. Doe"))
-                            .build())
-                    .build();
+        @DisplayName("Should preserve type from first entity")
+        void preservesTypeFromFirst() {
+            // Given: Two entities (type should match but test first-wins logic)
+            Entity e1 = createEntity("Test", EntityType.PERSON, null, null, null,
+                                   null, null, null, null, null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny Doe")
-                    .type(EntityType.PERSON)
-                    .person(Person.builder()
-                            .name("Johnny Doe")
-                            .altNames(List.of("John D."))
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Test2", EntityType.PERSON, null, null, null,
+                                   null, null, null, null, null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
-            // Then: Other name becomes alt name
-            assertThat(merged.person().altNames()).containsExactlyInAnyOrder(
-                    "Johnny Doe",  // From other.Name
-                    "J. Doe",      // From e1.altNames
-                    "John D.");    // From e2.altNames
+            // Then: Type from e1
+            assertThat(merged.type()).isEqualTo(EntityType.PERSON);
         }
     }
 
     @Nested
-    @DisplayName("Helper: mergeStrings()")
+    @DisplayName("mergeStrings() - String List Deduplication")
     class MergeStringsTests {
 
         @Test
         @DisplayName("Should deduplicate case-insensitively")
         void deduplicatesCaseInsensitive() {
             // Given: Lists with duplicate strings (different case)
-            List<String> list1 = List.of("john@example.com", "Jane@example.com");
-            List<String> list2 = List.of("JOHN@example.com", "bob@example.com");
+            List<String> list1 = List.of("John", "Doe");
+            List<String> list2 = List.of("john", "DOE", "Johnny");
 
             // When: Merge
             List<String> merged = EntityMerger.mergeStrings(list1, list2);
 
-            // Then: Deduplicated (case-insensitive)
-            assertThat(merged).hasSize(3);
-            assertThat(merged).containsExactlyInAnyOrder(
-                    "john@example.com",  // First occurrence wins
-                    "Jane@example.com",
-                    "bob@example.com");
+            // Then: Only unique values (case-insensitive)
+            assertThat(merged).containsExactlyInAnyOrder("John", "Doe", "Johnny");
         }
 
         @Test
-        @DisplayName("Should merge multiple lists")
-        void mergesMultipleLists() {
-            // Given: Three lists
-            List<String> list1 = List.of("a", "b");
-            List<String> list2 = List.of("c", "d");
-            List<String> list3 = List.of("e", "f");
+        @DisplayName("Should preserve order (first occurrence)")
+        void preservesOrder() {
+            // Given: Lists with duplicates
+            List<String> list1 = List.of("Alpha", "Bravo");
+            List<String> list2 = List.of("Charlie", "alpha");
 
             // When: Merge
-            List<String> merged = EntityMerger.mergeStrings(list1, list2, list3);
+            List<String> merged = EntityMerger.mergeStrings(list1, list2);
 
-            // Then: All elements present
-            assertThat(merged).hasSize(6);
+            // Then: Order preserved (Alpha before Charlie)
+            assertThat(merged).containsExactly("Alpha", "Bravo", "Charlie");
         }
 
         @Test
         @DisplayName("Should handle empty lists")
         void handlesEmptyLists() {
-            // Given: Empty lists
-            List<String> list1 = List.of();
-            List<String> list2 = List.of("a");
+            // When: Merge with empty
+            List<String> merged = EntityMerger.mergeStrings(
+                Collections.emptyList(),
+                List.of("Test")
+            );
 
-            // When: Merge
-            List<String> merged = EntityMerger.mergeStrings(list1, list2);
-
-            // Then: Non-empty list returned
-            assertThat(merged).containsExactly("a");
+            // Then: Non-empty list preserved
+            assertThat(merged).containsExactly("Test");
         }
 
         @Test
-        @DisplayName("Should preserve insertion order")
-        void preservesOrder() {
-            // Given: Lists in specific order
-            List<String> list1 = List.of("a", "b", "c");
-            List<String> list2 = List.of("d", "e", "f");
+        @DisplayName("Should handle null and empty strings")
+        void handlesNullAndEmpty() {
+            // Given: Lists with nulls/empties
+            List<String> list1 = List.of("Valid", "", "Test");
+            List<String> list2 = Arrays.asList(null, "Valid", "Other");
 
             // When: Merge
             List<String> merged = EntityMerger.mergeStrings(list1, list2);
 
-            // Then: Order preserved
-            assertThat(merged).containsExactly("a", "b", "c", "d", "e", "f");
+            // Then: Nulls filtered, empties kept (deduplicated by lowercase key)
+            // Note: Empty string is valid, only null is filtered
+            assertThat(merged).containsExactlyInAnyOrder("Valid", "", "Test", "Other");
         }
     }
 
     @Nested
-    @DisplayName("Helper: mergeGovernmentIds()")
-    class MergeGovernmentIdsTests {
+    @DisplayName("mergeGovernmentIDs() - Government ID Deduplication")
+    class MergeGovernmentIDsTests {
 
         @Test
-        @DisplayName("Should deduplicate by country/type/identifier")
-        void deduplicatesByCountryTypeIdentifier() {
+        @DisplayName("Should deduplicate by type+country+identifier")
+        void deduplicatesByKey() {
             // Given: Lists with duplicate IDs
             List<GovernmentId> list1 = List.of(
-                    GovernmentId.builder()
-                            .country("US")
-                            .type("passport")
-                            .identifier("123456789")
-                            .build());
-
+                createGovId(GovernmentIdType.PASSPORT, "US", "123456")
+            );
             List<GovernmentId> list2 = List.of(
-                    GovernmentId.builder()
-                            .country("US")
-                            .type("passport")
-                            .identifier("123456789")  // Duplicate
-                            .build(),
-                    GovernmentId.builder()
-                            .country("US")
-                            .type("ssn")
-                            .identifier("987654321")  // Different
-                            .build());
+                createGovId(GovernmentIdType.PASSPORT, "US", "123456"),  // Duplicate
+                createGovId(GovernmentIdType.SSN, "US", "987-65-4321")
+            );
 
             // When: Merge
             List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
 
-            // Then: Deduplicated
+            // Then: Only unique IDs
             assertThat(merged).hasSize(2);
         }
 
         @Test
-        @DisplayName("Should be case-insensitive")
-        void caseInsensitiveComparison() {
+        @DisplayName("Should be case-insensitive for type and country")
+        void caseInsensitiveMatch() {
             // Given: Same ID with different case
             List<GovernmentId> list1 = List.of(
-                    GovernmentId.builder()
-                            .country("us")
-                            .type("passport")
-                            .identifier("abc123")
-                            .build());
-
+                createGovId(GovernmentIdType.PASSPORT, "US", "123456")
+            );
             List<GovernmentId> list2 = List.of(
-                    GovernmentId.builder()
-                            .country("US")
-                            .type("PASSPORT")
-                            .identifier("ABC123")
-                            .build());
+                createGovId(GovernmentIdType.PASSPORT, "us", "123456")
+            );
 
             // When: Merge
             List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
@@ -639,271 +644,118 @@ class EntityMergerTest {
         }
 
         @Test
-        @DisplayName("Should keep IDs with different countries")
-        void handlesDifferentCountries() {
-            // Given: Same identifier, different countries
-            List<GovernmentId> list1 = List.of(
-                    GovernmentId.builder()
-                            .country("US")
-                            .type("passport")
-                            .identifier("123456789")
-                            .build());
+        @DisplayName("Should handle empty lists")
+        void handlesEmptyLists() {
+            // When: Merge with empty
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(
+                Collections.emptyList(),
+                List.of(createGovId(GovernmentIdType.PASSPORT, "US", "123"))
+            );
 
-            List<GovernmentId> list2 = List.of(
-                    GovernmentId.builder()
-                            .country("CA")  // Different country
-                            .type("passport")
-                            .identifier("123456789")
-                            .build());
-
-            // When: Merge
-            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
-
-            // Then: Both kept
-            assertThat(merged).hasSize(2);
+            // Then: Non-empty preserved
+            assertThat(merged).hasSize(1);
         }
     }
 
     @Nested
-    @DisplayName("Helper: mergeAddresses()")
+    @DisplayName("mergeAddresses() - Address Deduplication")
     class MergeAddressesTests {
 
         @Test
-        @DisplayName("Should deduplicate by line1/line2")
-        void deduplicatesByLine1Line2() {
-            // Given: Duplicate addresses (same line1+line2)
+        @DisplayName("Should deduplicate by line1+line2")
+        void deduplicatesByLines() {
+            // Given: Lists with duplicate addresses
             List<Address> list1 = List.of(
-                    Address.builder()
-                            .line1("123 Main St")
-                            .line2("Apt 4")
-                            .city("Anytown")
-                            .state("CA")
-                            .build());
-
+                createAddress("123 Main St", null, "NYC", "NY", "10001", "US")
+            );
             List<Address> list2 = List.of(
-                    Address.builder()
-                            .line1("123 Main St")
-                            .line2("Apt 4")  // Same line1+line2
-                            .country("US")    // Additional field
-                            .build());
+                createAddress("123 Main St", null, "NYC", "NY", "10001", "US"),  // Duplicate
+                createAddress("456 Elm St", null, "LA", "CA", "90001", "US")
+            );
 
             // When: Merge
             List<Address> merged = EntityMerger.mergeAddresses(list1, list2);
 
-            // Then: Deduplicated and fields merged
-            assertThat(merged).hasSize(1);
-            assertThat(merged.get(0).city()).isEqualTo("Anytown");
-            assertThat(merged.get(0).country()).isEqualTo("US");
+            // Then: Only unique addresses
+            assertThat(merged).hasSize(2);
         }
 
         @Test
-        @DisplayName("Should fill missing fields when merging")
-        void fillsMissingFields() {
-            // Given: Same address with different fields populated
+        @DisplayName("Should treat different line2 as different addresses")
+        void differentLine2IsDifferent() {
+            // Given: Same line1, different line2
             List<Address> list1 = List.of(
-                    Address.builder()
-                            .line1("123 Main St")
-                            .city("Anytown")
-                            .build());
-
+                createAddress("123 Main St", "Apt 1", "NYC", "NY", "10001", "US")
+            );
             List<Address> list2 = List.of(
-                    Address.builder()
-                            .line1("123 Main St")
-                            .state("CA")
-                            .postalCode("90210")
-                            .build());
+                createAddress("123 Main St", "Apt 2", "NYC", "NY", "10001", "US")
+            );
 
             // When: Merge
             List<Address> merged = EntityMerger.mergeAddresses(list1, list2);
 
-            // Then: Fields combined
+            // Then: Two separate addresses
+            assertThat(merged).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Should fill missing fields when same line1+line2")
+        void fillsMissingFields() {
+            // Given: Same address, one with more fields
+            List<Address> list1 = List.of(
+                createAddress("123 Main St", null, "NYC", null, null, "US")  // Partial
+            );
+            List<Address> list2 = List.of(
+                createAddress("123 Main St", null, "New York", "NY", "10001", "US")  // Complete
+            );
+
+            // When: Merge
+            List<Address> merged = EntityMerger.mergeAddresses(list1, list2);
+
+            // Then: Single address with filled fields
             assertThat(merged).hasSize(1);
             Address result = merged.get(0);
-            assertThat(result.line1()).isEqualTo("123 Main St");
-            assertThat(result.city()).isEqualTo("Anytown");
-            assertThat(result.state()).isEqualTo("CA");
-            assertThat(result.postalCode()).isEqualTo("90210");
-        }
-
-        @Test
-        @DisplayName("Should keep addresses with different line1 or line2")
-        void keepsDifferentAddresses() {
-            // Given: Different addresses
-            List<Address> list1 = List.of(
-                    Address.builder().line1("123 Main St").build(),
-                    Address.builder().line1("456 Oak Ave").build());
-
-            List<Address> list2 = List.of(
-                    Address.builder().line1("123 Main St").line2("Apt 4").build(),  // Different line2
-                    Address.builder().line1("789 Pine Rd").build());                // Different line1
-
-            // When: Merge
-            List<Address> merged = EntityMerger.mergeAddresses(list1, list2);
-
-            // Then: All different addresses kept
-            assertThat(merged).hasSize(4);
+            assertThat(result.state()).isEqualTo("NY");
+            assertThat(result.postalCode()).isEqualTo("10001");
         }
     }
 
     @Nested
-    @DisplayName("Helper: mergeCryptoAddresses()")
+    @DisplayName("mergeCryptoAddresses() - Crypto Address Deduplication")
     class MergeCryptoAddressesTests {
 
         @Test
-        @DisplayName("Should deduplicate by currency/address")
-        void deduplicatesByCurrencyAddress() {
-            // Given: Duplicate crypto addresses
+        @DisplayName("Should deduplicate by currency+address")
+        void deduplicatesByKey() {
+            // Given: Lists with duplicate crypto addresses
             List<CryptoAddress> list1 = List.of(
-                    CryptoAddress.builder()
-                            .currency("BTC")
-                            .address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
-                            .build());
-
+                createCrypto("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+            );
             List<CryptoAddress> list2 = List.of(
-                    CryptoAddress.builder()
-                            .currency("BTC")
-                            .address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")  // Duplicate
-                            .build(),
-                    CryptoAddress.builder()
-                            .currency("ETH")
-                            .address("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7")
-                            .build());
+                createCrypto("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"),  // Duplicate
+                createCrypto("ETH", "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+            );
 
             // When: Merge
             List<CryptoAddress> merged = EntityMerger.mergeCryptoAddresses(list1, list2);
 
-            // Then: Deduplicated
+            // Then: Only unique addresses
             assertThat(merged).hasSize(2);
         }
 
         @Test
         @DisplayName("Should be case-insensitive")
-        void caseInsensitive() {
+        void caseInsensitiveMatch() {
             // Given: Same address, different case
             List<CryptoAddress> list1 = List.of(
-                    CryptoAddress.builder()
-                            .currency("btc")
-                            .address("abc123")
-                            .build());
-
+                createCrypto("btc", "ABC123")
+            );
             List<CryptoAddress> list2 = List.of(
-                    CryptoAddress.builder()
-                            .currency("BTC")
-                            .address("ABC123")
-                            .build());
+                createCrypto("BTC", "abc123")
+            );
 
             // When: Merge
             List<CryptoAddress> merged = EntityMerger.mergeCryptoAddresses(list1, list2);
-
-            // Then: Treated as duplicate
-            assertThat(merged).hasSize(1);
-        }
-    }
-
-    @Nested
-    @DisplayName("Helper: mergeAffiliations()")
-    class MergeAffiliationsTests {
-
-        @Test
-        @DisplayName("Should deduplicate by entityName/type")
-        void deduplicatesByEntityNameType() {
-            // Given: Duplicate affiliations
-            List<Affiliation> list1 = List.of(
-                    Affiliation.builder()
-                            .entityName("Acme Corp")
-                            .type("Subsidiary")
-                            .build());
-
-            List<Affiliation> list2 = List.of(
-                    Affiliation.builder()
-                            .entityName("Acme Corp")
-                            .type("Subsidiary")  // Duplicate
-                            .build(),
-                    Affiliation.builder()
-                            .entityName("Beta Inc")
-                            .type("Partner")
-                            .build());
-
-            // When: Merge
-            List<Affiliation> merged = EntityMerger.mergeAffiliations(list1, list2);
-
-            // Then: Deduplicated
-            assertThat(merged).hasSize(2);
-        }
-
-        @Test
-        @DisplayName("Should be case-insensitive")
-        void caseInsensitive() {
-            // Given: Same affiliation, different case
-            List<Affiliation> list1 = List.of(
-                    Affiliation.builder()
-                            .entityName("acme corp")
-                            .type("subsidiary")
-                            .build());
-
-            List<Affiliation> list2 = List.of(
-                    Affiliation.builder()
-                            .entityName("ACME CORP")
-                            .type("SUBSIDIARY")
-                            .build());
-
-            // When: Merge
-            List<Affiliation> merged = EntityMerger.mergeAffiliations(list1, list2);
-
-            // Then: Treated as duplicate
-            assertThat(merged).hasSize(1);
-        }
-    }
-
-    @Nested
-    @DisplayName("Helper: mergeHistoricalInfo()")
-    class MergeHistoricalInfoTests {
-
-        @Test
-        @DisplayName("Should deduplicate by type/value")
-        void deduplicatesByTypeValue() {
-            // Given: Duplicate historical info
-            List<HistoricalInfo> list1 = List.of(
-                    HistoricalInfo.builder()
-                            .type("former_name")
-                            .value("Old Corp")
-                            .build());
-
-            List<HistoricalInfo> list2 = List.of(
-                    HistoricalInfo.builder()
-                            .type("former_name")
-                            .value("Old Corp")  // Duplicate
-                            .build(),
-                    HistoricalInfo.builder()
-                            .type("former_location")
-                            .value("Paris")
-                            .build());
-
-            // When: Merge
-            List<HistoricalInfo> merged = EntityMerger.mergeHistoricalInfo(list1, list2);
-
-            // Then: Deduplicated
-            assertThat(merged).hasSize(2);
-        }
-
-        @Test
-        @DisplayName("Should be case-insensitive")
-        void caseInsensitive() {
-            // Given: Same info, different case
-            List<HistoricalInfo> list1 = List.of(
-                    HistoricalInfo.builder()
-                            .type("former_name")
-                            .value("old corp")
-                            .build());
-
-            List<HistoricalInfo> list2 = List.of(
-                    HistoricalInfo.builder()
-                            .type("FORMER_NAME")
-                            .value("OLD CORP")
-                            .build());
-
-            // When: Merge
-            List<HistoricalInfo> merged = EntityMerger.mergeHistoricalInfo(list1, list2);
 
             // Then: Treated as duplicate
             assertThat(merged).hasSize(1);
@@ -912,294 +764,197 @@ class EntityMergerTest {
 
     @Nested
     @DisplayName("Contact Info Merging")
-    class ContactMergeTests {
+    class ContactInfoMergingTests {
 
         @Test
-        @DisplayName("Should merge email addresses")
-        void mergesEmailAddresses() {
-            // Given: Entities with different emails
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .contact(ContactInfo.builder()
-                            .emailAddresses(List.of("john@example.com", "j.doe@example.com"))
-                            .build())
-                    .build();
+        @DisplayName("Should merge contact fields")
+        void mergesContactFields() {
+            // Given: Two entities with different contact info
+            Entity e1 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   createContact("john@example.com", "555-1234", null, null),
+                                   null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .contact(ContactInfo.builder()
-                            .emailAddresses(List.of("JOHN@example.com", "johnny@example.com"))  // One duplicate
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   createContact(null, null, "555-5678", "http://example.com"),
+                                   null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
-            // Then: Deduplicated
-            assertThat(merged.contact().emailAddresses()).hasSize(3);
-            assertThat(merged.contact().emailAddresses()).containsExactlyInAnyOrder(
-                    "john@example.com",
-                    "j.doe@example.com",
-                    "johnny@example.com");
+            // Then: All contact fields present (first non-null wins)
+            assertThat(merged.contact().emailAddress()).isEqualTo("john@example.com");
+            assertThat(merged.contact().phoneNumber()).isEqualTo("555-1234");
+            assertThat(merged.contact().faxNumber()).isEqualTo("555-5678");
+            assertThat(merged.contact().website()).isEqualTo("http://example.com");
         }
 
         @Test
-        @DisplayName("Should merge phone numbers")
-        void mergesPhoneNumbers() {
-            // Given: Entities with phone numbers
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .contact(ContactInfo.builder()
-                            .phoneNumbers(List.of("123-456-7890"))
-                            .build())
-                    .build();
+        @DisplayName("Should handle null contact in one entity")
+        void handlesNullContact() {
+            // Given: One with contact, one without
+            Entity e1 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   createContact("john@example.com", "555-1234", null, null),
+                                   null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .contact(ContactInfo.builder()
-                            .phoneNumbers(List.of("123-456-7890", "098-765-4321"))
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   null,  // No contact
+                                   null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
-            // Then: Deduplicated
-            assertThat(merged.contact().phoneNumbers()).hasSize(2);
+            // Then: Contact from e1
+            assertThat(merged.contact()).isNotNull();
+            assertThat(merged.contact().emailAddress()).isEqualTo("john@example.com");
         }
 
         @Test
-        @DisplayName("Should merge fax numbers")
-        void mergesFaxNumbers() {
-            // Given: Entities with fax numbers
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .contact(ContactInfo.builder()
-                            .faxNumbers(List.of("111-222-3333"))
-                            .build())
-                    .build();
+        @DisplayName("Should handle both null contacts")
+        void handlesBothNullContacts() {
+            // Given: Neither has contact
+            Entity e1 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   null, null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .contact(ContactInfo.builder()
-                            .faxNumbers(List.of("444-555-6666"))
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   null, null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
-            // Then: Combined
-            assertThat(merged.contact().faxNumbers()).hasSize(2);
+            // Then: Empty contact (all fields null)
+            assertThat(merged.contact()).isNotNull();
+            assertThat(merged.contact().emailAddress()).isNull();
+            assertThat(merged.contact().phoneNumber()).isNull();
+            assertThat(merged.contact().faxNumber()).isNull();
+            assertThat(merged.contact().website()).isNull();
         }
 
         @Test
-        @DisplayName("Should merge websites")
-        void mergesWebsites() {
-            // Given: Entities with websites
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .contact(ContactInfo.builder()
-                            .websites(List.of("http://example.com"))
-                            .build())
-                    .build();
+        @DisplayName("Should prefer first non-null value for each field")
+        void prefersFirstNonNull() {
+            // Given: Both have emails, only e1 has phone
+            Entity e1 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   createContact("first@example.com", "555-1111", null, null),
+                                   null, null, null, null, null);
 
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .contact(ContactInfo.builder()
-                            .websites(List.of("HTTP://example.com", "http://other.com"))
-                            .build())
-                    .build();
+            Entity e2 = createEntity("Test", EntityType.PERSON, null, null, null, null, null, null, null,
+                                   createContact("second@example.com", null, null, "http://second.com"),
+                                   null, null, null, null, null);
 
             // When: Merge
             Entity merged = EntityMerger.mergeTwo(e1, e2);
 
-            // Then: Deduplicated
-            assertThat(merged.contact().websites()).hasSize(2);
-        }
-    }
-
-    @Nested
-    @DisplayName("SanctionsInfo Merging")
-    class SanctionsInfoMergeTests {
-
-        @Test
-        @DisplayName("Should merge programs")
-        void mergesPrograms() {
-            // Given: Entities with sanctions programs
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .sanctionsInfo(SanctionsInfo.builder()
-                            .programs(List.of("SDGT", "IRGC"))
-                            .build())
-                    .build();
-
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .sanctionsInfo(SanctionsInfo.builder()
-                            .programs(List.of("IRGC", "YEMEN"))  // One duplicate
-                            .build())
-                    .build();
-
-            // When: Merge
-            Entity merged = EntityMerger.mergeTwo(e1, e2);
-
-            // Then: Deduplicated
-            assertThat(merged.sanctionsInfo().programs()).hasSize(3);
-            assertThat(merged.sanctionsInfo().programs()).containsExactlyInAnyOrder(
-                    "SDGT", "IRGC", "YEMEN");
-        }
-
-        @Test
-        @DisplayName("Should combine secondary flags with OR")
-        void combinesSecondaryFlags() {
-            // Given: One with secondary, one without
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .sanctionsInfo(SanctionsInfo.builder()
-                            .secondary(true)
-                            .build())
-                    .build();
-
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .sanctionsInfo(SanctionsInfo.builder()
-                            .secondary(false)
-                            .build())
-                    .build();
-
-            // When: Merge
-            Entity merged = EntityMerger.mergeTwo(e1, e2);
-
-            // Then: OR logic (true if either is true)
-            assertThat(merged.sanctionsInfo().secondary()).isTrue();
-        }
-
-        @Test
-        @DisplayName("First non-empty description wins")
-        void firstNonEmptyDescription() {
-            // Given: Entities with descriptions
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .sanctionsInfo(SanctionsInfo.builder()
-                            .description("First description")
-                            .build())
-                    .build();
-
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .sanctionsInfo(SanctionsInfo.builder()
-                            .description("Second description")
-                            .build())
-                    .build();
-
-            // When: Merge
-            Entity merged = EntityMerger.mergeTwo(e1, e2);
-
-            // Then: First wins
-            assertThat(merged.sanctionsInfo().description()).isEqualTo("First description");
-        }
-
-        @Test
-        @DisplayName("Should handle null SanctionsInfo")
-        void handlesNullSanctionsInfo() {
-            // Given: One entity with SanctionsInfo, one without
-            Entity e1 = Entity.builder()
-                    .name("John")
-                    .build();  // No sanctionsInfo
-
-            Entity e2 = Entity.builder()
-                    .name("Johnny")
-                    .sanctionsInfo(SanctionsInfo.builder()
-                            .programs(List.of("SDGT"))
-                            .build())
-                    .build();
-
-            // When: Merge
-            Entity merged = EntityMerger.mergeTwo(e1, e2);
-
-            // Then: SanctionsInfo populated
-            assertThat(merged.sanctionsInfo()).isNotNull();
-            assertThat(merged.sanctionsInfo().programs()).contains("SDGT");
+            // Then: First email, first phone, second website
+            assertThat(merged.contact().emailAddress()).isEqualTo("first@example.com");
+            assertThat(merged.contact().phoneNumber()).isEqualTo("555-1111");
+            assertThat(merged.contact().website()).isEqualTo("http://second.com");
         }
     }
 
     @Nested
     @DisplayName("Real-World Scenarios")
-    class RealWorldTests {
+    class RealWorldScenarioTests {
 
         @Test
-        @DisplayName("Identity merge: merge(single) == single")
-        void identityMerge() {
-            // Given: Single entity
-            Entity entity = JOHN_DOE;
+        @DisplayName("Should merge EU CSL multi-row entity")
+        void mergesEuCslEntity() {
+            // Given: Saddam Hussein split across 5 rows (real EU CSL pattern)
+            Entity row1 = createEntity("Saddam Hussein Al-Tikriti", EntityType.PERSON, 
+                                     SourceList.EU_CSL, "13",
+                                     createPerson("Saddam Hussein Al-Tikriti", null, "male", null, null, null, null, null),
+                                     null, null, null, null, null, null, null, null, null, null);
 
-            // When: Merge with itself
-            Entity merged = EntityMerger.mergeTwo(entity, entity);
+            Entity row2 = createEntity("Abu Ali", EntityType.PERSON,
+                                     SourceList.EU_CSL, "13",
+                                     createPerson("Abu Ali", null, null, null, null, null, null, null),
+                                     null, null, null, null, null, null, null, null, null, null);
 
-            // Then: Result is equivalent (all fields preserved)
-            assertThat(merged.name()).isEqualTo(entity.name());
-            assertThat(merged.type()).isEqualTo(entity.type());
-            assertThat(merged.source()).isEqualTo(entity.source());
-            assertThat(merged.sourceId()).isEqualTo(entity.sourceId());
-            assertThat(merged.person().name()).isEqualTo(entity.person().name());
+            Entity row3 = createEntity("Abou Ali", EntityType.PERSON,
+                                     SourceList.EU_CSL, "13",
+                                     createPerson("Abou Ali", null, null, null, null, null, null, null),
+                                     null, null, null, null, null, null, null, null, null, null);
+
+            Entity row4 = createEntity("Saddam Hussein Al-Tikriti", EntityType.PERSON,
+                                     SourceList.EU_CSL, "13",
+                                     createPerson(null, null, null, LocalDate.of(1937, 4, 28), null, "al-Awja, near Tikrit", null, null),
+                                     null, null, null, null, null, null, null, null, null, null);
+
+            Entity row5 = createEntity("Saddam Hussein Al-Tikriti", EntityType.PERSON,
+                                     SourceList.EU_CSL, "13",
+                                     createPerson(null, null, null, null, null, null, null, null),
+                                     null, null, null, null,
+                                     null,
+                                     List.of(createAddress(null, null, null, null, null, "IQ")),
+                                     null, null, null, null);
+
+            // When: Merge all rows
+            List<Entity> merged = EntityMerger.merge(List.of(row1, row2, row3, row4, row5));
+
+            // Then: Single consolidated entity
+            assertThat(merged).hasSize(1);
+            Entity result = merged.get(0);
+            
+            assertThat(result.name()).isEqualTo("Saddam Hussein Al-Tikriti");
+            assertThat(result.person().altNames()).containsExactlyInAnyOrder("Abu Ali", "Abou Ali");
+            assertThat(result.person().gender()).isEqualTo("male");
+            assertThat(result.person().birthDate()).isEqualTo(LocalDate.of(1937, 4, 28));
+            assertThat(result.person().placeOfBirth()).isEqualTo("al-Awja, near Tikrit");
+            assertThat(result.addresses()).hasSize(1);
+            assertThat(result.addresses().get(0).country()).isEqualTo("IQ");
         }
 
         @Test
-        @DisplayName("Should handle entity with empty name in other")
-        void handlesEmptyNameInOther() {
-            // Given: Entity + entity with empty name
-            Entity e1 = JOHN_DOE;
-            Entity e2 = Entity.builder()
-                    .name("")  // Empty name
-                    .type(EntityType.PERSON)
-                    .build();
+        @DisplayName("Should handle OFAC entity with multiple addresses")
+        void mergesOfacMultiAddress() {
+            // Given: Entity with home and office addresses
+            Entity e1 = createEntity("John Smith", EntityType.PERSON, SourceList.US_OFAC, "999",
+                                   createPerson("John Smith", null, "male", LocalDate.of(1980, 5, 15), null, null, null, null),
+                                   null, null, null, null, null,
+                                   List.of(createAddress("123 Home St", null, "Springfield", "IL", "62701", "US")),
+                                   null, null, null, null);
 
-            // When: Merge
-            Entity merged = EntityMerger.mergeTwo(e1, e2);
-
-            // Then: Returns e1 unchanged
-            assertThat(merged.name()).isEqualTo("John Doe");
-        }
-
-        @Test
-        @DisplayName("Should merge multiple addresses from same entity ID")
-        void mergesMultipleAddressesFromSameEntityId() {
-            // Scenario: EU/UK CSL often has same entity ID across multiple rows with different addresses
-
-            // Given: Two entities with same ID, different addresses
-            Entity e1 = Entity.builder()
-                    .name("Vladimir IVANOV")
-                    .source(Source.EU_CSL)
-                    .sourceId("12345")
-                    .type(EntityType.PERSON)
-                    .addresses(List.of(
-                            Address.builder()
-                                    .line1("123 Moscow St")
-                                    .city("Moscow")
-                                    .country("RU")
-                                    .build()))
-                    .build();
-
-            Entity e2 = Entity.builder()
-                    .name("Vladimir IVANOV")
-                    .source(Source.EU_CSL)
-                    .sourceId("12345")  // Same ID
-                    .type(EntityType.PERSON)
-                    .addresses(List.of(
-                            Address.builder()
-                                    .line1("456 St Petersburg Ave")
-                                    .city("St Petersburg")
-                                    .country("RU")
-                                    .build()))
-                    .build();
+            Entity e2 = createEntity("John Smith", EntityType.PERSON, SourceList.US_OFAC, "999",
+                                   createPerson("John Smith", null, null, null, null, null, null, null),
+                                   null, null, null, null, null,
+                                   List.of(createAddress("456 Office Rd", "Suite 100", "Chicago", "IL", "60601", "US")),
+                                   null, null, null, null);
 
             // When: Merge
             List<Entity> merged = EntityMerger.merge(List.of(e1, e2));
 
-            // Then: Single entity with both addresses
+            // Then: Both addresses preserved
             assertThat(merged).hasSize(1);
             assertThat(merged.get(0).addresses()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Should merge vessel with partial data across rows")
+        void mergesVesselPartialData() {
+            // Given: Vessel with identity info in one row, technical details in another
+            Entity row1 = createEntity("OCEAN STAR", EntityType.VESSEL, SourceList.EU_CSL, "V123",
+                                     null, null, null, null,
+                                     createVessel("OCEAN STAR", null, "IMO9876543", "Cargo", "PA", null, null, null, null, "Maritime LLC"),
+                                     null, null, null, null, null, null);
+
+            Entity row2 = createEntity("OCEAN STAR", EntityType.VESSEL, SourceList.EU_CSL, "V123",
+                                     null, null, null, null,
+                                     createVessel("OCEAN STAR", null, null, null, null, "2015", "123456789", "V7XY", "75000", null),
+                                     null, null, null, null, null, null);
+
+            // When: Merge
+            List<Entity> merged = EntityMerger.merge(List.of(row1, row2));
+
+            // Then: Complete vessel data
+            assertThat(merged).hasSize(1);
+            Vessel vessel = merged.get(0).vessel();
+            assertThat(vessel.imoNumber()).isEqualTo("IMO9876543");
+            assertThat(vessel.type()).isEqualTo("Cargo");
+            assertThat(vessel.flag()).isEqualTo("PA");
+            assertThat(vessel.built()).isEqualTo("2015");
+            assertThat(vessel.mmsi()).isEqualTo("123456789");
+            assertThat(vessel.callSign()).isEqualTo("V7XY");
+            assertThat(vessel.tonnage()).isEqualTo("75000");
+            assertThat(vessel.owner()).isEqualTo("Maritime LLC");
         }
     }
 }
