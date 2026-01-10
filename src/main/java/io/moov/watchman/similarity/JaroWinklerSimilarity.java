@@ -312,8 +312,10 @@ public class JaroWinklerSimilarity implements SimilarityService {
     /**
      * Calculate best-pair Jaro score across token combinations.
      * Handles word order variations in multi-word names.
+     * 
+     * Package-private for use by NameScorer.
      */
-    private double bestPairJaro(String[] tokens1, String[] tokens2) {
+    double bestPairJaro(String[] tokens1, String[] tokens2) {
         if (tokens1.length == 0 || tokens2.length == 0) {
             return 0.0;
         }

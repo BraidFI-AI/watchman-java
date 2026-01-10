@@ -418,4 +418,69 @@ public interface EntityScorer {
 
         return count;
     }
+
+    /**
+     * Calculate final weighted score from component scores.
+     * 
+     * Matches Go's calculateFinalScore() behavior from pkg/search/similarity.go.
+     * Only non-zero scores are included in the weighted average.
+     * 
+     * Component weights (matching Go defaults):
+     * - name: 40.0
+     * - address: 10.0
+     * - dates: 15.0
+     * - identifiers: 15.0
+     * - supportingInfo: 15.0
+     * - contactInfo: 5.0
+     * 
+     * @param components Map of component names to scores [0.0, 1.0]
+     * @return Weighted average score [0.0, 1.0], or 0.0 if no components
+     */
+    static double calculateFinalScore(java.util.Map<String, Double> components) {
+        // Default weights matching Go configuration
+        java.util.Map<String, Double> defaultWeights = java.util.Map.of(
+            "name", 40.0,
+            "address", 10.0,
+            "dates", 15.0,
+            "identifiers", 15.0,
+            "supportingInfo", 15.0,
+            "contactInfo", 5.0
+        );
+        
+        return calculateFinalScore(components, defaultWeights);
+    }
+
+    /**
+     * Calculate final weighted score with custom weights.
+     * 
+     * @param components Map of component names to scores [0.0, 1.0]
+     * @param weights Map of component names to weights
+     * @return Weighted average score [0.0, 1.0], or 0.0 if no components
+     */
+    static double calculateFinalScore(
+        java.util.Map<String, Double> components,
+        java.util.Map<String, Double> weights
+    ) {
+        double totalScore = 0.0;
+        double totalWeight = 0.0;
+        
+        for (java.util.Map.Entry<String, Double> entry : components.entrySet()) {
+            String component = entry.getKey();
+            double score = entry.getValue();
+            
+            // Only include non-zero scores
+            if (score > 0 && weights.containsKey(component)) {
+                double weight = weights.get(component);
+                totalScore += score * weight;
+                totalWeight += weight;
+            }
+        }
+        
+        // No components contributed to score
+        if (totalWeight == 0) {
+            return 0.0;
+        }
+        
+        return totalScore / totalWeight;
+    }
 }

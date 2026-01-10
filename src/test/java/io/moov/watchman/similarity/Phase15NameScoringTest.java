@@ -2,6 +2,7 @@ package io.moov.watchman.similarity;
 
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.PreparedFields;
+import io.moov.watchman.search.EntityScorer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,31 +33,33 @@ public class Phase15NameScoringTest {
         PreparedFields prepared = new PreparedFields(
             name,              // normalizedPrimaryName
             List.of(),         // normalizedAltNames
-            List.of(),         // nameCombinations
-            List.of(),         // altNameCombinations
-            null,              // language
-            false              // stopwordsRemoved
+            List.of(),         // normalizedNamesWithoutStopwords
+            List.of(),         // normalizedNamesWithoutCompanyTitles
+            List.of(),         // wordCombinations
+            List.of(),         // normalizedAddresses
+            null               // detectedLanguage
         );
         
         return new Entity(
+            null,              // id
             name,              // name
-            List.of(),         // altNames
-            null,              // entityType
+            null,              // type
             null,              // source
             null,              // sourceId
-            prepared,          // preparedFields
-            null,              // remarks
             null,              // person
             null,              // business
             null,              // organization
             null,              // aircraft
             null,              // vessel
+            null,              // contact
             List.of(),         // addresses
-            null,              // contactInfo
-            List.of(),         // governmentIds
             List.of(),         // cryptoAddresses
+            List.of(),         // altNames
+            List.of(),         // governmentIds
             null,              // sanctionsInfo
-            List.of()          // historicalInfo
+            List.of(),         // historicalInfo
+            null,              // remarks
+            prepared           // preparedFields
         );
     }
     
@@ -64,31 +67,33 @@ public class Phase15NameScoringTest {
         PreparedFields prepared = new PreparedFields(
             "",                // normalizedPrimaryName (empty)
             altNames,          // normalizedAltNames
-            List.of(),         // nameCombinations
-            List.of(),         // altNameCombinations
-            null,              // language
-            false              // stopwordsRemoved
+            List.of(),         // normalizedNamesWithoutStopwords
+            List.of(),         // normalizedNamesWithoutCompanyTitles
+            List.of(),         // wordCombinations
+            List.of(),         // normalizedAddresses
+            null               // detectedLanguage
         );
         
         return new Entity(
+            null,              // id
             "",                // name (empty)
-            altNames,          // altNames
-            null,              // entityType
+            null,              // type
             null,              // source
             null,              // sourceId
-            prepared,          // preparedFields
-            null,              // remarks
             null,              // person
             null,              // business
             null,              // organization
             null,              // aircraft
             null,              // vessel
+            null,              // contact
             List.of(),         // addresses
-            null,              // contactInfo
-            List.of(),         // governmentIds
             List.of(),         // cryptoAddresses
+            altNames,          // altNames
+            List.of(),         // governmentIds
             null,              // sanctionsInfo
-            List.of()          // historicalInfo
+            List.of(),         // historicalInfo
+            null,              // remarks
+            prepared           // preparedFields
         );
     }
     
@@ -96,31 +101,33 @@ public class Phase15NameScoringTest {
         PreparedFields prepared = new PreparedFields(
             primaryName,       // normalizedPrimaryName
             altNames,          // normalizedAltNames
-            List.of(),         // nameCombinations
-            List.of(),         // altNameCombinations
-            null,              // language
-            false              // stopwordsRemoved
+            List.of(),         // normalizedNamesWithoutStopwords
+            List.of(),         // normalizedNamesWithoutCompanyTitles
+            List.of(),         // wordCombinations
+            List.of(),         // normalizedAddresses
+            null               // detectedLanguage
         );
         
         return new Entity(
+            null,              // id
             primaryName,       // name
-            altNames,          // altNames
-            null,              // entityType
+            null,              // type
             null,              // source
             null,              // sourceId
-            prepared,          // preparedFields
-            null,              // remarks
             null,              // person
             null,              // business
             null,              // organization
             null,              // aircraft
             null,              // vessel
+            null,              // contact
             List.of(),         // addresses
-            null,              // contactInfo
-            List.of(),         // governmentIds
             List.of(),         // cryptoAddresses
+            altNames,          // altNames
+            List.of(),         // governmentIds
             null,              // sanctionsInfo
-            List.of()          // historicalInfo
+            List.of(),         // historicalInfo
+            null,              // remarks
+            prepared           // preparedFields
         );
     }
     
@@ -128,31 +135,33 @@ public class Phase15NameScoringTest {
         PreparedFields prepared = new PreparedFields(
             "",                // normalizedPrimaryName
             List.of(),         // normalizedAltNames
-            List.of(),         // nameCombinations
-            List.of(),         // altNameCombinations
-            null,              // language
-            false              // stopwordsRemoved
+            List.of(),         // normalizedNamesWithoutStopwords
+            List.of(),         // normalizedNamesWithoutCompanyTitles
+            List.of(),         // wordCombinations
+            List.of(),         // normalizedAddresses
+            null               // detectedLanguage
         );
         
         return new Entity(
+            null,              // id
             "",                // name
-            List.of(),         // altNames
-            null,              // entityType
+            null,              // type
             null,              // source
             null,              // sourceId
-            prepared,          // preparedFields
-            null,              // remarks
             null,              // person
             null,              // business
             null,              // organization
             null,              // aircraft
             null,              // vessel
+            null,              // contact
             List.of(),         // addresses
-            null,              // contactInfo
-            List.of(),         // governmentIds
             List.of(),         // cryptoAddresses
+            List.of(),         // altNames
+            List.of(),         // governmentIds
             null,              // sanctionsInfo
-            List.of()          // historicalInfo
+            List.of(),         // historicalInfo
+            null,              // remarks
+            prepared           // preparedFields
         );
     }
 
@@ -246,9 +255,9 @@ public class Phase15NameScoringTest {
         @Test
         @DisplayName("Should return false when name score below threshold")
         void belowThreshold() {
-            // Arrange
-            Entity query = createEntityWithPrimaryName("john smith");
-            Entity index = createEntityWithPrimaryName("zhang wei");
+            // Arrange - use completely different character sets
+            Entity query = createEntityWithPrimaryName("aaaaaa bbbbbb cccccc");
+            Entity index = createEntityWithPrimaryName("xxxxxxx yyyyyy zzzzzz");
             
             // Act
             boolean result = NameScorer.isNameCloseEnough(query, index);
@@ -371,9 +380,9 @@ public class Phase15NameScoringTest {
         @Test
         @DisplayName("Should use early exit for non-matching names")
         void earlyExit() {
-            // Arrange
-            Entity query = createEntityWithPrimaryName("john smith");
-            Entity index = createEntityWithPrimaryName("zhang wei");
+            // Arrange - use completely different character sets
+            Entity query = createEntityWithPrimaryName("aaaaaa bbbbbb cccccc");
+            Entity index = createEntityWithPrimaryName("xxxxxxx yyyyyy zzzzzz");
             
             // Act
             boolean shouldProceed = NameScorer.isNameCloseEnough(query, index);
