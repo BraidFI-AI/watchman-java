@@ -104,4 +104,50 @@ public class TitleMatcher {
         
         return String.join(" ", expanded);
     }
+
+    // Constants from Go
+    private static final int MIN_TITLE_TERM_LENGTH = 2;      // Minimum length for title terms
+    private static final double ABBREVIATION_THRESHOLD = 0.92; // Early exit threshold
+
+    /**
+     * Calculate similarity score between two normalized titles using Jaro-Winkler
+     * similarity with term filtering and length difference penalties.
+     * 
+     * Algorithm:
+     * 1. Return 1.0 for exact matches
+     * 2. Split into terms and filter short terms (< 2 chars)
+     * 3. Use BestPairCombinationJaroWinkler for term comparison
+     * 4. Apply length difference penalty: score * (1.0 - lengthDiff * 0.1)
+     * 
+     * Examples:
+     * - "chief executive officer" vs "chief executive officer" → 1.0
+     * - "director" vs "director operations" → ~0.85 (with length penalty)
+     * - "ceo" vs "software engineer" → <0.3
+     * 
+     * @param title1 First title (normalized)
+     * @param title2 Second title (normalized)
+     * @return Similarity score from 0.0 to 1.0
+     */
+    public static double calculateTitleSimilarity(String title1, String title2) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    /**
+     * Find the best matching title from a list of index titles for a query title.
+     * 
+     * Iterates through all index titles, calculates similarity for each,
+     * and returns the highest score. Exits early if score exceeds 0.92
+     * (abbreviationThreshold) for performance optimization.
+     * 
+     * Examples:
+     * - Query "ceo" against ["chief executive officer", "cfo"] → 1.0
+     * - Query "director" against ["engineer", "manager"] → <0.5
+     * 
+     * @param queryTitle The query title to match (normalized)
+     * @param indexTitles List of index titles to compare against (normalized)
+     * @return Best similarity score (0.0 to 1.0)
+     */
+    public static double findBestTitleMatch(String queryTitle, List<String> indexTitles) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
 }
