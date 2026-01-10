@@ -12,7 +12,9 @@ This document provides a comprehensive feature-by-feature inventory comparing th
 
 The development process follows Test-Driven Development (TDD): analyze Go implementation behavior by reading source code and understanding edge cases, write comprehensive failing tests (RED phase) that capture expected behavior, implement the feature to make tests pass (GREEN phase), and verify with full test suite execution. Each phase is documented with detailed completion summaries at the end of this document, including test counts, implementation notes, bug fixes, and git commit references. This methodology ensures 100% behavioral parity between implementations and provides a clear audit trail of all changes.
 
-**Current Status:** 58/177 features fully implemented (33%), 29 partially implemented (16%), 90 completely missing (51%). Gap: 67% of Go's features are missing or incomplete. Test coverage: 684/684 passing (100%).
+**Current Status (symbol count):** 55/177 features fully implemented (31%), 28 partially implemented (16%), 94 completely missing (53%). Test coverage: 684/684 passing (100%).
+
+**Note:** This document inventories 177 curated features from Go's 604 exported functions, focusing on scoring algorithms, entity models, and configuration relevant to the Java port.
 
 ---
 
