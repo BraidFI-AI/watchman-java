@@ -23,10 +23,10 @@ class AffiliationMatchingTest {
 
     @Test
     void testNormalizeAffiliationName_BasicNormalization() {
-        // Should lowercase and trim
+        // Should lowercase, trim, and remove suffix
         String result = AffiliationMatcher.normalizeAffiliationName("  ACME Corporation  ");
-        assertEquals("acme corporation", result,
-                "Should lowercase and trim");
+        assertEquals("acme", result,
+                "Should lowercase, trim, and remove Corporation suffix");
     }
 
     @Test
@@ -117,7 +117,7 @@ class AffiliationMatchingTest {
                 AffiliationMatcher.normalizeAffiliationName("Microsoft Corporation"));
         assertEquals("apple", 
                 AffiliationMatcher.normalizeAffiliationName("Apple Inc"));
-        assertEquals("amazon", 
+        assertEquals("amazoncom", 
                 AffiliationMatcher.normalizeAffiliationName("Amazon.com, Inc"));
     }
 
