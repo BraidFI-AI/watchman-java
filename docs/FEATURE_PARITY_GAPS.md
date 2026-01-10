@@ -12,12 +12,12 @@
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ Fully Implemented | 79 | 39.5% |
+| ✅ Fully Implemented | 82 | 41% |
 | ⚠️ Partially Implemented | 69 | 34.5% |
-| ❌ Completely Missing | 52 | 26% |
+| ❌ Completely Missing | 49 | 24.5% |
 | **TOTAL FEATURES** | **200** | **100%** |
 
-**Critical Finding:** Java is missing or has incomplete implementations for **60.5% of Go's features** (down from 65.5%).
+**Critical Finding:** Java is missing or has incomplete implementations for **59% of Go's features** (down from 60.5%).
 
 **Phase 4 Complete (Jan 9, 2026):** Quality & Coverage Scoring - 43/43 tests passing ✅
   - CoverageCalculationTest: 14/14 ✅
@@ -38,6 +38,16 @@
   * 4 type groups: ownership, control, association, leadership (26 types)
   * Type-aware scoring: exact match (+0.15), related type (+0.08), mismatch (-0.15)
   * Business suffix removal: corporation, inc, ltd, llc, corp, co, company
+
+**Phase 6 Complete (Jan 9, 2026):** Affiliation Comparison - 31/31 tests passing ✅
+  - CompareAffiliationsFuzzyTests: 10/10 ✅
+  - FindBestAffiliationMatchTests: 10/10 ✅
+  - CalculateFinalAffiliateScoreTests: 8/8 ✅
+  - IntegrationTests: 3/3 ✅
+- ✅ Affiliation list comparison (10/10 tests) - compareAffiliationsFuzzy() returns ScorePiece with match details
+- ✅ Best match selection (10/10 tests) - findBestAffiliationMatch() with type-aware scoring and tiebreaker logic
+- ✅ Weighted scoring (8/8 tests) - calculateFinalAffiliateScore() uses squared weighting to emphasize quality
+- ✅ Tiebreaker logic: when finalScores are equal, prefers higher typeScore (exact type match over related type)
 
 **Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 24/24 tests passing ✅
   - EntityNormalizationTest: 13/13 ✅
@@ -175,11 +185,11 @@
 | 49 | `expandAbbreviations()` | similarity_fuzzy.go | `TitleMatcher.expandAbbreviations()` | ✅ | **Phase 5 (Jan 9):** 16 abbreviations (ceo, cfo, coo, pres, vp, dir, exec, mgr, sr, jr, asst, assoc, tech, admin, eng, dev) |
 | 50 | `compareEntityTitlesFuzzy()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - entity title comparison |
 | 51 | `findBestTitleMatch()` | similarity_fuzzy.go | `TitleMatcher.findBestTitleMatch()` | ✅ | **Phase 5 (Jan 9):** Best title pair selection with early exit at 0.92+ threshold |
-| 52 | `compareAffiliationsFuzzy()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - affiliation matching |
-| 53 | `findBestAffiliationMatch()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - best affiliation pair |
+| 52 | `compareAffiliationsFuzzy()` | similarity_fuzzy.go | `AffiliationComparer.compareAffiliationsFuzzy()` | ✅ | **Phase 6 (Jan 9):** Affiliation list comparison with weighted scoring, returns ScorePiece |
+| 53 | `findBestAffiliationMatch()` | similarity_fuzzy.go | `AffiliationComparer.findBestAffiliationMatch()` | ✅ | **Phase 6 (Jan 9):** Best match selection with type-aware scoring, tiebreaker prefers exact type match |
 | 54 | `normalizeAffiliationName()` | similarity_fuzzy.go | `AffiliationMatcher.normalizeAffiliationName()` | ✅ | **Phase 5 (Jan 9):** Lowercase + punctuation removal + suffix removal (7 suffixes: corporation, inc, ltd, llc, corp, co, company) |
 | 55 | `calculateCombinedScore()` | similarity_fuzzy.go | `AffiliationMatcher.calculateCombinedScore()` | ✅ | **Phase 5 (Jan 9):** Name+type scoring (exact: +0.15, related: +0.08, mismatch: -0.15), clamped [0.0, 1.0] |
-| 56 | `calculateFinalAffiliateScore()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - affiliation scoring |
+| 56 | `calculateFinalAffiliateScore()` | similarity_fuzzy.go | `AffiliationComparer.calculateFinalAffiliateScore()` | ✅ | **Phase 6 (Jan 9):** Weighted average with squared weighting (weight = finalScore²), emphasizes quality |
 | 57 | `calculateTypeScore()` | similarity_fuzzy.go | `AffiliationMatcher.calculateTypeScore()` | ✅ | **Phase 5 (Jan 9):** Type similarity (exact: 1.0, same group: 0.8, different: 0.0) |
 | 58 | `getTypeGroup()` | similarity_fuzzy.go | `AffiliationMatcher.getTypeGroup()` | ✅ | **Phase 5 (Jan 9):** 4 groups (ownership, control, association, leadership) with 26 total types |
 | 59 | `isNameCloseEnough()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - proximity check |
@@ -223,9 +233,9 @@
 | 97 | `countVesselFields()` | similarity_supporting.go | `EntityScorer.countVesselFields()` | ✅ | **Phase 4 (Jan 9):** Private helper - 10 fields (name, altNames, type, flag, callSign, tonnage, owner, imoNumber, built, mmsi) |
 
 **Summary: 69 scoring functions**
-- ✅ 26 fully implemented (38%) - **+9 in Phase 5 (Jan 9)**
+- ✅ 29 fully implemented (42%) - **+3 in Phase 6 (Jan 9)**
 - ⚠️ 11 partially implemented (16%)
-- ❌ 32 completely missing (46%) - **-9 in Phase 5**
+- ❌ 29 completely missing (42%) - **-3 in Phase 6**
 
 ---
 
@@ -454,17 +464,17 @@
 
 ## CONCLUSION
 
-**Java has implemented 39.5% of Go's features completely** (up from 34.5% after Phase 4).
+**Java has implemented 41% of Go's features completely** (up from 39.5% after Phase 5).
 
 The port is missing:
-- **97 functions** (60.5% of core functionality, down from 65.5%)
+- **94 functions** (59% of core functionality, down from 60.5%)
 - **21 entire modules** (6,450 lines of code)
 - **16 environment variables** (59% of configuration)
 
 **Progress Summary:**
-- ✅ **Phase 0-5 COMPLETE (Jan 8-9, 2026)** - Core algorithms, scoring, quality/coverage, title/affiliation matching
-- 🔄 **Gap reduction: 71% → 60.5%** - 10.5 percentage point improvement across 5 phases
-- 📊 **Test coverage: 615/615 passing (100%)** - 85 new tests in Phase 5 alone
+- ✅ **Phase 0-6 COMPLETE (Jan 8-9, 2026)** - Core algorithms, scoring, quality/coverage, title/affiliation matching, affiliation comparison
+- 🔄 **Gap reduction: 71% → 59%** - 12 percentage point improvement across 6 phases
+- 📊 **Test coverage: 646/646 passing (100%)** - 31 new tests in Phase 6
 
 **This is why we missed the bugs:** We never did a function-by-function audit.
 
@@ -1004,13 +1014,14 @@ The port is missing:
 - Gap reduced: 5 percentage points (65.5% → 60.5%)
 - Scoring Functions: 17/69 → 26/69 fully implemented (25% → 38%)
 
-**Full Test Suite: 615/615 tests passing (100%)** ✅
+**Full Test Suite: 646/646 tests passing (100%)** ✅
 - Phase 0: 24/24 ✅
 - Phase 1: 60/60 ✅
 - Phase 2: 31/31 ✅
 - Phase 3: 46/46 ✅
 - Phase 4: 43/43 ✅
-- Phase 5: 85/85 ✅ (NEW)
+- Phase 5: 85/85 ✅
+- Phase 6: 31/31 ✅ (NEW)
 - Pre-existing: 326/326 ✅
 
 **Production Impact:**
@@ -1025,14 +1036,150 @@ The port is missing:
 
 ---
 
+## PHASE 6 COMPLETION SUMMARY (Jan 9, 2026)
+
+**Implemented Features (3 new: affiliation comparison functions):**
+
+### Affiliation Comparison Functions (3 functions)
+1. ✅ `compareAffiliationsFuzzy(List<Affiliation>, List<Affiliation>, double)` - **IMPLEMENTED** in AffiliationComparer
+   - Main comparison function for affiliation lists
+   - Early returns: empty query (score=0, fieldsCompared=0), empty index (score=0, fieldsCompared=1)
+   - Processes each query affiliation using findBestAffiliationMatch()
+   - Calculates final weighted score using calculateFinalAffiliateScore()
+   - Returns ScorePiece with match details:
+     * matched = finalScore > 0.85 (AFFILIATION_NAME_THRESHOLD)
+     * exact = finalScore > 0.95 (EXACT_MATCH_THRESHOLD)
+     * fieldsCompared = 1 (affiliation field)
+   - Examples:
+     * Query: ["Bank of America", "parent of"], Index: ["Bank of America Corporation", "parent of"] → score ~0.95
+     * Query: ["Acme Corp", "subsidiary of"], Index: ["Different Company", "managed by"] → score <0.50
+
+2. ✅ `findBestAffiliationMatch(Affiliation, List<Affiliation>)` - **IMPLEMENTED** in AffiliationComparer
+   - Finds best matching affiliation from candidate list
+   - Normalization: Uses AffiliationMatcher.normalizeAffiliationName() (lowercase, remove punctuation/suffixes)
+   - Name scoring: JaroWinkler similarity on joined token strings
+   - Type scoring: Uses AffiliationMatcher.calculateTypeScore() (exact: 1.0, same group: 0.8, different: 0.0)
+   - Combined scoring: Uses AffiliationMatcher.calculateCombinedScore() (applies type bonuses/penalties)
+   - **Tiebreaker logic**: When finalScores are equal, prefers higher typeScore
+     * Critical for preferring exact type match over related type when names are identical
+     * Example: "Acme Corp" + "subsidiary of" vs "Acme Corp" + "owned by" → prefers exact type
+   - Returns AffiliationMatch with all score components
+   - Empty handling: Returns (0.0, 0.0, 0.0, false) for empty/whitespace query names
+   - Examples:
+     * Query: ("Acme Corporation", "subsidiary of"), Index: [("Acme Corp", "subsidiary of")] → exact match
+     * Query: ("Acme Corp", "subsidiary of"), Index: [("Acme Corp", "owned by"), ("Acme Corp", "subsidiary of")] → returns second (exact type)
+
+3. ✅ `calculateFinalAffiliateScore(List<AffiliationMatch>)` - **IMPLEMENTED** in AffiliationComparer
+   - Calculates weighted average from multiple matches
+   - **Squared weighting formula**: weight = finalScore²
+     * Emphasizes higher-quality matches
+     * De-emphasizes poor matches
+   - Calculation: weightedSum / totalWeight
+     * weightedSum = Σ(finalScore × weight) = Σ(finalScore × finalScore²) = Σ(finalScore³)
+     * totalWeight = Σ(weight) = Σ(finalScore²)
+   - Returns 0.0 for empty list
+   - Examples:
+     * Single match (0.95): weight=0.9025, result=0.95
+     * Two matches (0.95, 0.85): weights favor 0.95, result ~0.92
+     * Perfect + poor (1.0, 0.4): weights strongly favor 1.0, result ~0.93
+     * Mathematical example: [(0.8, 0.8)] → weight=0.64, sum=0.512, result=0.8
+
+**Test Coverage:**
+- ✅ 31/31 Phase 6 tests passing (100%)
+  - CompareAffiliationsFuzzyTests: 10/10 ✅
+    * Empty checks: query empty (0 score), index empty (0 score, 1 fieldsCompared)
+    * Exact match: same name+type → score >0.95, matched=true, exact=true
+    * Type matching: related type → score >0.85, type mismatch → score <0.90
+    * Multiple affiliations: finds best match, handles multiple query affiliations
+    * No matches: returns low score, matched=false
+    * Weight handling: respects provided weight parameter
+    * Empty name filtering: skips empty affiliation names
+  - FindBestAffiliationMatchTests: 10/10 ✅
+    * Empty handling: empty query name, whitespace, empty index names → (0.0, 0.0, 0.0, false)
+    * Exact match: returns high scores, exactMatch=true
+    * Best selection: chooses best from multiple options
+    * Type preference: **prefers exact type over related type (tiebreaker test)**
+    * Normalization: handles "Acme Corporation Inc." vs "ACME Corp"
+    * Type scoring: calculates correct type scores (exact, related, different)
+    * FinalScore selection: returns best finalScore, not best nameScore
+  - CalculateFinalAffiliateScoreTests: 8/8 ✅
+    * Empty list: returns 0.0
+    * Single match: returns match's finalScore
+    * Multiple matches: calculates weighted average
+    * Squared weighting: emphasizes better matches (verified with specific calculation)
+    * Three matches: handles varying scores correctly
+    * Perfect matches: all 1.0 → result 1.0
+    * Low matches: all low → result appropriately low
+    * Mathematical verification: [(0.8, 0.8), (0.4, 0.4)] → 0.72 (exact calculation check)
+  - IntegrationTests: 3/3 ✅
+    * Real-world example: "Bank of America" + "Merrill Lynch" matching
+    * Mixed quality: perfect + partial matches → weighted appropriately
+    * Quality over quantity: single high-quality match beats multiple poor matches
+
+**Key Implementation Details:**
+- AffiliationComparer: Static utility class with 3 public methods + 1 private helper
+- Uses Phase 5 AffiliationMatcher for name normalization and type scoring
+- Uses JaroWinklerSimilarity for name similarity calculation
+- Thresholds: AFFILIATION_NAME_THRESHOLD (0.85), EXACT_MATCH_THRESHOLD (0.95)
+- **Tiebreaker logic**: When finalScores equal (e.g., both clamped to 1.0), prefers higher typeScore
+  * Ensures exact type match preferred over related type match
+  * Critical for test: preferExactTypeMatch
+- Squared weighting: weight = finalScore² to emphasize quality matches
+- Empty/null handling: Defensive checks throughout, returns empty match or 0.0 score
+
+**TDD Workflow (Red-Green):**
+- Task 1: Research Go implementation (similarity_fuzzy.go lines 391-605)
+- Task 2: RED - 31 failing tests across 4 test groups + stubs
+- Task 3: GREEN - Implement all 3 functions → 31/31 passing
+- Task 4: Final verification (646/646), documentation update, git push
+
+**Git Commits (2 total):**
+1. `658e9c6` - Phase 6 RED: Affiliation comparison tests (31 failing)
+2. `1e4f3f0` - Phase 6 GREEN: Affiliation comparison implementation (31/31 passing, 646 total)
+
+**Bug Fixes During Implementation:**
+- 🐞 Fixed early-exit optimization: Was comparing `nameScore <= bestMatch.nameScore()` before calculating type scores
+  * Problem: Would skip affiliations with lower nameScore even if they had better finalScore due to exact type match
+  * Solution: Removed early exit, always calculate all scores, compare finalScore only
+- 🐞 Fixed tiebreaker for equal finalScores: When both affiliations have same name (identical nameScore) and both get clamped to 1.0 finalScore
+  * Problem: First affiliation wins by iteration order, even if second has exact type match
+  * Solution: Added tiebreaker logic - if finalScores equal, prefer higher typeScore
+  * Example: "Acme Corp" + "owned by" (type=0.8, final=1.0) vs "Acme Corp" + "subsidiary of" (type=1.0, final=1.0) → second wins
+
+**Feature Parity Progress:**
+- Before Phase 6: 79/200 fully implemented (39.5%), 60.5% missing
+- After Phase 6: 82/200 fully implemented (41%), 59% missing
+- Gap reduced: 1.5 percentage points (60.5% → 59%)
+- Scoring Functions: 26/69 → 29/69 fully implemented (38% → 42%)
+
+**Full Test Suite: 646/646 tests passing (100%)** ✅
+- Phase 0: 24/24 ✅
+- Phase 1: 60/60 ✅
+- Phase 2: 31/31 ✅
+- Phase 3: 46/46 ✅
+- Phase 4: 43/43 ✅
+- Phase 5: 85/85 ✅
+- Phase 6: 31/31 ✅ (NEW)
+- Pre-existing: 326/326 ✅
+
+**Production Impact:**
+- Enables complete affiliation-based entity matching
+- Supports organizational relationship screening (parent/subsidiary/control relationships)
+- Type-aware scoring ensures accurate relationship classification
+- Weighted scoring emphasizes high-confidence affiliation matches
+- Foundation for complex entity network analysis
+- Completes Go's compareAffiliationsFuzzy() feature parity
+- Critical for business entity disambiguation and corporate structure screening
+
+---
+
 ## NEXT STEPS
 
 **Remaining High-Priority Features:**
-- ~~Title matching (9 features)~~ ✅ **COMPLETE (Phase 5)** - calculateTitleSimilarity, normalizeTitle, expandAbbreviations, findBestTitleMatch, filterTerms, normalizeAffiliationName, calculateCombinedScore, calculateTypeScore, getTypeGroup
+- ~~Title & affiliation matching (12 features)~~ ✅ **COMPLETE (Phases 5-6)** - Title normalization/comparison (9 functions), affiliation comparison (3 functions)
 - ~~Quality/coverage scoring (12 features)~~ ✅ **COMPLETE (Phase 4)** - calculateCoverage, countAvailableFields, adjustScoreBasedOnQuality, applyPenaltiesAndBonuses, isHighConfidenceMatch, 5 type-specific counters, countCommonFields, countFieldsByImportance
 - Address normalization (5 features) - normalizeAddress, findBestAddressMatch, compareAddress, normalizeAddresses
 - Date comparison enhancements (8 features) - areDatesLogical, comparePersonDates, compareBusinessDates, areDaysSimilar
-- Affiliation comparison (3 features) - compareAffiliationsFuzzy, findBestAffiliationMatch, calculateFinalAffiliateScore
 
 **Estimated Time to 100% Parity:**
 - Core algorithm fixes: COMPLETE ✅
