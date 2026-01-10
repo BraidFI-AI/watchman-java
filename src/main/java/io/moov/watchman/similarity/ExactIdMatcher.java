@@ -27,7 +27,45 @@ public class ExactIdMatcher {
      * @return IdMatchResult with score, match status, and field count
      */
     public static IdMatchResult comparePersonExactIDs(Person query, Person index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        List<GovernmentId> qIDs = query.governmentIds();
+        List<GovernmentId> iIDs = index.governmentIds();
+        
+        if (qIDs.isEmpty() || iIDs.isEmpty()) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 1;
+        double totalWeight = 15.0;
+        double score = 0.0;
+        boolean hasMatch = false;
+        
+        // Check for exact match: type, country, and identifier must all match
+        for (GovernmentId qID : qIDs) {
+            for (GovernmentId iID : iIDs) {
+                if (qID.type() == iID.type() &&
+                    equalsIgnoreCase(qID.country(), iID.country()) &&
+                    equalsIgnoreCase(normalizeIdentifier(qID.identifier()), normalizeIdentifier(iID.identifier()))) {
+                    score = 15.0;
+                    hasMatch = true;
+                    break;
+                }
+            }
+            if (hasMatch) break;
+        }
+        
+        double finalScore = totalWeight > 0 ? score / totalWeight : 0.0;
+        
+        return new IdMatchResult(
+            finalScore,
+            weight,
+            hasMatch,
+            finalScore > 0.99,
+            fieldsCompared
+        );
     }
     
     /**
@@ -39,7 +77,45 @@ public class ExactIdMatcher {
      * @return IdMatchResult with score and match status
      */
     public static IdMatchResult compareBusinessExactIDs(Business query, Business index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        List<GovernmentId> qIDs = query.governmentIds();
+        List<GovernmentId> iIDs = index.governmentIds();
+        
+        if (qIDs.isEmpty() || iIDs.isEmpty()) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 1;
+        double totalWeight = 15.0;
+        double score = 0.0;
+        boolean hasMatch = false;
+        
+        // Check for exact match
+        for (GovernmentId qID : qIDs) {
+            for (GovernmentId iID : iIDs) {
+                if (qID.type() == iID.type() &&
+                    equalsIgnoreCase(qID.country(), iID.country()) &&
+                    equalsIgnoreCase(normalizeIdentifier(qID.identifier()), normalizeIdentifier(iID.identifier()))) {
+                    score = 15.0;
+                    hasMatch = true;
+                    break;
+                }
+            }
+            if (hasMatch) break;
+        }
+        
+        double finalScore = totalWeight > 0 ? score / totalWeight : 0.0;
+        
+        return new IdMatchResult(
+            finalScore,
+            weight,
+            hasMatch,
+            finalScore > 0.99,
+            fieldsCompared
+        );
     }
     
     /**
@@ -51,7 +127,45 @@ public class ExactIdMatcher {
      * @return IdMatchResult with score and match status
      */
     public static IdMatchResult compareOrgExactIDs(Organization query, Organization index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        List<GovernmentId> qIDs = query.governmentIds();
+        List<GovernmentId> iIDs = index.governmentIds();
+        
+        if (qIDs.isEmpty() || iIDs.isEmpty()) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 1;
+        double totalWeight = 15.0;
+        double score = 0.0;
+        boolean hasMatch = false;
+        
+        // Check for exact match
+        for (GovernmentId qID : qIDs) {
+            for (GovernmentId iID : iIDs) {
+                if (qID.type() == iID.type() &&
+                    equalsIgnoreCase(qID.country(), iID.country()) &&
+                    equalsIgnoreCase(normalizeIdentifier(qID.identifier()), normalizeIdentifier(iID.identifier()))) {
+                    score = 15.0;
+                    hasMatch = true;
+                    break;
+                }
+            }
+            if (hasMatch) break;
+        }
+        
+        double finalScore = totalWeight > 0 ? score / totalWeight : 0.0;
+        
+        return new IdMatchResult(
+            finalScore,
+            weight,
+            hasMatch,
+            finalScore > 0.99,
+            fieldsCompared
+        );
     }
     
     /**
@@ -68,7 +182,54 @@ public class ExactIdMatcher {
      * @return IdMatchResult with weighted score
      */
     public static IdMatchResult compareVesselExactIDs(Vessel query, Vessel index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 0;
+        double totalWeight = 0.0;
+        double score = 0.0;
+        boolean hasMatch = false;
+        
+        // IMO Number (highest weight)
+        if (query.imoNumber() != null && !query.imoNumber().isEmpty()) {
+            fieldsCompared++;
+            totalWeight += 15.0;
+            if (equalsIgnoreCase(query.imoNumber(), index.imoNumber())) {
+                score += 15.0;
+                hasMatch = true;
+            }
+        }
+        
+        // Call Sign
+        if (query.callSign() != null && !query.callSign().isEmpty()) {
+            fieldsCompared++;
+            totalWeight += 12.0;
+            if (equalsIgnoreCase(query.callSign(), index.callSign())) {
+                score += 12.0;
+                hasMatch = true;
+            }
+        }
+        
+        // MMSI
+        if (query.mmsi() != null && !query.mmsi().isEmpty()) {
+            fieldsCompared++;
+            totalWeight += 12.0;
+            if (equalsIgnoreCase(query.mmsi(), index.mmsi())) {
+                score += 12.0;
+                hasMatch = true;
+            }
+        }
+        
+        double finalScore = totalWeight > 0 ? score / totalWeight : 0.0;
+        
+        return new IdMatchResult(
+            finalScore,
+            weight,
+            hasMatch,
+            finalScore > 0.99,
+            fieldsCompared
+        );
     }
     
     /**
@@ -84,7 +245,44 @@ public class ExactIdMatcher {
      * @return IdMatchResult with weighted score
      */
     public static IdMatchResult compareAircraftExactIDs(Aircraft query, Aircraft index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 0;
+        double totalWeight = 0.0;
+        double score = 0.0;
+        boolean hasMatch = false;
+        
+        // Serial Number (highest weight)
+        if (query.serialNumber() != null && !query.serialNumber().isEmpty()) {
+            fieldsCompared++;
+            totalWeight += 15.0;
+            if (equalsIgnoreCase(query.serialNumber(), index.serialNumber())) {
+                score += 15.0;
+                hasMatch = true;
+            }
+        }
+        
+        // ICAO Code
+        if (query.icaoCode() != null && !query.icaoCode().isEmpty()) {
+            fieldsCompared++;
+            totalWeight += 12.0;
+            if (equalsIgnoreCase(query.icaoCode(), index.icaoCode())) {
+                score += 12.0;
+                hasMatch = true;
+            }
+        }
+        
+        double finalScore = totalWeight > 0 ? score / totalWeight : 0.0;
+        
+        return new IdMatchResult(
+            finalScore,
+            weight,
+            hasMatch,
+            finalScore > 0.99,
+            fieldsCompared
+        );
     }
     
     /**
@@ -102,7 +300,49 @@ public class ExactIdMatcher {
      * @return IdMatchResult with country-validated score
      */
     public static IdMatchResult comparePersonGovernmentIDs(Person query, Person index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        List<GovernmentId> qIDs = query.governmentIds();
+        List<GovernmentId> iIDs = index.governmentIds();
+        
+        if (qIDs.isEmpty() || iIDs.isEmpty()) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 1;
+        IdComparison bestMatch = new IdComparison(0.0, false, false, false);
+        
+        for (GovernmentId qID : qIDs) {
+            for (GovernmentId iID : iIDs) {
+                IdComparison match = compareIdentifiers(
+                    qID.identifier(),
+                    iID.identifier(),
+                    qID.country(),
+                    iID.country()
+                );
+                
+                if (match.found() && match.score() > bestMatch.score()) {
+                    bestMatch = match;
+                }
+                
+                if (bestMatch.exact()) {
+                    break;
+                }
+            }
+            if (bestMatch.exact()) {
+                break;
+            }
+        }
+        
+        return new IdMatchResult(
+            bestMatch.score(),
+            weight,
+            bestMatch.found(),
+            bestMatch.exact(),
+            fieldsCompared
+        );
     }
     
     /**
@@ -114,7 +354,49 @@ public class ExactIdMatcher {
      * @return IdMatchResult with country-validated score
      */
     public static IdMatchResult compareBusinessGovernmentIDs(Business query, Business index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        List<GovernmentId> qIDs = query.governmentIds();
+        List<GovernmentId> iIDs = index.governmentIds();
+        
+        if (qIDs.isEmpty() || iIDs.isEmpty()) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 1;
+        IdComparison bestMatch = new IdComparison(0.0, false, false, false);
+        
+        for (GovernmentId qID : qIDs) {
+            for (GovernmentId iID : iIDs) {
+                IdComparison match = compareIdentifiers(
+                    qID.identifier(),
+                    iID.identifier(),
+                    qID.country(),
+                    iID.country()
+                );
+                
+                if (match.found() && match.score() > bestMatch.score()) {
+                    bestMatch = match;
+                }
+                
+                if (bestMatch.exact()) {
+                    break;
+                }
+            }
+            if (bestMatch.exact()) {
+                break;
+            }
+        }
+        
+        return new IdMatchResult(
+            bestMatch.score(),
+            weight,
+            bestMatch.found(),
+            bestMatch.exact(),
+            fieldsCompared
+        );
     }
     
     /**
@@ -126,7 +408,49 @@ public class ExactIdMatcher {
      * @return IdMatchResult with country-validated score
      */
     public static IdMatchResult compareOrgGovernmentIDs(Organization query, Organization index, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        List<GovernmentId> qIDs = query.governmentIds();
+        List<GovernmentId> iIDs = index.governmentIds();
+        
+        if (qIDs.isEmpty() || iIDs.isEmpty()) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 1;
+        IdComparison bestMatch = new IdComparison(0.0, false, false, false);
+        
+        for (GovernmentId qID : qIDs) {
+            for (GovernmentId iID : iIDs) {
+                IdComparison match = compareIdentifiers(
+                    qID.identifier(),
+                    iID.identifier(),
+                    qID.country(),
+                    iID.country()
+                );
+                
+                if (match.found() && match.score() > bestMatch.score()) {
+                    bestMatch = match;
+                }
+                
+                if (bestMatch.exact()) {
+                    break;
+                }
+            }
+            if (bestMatch.exact()) {
+                break;
+            }
+        }
+        
+        return new IdMatchResult(
+            bestMatch.score(),
+            weight,
+            bestMatch.found(),
+            bestMatch.exact(),
+            fieldsCompared
+        );
     }
     
     /**
@@ -144,7 +468,37 @@ public class ExactIdMatcher {
      * @return IdMatchResult with match status (score 0.0 or 1.0)
      */
     public static IdMatchResult compareCryptoAddresses(List<CryptoAddress> queryAddresses, List<CryptoAddress> indexAddresses, double weight) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (queryAddresses == null || queryAddresses.isEmpty() || 
+            indexAddresses == null || indexAddresses.isEmpty()) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        int fieldsCompared = 1;
+        
+        for (CryptoAddress qAddr : queryAddresses) {
+            // Skip empty addresses
+            if (qAddr.address() == null || qAddr.address().isEmpty()) {
+                continue;
+            }
+            
+            for (CryptoAddress iAddr : indexAddresses) {
+                // Both have currency specified - need both to match
+                if (qAddr.currency() != null && !qAddr.currency().isEmpty() &&
+                    iAddr.currency() != null && !iAddr.currency().isEmpty()) {
+                    // Check currency first
+                    if (!equalsIgnoreCase(qAddr.currency(), iAddr.currency())) {
+                        continue;
+                    }
+                }
+                
+                // Check addresses
+                if (equalsIgnoreCase(qAddr.address(), iAddr.address())) {
+                    return new IdMatchResult(1.0, weight, true, true, fieldsCompared);
+                }
+            }
+        }
+        
+        return new IdMatchResult(0.0, weight, false, false, fieldsCompared);
     }
     
     /**
@@ -157,7 +511,10 @@ public class ExactIdMatcher {
      * @return Normalized identifier without hyphens
      */
     public static String normalizeIdentifier(String id) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (id == null) {
+            return "";
+        }
+        return id.replace("-", "");
     }
     
     /**
@@ -177,6 +534,40 @@ public class ExactIdMatcher {
      * @return IdComparison with score and validation flags
      */
     public static IdComparison compareIdentifiers(String queryId, String indexId, String queryCountry, String indexCountry) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        // Early return if identifiers don't match
+        if (!equalsIgnoreCase(queryId, indexId)) {
+            return new IdComparison(0.0, false, false, false);
+        }
+        
+        // Normalize null countries to empty strings
+        String qCountry = queryCountry == null ? "" : queryCountry;
+        String iCountry = indexCountry == null ? "" : indexCountry;
+        
+        // If neither has country, it's an exact match but flag no country
+        if (qCountry.isEmpty() && iCountry.isEmpty()) {
+            return new IdComparison(1.0, true, true, false);
+        }
+        
+        // If only one has country, slight penalty
+        if ((qCountry.isEmpty() && !iCountry.isEmpty()) || (!qCountry.isEmpty() && iCountry.isEmpty())) {
+            return new IdComparison(0.9, true, false, true);
+        }
+        
+        // Both have country - check if they match
+        if (equalsIgnoreCase(qCountry, iCountry)) {
+            return new IdComparison(1.0, true, true, true);
+        }
+        
+        // Countries don't match - significant penalty but still count as a match
+        return new IdComparison(0.7, true, false, true);
+    }
+    
+    /**
+     * Helper method for case-insensitive string comparison with null safety.
+     */
+    private static boolean equalsIgnoreCase(String s1, String s2) {
+        if (s1 == null && s2 == null) return true;
+        if (s1 == null || s2 == null) return false;
+        return s1.equalsIgnoreCase(s2);
     }
 }
