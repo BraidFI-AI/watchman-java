@@ -3,6 +3,9 @@ package io.moov.watchman.similarity;
 import io.moov.watchman.model.*;
 import io.moov.watchman.normalize.PhoneNormalizer;
 import io.moov.watchman.scorer.AddressNormalizer;
+import io.moov.watchman.search.EntityScorer;
+import io.moov.watchman.search.EntityScorerImpl;
+import io.moov.watchman.trace.ScoringContext;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -43,11 +46,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id",
                 "THE DRUG LORD",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             // Normalize entity
@@ -90,11 +95,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-2",
                 "THE BOSS OF ALL BOSSES",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-2",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
@@ -134,11 +141,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity queryEntity = new Entity(
                 "query-1",
                 "PABLO THE ESCOBAR",  // Has stopword "THE"
-                "query",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "query-1",
                 query, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             ).normalize();
             
             Person index = new Person(
@@ -153,16 +162,18 @@ public class Phase17ZoneTwoQualityTest {
             Entity indexEntity = new Entity(
                 "index-1",
                 "PABLO ESCOBAR",  // No stopword
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "index-1",
                 index, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             ).normalize();
             
             // Score should be high because "THE" is removed from both
             EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
-            double score = scorer.score(queryEntity, indexEntity, ScoringContext.disabled());
+            double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should match well (> 0.9) since "PABLO ESCOBAR" matches "PABLO ESCOBAR"
             assertTrue(score > 0.9, "Score should be high when stopwords removed: " + score);
@@ -182,11 +193,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-3",
                 "THE GENERAL",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-3",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             // Normalize multiple times
@@ -220,11 +233,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-4",
                 "THE",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-4",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
@@ -264,11 +279,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-5",
                 "MC'DONALD",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-5",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
@@ -299,11 +316,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-6",
                 "ACME, Ltd.",
-                "ofac-sdn",
                 EntityType.BUSINESS,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-6",
                 null, business, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
@@ -336,11 +355,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-7",
                 "AL-ZAWAHIRI",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-7",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
@@ -371,11 +392,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-8",
                 "ROBERT JOHNSON",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-8",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
@@ -406,11 +429,13 @@ public class Phase17ZoneTwoQualityTest {
             Entity queryEntity = new Entity(
                 "query-2",
                 "JOHN'S COMPANY",  // Has apostrophe
-                "query",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "query-2",
                 query, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             ).normalize();
             
             Person index = new Person(
@@ -425,16 +450,18 @@ public class Phase17ZoneTwoQualityTest {
             Entity indexEntity = new Entity(
                 "index-2",
                 "JOHNS COMPANY",  // No apostrophe
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "index-2",
                 index, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                null,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             ).normalize();
             
             // Score should be high because apostrophe normalized out
             EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
-            double score = scorer.score(queryEntity, indexEntity, ScoringContext.disabled());
+            double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should match well since "JOHNS COMPANY" matches "JOHNS COMPANY"
             assertTrue(score > 0.9, "Score should be high with normalized names: " + score);
@@ -558,7 +585,8 @@ public class Phase17ZoneTwoQualityTest {
             ContactInfo contact = new ContactInfo(
                 "test@example.com",
                 "+1-555-123-4567",  // Should be normalized
-                "(555) 987-6543"    // Should be normalized
+                "(555) 987-6543",    // Should be normalized
+                null  // website
             );
             
             Person person = new Person(
@@ -573,15 +601,17 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-9",
                 "JOHN DOE",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, contact,
+                SourceList.US_OFAC,
+                "test-id-9",
                 person, null, null, null, null,
-                List.of(), List.of(), List.of(), null, null
+                contact,
+                List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
-            ContactInfo normContact = normalized.contactInfo();
+            ContactInfo normContact = normalized.contact();
             
             // Phone numbers should be normalized
             assertNotNull(normContact);
@@ -614,7 +644,7 @@ public class Phase17ZoneTwoQualityTest {
                 "USA"
             );
             
-            Address normalized = AddressNormalizer.normalizeAddress(address);
+            PreparedAddress normalized = AddressNormalizer.normalizeAddress(address);
             
             // line1 and line2 should have punctuation removed, be lowercase
             assertFalse(normalized.line1().contains("."));
@@ -665,14 +695,16 @@ public class Phase17ZoneTwoQualityTest {
             Entity entity = new Entity(
                 "test-id-10",
                 "JANE SMITH",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "test-id-10",
                 person, null, null, null, null,
+                null,
                 Arrays.asList(address1, address2),
                 List.of(),
                 List.of(),
-                null, null
+                List.of(),
+                null, List.of(), null, null
             );
             
             Entity normalized = entity.normalize();
@@ -703,7 +735,7 @@ public class Phase17ZoneTwoQualityTest {
                 "US"
             );
             
-            Address normalized = AddressNormalizer.normalizeAddress(address);
+            PreparedAddress normalized = AddressNormalizer.normalizeAddress(address);
             
             // Should not crash on nulls
             assertNotNull(normalized);
@@ -726,7 +758,7 @@ public class Phase17ZoneTwoQualityTest {
                 "U.S.A."
             );
             
-            Address normalized = AddressNormalizer.normalizeAddress(address);
+            PreparedAddress normalized = AddressNormalizer.normalizeAddress(address);
             
             // line1, line2, city should have punctuation removed
             assertFalse(normalized.line1().contains(","));
@@ -774,14 +806,16 @@ public class Phase17ZoneTwoQualityTest {
             Entity queryEntity = new Entity(
                 "query-3",
                 "TEST PERSON",
-                "query",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "query-3",
                 query, null, null, null, null,
+                null,
                 List.of(queryAddr),
                 List.of(),
                 List.of(),
-                null, null
+                List.of(),
+                null, List.of(), null, null
             ).normalize();
             
             Person index = new Person(
@@ -796,14 +830,16 @@ public class Phase17ZoneTwoQualityTest {
             Entity indexEntity = new Entity(
                 "index-3",
                 "TEST PERSON",
-                "ofac-sdn",
                 EntityType.PERSON,
-                null, null,
+                SourceList.US_OFAC,
+                "index-3",
                 index, null, null, null, null,
+                null,
                 List.of(indexAddr),
                 List.of(),
                 List.of(),
-                null, null
+                List.of(),
+                null, List.of(), null, null
             ).normalize();
             
             // Addresses should be normalized in entities
@@ -817,7 +853,7 @@ public class Phase17ZoneTwoQualityTest {
             
             // Score addresses - should match well
             EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
-            double score = scorer.score(queryEntity, indexEntity, ScoringContext.disabled());
+            double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should have good address component score
             assertTrue(score > 0.5, "Score should include address match: " + score);
