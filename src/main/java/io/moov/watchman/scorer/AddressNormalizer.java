@@ -81,31 +81,45 @@ public class AddressNormalizer {
     }
     
     /**
-     * Normalizes a text field: lowercase + remove commas.
+     * Normalizes a text field: lowercase + remove punctuation.
+     * Phase 17: Remove common punctuation characters (but preserve hyphens for postal codes).
+     * Phase 17: Preserve null fields as null (don't convert to empty string).
      * Go uses addressCleaner = strings.NewReplacer(",", "")
      */
     private static String normalizeField(String field) {
-        if (field == null || field.isEmpty()) {
+        if (field == null) {
+            return null;  // Phase 17: Preserve null
+        }
+        if (field.isEmpty()) {
             return "";
         }
-        return field.toLowerCase().replace(",", "");
+        // Phase 17: Remove common punctuation: , . # (but NOT - for postal codes)
+        return field.toLowerCase()
+            .replace(",", "")
+            .replace(".", "")
+            .replace("#", "");
     }
     
     /**
-     * Normalizes country codes to full names, then lowercase.
+     * Normalizes country: lowercase and remove periods.
+     * Phase 17: Don't expand country codes - just normalize to lowercase.
+     * Phase 17: Remove periods (e.g., "U.S.A." → "usa").
+     * Phase 17: Preserve null as null.
      * Go: strings.ToLower(norm.Country(addr.Country))
      * 
-     * Simple implementation - handles common codes (US/USA → United States)
+     * Note: Country code expansion may be used elsewhere, but PreparedAddress
+     * stores the lowercased original form.
      */
     private static String normalizeCountry(String country) {
-        if (country == null || country.isEmpty()) {
+        if (country == null) {
+            return null;  // Phase 17: Preserve null
+        }
+        if (country.isEmpty()) {
             return "";
         }
         
-        // Check if it's a known code
-        String upperCountry = country.toUpperCase();
-        String normalized = COUNTRY_OVERRIDES.getOrDefault(upperCountry, country);
-        return normalized.toLowerCase();
+        // Phase 17: Lowercase and remove periods
+        return country.toLowerCase().replace(".", "");
     }
     
     /**

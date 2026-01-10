@@ -19,6 +19,7 @@ public class PhoneNormalizer {
     
     /**
      * Normalize a single phone number by removing formatting characters.
+     * Phase 17: Also removes trunk prefix indicators like (0)
      * 
      * @param phone the phone number to normalize
      * @return normalized phone (digits only), or null if input is null/empty or becomes empty
@@ -28,9 +29,12 @@ public class PhoneNormalizer {
             return null;
         }
         
+        // Phase 17: Remove trunk prefix indicators like (0) before other processing
+        String cleaned = phone.replace("(0)", "").replace(" 0 ", " ");
+        
         // Remove phone formatting characters: +, -, space, (, ), .
-        StringBuilder result = new StringBuilder(phone.length());
-        for (char c : phone.toCharArray()) {
+        StringBuilder result = new StringBuilder(cleaned.length());
+        for (char c : cleaned.toCharArray()) {
             if (c != '+' && c != '-' && c != ' ' && 
                 c != '(' && c != ')' && c != '.') {
                 result.append(c);

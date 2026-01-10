@@ -51,7 +51,7 @@ public class Phase17ZoneTwoQualityTest {
                 "test-id",
                 person, null, null, null, null,
                 null,
-                List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), Arrays.asList("THE KINGPIN", "EL JEFE"), List.of(),
                 null, List.of(), null, null
             );
             
@@ -100,7 +100,7 @@ public class Phase17ZoneTwoQualityTest {
                 "test-id-2",
                 person, null, null, null, null,
                 null,
-                List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), Arrays.asList("A FRIEND OF OURS", "THE ASSOCIATE"), List.of(),
                 null, List.of(), null, null
             );
             

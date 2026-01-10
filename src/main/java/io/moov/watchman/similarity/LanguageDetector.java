@@ -60,6 +60,24 @@ public class LanguageDetector {
         if (text.length() < 3) {
             return new LanguageDetectionResult("en", 0.5);
         }
+        
+        // For short text (< 30 chars) with common English stopwords, default to English
+        // This prevents misdetection of names like "THE DRUG LORD" as German
+        if (text.length() < 30) {
+            String lower = text.toLowerCase();
+            if (lower.contains(" the ") || lower.startsWith("the ") || lower.endsWith(" the") ||
+                lower.contains(" a ") || lower.startsWith("a ") || lower.endsWith(" a") ||
+                lower.contains(" of ") || lower.startsWith("of ") || lower.endsWith(" of")) {
+                return new LanguageDetectionResult("en", 0.8);
+            }
+            // Check for common Spanish stopwords
+            if (lower.contains(" el ") || lower.startsWith("el ") || lower.endsWith(" el") ||
+                lower.contains(" la ") || lower.startsWith("la ") || lower.endsWith(" la") ||
+                lower.contains(" de ") || lower.startsWith("de ") || lower.endsWith(" de") ||
+                lower.contains(" del ") || lower.startsWith("del ") || lower.endsWith(" del")) {
+                return new LanguageDetectionResult("es", 0.8);
+            }
+        }
 
         try {
             org.apache.tika.language.detect.LanguageResult result = tikaDetector.detect(text);
