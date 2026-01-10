@@ -44,7 +44,6 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("Person with matching titles should score high")
         void personTitles_exactMatch_scoresHigh() {
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -112,18 +111,17 @@ class Phase16ZoneOneCompletionTest {
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
-            assertTrue(result.score() > 0.9, "Matching titles should score > 0.9, got: " + result.score());
-            assertTrue(result.matched(), "Should be marked as matched");
-            assertEquals("title-fuzzy", result.pieceType());
-            assertEquals(35.0, result.weight());
-            assertEquals(1, result.fieldsCompared());
+            assertTrue(result.getScore() > 0.9, "Matching titles should score > 0.9, got: " + result.getScore());
+            assertTrue(result.isMatched(), "Should be marked as matched");
+            assertEquals("title-fuzzy", result.getPieceType());
+            assertEquals(35.0, result.getWeight());
+            assertEquals(1, result.getFieldsCompared());
         }
 
         @Test
         @DisplayName("Business names with similar match should score medium")
         void businessName_fuzzyMatch_scoresMedium() {
             Business queryBusiness = new Business(
-                    "id1",
                     "Acme Corporation",
                     List.of(),
                     null,
@@ -132,9 +130,10 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.BUSINESS,
                     "Acme Corporation",
-                    "ofac-sdn",
+                    EntityType.BUSINESS,
+                    SourceList.US_OFAC,
+                    "id1",
                     List.of(),
                     List.of(),
                     null,
@@ -153,7 +152,6 @@ class Phase16ZoneOneCompletionTest {
             );
 
             Business indexBusiness = new Business(
-                    "id2",
                     "Acme Corp",
                     List.of(),
                     null,
@@ -185,8 +183,8 @@ class Phase16ZoneOneCompletionTest {
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
-            assertTrue(result.score() > 0.7, "Similar business names should score > 0.7, got: " + result.score());
-            assertTrue(result.matched(), "Should be marked as matched");
+            assertTrue(result.getScore() > 0.7, "Similar business names should score > 0.7, got: " + result.getScore());
+            assertTrue(result.isMatched(), "Should be marked as matched");
         }
 
         @Test
@@ -261,8 +259,8 @@ class Phase16ZoneOneCompletionTest {
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
-            assertTrue(result.score() < 0.5, "Different titles should score < 0.5, got: " + result.score());
-            assertFalse(result.matched(), "Should not be marked as matched");
+            assertTrue(result.getScore() < 0.5, "Different titles should score < 0.5, got: " + result.getScore());
+            assertFalse(result.isMatched(), "Should not be marked as matched");
         }
 
         @Test
@@ -302,7 +300,6 @@ class Phase16ZoneOneCompletionTest {
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "Jane Smith",
                     List.of(),
                     "female",
@@ -337,9 +334,9 @@ class Phase16ZoneOneCompletionTest {
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
-            assertEquals(0.0, result.score());
-            assertFalse(result.matched());
-            assertEquals(0, result.fieldsCompared());
+            assertEquals(0.0, result.getScore());
+            assertFalse(result.isMatched());
+            assertEquals(0, result.getFieldsCompared());
         }
 
         @Test
@@ -414,9 +411,9 @@ class Phase16ZoneOneCompletionTest {
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
-            assertTrue(result.score() > 0.9, "Matching aircraft types should score > 0.9, got: " + result.score());
-            assertTrue(result.matched());
-            assertTrue(result.exact());
+            assertTrue(result.getScore() > 0.9, "Matching aircraft types should score > 0.9, got: " + result.getScore());
+            assertTrue(result.isMatched());
+            assertTrue(result.isExact());
         }
 
         @Test
@@ -492,10 +489,10 @@ class Phase16ZoneOneCompletionTest {
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
-            if (result.score() > 0.5) {
-                assertTrue(result.matched(), "Score > 0.5 should be marked as matched");
+            if (result.getScore() > 0.5) {
+                assertTrue(result.isMatched(), "Score > 0.5 should be marked as matched");
             } else {
-                assertFalse(result.matched(), "Score <= 0.5 should not be marked as matched");
+                assertFalse(result.isMatched(), "Score <= 0.5 should not be marked as matched");
             }
         }
 
@@ -571,8 +568,8 @@ class Phase16ZoneOneCompletionTest {
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
-            if (result.score() > 0.99) {
-                assertTrue(result.exact(), "Score > 0.99 should be marked as exact");
+            if (result.getScore() > 0.99) {
+                assertTrue(result.isExact(), "Score > 0.99 should be marked as exact");
             }
         }
     }
@@ -930,9 +927,9 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertTrue(result.score() > 0, "Matching government IDs should score > 0");
-            assertTrue(result.matched());
-            assertEquals(15.0, result.weight());
+            assertTrue(result.getScore() > 0, "Matching government IDs should score > 0");
+            assertTrue(result.isMatched());
+            assertEquals(15.0, result.getWeight());
         }
 
         @Test
@@ -1003,8 +1000,8 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertTrue(result.score() > 0, "Matching government IDs should score > 0");
-            assertEquals(15.0, result.weight());
+            assertTrue(result.getScore() > 0, "Matching government IDs should score > 0");
+            assertEquals(15.0, result.getWeight());
         }
 
         @Test
@@ -1057,9 +1054,9 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertEquals(0.0, result.score());
-            assertFalse(result.matched());
-            assertEquals(0, result.fieldsCompared());
+            assertEquals(0.0, result.getScore());
+            assertFalse(result.isMatched());
+            assertEquals(0, result.getFieldsCompared());
         }
 
         @Test
@@ -1114,9 +1111,9 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareCryptoWallets(query, index, 15.0);
 
             assertNotNull(result);
-            assertTrue(result.score() > 0, "Matching crypto addresses should score > 0");
-            assertTrue(result.exact(), "Exact crypto match should be marked as exact");
-            assertEquals(15.0, result.weight());
+            assertTrue(result.getScore() > 0, "Matching crypto addresses should score > 0");
+            assertTrue(result.isExact(), "Exact crypto match should be marked as exact");
+            assertEquals(15.0, result.getWeight());
         }
     }
 
@@ -1135,7 +1132,7 @@ class Phase16ZoneOneCompletionTest {
             assertNotNull(result);
             assertEquals(2, result.matches());
             assertEquals(2, result.totalQuery());
-            assertEquals(1.0, result.score(), 0.001);
+            assertEquals(1.0, result.getScore(), 0.001);
         }
 
         @Test
@@ -1149,7 +1146,7 @@ class Phase16ZoneOneCompletionTest {
             assertNotNull(result);
             assertEquals(1, result.matches());
             assertEquals(3, result.totalQuery());
-            assertEquals(1.0 / 3.0, result.score(), 0.001);
+            assertEquals(1.0 / 3.0, result.getScore(), 0.001);
         }
 
         @Test
@@ -1163,7 +1160,7 @@ class Phase16ZoneOneCompletionTest {
             assertNotNull(result);
             assertEquals(0, result.matches());
             assertEquals(1, result.totalQuery());
-            assertEquals(0.0, result.score(), 0.001);
+            assertEquals(0.0, result.getScore(), 0.001);
         }
 
         @Test
@@ -1176,7 +1173,7 @@ class Phase16ZoneOneCompletionTest {
 
             assertNotNull(result);
             assertEquals(1, result.matches());
-            assertEquals(1.0, result.score(), 0.001);
+            assertEquals(1.0, result.getScore(), 0.001);
         }
     }
 }
