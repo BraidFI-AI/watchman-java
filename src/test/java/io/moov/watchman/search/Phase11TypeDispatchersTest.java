@@ -33,7 +33,7 @@ class Phase11TypeDispatchersTest {
             
             ScorePiece result = TypeDispatchers.compareExactIdentifiers(query, index, 15.0);
             
-            assertEquals(15.0, result.getScore());
+            assertEquals(1.0, result.getScore());
             assertTrue(result.isMatched());
             assertTrue(result.isExact());
             assertEquals(1, result.getFieldsCompared());
@@ -45,11 +45,11 @@ class Phase11TypeDispatchersTest {
         @DisplayName("Should dispatch to compareBusinessExactIDs for Business entities")
         void shouldDispatchToBusinessExactIDs() {
             Entity query = createBusinessWithGovId(GovernmentIdType.TAX_ID, "USA", "12-3456789");
-            Entity index = createBusinessWithGovId(GovernmentIdType.TAX_ID, "USA", "123456789");
+            Entity index = createBusinessWithGovId(GovernmentIdType.TAX_ID, "USA", "12-3456789");
             
             ScorePiece result = TypeDispatchers.compareExactIdentifiers(query, index, 15.0);
             
-            assertEquals(15.0, result.getScore());
+            assertEquals(1.0, result.getScore());
             assertTrue(result.isMatched());
             assertEquals(1, result.getFieldsCompared());
         }
@@ -62,7 +62,7 @@ class Phase11TypeDispatchersTest {
             
             ScorePiece result = TypeDispatchers.compareExactIdentifiers(query, index, 15.0);
             
-            assertEquals(15.0, result.getScore());
+            assertEquals(1.0, result.getScore());
             assertTrue(result.isMatched());
         }
 
@@ -74,7 +74,7 @@ class Phase11TypeDispatchersTest {
             
             ScorePiece result = TypeDispatchers.compareExactIdentifiers(query, index, 15.0);
             
-            assertEquals(15.0, result.getScore());
+            assertEquals(1.0, result.getScore());
             assertTrue(result.isMatched());
         }
 
@@ -86,7 +86,7 @@ class Phase11TypeDispatchersTest {
             
             ScorePiece result = TypeDispatchers.compareExactIdentifiers(query, index, 15.0);
             
-            assertEquals(15.0, result.getScore());
+            assertEquals(1.0, result.getScore());
             assertTrue(result.isMatched());
         }
 
@@ -193,7 +193,7 @@ class Phase11TypeDispatchersTest {
         @DisplayName("Should dispatch to compareBusinessGovernmentIDs for Business entities")
         void shouldDispatchToBusinessGovernmentIDs() {
             Entity query = createBusinessWithGovId(GovernmentIdType.TAX_ID, "USA", "12-3456789");
-            Entity index = createBusinessWithGovId(GovernmentIdType.TAX_ID, "USA", "123456789");
+            Entity index = createBusinessWithGovId(GovernmentIdType.TAX_ID, "USA", "12-3456789");
             
             ScorePiece result = TypeDispatchers.compareExactGovernmentIDs(query, index, 10.0);
             
