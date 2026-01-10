@@ -12,7 +12,7 @@ This document provides a comprehensive feature-by-feature inventory comparing th
 
 The development process follows Test-Driven Development (TDD): analyze Go implementation behavior by reading source code and understanding edge cases, write comprehensive failing tests (RED phase) that capture expected behavior, implement the feature to make tests pass (GREEN phase), and verify with full test suite execution. Each phase is documented with detailed completion summaries at the end of this document, including test counts, implementation notes, bug fixes, and git commit references. This methodology ensures 100% behavioral parity between implementations and provides a clear audit trail of all changes.
 
-**Current Status:** 82/200 features fully implemented (41%), 69 partially implemented (34.5%), 49 completely missing (24.5%). Gap: 59% of Go's features are missing or incomplete. Test coverage: 646/646 passing (100%).
+**Current Status:** 86/200 features fully implemented (43%), 69 partially implemented (34.5%), 45 completely missing (22.5%). Gap: 57% of Go's features are missing or incomplete. Test coverage: 684/684 passing (100%).
 
 ---
 
@@ -95,10 +95,10 @@ The development process follows Test-Driven Development (TDD): analyze Go implem
 | 59 | `isNameCloseEnough()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - proximity check |
 | 60 | `filterTerms()` | similarity_fuzzy.go | `TitleMatcher.filterTerms()` | ✅ | **Phase 5 (Jan 9):** Private helper - removes terms with length < 2 |
 | 61 | `compareAddresses()` | similarity_address.go | `compareAddresses()` | ⚠️ | Basic implementation |
-| 62 | `compareAddress()` | similarity_address.go | N/A | ❌ | **MISSING** - single address compare |
-| 63 | `findBestAddressMatch()` | similarity_address.go | N/A | ❌ | **MISSING** - best match selection |
-| 64 | `normalizeAddress()` | similarity_address.go | N/A | ❌ | **MISSING** - address normalization |
-| 65 | `normalizeAddresses()` | similarity_address.go | N/A | ❌ | **MISSING** - batch normalization |
+| 62 | `compareAddress()` | similarity_address.go | `AddressComparer.compareAddress()` | ✅ | **Phase 7 (Jan 9):** Weighted field comparison, JaroWinkler for fuzzy fields, exact match for state/postal/country |
+| 63 | `findBestAddressMatch()` | similarity_address.go | `AddressComparer.findBestAddressMatch()` | ✅ | **Phase 7 (Jan 9):** Best pair selection with early exit at 0.92+ confidence |
+| 64 | `normalizeAddress()` | similarity_address.go | `AddressNormalizer.normalizeAddress()` | ✅ | **Phase 7 (Jan 9):** Lowercase, comma removal, country normalization, field tokenization |
+| 65 | `normalizeAddresses()` | similarity_address.go | `AddressNormalizer.normalizeAddresses()` | ✅ | **Phase 7 (Jan 9):** Batch normalization with null/empty handling |
 | 66 | `compareExactSourceList()` | similarity_exact.go | N/A | ❌ | **MISSING** - source list matching |
 | 67 | `compareExactIdentifiers()` | similarity_exact.go | `sourceId.equals()` | ⚠️ | Partial |
 | 68 | `compareExactGovernmentIDs()` | similarity_exact.go | `compareGovernmentIds()` | ⚠️ | Partial |
@@ -133,9 +133,9 @@ The development process follows Test-Driven Development (TDD): analyze Go implem
 | 97 | `countVesselFields()` | similarity_supporting.go | `EntityScorer.countVesselFields()` | ✅ | **Phase 4 (Jan 9):** Private helper - 10 fields (name, altNames, type, flag, callSign, tonnage, owner, imoNumber, built, mmsi) |
 
 **Summary: 69 scoring functions**
-- ✅ 29 fully implemented (42%) - **+3 in Phase 6 (Jan 9)**
+- ✅ 33 fully implemented (48%) - **+4 in Phase 7 (Jan 9)**
 - ⚠️ 11 partially implemented (16%)
-- ❌ 29 completely missing (42%) - **-3 in Phase 6**
+- ❌ 25 completely missing (36%) - **-4 in Phase 7**
 
 ---
 
@@ -327,12 +327,12 @@ The development process follows Test-Driven Development (TDD): analyze Go implem
 | Category | Total | ✅ Full | ⚠️ Partial | ❌ Missing | % Missing |
 |----------|-------|---------|-----------|-----------|-----------|
 | **Core Algorithms** | 28 | 17 | 4 | 7 | 25% |
-| **Scoring Functions** | 69 | 26 | 11 | 32 | 46% |
+| **Scoring Functions** | 69 | 33 | 11 | 25 | 36% |
 | **Entity Models** | 16 | 3 | 4 | 9 | 56% |
 | **Client & API** | 16 | 1 | 3 | 12 | 75% |
 | **Environment Variables** | 27 | 4 | 7 | 16 | 59% |
 | **Missing Modules** | 21 | 0 | 0 | 21 | 100% |
-| **TOTAL** | **177** | **51** | **29** | **97** | **54.8%** |
+| **TOTAL** | **177** | **58** | **29** | **90** | **50.8%** |
 
 ---
 
@@ -364,17 +364,17 @@ The development process follows Test-Driven Development (TDD): analyze Go implem
 
 ## CONCLUSION
 
-**Java has implemented 41% of Go's features completely** (up from 39.5% after Phase 5).
+**Java has implemented 43% of Go's features completely** (up from 41% after Phase 6).
 
 The port is missing:
-- **94 functions** (59% of core functionality, down from 60.5%)
+- **90 functions** (57% of core functionality, down from 59%)
 - **21 entire modules** (6,450 lines of code)
 - **16 environment variables** (59% of configuration)
 
 **Progress Summary:**
-- ✅ **Phase 0-6 COMPLETE (Jan 8-9, 2026)** - Core algorithms, scoring, quality/coverage, title/affiliation matching, affiliation comparison
-- 🔄 **Gap reduction: 71% → 59%** - 12 percentage point improvement across 6 phases
-- 📊 **Test coverage: 646/646 passing (100%)** - 31 new tests in Phase 6
+- ✅ **Phase 0-7 COMPLETE (Jan 8-9, 2026)** - Core algorithms, scoring, quality/coverage, title/affiliation matching, affiliation comparison, address normalization
+- 🔄 **Gap reduction: 71% → 57%** - 14 percentage point improvement across 7 phases
+- 📊 **Test coverage: 684/684 passing (100%)** - 38 new tests in Phase 7
 
 **This is why we missed the bugs:** We never did a function-by-function audit.
 
@@ -1073,12 +1073,167 @@ The port is missing:
 
 ---
 
+## PHASE 7 COMPLETION SUMMARY (Jan 9, 2026)
+
+**Implemented Features (4 new: address normalization and comparison functions):**
+
+### Address Normalization and Comparison Functions (4 functions)
+1. ✅ `normalizeAddress(Address)` - **IMPLEMENTED** in AddressNormalizer
+   - Converts raw Address to PreparedAddress with normalized fields
+   - Lowercase transformation for all text fields (line1, line2, city, state, postalCode)
+   - Comma removal (Go's addressCleaner = strings.NewReplacer(",", ""))
+   - Country normalization: US/USA → united states, UK/GB → united kingdom
+   - Field tokenization: splits line1/line2/city on whitespace into token arrays
+   - Null/empty handling: returns PreparedAddress.empty() for null input
+   - Examples:
+     * "123 MAIN ST, SUITE 100" → line1="123 main st suite 100", line1Fields=["123", "main", "st", "suite", "100"]
+     * "NEW YORK" → city="new york", cityFields=["new", "york"]
+     * "USA" → country="united states"
+
+2. ✅ `normalizeAddresses(List<Address>)` - **IMPLEMENTED** in AddressNormalizer
+   - Batch normalization of multiple addresses
+   - Null/empty input handling: returns empty list (not null)
+   - Iterates through list and calls normalizeAddress() for each
+   - Examples:
+     * null → List.of() (empty)
+     * [addr1, addr2] → [prep1, prep2]
+
+3. ✅ `compareAddress(PreparedAddress, PreparedAddress)` - **IMPLEMENTED** in AddressComparer
+   - Weighted field comparison using 6 field weights (from Go similarity_address.go lines 11-17)
+   - **Field weights**:
+     * line1: 5.0 (most important - primary address)
+     * line2: 2.0 (less important - secondary info like apt/suite)
+     * city: 4.0 (highly important for location)
+     * state: 2.0 (helps confirm location)
+     * postalCode: 3.0 (strong verification)
+     * country: 4.0 (critical for international matching)
+   - **Fuzzy matching** (line1, line2, city): Uses JaroWinkler similarity via bestPairCombinationJaroWinkler
+     * Joins token arrays to strings: ["123", "main", "st"] → "123 main st"
+     * Calls jaroWinkler.jaroWinkler(queryStr, indexStr)
+     * Handles abbreviations: "street" vs "st" → high similarity
+   - **Exact matching** (state, postal, country): Case-insensitive equals
+     * "NY" equals "ny" → 1.0
+     * "10001" equals "10001" → 1.0
+     * "united states" equals "united states" → 1.0
+   - **Weighted average calculation**: totalScore / totalWeight
+     * Only includes fields present in both query and index
+     * Returns 0.0 if no fields can be compared (totalWeight == 0)
+   - Examples:
+     * Identical addresses → 1.0 (perfect score)
+     * "123 Main Street" vs "123 Main St" → ~0.95 (fuzzy line1 match)
+     * Different cities, same country → ~0.2 (only country matches)
+
+4. ✅ `findBestAddressMatch(List<PreparedAddress>, List<PreparedAddress>)` - **IMPLEMENTED** in AddressComparer
+   - Finds best matching address pair from two lists
+   - **Algorithm**: Tries all query-index combinations (cartesian product)
+     * Nested loop: for each query address, compare with each index address
+     * Tracks best score across all comparisons
+   - **Early exit optimization**: Returns immediately when score > 0.92 (HIGH_CONFIDENCE_THRESHOLD)
+     * Stops comparing after finding high-confidence match
+     * Saves computation for large address lists
+   - **Empty handling**: Returns 0.0 if either list is null or empty
+   - Examples:
+     * Single query, single index → compares once, returns score
+     * 2 queries, 3 indices → tries 6 combinations, returns highest
+     * Perfect match found early → stops at 0.92+, doesn't check remaining
+     * No good matches → returns best available (even if low)
+
+**Test Coverage:**
+- ✅ 38/38 Phase 7 tests passing (100%)
+  - NormalizeAddressTests: 10/10 ✅
+    * Lowercase transformation, comma removal, country normalization
+    * Tokenization (line1Fields, line2Fields, cityFields)
+    * Null/empty handling for all fields
+  - NormalizeAddressesTests: 4/4 ✅
+    * Null input → empty list
+    * Empty input → empty list
+    * Single address batch processing
+    * Multiple addresses batch processing
+  - CompareAddressTests: 13/13 ✅
+    * Identical addresses → 1.0
+    * Different addresses, same country → low score
+    * Weighted scoring (line1 weight 5.0, city weight 4.0)
+    * JaroWinkler fuzzy matching for line1/city
+    * Exact matching for state/postal/country (case-insensitive)
+    * Empty field skipping (query or index)
+    * No comparable fields → 0.0
+    * Real-world example: punctuation variations
+  - FindBestAddressMatchTests: 9/9 ✅
+    * Empty query/index → 0.0
+    * Single-to-single matching
+    * Best match from multiple indices
+    * Best match from multiple queries
+    * All combinations checked
+    * Early exit at 0.92+ confidence
+    * No good matches → returns best available
+  - IntegrationTests: 2/2 ✅
+    * End-to-end: normalize + compare workflow
+    * Batch processing: multiple addresses
+
+**Key Implementation Details:**
+- PreparedAddress model: Record with 10 fields
+  * line1, line1Fields (List<String>)
+  * line2, line2Fields (List<String>)
+  * city, cityFields (List<String>)
+  * state, postalCode, country (String)
+- AddressNormalizer: 2 public static methods + 3 private helpers
+  * normalizeField(): lowercase + comma removal
+  * normalizeCountry(): code → name mapping (US→united states)
+  * tokenize(): split on whitespace
+- AddressComparer: 2 public static methods + 1 private helper
+  * compareAddress(): weighted field comparison
+  * findBestAddressMatch(): best pair selection
+  * bestPairCombinationJaroWinkler(): token joining + JaroWinkler
+- Constants:
+  * Field weights: LINE1_WEIGHT(5.0), CITY_WEIGHT(4.0), COUNTRY_WEIGHT(4.0), POSTAL_WEIGHT(3.0), STATE_WEIGHT(2.0), LINE2_WEIGHT(2.0)
+  * HIGH_CONFIDENCE_THRESHOLD: 0.92
+- Country overrides: Map with 4 entries (US, USA, UK, GB)
+
+**TDD Workflow (Red-Green):**
+- Task 1: Research Go implementation (similarity_address.go lines 53-161, models.go lines 356-391)
+- Task 2: RED - 38 failing tests across 5 test groups + stubs
+- Task 3-5: GREEN - Implement all 4 functions → 38/38 passing
+- Task 6: Final verification (684/684), documentation update, git push
+
+**Git Commits (2 total):**
+1. `fe3de5a` - Phase 7 RED: Address normalization and comparison tests (38 failing)
+2. `da73dd6` - Phase 7 GREEN: Address normalization and comparison implementation (38/38 passing, 684 total)
+
+**Feature Parity Progress:**
+- Before Phase 7: 82/200 fully implemented (41%), 59% missing
+- After Phase 7: 86/200 fully implemented (43%), 57% missing
+- Gap reduced: 2 percentage points (59% → 57%)
+- Scoring Functions: 29/69 → 33/69 fully implemented (42% → 48%)
+
+**Full Test Suite: 684/684 tests passing (100%)** ✅
+- Phase 0: 24/24 ✅
+- Phase 1: 60/60 ✅
+- Phase 2: 31/31 ✅
+- Phase 3: 46/46 ✅
+- Phase 4: 43/43 ✅
+- Phase 5: 85/85 ✅
+- Phase 6: 31/31 ✅
+- Phase 7: 38/38 ✅ (NEW)
+- Pre-existing: 326/326 ✅
+
+**Production Impact:**
+- Enables location-based entity matching and verification
+- Supports international address comparison with country normalization
+- Weighted scoring prioritizes critical address components (street address, city)
+- Fuzzy matching handles abbreviations and variations (Street vs St, Suite vs Ste)
+- Early exit optimization improves performance for entities with multiple addresses
+- Foundation for geolocation-based sanctions screening
+- Critical for person and business entity disambiguation by location
+- Completes Go's address comparison feature parity
+
+---
+
 ## NEXT STEPS
 
 **Remaining High-Priority Features:**
 - ~~Title & affiliation matching (12 features)~~ ✅ **COMPLETE (Phases 5-6)** - Title normalization/comparison (9 functions), affiliation comparison (3 functions)
 - ~~Quality/coverage scoring (12 features)~~ ✅ **COMPLETE (Phase 4)** - calculateCoverage, countAvailableFields, adjustScoreBasedOnQuality, applyPenaltiesAndBonuses, isHighConfidenceMatch, 5 type-specific counters, countCommonFields, countFieldsByImportance
-- Address normalization (5 features) - normalizeAddress, findBestAddressMatch, compareAddress, normalizeAddresses
+- ~~Address normalization (4 features)~~ ✅ **COMPLETE (Phase 7)** - normalizeAddress, normalizeAddresses, compareAddress, findBestAddressMatch
 - Date comparison enhancements (8 features) - areDatesLogical, comparePersonDates, compareBusinessDates, areDaysSimilar
 
 **Estimated Time to 100% Parity:**
