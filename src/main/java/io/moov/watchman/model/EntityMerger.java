@@ -103,4 +103,68 @@ public class EntityMerger {
     private static String normalize(String field) {
         return field != null ? field.trim() : "";
     }
+
+    /**
+     * Merges two government ID lists, removing duplicates based on type, country, and normalized identifier.
+     *
+     * Algorithm:
+     * 1. Combine both lists
+     * 2. Use LinkedHashMap with normalized key to deduplicate
+     * 3. Normalization: remove spaces/hyphens from identifier, case-insensitive
+     * 4. Keep first occurrence when duplicates found
+     *
+     * Duplicate detection considers type, country, and normalized identifier.
+     * Example: "123-45-6789" and "123456789" are considered the same.
+     *
+     * @param list1 First government ID list (can be null)
+     * @param list2 Second government ID list (can be null)
+     * @return Merged, deduplicated government ID list (never null)
+     */
+    public static List<GovernmentId> mergeGovernmentIDs(List<GovernmentId> list1, List<GovernmentId> list2) {
+        Map<String, GovernmentId> idMap = new LinkedHashMap<>();
+
+        // Process both lists
+        Stream.concat(
+                list1 != null ? list1.stream() : Stream.empty(),
+                list2 != null ? list2.stream() : Stream.empty()
+            )
+            .forEach(id -> {
+                String key = getGovernmentIdKey(id);
+                idMap.putIfAbsent(key, id);  // Keep first occurrence
+            });
+
+        return new ArrayList<>(idMap.values());
+    }
+
+    /**
+     * Generates a normalized key for government ID deduplication.
+     *
+     * Format: "type|country|normalizedIdentifier" (all lowercase)
+     * Normalized identifier has spaces and hyphens removed.
+     *
+     * Examples:
+     * - "123-45-6789" → "123456789"
+     * - "AB 12 34 56 C" → "AB123456C"
+     */
+    private static String getGovernmentIdKey(GovernmentId id) {
+        return String.format("%s|%s|%s",
+            id.type().toString(),
+            normalize(id.country()),
+            normalizeId(id.identifier())
+        ).toLowerCase();
+    }
+
+    /**
+     * Normalizes a government ID identifier by removing spaces and hyphens.
+     *
+     * Examples:
+     * - "123-45-6789" → "123456789"
+     * - "AB 12 34 56 C" → "AB123456C"
+     */
+    private static String normalizeId(String identifier) {
+        if (identifier == null) {
+            return "";
+        }
+        return identifier.replaceAll("[\\s\\-]", "");
+    }
 }

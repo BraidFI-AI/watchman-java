@@ -465,4 +465,205 @@ class EntityMergerTest {
             .count();
         assertThat(moscowCount).isEqualTo(2);
     }
+
+    // ==================== mergeGovernmentIDs() Tests ====================
+
+    @Test
+    void mergeGovernmentIDs_withTwoDistinctIDs_shouldCombineBoth() {
+        // Given: Two different government IDs
+        List<GovernmentId> list1 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "USA")
+        );
+        List<GovernmentId> list2 = List.of(
+            new GovernmentId(GovernmentIdType.TAX_ID, "987-65-4321", "USA")
+        );
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should contain both IDs
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(GovernmentId::type)
+            .containsExactlyInAnyOrder(GovernmentIdType.PASSPORT, GovernmentIdType.TAX_ID);
+    }
+
+    @Test
+    void mergeGovernmentIDs_withIdenticalIDs_shouldDeduplicateExactMatches() {
+        // Given: Two identical government IDs
+        GovernmentId id = new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "USA");
+        List<GovernmentId> list1 = List.of(id);
+        List<GovernmentId> list2 = List.of(id);
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should have only one copy
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).identifier()).isEqualTo("AB123456");
+    }
+
+    @Test
+    void mergeGovernmentIDs_withNormalizedDuplicates_shouldDeduplicateByNormalizedForm() {
+        // Given: Same ID with different formatting (SSN with/without hyphens)
+        List<GovernmentId> list1 = List.of(
+            new GovernmentId(GovernmentIdType.TAX_ID, "123-45-6789", "USA")
+        );
+        List<GovernmentId> list2 = List.of(
+            new GovernmentId(GovernmentIdType.TAX_ID, "123456789", "USA")
+        );
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should deduplicate (normalized forms match: "123456789")
+        assertThat(result).hasSize(1);
+        // Should keep first occurrence format
+        assertThat(result.get(0).identifier()).isEqualTo("123-45-6789");
+    }
+
+    @Test
+    void mergeGovernmentIDs_withSpacesAndHyphens_shouldNormalizeAndDeduplicate() {
+        // Given: Same ID with spaces vs hyphens
+        List<GovernmentId> list1 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB 12 34 56 C", "FRANCE")
+        );
+        List<GovernmentId> list2 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB-12-34-56-C", "FRANCE")
+        );
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should deduplicate (normalized: "AB123456C")
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void mergeGovernmentIDs_withCaseVariations_shouldNormalizeAndDeduplicate() {
+        // Given: Same ID with case variations
+        List<GovernmentId> list1 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "ab123456", "USA")
+        );
+        List<GovernmentId> list2 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "USA")
+        );
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should deduplicate (case-insensitive)
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void mergeGovernmentIDs_withSameIDDifferentType_shouldKeepBoth() {
+        // Given: Same identifier but different type
+        List<GovernmentId> list1 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "123456", "USA")
+        );
+        List<GovernmentId> list2 = List.of(
+            new GovernmentId(GovernmentIdType.TAX_ID, "123456", "USA")
+        );
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should keep both (different types = different IDs)
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void mergeGovernmentIDs_withSameIDDifferentCountry_shouldKeepBoth() {
+        // Given: Same identifier but different country
+        List<GovernmentId> list1 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "USA")
+        );
+        List<GovernmentId> list2 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "CANADA")
+        );
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should keep both (different countries = different IDs)
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void mergeGovernmentIDs_withEmptyLists_shouldReturnEmptyList() {
+        // Given: Two empty lists
+        List<GovernmentId> list1 = List.of();
+        List<GovernmentId> list2 = List.of();
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should return empty list
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void mergeGovernmentIDs_withNullLists_shouldReturnEmptyList() {
+        // Given: Null lists
+        List<GovernmentId> list1 = null;
+        List<GovernmentId> list2 = null;
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should return empty list (not null)
+        assertThat(result).isNotNull();
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void mergeGovernmentIDs_withOneNullList_shouldReturnOtherList() {
+        // Given: One null, one with data
+        List<GovernmentId> list1 = List.of(
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "USA")
+        );
+        List<GovernmentId> list2 = null;
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(list1, list2);
+
+        // Then: Should return non-null list
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).identifier()).isEqualTo("AB123456");
+    }
+
+    @Test
+    void mergeGovernmentIDs_realWorldExample_multipleFormats() {
+        // Given: Same person with IDs from different sources
+        List<GovernmentId> ofacIDs = List.of(
+            new GovernmentId(GovernmentIdType.TAX_ID, "123-45-6789", "USA"),
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB 123456", "USA")
+        );
+        List<GovernmentId> euIDs = List.of(
+            new GovernmentId(GovernmentIdType.TAX_ID, "123456789", "USA"),  // Same as OFAC (different format)
+            new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "USA"),  // Same as OFAC (no space)
+            new GovernmentId(GovernmentIdType.TAX_ID, "FR1234567890", "FRANCE")  // Different country
+        );
+
+        // When: Merging
+        List<GovernmentId> result = EntityMerger.mergeGovernmentIDs(ofacIDs, euIDs);
+
+        // Then: Should deduplicate US IDs, keep French ID
+        assertThat(result).hasSize(3);
+
+        // US Tax ID should be deduplicated
+        long usTaxIdCount = result.stream()
+            .filter(id -> id.type() == GovernmentIdType.TAX_ID && "USA".equals(id.country()))
+            .count();
+        assertThat(usTaxIdCount).isEqualTo(1);
+
+        // US Passport should be deduplicated
+        long usPassportCount = result.stream()
+            .filter(id -> id.type() == GovernmentIdType.PASSPORT && "USA".equals(id.country()))
+            .count();
+        assertThat(usPassportCount).isEqualTo(1);
+
+        // French ID should be present
+        assertThat(result).anyMatch(id -> "FRANCE".equals(id.country()));
+    }
 }
