@@ -306,7 +306,13 @@ public interface EntityScorer {
      * @return true if match meets high confidence criteria
      */
     static boolean isHighConfidenceMatch(NameMatch match, double finalScore) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // Constants from Go implementation
+        final int minMatchingTerms = 2;
+        final double nameMatchThreshold = 0.85;
+        
+        // High confidence requires BOTH sufficient matching terms AND high score
+        return match.getMatchingTerms() >= minMatchingTerms 
+                && finalScore > nameMatchThreshold;
     }
 
     // Helper methods for counting type-specific fields
