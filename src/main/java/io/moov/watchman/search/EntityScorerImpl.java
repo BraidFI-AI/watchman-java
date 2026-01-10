@@ -3,6 +3,8 @@ package io.moov.watchman.search;
 import io.moov.watchman.model.*;
 import io.moov.watchman.similarity.SimilarityService;
 import io.moov.watchman.similarity.TextNormalizer;
+import io.moov.watchman.trace.Phase;
+import io.moov.watchman.trace.ScoringContext;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -80,26 +82,43 @@ public class EntityScorerImpl implements EntityScorer {
 
     @Override
     public ScoreBreakdown scoreWithBreakdown(Entity query, Entity index) {
+        // Backward compatibility: delegate to context-aware version with disabled context
+        return scoreWithBreakdown(query, index, ScoringContext.disabled());
+    }
+
+    @Override
+    public ScoreBreakdown scoreWithBreakdown(Entity query, Entity index, ScoringContext ctx) {
         if (query == null || index == null) {
             return new ScoreBreakdown(0, 0, 0, 0, 0, 0, 0, 0);
         }
+
+        // Record normalization phase
+        ctx.record(Phase.NORMALIZATION, "Entities normalized during construction");
 
         // Check for exact sourceId match (critical identifier)
         // If both entities have sourceId set and they match, it's a perfect match
         if (query.sourceId() != null && !query.sourceId().isBlank() 
             && index.sourceId() != null && !index.sourceId().isBlank()
             && query.sourceId().equals(index.sourceId())) {
+            ctx.record(Phase.GOV_ID_COMPARISON, "Perfect sourceId match");
             return new ScoreBreakdown(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
         }
 
-        // Calculate individual factor scores
-        double nameScore = compareNames(query.name(), index);
-        double altNamesScore = compareAltNames(query.name(), index);
-        double govIdScore = compareGovernmentIds(query.governmentIds(), index.governmentIds());
-        double cryptoScore = compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses());
-        double addressScore = compareAddresses(query.addresses(), index.addresses());
-        double contactScore = compareContact(query.contact(), index.contact());
-        double dateScore = compareDates(query, index);
+        // Calculate individual factor scores with tracing
+        double nameScore = ctx.traced(Phase.NAME_COMPARISON, "Compare names",
+                () -> compareNames(query.name(), index, ctx));
+        double altNamesScore = ctx.traced(Phase.ALT_NAME_COMPARISON, "Compare alt names",
+                () -> compareAltNames(query.name(), index, ctx));
+        double govIdScore = ctx.traced(Phase.GOV_ID_COMPARISON, "Compare government IDs",
+                () -> compareGovernmentIds(query.governmentIds(), index.governmentIds()));
+        double cryptoScore = ctx.traced(Phase.CRYPTO_COMPARISON, "Compare crypto addresses",
+                () -> compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses()));
+        double addressScore = ctx.traced(Phase.ADDRESS_COMPARISON, "Compare addresses",
+                () -> compareAddresses(query.addresses(), index.addresses()));
+        double contactScore = ctx.traced(Phase.CONTACT_COMPARISON, "Compare contact info",
+                () -> compareContact(query.contact(), index.contact()));
+        double dateScore = ctx.traced(Phase.DATE_COMPARISON, "Compare dates",
+                () -> compareDates(query, index));
 
         // SourceId mismatch penalty: if both have sourceIds but they don't match,
         // this counts as a critical identifier mismatch (score 0 for that factor)
@@ -110,18 +129,19 @@ public class EntityScorerImpl implements EntityScorer {
         // Calculate weighted final score
         boolean hasExactMatch = govIdScore >= 0.99 || cryptoScore >= 0.99 || contactScore >= 0.99;
 
-        double finalScore;
-        if (hasExactMatch) {
-            // Exact identifier match - heavily weight it
-            finalScore = calculateWithExactMatch(nameScore, altNamesScore, govIdScore, 
-                cryptoScore, addressScore, contactScore, dateScore);
-        } else {
-            // Normal weighted scoring (with sourceId mismatch penalty if applicable)
-            finalScore = calculateNormalScore(nameScore, altNamesScore, govIdScore, 
-                cryptoScore, addressScore, contactScore, dateScore, sourceIdMismatch);
-        }
+        double finalScore = ctx.traced(Phase.AGGREGATION, "Calculate weighted score", () -> {
+            if (hasExactMatch) {
+                // Exact identifier match - heavily weight it
+                return calculateWithExactMatch(nameScore, altNamesScore, govIdScore, 
+                    cryptoScore, addressScore, contactScore, dateScore);
+            } else {
+                // Normal weighted scoring (with sourceId mismatch penalty if applicable)
+                return calculateNormalScore(nameScore, altNamesScore, govIdScore, 
+                    cryptoScore, addressScore, contactScore, dateScore, sourceIdMismatch);
+            }
+        });
 
-        return new ScoreBreakdown(
+        ScoreBreakdown breakdown = new ScoreBreakdown(
             nameScore,
             altNamesScore,
             addressScore,
@@ -131,6 +151,11 @@ public class EntityScorerImpl implements EntityScorer {
             dateScore,
             finalScore
         );
+
+        // Attach breakdown to context for API response
+        ctx.withBreakdown(breakdown);
+
+        return breakdown;
     }
 
     @Override
@@ -158,6 +183,10 @@ public class EntityScorerImpl implements EntityScorer {
     // ==================== Private Helper Methods ====================
 
     private double compareNames(String queryName, Entity candidate) {
+        return compareNames(queryName, candidate, ScoringContext.disabled());
+    }
+
+    private double compareNames(String queryName, Entity candidate, ScoringContext ctx) {
         if (queryName == null || queryName.isBlank() || candidate == null || candidate.name() == null) {
             return 0.0;
         }
@@ -168,15 +197,20 @@ public class EntityScorerImpl implements EntityScorer {
                 && !candidate.preparedFields().normalizedPrimaryName().isEmpty()) {
             return similarityService.tokenizedSimilarityWithPrepared(
                 queryName, 
-                java.util.List.of(candidate.preparedFields().normalizedPrimaryName())
+                java.util.List.of(candidate.preparedFields().normalizedPrimaryName()),
+                ctx
             );
         }
         
         // Fallback to on-the-fly normalization
-        return similarityService.tokenizedSimilarity(queryName, candidate.name());
+        return similarityService.tokenizedSimilarity(queryName, candidate.name(), ctx);
     }
 
     private double compareAltNames(String queryName, Entity candidate) {
+        return compareAltNames(queryName, candidate, ScoringContext.disabled());
+    }
+
+    private double compareAltNames(String queryName, Entity candidate, ScoringContext ctx) {
         if (queryName == null || queryName.isBlank() || candidate == null) {
             return 0.0;
         }
@@ -187,7 +221,8 @@ public class EntityScorerImpl implements EntityScorer {
                 && !candidate.preparedFields().normalizedAltNames().isEmpty()) {
             return similarityService.tokenizedSimilarityWithPrepared(
                 queryName, 
-                candidate.preparedFields().normalizedAltNames()
+                candidate.preparedFields().normalizedAltNames(),
+                ctx
             );
         }
         

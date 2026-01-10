@@ -1,5 +1,7 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.trace.ScoringContext;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -92,6 +94,11 @@ public class JaroWinklerSimilarity implements SimilarityService {
 
     @Override
     public double tokenizedSimilarity(String s1, String s2) {
+        return tokenizedSimilarity(s1, s2, ScoringContext.disabled());
+    }
+
+    @Override
+    public double tokenizedSimilarity(String s1, String s2, ScoringContext ctx) {
         if (s1 == null || s2 == null || s1.isEmpty() || s2.isEmpty()) {
             return 0.0;
         }
@@ -116,6 +123,11 @@ public class JaroWinklerSimilarity implements SimilarityService {
     
     @Override
     public double tokenizedSimilarityWithPrepared(String query, List<String> preparedNames) {
+        return tokenizedSimilarityWithPrepared(query, preparedNames, ScoringContext.disabled());
+    }
+
+    @Override
+    public double tokenizedSimilarityWithPrepared(String query, List<String> preparedNames, ScoringContext ctx) {
         if (query == null || query.isEmpty() || preparedNames == null || preparedNames.isEmpty()) {
             return 0.0;
         }

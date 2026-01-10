@@ -1,8 +1,26 @@
 # WATCHMAN FEATURE PARITY: Go vs Java
 
-**Last Updated:** January 9, 2026  
+**Last Updated:** January 10, 2026  
 **Status:** 82/177 features (46%) ✅ | 21 features (12%) ⚠️ | 74 features (42%) ❌  
-**Test Suite:** 830/830 passing (100%) ✅
+**Test Suite:** 862/862 passing (100%) ✅
+
+---
+
+## SCOPE
+
+This document tracks **feature parity** between the Go and Java implementations—which Go functions have been replicated in Java and to what extent.
+
+**What's Tracked Here:**
+- Scoring algorithms (Jaro-Winkler, phonetics, etc.)
+- Entity normalization and preparation
+- Date/address/ID comparison logic
+- Text processing utilities
+- Configuration and data models
+
+**What's NOT Tracked Here:**
+- **Java-only enhancements** like [Scoring Trace Infrastructure](SCORING_TRACING.md) (observability/debugging tool with no Go equivalent)
+- Performance optimizations beyond Go's implementation
+- Java-specific architecture patterns
 
 ---
 
@@ -12,7 +30,7 @@
 - [Feature Inventory](#complete-function-inventory) - Complete 177-feature table
 - [Category Summary](#summary-by-category) - Breakdown by feature type
 - [Remaining Work](#remaining-work) - What's left to implement
-- [Implementation History](#implementation-history) - Phases 0-8 completion summaries
+- [Implementation History](#implementation-history) - Phases 0-12 completion summaries
 
 ---
 
