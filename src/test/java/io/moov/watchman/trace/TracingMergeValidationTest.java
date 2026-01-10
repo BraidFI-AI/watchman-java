@@ -127,35 +127,43 @@ class TracingMergeValidationTest {
     class EntityScorerIntegrationTests {
 
         private Entity createTestPerson() {
-            return new Entity(
-                    EntityType.PERSON,
+            Person person = new Person(
                     "John Smith",
                     List.of("Johnny Smith"),
-                    null, null, null, null, null, null, null, null, null, null,
-                    new Person(
-                            LocalDate.of(1980, 1, 1),
-                            null,
-                            null,
-                            null,
-                            List.of(),
-                            List.of(),
-                            List.of()
-                    ),
-                    null, null, null, null
+                    null,
+                    LocalDate.of(1980, 1, 1),
+                    null,
+                    null,
+                    List.of(),
+                    List.of()
+            );
+            
+            return new Entity(
+                    "test-1",
+                    "John Smith",
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "test-1",
+                    person,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of(),
+                    List.of(),
+                    List.of("Johnny Smith"),
+                    List.of(),
+                    null,
+                    null,
+                    null
             ).normalize();
         }
 
         @Test
         @DisplayName("EntityScorer accepts ScoringContext parameter")
         void entityScorerAcceptsContext() {
-            EntityScorer scorer = new EntityScorerImpl(
-                    new SimilarityService(new JaroWinklerSimilarity()),
-                    new AffiliationComparer(),
-                    new AddressComparer(),
-                    new ExactIdMatcher(),
-                    new DateComparer(),
-                    new SupportingInfoComparer()
-            );
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
             
             Entity query = createTestPerson();
             Entity index = createTestPerson();
@@ -171,14 +179,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Backward compatibility: old API still works")
         void backwardCompatibilityMaintained() {
-            EntityScorer scorer = new EntityScorerImpl(
-                    new SimilarityService(new JaroWinklerSimilarity()),
-                    new AffiliationComparer(),
-                    new AddressComparer(),
-                    new ExactIdMatcher(),
-                    new DateComparer(),
-                    new SupportingInfoComparer()
-            );
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
             
             Entity query = createTestPerson();
             Entity index = createTestPerson();
@@ -193,14 +194,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Tracing captures lifecycle phases")
         void tracingCapturesLifecyclePhases() {
-            EntityScorer scorer = new EntityScorerImpl(
-                    new SimilarityService(new JaroWinklerSimilarity()),
-                    new AffiliationComparer(),
-                    new AddressComparer(),
-                    new ExactIdMatcher(),
-                    new DateComparer(),
-                    new SupportingInfoComparer()
-            );
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
             
             Entity query = createTestPerson();
             Entity index = createTestPerson();
@@ -233,14 +227,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Tracing includes score breakdown")
         void tracingIncludesBreakdown() {
-            EntityScorer scorer = new EntityScorerImpl(
-                    new SimilarityService(new JaroWinklerSimilarity()),
-                    new AffiliationComparer(),
-                    new AddressComparer(),
-                    new ExactIdMatcher(),
-                    new DateComparer(),
-                    new SupportingInfoComparer()
-            );
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
             
             Entity query = createTestPerson();
             Entity index = createTestPerson();
@@ -250,8 +237,8 @@ class TracingMergeValidationTest {
             
             ScoringTrace trace = ctx.toTrace();
             assertNotNull(trace, "Trace must exist");
-            assertNotNull(trace.scoreBreakdown(), "Trace must include score breakdown");
-            assertEquals(breakdown, trace.scoreBreakdown(),
+            assertNotNull(trace.breakdown(), "Trace must include score breakdown");
+            assertEquals(breakdown, trace.breakdown(),
                     "Trace breakdown must match returned breakdown");
         }
     }
@@ -263,7 +250,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("SimilarityService accepts ScoringContext")
         void similarityServiceAcceptsContext() {
-            SimilarityService service = new SimilarityService(new JaroWinklerSimilarity());
+            SimilarityService service = new JaroWinklerSimilarity();
             ScoringContext ctx = ScoringContext.disabled();
             
             assertDoesNotThrow(() -> {
@@ -275,7 +262,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("SimilarityService backward compatibility")
         void similarityServiceBackwardCompatibility() {
-            SimilarityService service = new SimilarityService(new JaroWinklerSimilarity());
+            SimilarityService service = new JaroWinklerSimilarity();
             
             // Old API without context must still work
             assertDoesNotThrow(() -> {
@@ -292,33 +279,22 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Disabled context has minimal overhead")
         void disabledContextMinimalOverhead() {
-            EntityScorer scorer = new EntityScorerImpl(
-                    new SimilarityService(new JaroWinklerSimilarity()),
-                    new AffiliationComparer(),
-                    new AddressComparer(),
-                    new ExactIdMatcher(),
-                    new DateComparer(),
-                    new SupportingInfoComparer()
-            );
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
             
+            Person queryPerson = new Person("John Smith", List.of(), null, LocalDate.of(1980, 1, 1), null, null,
+                    List.of(), List.of());
             Entity query = new Entity(
-                    EntityType.PERSON,
-                    "John Smith",
-                    List.of(),
-                    null, null, null, null, null, null, null, null, null, null,
-                    new Person(LocalDate.of(1980, 1, 1), null, null, null,
-                            List.of(), List.of(), List.of()),
-                    null, null, null, null
+                    "q1", "John Smith", EntityType.PERSON, SourceList.US_OFAC, "q1",
+                    queryPerson, null, null, null, null, null,
+                    List.of(), List.of(), List.of(), List.of(), null, null, null
             ).normalize();
             
+            Person indexPerson = new Person("Jane Doe", List.of(), null, LocalDate.of(1985, 1, 1), null, null,
+                    List.of(), List.of());
             Entity index = new Entity(
-                    EntityType.PERSON,
-                    "Jane Doe",
-                    List.of(),
-                    null, null, null, null, null, null, null, null, null, null,
-                    new Person(LocalDate.of(1985, 1, 1), null, null, null,
-                            List.of(), List.of(), List.of()),
-                    null, null, null, null
+                    "i1", "Jane Doe", EntityType.PERSON, SourceList.US_OFAC, "i1",
+                    indexPerson, null, null, null, null, null,
+                    List.of(), List.of(), List.of(), List.of(), null, null, null
             ).normalize();
             
             // Warm up JIT

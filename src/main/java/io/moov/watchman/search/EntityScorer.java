@@ -2,6 +2,7 @@ package io.moov.watchman.search;
 
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.ScoreBreakdown;
+import io.moov.watchman.trace.ScoringContext;
 
 import java.util.List;
 
@@ -35,6 +36,22 @@ public interface EntityScorer {
      * Used when query has structured data (name, IDs, addresses, etc.)
      */
     ScoreBreakdown scoreWithBreakdown(Entity query, Entity index);
+
+    /**
+     * Calculate detailed score breakdown for entity-to-entity comparison with tracing.
+     * <p>
+     * When ctx.isEnabled(), captures full decision-making process including:
+     * - Normalization steps
+     * - Individual field comparisons
+     * - Aggregation logic
+     * - Performance metrics
+     * 
+     * @param query The query entity
+     * @param index The candidate entity from the index
+     * @param ctx Scoring context for optional tracing (use ScoringContext.disabled() for no tracing)
+     * @return Detailed score breakdown
+     */
+    ScoreBreakdown scoreWithBreakdown(Entity query, Entity index, ScoringContext ctx);
 
     /**
      * Score with additional query context (address, DOB, etc.)

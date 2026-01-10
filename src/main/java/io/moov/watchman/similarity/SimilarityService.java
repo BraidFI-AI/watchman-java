@@ -1,5 +1,7 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.trace.ScoringContext;
+
 /**
  * Core similarity scoring engine using Jaro-Winkler with custom modifications.
  * 
@@ -32,6 +34,16 @@ public interface SimilarityService {
      * @return Best similarity score across token pairings
      */
     double tokenizedSimilarity(String s1, String s2);
+
+    /**
+     * Calculate token-based similarity with tracing support.
+     *
+     * @param s1 First string
+     * @param s2 Second string
+     * @param ctx Scoring context for optional tracing
+     * @return Best similarity score
+     */
+    double tokenizedSimilarity(String s1, String s2, ScoringContext ctx);
     
     /**
      * Calculate similarity using pre-normalized tokens.
@@ -42,6 +54,16 @@ public interface SimilarityService {
      * @return Best similarity score across all prepared names
      */
     double tokenizedSimilarityWithPrepared(String normalizedQuery, java.util.List<String> preparedNames);
+
+    /**
+     * Calculate similarity using pre-normalized tokens with tracing support.
+     *
+     * @param normalizedQuery Normalized query string
+     * @param preparedNames List of pre-normalized candidate names
+     * @param ctx Scoring context for optional tracing
+     * @return Best similarity score
+     */
+    double tokenizedSimilarityWithPrepared(String normalizedQuery, java.util.List<String> preparedNames, ScoringContext ctx);
 
     /**
      * Check if two strings have phonetically similar first characters.
