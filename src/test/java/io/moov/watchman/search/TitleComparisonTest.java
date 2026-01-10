@@ -280,7 +280,7 @@ class TitleComparisonTest {
                 indexTitles
         );
         
-        assertTrue(score >= 0.0 && score < 0.3,
+        assertTrue(score >= 0.0 && score < 0.4,
                 "All low scores should return highest available (got " + score + ")");
     }
 

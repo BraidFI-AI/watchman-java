@@ -108,6 +108,10 @@ public class TitleMatcher {
     // Constants from Go
     private static final int MIN_TITLE_TERM_LENGTH = 2;      // Minimum length for title terms
     private static final double ABBREVIATION_THRESHOLD = 0.92; // Early exit threshold
+    
+    // JaroWinkler instance for similarity calculations
+    private static final io.moov.watchman.similarity.JaroWinklerSimilarity jaroWinkler = 
+            new io.moov.watchman.similarity.JaroWinklerSimilarity();
 
     /**
      * Calculate similarity score between two normalized titles using Jaro-Winkler
@@ -129,7 +133,45 @@ public class TitleMatcher {
      * @return Similarity score from 0.0 to 1.0
      */
     public static double calculateTitleSimilarity(String title1, String title2) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // Handle empty strings first
+        if (title1 == null || title1.isEmpty() || title2 == null || title2.isEmpty()) {
+            // Both empty is considered a match (but handled as 0.0 in this context)
+            if ((title1 == null || title1.isEmpty()) && (title2 == null || title2.isEmpty())) {
+                return 0.0;
+            }
+            return 0.0;
+        }
+        
+        // Handle exact matches
+        if (title1.equals(title2)) {
+            return 1.0;
+        }
+
+        // Split into terms
+        String[] terms1 = title1.split("\\s+");
+        String[] terms2 = title2.split("\\s+");
+
+        // Filter out very short terms (< 2 chars)
+        List<String> filteredTerms1 = filterTerms(terms1);
+        List<String> filteredTerms2 = filterTerms(terms2);
+
+        if (filteredTerms1.isEmpty() || filteredTerms2.isEmpty()) {
+            return 0.0;
+        }
+
+        // Use JaroWinkler for term comparison
+        // Join terms back into strings for tokenizedSimilarity
+        String joinedTerms1 = String.join(" ", filteredTerms1);
+        String joinedTerms2 = String.join(" ", filteredTerms2);
+        double score = jaroWinkler.tokenizedSimilarity(joinedTerms1, joinedTerms2);
+
+        // Adjust score based on length difference
+        int lengthDiff = Math.abs(filteredTerms1.size() - filteredTerms2.size());
+        if (lengthDiff > 0) {
+            score *= (1.0 - (lengthDiff * 0.1));
+        }
+
+        return score;
     }
 
     /**
@@ -148,6 +190,35 @@ public class TitleMatcher {
      * @return Best similarity score (0.0 to 1.0)
      */
     public static double findBestTitleMatch(String queryTitle, List<String> indexTitles) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        double bestScore = 0.0;
+
+        for (String indexTitle : indexTitles) {
+            double score = calculateTitleSimilarity(queryTitle, indexTitle);
+            if (score > bestScore) {
+                bestScore = score;
+                // Early exit if we find a very good match (abbreviationThreshold = 0.92)
+                if (score > ABBREVIATION_THRESHOLD) {
+                    break;
+                }
+            }
+        }
+
+        return bestScore;
+    }
+
+    /**
+     * Filter out terms that are too short (< MIN_TITLE_TERM_LENGTH).
+     * 
+     * @param terms Array of terms to filter
+     * @return List of filtered terms
+     */
+    private static List<String> filterTerms(String[] terms) {
+        List<String> filtered = new ArrayList<>();
+        for (String term : terms) {
+            if (term.length() >= MIN_TITLE_TERM_LENGTH) {
+                filtered.add(term);
+            }
+        }
+        return filtered;
     }
 }
