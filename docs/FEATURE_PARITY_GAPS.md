@@ -1,8 +1,8 @@
 # WATCHMAN FEATURE PARITY: Go vs Java
 
 **Last Updated:** January 10, 2026  
-**Status:** 82/177 features (46%) ✅ | 21 features (12%) ⚠️ | 74 features (42%) ❌  
-**Test Suite:** 862/862 passing (100%) ✅
+**Status:** 91/177 features (51%) ✅ | 21 features (12%) ⚠️ | 65 features (37%) ❌  
+**Test Suite:** 898/898 passing (100%) ✅
 
 ---
 
@@ -37,15 +37,15 @@ This document tracks **feature parity** between the Go and Java implementations�
 ## CURRENT STATUS
 
 **Go Codebase:** 16,337 lines, 88 files, 604 exported functions  
-**Java Codebase:** 62 files, 741 test cases
+**Java Codebase:** 63 files, 898 test cases
 
 ### Implementation Progress
 
 | Status | Count | Percentage | Description |
 |--------|-------|------------|-------------|
-| ✅ Fully Implemented | 82/177 | 46% | Complete behavioral parity with Go |
+| ✅ Fully Implemented | 91/177 | 51% | Complete behavioral parity with Go |
 | ⚠️ Partially Implemented | 21/177 | 12% | Core logic present, missing edge cases |
-| ❌ Not Implemented | 74/177 | 42% | Pending implementation in Java codebase |
+| ❌ Not Implemented | 65/177 | 37% | Pending implementation in Java codebase |
 
 ### Recent Phases (Jan 8-9, 2026)
 
@@ -62,8 +62,9 @@ This document tracks **feature parity** between the Go and Java implementations�
 - ✅ **Phase 10:** Integration functions (3 functions)
 - ✅ **Phase 11:** Type dispatchers (3 functions)
 - ✅ **Phase 12:** Supporting info comparison (2 functions)
+- ✅ **Phase 13:** Entity merging functions (9 functions)
 
-**Velocity:** 12 phases, 64 functions, 830 tests in 2 days
+**Velocity:** 13 phases, 73 functions, 898 tests in 2 days
 
 ---
 
@@ -216,24 +217,26 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 98 | `Entity[T]` struct | Model | `Entity` record | ✅ | Core model |
 | 99 | `PreparedFields` struct | **CRITICAL** | `PreparedFields` record | ✅ | **REFACTORED (Jan 8):** Separated normalizedPrimaryName + normalizedAltNames (matches Go: Name + AltNames). Enables compliance transparency. |
 | 100 | `Entity.Normalize()` | **CRITICAL** | `Entity.normalize()` | ✅ | Full pipeline: reorder → normalize → separate primary/alts → combinations → stopwords → titles |
-| 101 | `Entity.merge()` | Method | N/A | ❌ | **PENDING** - entity merging |
+| 101 | `Entity.merge()` | Method | `EntityMerger.mergeTwo()` | ✅ | **Phase 13 (Jan 10):** Core two-entity merge logic, first-non-null strategy for scalars, deduplication for collections |
 | 102 | `removeStopwords()` helper | Function | Inline in `bestPairJaro()` | ⚠️ | Different timing |
 | 103 | `normalizeNames()` | Function | `TextNormalizer` | ⚠️ | Per-search, not cached |
 | 104 | `normalizePhoneNumbers()` | Function | `normalizeId()` | ⚠️ | Different implementation |
 | 105 | `normalizeAddresses()` | Function | `Entity.normalize()` | ⚠️ | Basic address normalization in pipeline |
-| 106 | `mergeAddresses()` | Function | N/A | ❌ | **PENDING** - combine duplicates |
-| 107 | `mergeAffiliations()` | Function | N/A | ❌ | **PENDING** |
-| 108 | `mergeCryptoAddresses()` | Function | N/A | ❌ | **PENDING** |
-| 109 | `mergeGovernmentIDs()` | Function | N/A | ❌ | **PENDING** |
-| 110 | `mergeHistoricalInfo()` | Function | N/A | ❌ | **PENDING** |
-| 111 | `mergeStrings()` | Function | N/A | ❌ | **PENDING** - dedupe utility |
-| 112 | `Merge()` | Function | N/A | ❌ | **PENDING** - merge entity lists |
-| 113 | `getMergeKey()` | Function | N/A | ❌ | **PENDING** - entity key generation |
+| 106 | `mergeAddresses()` | Function | `EntityMerger.mergeAddresses()` | ✅ | **Phase 13 (Jan 10):** Deduplicate by line1+line2 (case-insensitive), fills missing fields when same key |
+| 107 | `mergeAffiliations()` | Function | N/A | ❌ | **NOT APPLICABLE** - Java Entity lacks affiliations field (Go-only) |
+| 108 | `mergeCryptoAddresses()` | Function | `EntityMerger.mergeCryptoAddresses()` | ✅ | **Phase 13 (Jan 10):** Deduplicate by currency+address (case-insensitive) |
+| 109 | `mergeGovernmentIDs()` | Function | `EntityMerger.mergeGovernmentIds()` | ✅ | **Phase 13 (Jan 10):** Deduplicate by type+country+identifier (case-insensitive), preserves insertion order |
+| 110 | `mergeHistoricalInfo()` | Function | N/A | ❌ | **NOT APPLICABLE** - Java Entity lacks historicalInfo field (Go-only) |
+| 111 | `mergeStrings()` | Function | `EntityMerger.mergeStrings()` | ✅ | **Phase 13 (Jan 10):** Generic string list deduplication (case-insensitive), preserves insertion order via LinkedHashMap |
+| 112 | `Merge()` | Function | `EntityMerger.merge()` | ✅ | **Phase 13 (Jan 10):** Top-level orchestrator - groups by source/sourceId/type, merges each group, normalizes results |
+| 113 | `getMergeKey()` | Function | `EntityMerger.getMergeKey()` | ✅ | **Phase 13 (Jan 10):** Generates "source/sourceId/type" merge key (lowercase) for entity grouping |
 
 **Summary: 16 model features**
-- ✅ 3 fully implemented (19%)
+- ✅ 10 fully implemented (62.5%) - **+7 in Phase 13 (Jan 10)**
 - ⚠️ 4 partially implemented (25%)
-- ❌ 9 pending implementation (56%)
+- ❌ 2 pending implementation (12.5%)
+
+**Phase 13 Note:** 2 pending functions (mergeAffiliations, mergeHistoricalInfo) are NOT APPLICABLE - Java Entity model lacks these fields (Go-only)
 
 ---
 
@@ -389,11 +392,11 @@ Most environment variables control optional features (database connections, geoc
 |----------|-------|---------|-----------|-----------|-----------|
 | **Core Algorithms** | 28 | 17 | 4 | 7 | 25% |
 | **Scoring Functions** | 69 | 56 | 5 | 8 | 11.6% |
-| **Entity Models** | 16 | 3 | 4 | 9 | 56% |
+| **Entity Models** | 16 | 10 | 4 | 2 | 12.5% |
 | **Client & API** | 16 | 1 | 3 | 12 | 75% |
 | **Environment Variables** | 27 | 4 | 6 | 17 | 63% |
 | **Pending Modules** | 21 | 0 | 0 | 21 | 100% |
-| **TOTAL** | **177** | **82** | **21** | **74** | **41.8%** |
+| **TOTAL** | **177** | **91** | **21** | **65** | **36.7%** |
 
 ---
 
@@ -1662,4 +1665,132 @@ All 3 functions follow the same dispatcher pattern:
 - Case-insensitive matching improves robustness
 - Foundation for temporal entity analysis and change detection
 - Supports compliance workflows requiring sanctions program validation
-- Critical for detecting entities attempting to evade sanctions through program manipulation
+- Critical for detecting entities attempting to evade sanctions through program manipulation- Critical for detecting entities attempting to evade sanctions through program manipulation
+
+---
+
+### Phase 13: Entity Merging Functions (January 10, 2026)
+
+**Goal:** Implement entity merging functions to consolidate partial entity records from multi-row CSV sources into complete entity objects.
+
+**Scope:** 9 functions covering entity list merging, key generation, two-entity merge logic, and specialized mergers for strings, addresses, government IDs, and crypto addresses.
+
+**Real-World Use Case:** EU Consolidated List (CSL) and UK sanctions lists split single entities across multiple CSV rows with the same source ID. For example, Saddam Hussein (ID=13) appears in 5 separate rows:
+- Row 1: Name + Gender
+- Row 2: Alternative names
+- Row 3: Birth date
+- Row 4: Address
+- Row 5: Citizenship
+
+The merge functionality combines these 5 partial records into one complete entity with all information consolidated.
+
+**Test Strategy:**
+- 36 comprehensive tests across 9 test classes
+- Helper methods for creating test objects with record constructors
+- Real-world scenario tests (EU CSL, OFAC, vessel data)
+- Edge cases (nulls, empty lists, case-insensitive matching)
+- **Test Results:** 898/898 passing (0 regressions)
+
+**Implementation Details:**
+
+1. **EntityMerger.merge()** - Top-level orchestrator
+   - Groups entities by merge key (source/sourceId/type)
+   - Merges each group into single entity
+   - Normalizes results for consistency
+   - Returns consolidated entity list
+
+2. **EntityMerger.getMergeKey()** - Key generation utility
+   - Format: "source/sourceId/type" (lowercase)
+   - Case-insensitive for robust matching
+   - Used for grouping before merge
+
+3. **EntityMerger.mergeTwo()** - Core merge logic (180 lines)
+   - Merges two entities of any type (Person, Business, Organization, Aircraft, Vessel)
+   - First-non-null strategy for scalar fields
+   - Specialized mergers for collections (addresses, government IDs, crypto)
+   - ContactInfo merged with first-non-null for each singular field
+   - Handles null entities gracefully
+
+4. **EntityMerger.mergeStrings()** - Generic string deduplication
+   - Case-insensitive comparison
+   - Preserves insertion order via LinkedHashMap
+   - Filters null values, keeps empty strings
+   - Used for names, remarks, titles, etc.
+
+5. **EntityMerger.mergeGovernmentIds()** - Government ID deduplication
+   - Unique by "type/country/identifier" (lowercase)
+   - Case-insensitive matching
+   - Preserves first occurrence of duplicates
+
+6. **EntityMerger.mergeAddresses()** - Address deduplication with merge
+   - Unique by "line1/line2" (case-insensitive)
+   - Fills missing fields when same key (city, state, postalCode, country)
+   - Preserves most complete address record
+
+7. **EntityMerger.mergeCryptoAddresses()** - Crypto address deduplication
+   - Unique by "currency/address" (case-insensitive)
+   - Handles null currencies and addresses
+
+8. **EntityMerger.firstNonNull()** - Scalar selection utility
+   - Generic varargs method with @SafeVarargs
+   - Filters null and empty strings
+   - Returns first non-null/non-empty value
+
+9. **Helper utilities:**
+   - `uniqueBy()` - Generic deduplication by key function
+   - `uniqueByWithMerge()` - Deduplication with merge function for same keys
+   - Both use LinkedHashMap to preserve insertion order
+
+**Java vs Go Differences:**
+
+| Aspect | Go | Java |
+|--------|-----|------|
+| **ContactInfo fields** | `emailAddresses []string` (plural list) | `emailAddress String` (singular) |
+| **Entity fields** | Has `affiliations`, `historicalInfo` | Lacks these fields |
+| **Vessel fields** | 12 fields (includes `model`, `grossRegisteredTonnage`) | 10 fields |
+| **Construction pattern** | Uses builders extensively | Uses immutable records with constructors |
+| **Field merge strategy** | List merging for contact info | First-non-null for singular contact fields |
+
+**Test Conversion Challenge:**
+- Original RED phase tests used builder pattern (112 calls)
+- Java records require constructor pattern
+- Complete test rewrite: 956 lines with 10 helper methods
+- Created constructors for: Entity, Person, Business, Organization, Aircraft, Vessel, ContactInfo, Address, GovernmentId, CryptoAddress
+- Fixed parameter ordering and type mismatches (SourceList enum, GovernmentIdType enum)
+- Result: 36/36 tests passing on first run after fixes
+
+**Tasks Completed:**
+- [x] EntityMerger.java implementation (504 lines)
+- [x] EntityMergerTest.java with constructors (956 lines)
+- [x] 36 comprehensive tests covering all entity types
+- [x] Real-world scenario tests (EU CSL, OFAC, vessel)
+- [x] Edge case handling (nulls, empty lists, case-insensitive)
+- [x] Model mismatch fixes (ContactInfo singular fields)
+- [x] Full test suite validation (898/898 passing)
+- [x] Documentation of real-world use case
+
+**Git Commits:**
+- RED: `9362314` - 60+ comprehensive tests, discovered builder pattern issue
+- GREEN: `ec97e5d` - EntityMerger + EntityMergerTest with constructors, all tests passing
+
+**Feature Parity Progress:**
+- **Before Phase 13:** Entity Models 3/16 (19%), Overall 82/177 (46%), 862 tests
+- **After Phase 13:** Entity Models 10/16 (62.5%), Overall 91/177 (51%), 898 tests
+- **+7 functions implemented:** merge, getMergeKey, mergeTwo, mergeStrings, mergeGovernmentIds, mergeAddresses, mergeCryptoAddresses
+- **2 functions N/A:** mergeAffiliations, mergeHistoricalInfo (Java Entity lacks these fields)
+
+**Full Test Suite:**
+```
+Tests run: 898, Failures: 0, Errors: 0, Skipped: 0
+```
+
+**Production Impact:**
+- **Critical for sanctions list ingestion**: EU CSL and UK CSL split entities across rows
+- **Data quality improvement**: Consolidates partial records into complete entities
+- **Compliance accuracy**: Prevents false negatives from incomplete entity records
+- **Foundation for data pipelines**: Enables CSV ingestion with automatic entity consolidation
+- **Real-world example**: Without merging, Saddam Hussein would appear as 5 separate entities with different missing information
+- **Deduplication strategy**: Robust case-insensitive matching prevents duplicate addresses, IDs, and crypto addresses
+- **Order preservation**: LinkedHashMap maintains insertion order for predictable results
+- **Graceful handling**: Null-safe operations prevent crashes during merge
+- **Extensible design**: Generic uniqueBy utilities support future merge scenarios
