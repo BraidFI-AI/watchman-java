@@ -156,6 +156,7 @@ class TracingMergeValidationTest {
                     List.of("Johnny Smith"),
                     List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             ).normalize();
@@ -190,6 +191,7 @@ class TracingMergeValidationTest {
                     List.of("Johnny Smith"),
                     List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             ).normalize();
@@ -322,7 +324,7 @@ class TracingMergeValidationTest {
             Entity query = new Entity(
                     "q1", "John Smith", EntityType.PERSON, SourceList.US_OFAC, "q1",
                     queryPerson, null, null, null, null, null,
-                    List.of(), List.of(), List.of(), List.of(), null, null, null
+                    List.of(), List.of(), List.of(), List.of(), null, List.of(), null, null
             ).normalize();
             
             Person indexPerson = new Person("Jane Doe", List.of(), null, LocalDate.of(1985, 1, 1), null, null,
@@ -330,7 +332,7 @@ class TracingMergeValidationTest {
             Entity index = new Entity(
                     "i1", "Jane Doe", EntityType.PERSON, SourceList.US_OFAC, "i1",
                     indexPerson, null, null, null, null, null,
-                    List.of(), List.of(), List.of(), List.of(), null, null, null
+                    List.of(), List.of(), List.of(), List.of(), null, List.of(), null, null
             ).normalize();
             
             // Warm up JIT (increased to 5000 for better JIT optimization)

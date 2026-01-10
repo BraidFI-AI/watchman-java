@@ -257,6 +257,7 @@ public class EntityMerger {
                 mergeStrings(e1.altNames(), e2.altNames()),  // Merge top-level altNames
                 mergeGovernmentIds(e1.governmentIds(), e2.governmentIds()),  // Merge top-level governmentIds
                 mergedSanctionsInfo,
+                List.of(),  // historicalInfo - not merged yet
                 firstNonNull(e1.remarks(), e2.remarks()),  // First non-null remarks
                 null  // PreparedFields will be set by normalize()
         );

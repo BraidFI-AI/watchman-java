@@ -49,6 +49,7 @@ class EntityMergerTest {
             altNames != null ? altNames : Collections.emptyList(),
             governmentIds != null ? governmentIds : Collections.emptyList(),
             sanctionsInfo,
+            List.of(),  // historicalInfo
             null,  // remarks
             null   // preparedFields
         );

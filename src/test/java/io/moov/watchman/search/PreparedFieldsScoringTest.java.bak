@@ -148,7 +148,7 @@ class PreparedFieldsScoringTest {
             "1", "Test Corp", EntityType.BUSINESS, SourceList.US_OFAC, "1",
             null, null, null, null, null,
             null, List.of(addr), List.of(), List.of(), List.of(),
-            null, List.of(), null, null
+            null, null, null
         );
         Entity normalized = entity.normalize();
         

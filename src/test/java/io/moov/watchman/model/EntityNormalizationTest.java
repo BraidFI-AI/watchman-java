@@ -41,7 +41,7 @@ class EntityNormalizationTest {
             "test-1", "John Smith", EntityType.PERSON, SourceList.US_OFAC, "test-1",
             null, null, null, null, null,
             null, List.of(), List.of(), altNames, List.of(),
-            null, null, null
+            null, List.of(), null, null
         );
         
         // WHEN: Normalized
@@ -142,7 +142,7 @@ class EntityNormalizationTest {
             "test-6", "Acme Corp", EntityType.BUSINESS, SourceList.US_OFAC, "test-6",
             null, null, null, null, null,
             null, List.of(addr1, addr2), List.of(), List.of(), List.of(),
-            null, null, null
+            null, List.of(), null, null
         );
         
         // WHEN: Normalized

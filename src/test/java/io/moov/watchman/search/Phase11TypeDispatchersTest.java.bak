@@ -134,7 +134,7 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Corp", EntityType.BUSINESS, SourceList.US_OFAC, "test-id",
                     null, business, null, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, null, null
             );
         }
 
@@ -145,7 +145,7 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Org", EntityType.ORGANIZATION, SourceList.US_OFAC, "test-id",
                     null, null, org, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, null, null
             );
         }
 
@@ -155,7 +155,7 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Ship", EntityType.VESSEL, SourceList.US_OFAC, "test-id",
                     null, null, null, null, vessel,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, null, null
             );
         }
 
@@ -282,7 +282,7 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Corp", EntityType.BUSINESS, SourceList.US_OFAC, "test-id",
                     null, business, null, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, null, null
             );
         }
 
@@ -293,7 +293,7 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Org", EntityType.ORGANIZATION, SourceList.US_OFAC, "test-id",
                     null, null, org, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, null, null
             );
         }
 
@@ -303,7 +303,7 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Ship", EntityType.VESSEL, SourceList.US_OFAC, "test-id",
                     null, null, null, null, vessel,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, null, null
             );
         }
 

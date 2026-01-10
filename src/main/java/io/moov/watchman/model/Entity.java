@@ -29,6 +29,7 @@ public record Entity(
     List<String> altNames,
     List<GovernmentId> governmentIds,
     SanctionsInfo sanctionsInfo,
+    List<HistoricalInfo> historicalInfo,
     String remarks,
     PreparedFields preparedFields
 ) {
@@ -40,7 +41,7 @@ public record Entity(
             id, name, type, source, id,
             null, null, null, null, null,
             null, List.of(), List.of(), List.of(), List.of(),
-            null, null, null
+            null, List.of(), null, null
         );
     }
     
@@ -148,7 +149,7 @@ public record Entity(
             id, name, type, source, sourceId,
             person, business, organization, aircraft, vessel,
             contact, addresses, cryptoAddresses, altNames, governmentIds,
-            sanctionsInfo, remarks, prepared
+            sanctionsInfo, historicalInfo, remarks, prepared
         );
     }
     
