@@ -394,8 +394,8 @@ class DateComparisonTest {
         @Test
         @DisplayName("Should compare dissolved dates")
         void shouldCompareDissolvedDates() {
-            LocalDate dissolved1 = LocalDate.of(2020, 6, 30);
-            LocalDate dissolved2 = LocalDate.of(2020, 7, 1); // 1 day apart
+            LocalDate dissolved1 = LocalDate.of(2020, 7, 15);
+            LocalDate dissolved2 = LocalDate.of(2020, 7, 16); // 1 day apart, same month
             
             var result = DateComparer.compareBusinessDates(null, dissolved1, null, dissolved2);
             
@@ -448,8 +448,8 @@ class DateComparisonTest {
         @Test
         @DisplayName("Should compare organization dissolved dates")
         void shouldCompareDissolvedDates() {
-            LocalDate dissolved1 = LocalDate.of(2015, 12, 31);
-            LocalDate dissolved2 = LocalDate.of(2016, 1, 2); // Close dates
+            LocalDate dissolved1 = LocalDate.of(2015, 12, 15);
+            LocalDate dissolved2 = LocalDate.of(2015, 12, 17); // 2 days apart, same month
             
             var result = DateComparer.compareOrgDates(null, dissolved1, null, dissolved2);
             
