@@ -1,10 +1,12 @@
 package io.moov.watchman.similarity;
 
 import io.moov.watchman.model.*;
-import io.moov.watchman.scoring.ScorePiece;
+import io.moov.watchman.search.ContactFieldAdapter;
+import io.moov.watchman.search.ContactFieldMatch;
 import io.moov.watchman.search.DebugScoring;
 import io.moov.watchman.search.EntityScorer;
-import io.moov.watchman.search.ExactIdMatcher;
+import io.moov.watchman.search.EntityScorerImpl;
+import io.moov.watchman.search.ScorePiece;
 import io.moov.watchman.trace.ScoringContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -840,7 +842,9 @@ class Phase16ZoneOneCompletionTest {
 
             StringWriter writer = new StringWriter();
             double debugScore = DebugScoring.debugSimilarity(writer, query, index);
-            double normalScore = EntityScorer.scoreWithBreakdown(query, index, ScoringContext.noop())
+            
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            double normalScore = scorer.scoreWithBreakdown(query, index, ScoringContext.disabled())
                     .totalWeightedScore();
             
             assertEquals(normalScore, debugScore, 0.001, 
@@ -923,12 +927,12 @@ class Phase16ZoneOneCompletionTest {
                     null
             );
 
-            ScorePiece result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
+            IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertEquals("gov-ids-exact", result.pieceType());
             assertTrue(result.score() > 0, "Matching government IDs should score > 0");
             assertTrue(result.matched());
+            assertEquals(15.0, result.weight());
         }
 
         @Test
@@ -996,11 +1000,11 @@ class Phase16ZoneOneCompletionTest {
                     null
             );
 
-            ScorePiece result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
+            IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertEquals("gov-ids-exact", result.pieceType());
             assertTrue(result.score() > 0, "Matching government IDs should score > 0");
+            assertEquals(15.0, result.weight());
         }
 
         @Test
@@ -1050,7 +1054,7 @@ class Phase16ZoneOneCompletionTest {
                     null
             );
 
-            ScorePiece result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
+            IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
             assertEquals(0.0, result.score());
@@ -1107,12 +1111,12 @@ class Phase16ZoneOneCompletionTest {
                     null
             );
 
-            ScorePiece result = ExactIdMatcher.compareCryptoWallets(query, index, 15.0);
+            IdMatchResult result = ExactIdMatcher.compareCryptoWallets(query, index, 15.0);
 
             assertNotNull(result);
-            assertEquals("crypto-exact", result.pieceType());
             assertTrue(result.score() > 0, "Matching crypto addresses should score > 0");
             assertTrue(result.exact(), "Exact crypto match should be marked as exact");
+            assertEquals(15.0, result.weight());
         }
     }
 

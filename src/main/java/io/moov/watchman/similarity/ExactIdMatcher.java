@@ -570,4 +570,45 @@ public class ExactIdMatcher {
         if (s1 == null || s2 == null) return false;
         return s1.equalsIgnoreCase(s2);
     }
+    
+    /**
+     * Generic government ID comparison dispatcher - routes to type-specific matchers.
+     * 
+     * Phase 16 (January 10, 2026): Complete Zone 1 (Scoring Functions) to 100%
+     * 
+     * Go equivalent: compareExactGovernmentIDs() type dispatcher in similarity_exact.go
+     * 
+     * @param query Query entity
+     * @param index Index entity
+     * @param weight Score weight
+     * @return IdMatchResult with government ID comparison result
+     */
+    public static IdMatchResult compareGovernmentIDs(Entity query, Entity index, double weight) {
+        if (query == null || index == null) {
+            return new IdMatchResult(0.0, weight, false, false, 0);
+        }
+        
+        return switch (query.type()) {
+            case PERSON -> comparePersonGovernmentIDs(query.person(), index.person(), weight);
+            case BUSINESS -> compareBusinessGovernmentIDs(query.business(), index.business(), weight);
+            case ORGANIZATION -> compareOrgGovernmentIDs(query.organization(), index.organization(), weight);
+            default -> new IdMatchResult(0.0, weight, false, false, 0);
+        };
+    }
+    
+    /**
+     * Alias for compareCryptoAddresses() for Go compatibility.
+     * 
+     * Phase 16 (January 10, 2026): Complete Zone 1 (Scoring Functions) to 100%
+     * 
+     * Go equivalent: compareExactCryptoAddresses() in similarity_exact.go
+     * 
+     * @param query Query entity
+     * @param index Index entity
+     * @param weight Score weight
+     * @return IdMatchResult with crypto address comparison result
+     */
+    public static IdMatchResult compareCryptoWallets(Entity query, Entity index, double weight) {
+        return compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses(), weight);
+    }
 }
