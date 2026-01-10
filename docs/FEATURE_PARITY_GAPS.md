@@ -1,7 +1,7 @@
 # WATCHMAN FEATURE PARITY: Go vs Java
 
 **Last Updated:** January 10, 2026  
-**Status:** 93/177 features (53%) ✅ | 21 features (12%) ⚠️ | 63 features (36%) ❌  
+**Status:** 89/177 features (50%) ✅ | 21 features (12%) ⚠️ | 67 features (38%) ❌  
 **Test Suite:** 906/906 passing (100%) ✅
 
 ---
@@ -43,9 +43,9 @@ This document tracks **feature parity** between the Go and Java implementations�
 
 | Status | Count | Percentage | Description |
 |--------|-------|------------|-------------|
-| ✅ Fully Implemented | 93/177 | 53% | Complete behavioral parity with Go |
+| ✅ Fully Implemented | 89/177 | 50% | Complete behavioral parity with Go |
 | ⚠️ Partially Implemented | 21/177 | 12% | Core logic present, missing edge cases |
-| ❌ Not Implemented | 63/177 | 36% | Pending implementation in Java codebase |
+| ❌ Not Implemented | 67/177 | 38% | Pending implementation in Java codebase |
 
 ### Recent Phases (Jan 8-10, 2026)
 
@@ -124,9 +124,9 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 28 | `PhoneNumber()` | norm/phone.go | `TextNormalizer.normalizeId()` | ⚠️ | Different implementation |
 
 **Summary: 28 core algorithm features**
-- ✅ 17 fully implemented (60.7%) - **+2 in Phase 3 (Jan 9)**
-- ⚠️ 4 partially implemented (14.3%) - **-1 in Phase 3**
-- ❌ 7 pending implementation (25%)
+- ✅ 15 fully implemented (53.6%)
+- ⚠️ 4 partially implemented (14.3%)
+- ❌ 9 pending implementation (32.1%)
 
 ---
 
@@ -205,8 +205,8 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 97 | `countVesselFields()` | similarity_supporting.go | `EntityScorer.countVesselFields()` | ✅ | **Phase 4 (Jan 9):** Private helper - 10 fields (name, altNames, type, flag, callSign, tonnage, owner, imoNumber, built, mmsi) |
 
 **Summary: 69 scoring functions**
-- ✅ 58 fully implemented (84%) - **+2 in Phase 14 (Jan 10)**
-- ⚠️ 5 partially implemented (7.2%)
+- ✅ 59 fully implemented (86%) - **+1 in Phase 14 (Jan 10): compareSupportingInfo()**
+- ⚠️ 4 partially implemented (5.8%)
 - ❌ 6 pending implementation (8.7%)
 
 ---
@@ -391,13 +391,13 @@ Most environment variables control optional features (database connections, geoc
 
 | Category | Total | ✅ Full | ⚠️ Partial | ❌ Pending | % Pending |
 |----------|-------|---------|-----------|-----------|-----------|
-| **Core Algorithms** | 28 | 17 | 4 | 7 | 25% |
-| **Scoring Functions** | 69 | 58 | 5 | 6 | 8.7% |
+| **Core Algorithms** | 28 | 15 | 4 | 9 | 32.1% |
+| **Scoring Functions** | 69 | 59 | 4 | 6 | 8.7% |
 | **Entity Models** | 16 | 10 | 4 | 2 | 12.5% |
 | **Client & API** | 16 | 1 | 3 | 12 | 75% |
 | **Environment Variables** | 27 | 4 | 6 | 17 | 63% |
 | **Pending Modules** | 21 | 0 | 0 | 21 | 100% |
-| **TOTAL** | **177** | **93** | **21** | **63** | **35.6%** |
+| **TOTAL** | **177** | **89** | **21** | **67** | **37.9%** |
 
 ---
 
@@ -1882,9 +1882,9 @@ Tests run: 898, Failures: 0, Errors: 0, Skipped: 0
 - GREEN: `65187df` - compareSupportingInfo() implementation, all tests passing
 
 **Feature Parity Progress:**
-- **Before Phase 14:** Scoring Functions 56/69 (81%), Overall 91/177 (51%), 898 tests
-- **After Phase 14:** Scoring Functions 58/69 (84%), Overall 93/177 (53%), 906 tests
-- **+2 functions:** compareSupportingInfo() ✅, compareContactField() N/A
+- **Before Phase 14:** Scoring Functions 58/69 (84%), Overall 88/177 (50%), 898 tests
+- **After Phase 14:** Scoring Functions 59/69 (86%), Overall 89/177 (50%), 906 tests
+- **+1 function:** compareSupportingInfo() ✅ (compareContactField() marked N/A)
 
 **Full Test Suite:**
 ```
