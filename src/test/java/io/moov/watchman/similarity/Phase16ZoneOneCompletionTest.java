@@ -55,28 +55,27 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "John Doe",
                     List.of(),
                     "male",
@@ -88,22 +87,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -134,19 +133,18 @@ class Phase16ZoneOneCompletionTest {
                     EntityType.BUSINESS,
                     SourceList.US_OFAC,
                     "id1",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
                     null,
                     queryBusiness,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -160,22 +158,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.BUSINESS,
                     "Acme Corp",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.BUSINESS,
+                    SourceList.US_OFAC,
+                    "id2",
                     null,
                     indexBusiness,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -191,7 +189,6 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("Different titles should score zero")
         void personTitles_noMatch_scoresZero() {
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -203,28 +200,27 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "Jane Smith",
                     List.of(),
                     "female",
@@ -236,22 +232,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "Jane Smith",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -267,7 +263,6 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("Empty titles should return zero score")
         void emptyTitles_returnsZeroScore() {
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -279,22 +274,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -311,22 +306,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "Jane Smith",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -343,67 +338,65 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("Aircraft type matching should work")
         void aircraftType_exactMatch_scoresHigh() {
             Aircraft queryAircraft = new Aircraft(
-                    "id1",
                     "Boeing 737",
                     List.of(),
                     "Passenger",
                     "USA",
+                    null,
                     "12345",
                     "737-800",
-                    null,
                     null
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.AIRCRAFT,
                     "Boeing 737",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.AIRCRAFT,
+                    SourceList.US_OFAC,
+                    "id1",
                     null,
                     null,
                     null,
                     queryAircraft,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Aircraft indexAircraft = new Aircraft(
-                    "id2",
                     "Boeing 737",
                     List.of(),
                     "Passenger",
                     "USA",
+                    null,
                     "67890",
                     "737-900",
-                    null,
                     null
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.AIRCRAFT,
                     "Boeing 737",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.AIRCRAFT,
+                    SourceList.US_OFAC,
+                    "id2",
                     null,
                     null,
                     null,
                     indexAircraft,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -421,7 +414,6 @@ class Phase16ZoneOneCompletionTest {
         void matched_thresholdAbove05() {
             // Create entities with titles that score exactly at threshold
             Person queryPerson = new Person(
-                    "id1",
                     "John",
                     List.of(),
                     "male",
@@ -433,28 +425,27 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "Jane",
                     List.of(),
                     "female",
@@ -466,22 +457,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "Jane",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -500,7 +491,6 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("Exact threshold should be > 0.99")
         void exact_thresholdAbove099() {
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -512,28 +502,27 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "Jane Smith",
                     List.of(),
                     "female",
@@ -545,22 +534,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "Jane Smith",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -613,7 +602,6 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("debugSimilarity() should log entity info")
         void debugSimilarity_logsEntityInfo() throws Exception {
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -625,28 +613,27 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "John Doe",
                     List.of(),
                     "male",
@@ -658,22 +645,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -693,7 +680,6 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("debugSimilarity() should log all score components")
         void debugSimilarity_logsAllScorePieces() throws Exception {
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -705,28 +691,27 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "John Doe",
                     List.of(),
                     "male",
@@ -738,22 +723,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -772,7 +757,6 @@ class Phase16ZoneOneCompletionTest {
         @DisplayName("debugSimilarity() should return same score as normal scoring")
         void debugSimilarity_returnsSameScoreAsNormal() {
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -784,28 +768,27 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
             Person indexPerson = new Person(
-                    "id2",
                     "John Doe",
                     List.of(),
                     "male",
@@ -817,22 +800,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -856,9 +839,8 @@ class Phase16ZoneOneCompletionTest {
         @Test
         @DisplayName("compareGovernmentIDs() for Person should delegate correctly")
         void compareGovernmentIDs_personType_delegatesToPersonMatcher() {
-            GovernmentId queryId = new GovernmentId("USA", "SSN", "123-45-6789");
+            GovernmentId queryId = new GovernmentId(GovernmentIdType.SSN, "123-45-6789", "USA");
             Person queryPerson = new Person(
-                    "id1",
                     "John Doe",
                     List.of(),
                     "male",
@@ -870,29 +852,28 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
                     queryPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
-            GovernmentId indexId = new GovernmentId("USA", "SSN", "123-45-6789");
+            GovernmentId indexId = new GovernmentId(GovernmentIdType.SSN, "123-45-6789", "USA");
             Person indexPerson = new Person(
-                    "id2",
                     "John Doe",
                     List.of(),
                     "male",
@@ -904,22 +885,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "John Doe",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
                     indexPerson,
                     null,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -927,17 +908,16 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertTrue(result.getScore() > 0, "Matching government IDs should score > 0");
-            assertTrue(result.isMatched());
-            assertEquals(15.0, result.getWeight());
+            assertTrue(result.score() > 0, "Matching government IDs should score > 0");
+            assertTrue(result.matched());
+            assertEquals(15.0, result.weight());
         }
 
         @Test
         @DisplayName("compareGovernmentIDs() for Business should delegate correctly")
         void compareGovernmentIDs_businessType_delegatesToBusinessMatcher() {
-            GovernmentId queryId = new GovernmentId("USA", "EIN", "12-3456789");
+            GovernmentId queryId = new GovernmentId(GovernmentIdType.TAX_ID, "12-3456789", "USA");
             Business queryBusiness = new Business(
-                    "id1",
                     "Acme Corp",
                     List.of(),
                     null,
@@ -946,29 +926,28 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity query = new Entity(
                     "id1",
-                    EntityType.BUSINESS,
                     "Acme Corp",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.BUSINESS,
+                    SourceList.US_OFAC,
+                    "id1",
                     null,
                     queryBusiness,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
 
-            GovernmentId indexId = new GovernmentId("USA", "EIN", "12-3456789");
+            GovernmentId indexId = new GovernmentId(GovernmentIdType.TAX_ID, "12-3456789", "USA");
             Business indexBusiness = new Business(
-                    "id2",
                     "Acme Corp",
                     List.of(),
                     null,
@@ -977,22 +956,22 @@ class Phase16ZoneOneCompletionTest {
             );
             Entity index = new Entity(
                     "id2",
-                    EntityType.BUSINESS,
                     "Acme Corp",
-                    "ofac-sdn",
-                    List.of(),
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    EntityType.BUSINESS,
+                    SourceList.US_OFAC,
+                    "id2",
                     null,
                     indexBusiness,
                     null,
                     null,
                     null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     null,
+                    List.of(),
                     null,
                     null
             );
@@ -1000,8 +979,8 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertTrue(result.getScore() > 0, "Matching government IDs should score > 0");
-            assertEquals(15.0, result.getWeight());
+            assertTrue(result.score() > 0, "Matching government IDs should score > 0");
+            assertEquals(15.0, result.weight());
         }
 
         @Test
@@ -1009,44 +988,44 @@ class Phase16ZoneOneCompletionTest {
         void compareGovernmentIDs_unknownType_returnsZero() {
             Entity query = new Entity(
                     "id1",
-                    EntityType.UNKNOWN,
                     "Unknown Entity",
-                    "ofac-sdn",
+                    EntityType.UNKNOWN,
+                    SourceList.US_OFAC,
+                    "id1",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
                     List.of(),
                     List.of(),
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    List.of(),
                     null,
                     null
             );
 
             Entity index = new Entity(
                     "id2",
-                    EntityType.UNKNOWN,
                     "Unknown Entity",
-                    "ofac-sdn",
+                    EntityType.UNKNOWN,
+                    SourceList.US_OFAC,
+                    "id2",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    ContactInfo.empty(),
+                    List.of(),
+                    List.of(),
                     List.of(),
                     List.of(),
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    List.of(),
                     null,
                     null
             );
@@ -1054,9 +1033,9 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
 
             assertNotNull(result);
-            assertEquals(0.0, result.getScore());
-            assertFalse(result.isMatched());
-            assertEquals(0, result.getFieldsCompared());
+            assertEquals(0.0, result.score());
+            assertFalse(result.matched());
+            assertEquals(0, result.fieldsCompared());
         }
 
         @Test
@@ -1065,22 +1044,22 @@ class Phase16ZoneOneCompletionTest {
             CryptoAddress queryAddress = new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
             Entity query = new Entity(
                     "id1",
-                    EntityType.PERSON,
                     "Satoshi Nakamoto",
-                    "ofac-sdn",
-                    List.of(),
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id1",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    ContactInfo.empty(),
                     List.of(),
                     List.of(queryAddress),
+                    List.of(),
+                    List.of(),
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    List.of(),
                     null,
                     null
             );
@@ -1088,22 +1067,22 @@ class Phase16ZoneOneCompletionTest {
             CryptoAddress indexAddress = new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
             Entity index = new Entity(
                     "id2",
-                    EntityType.PERSON,
                     "Satoshi Nakamoto",
-                    "ofac-sdn",
-                    List.of(),
+                    EntityType.PERSON,
+                    SourceList.US_OFAC,
+                    "id2",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    ContactInfo.empty(),
                     List.of(),
                     List.of(indexAddress),
+                    List.of(),
+                    List.of(),
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    List.of(),
                     null,
                     null
             );
@@ -1111,9 +1090,9 @@ class Phase16ZoneOneCompletionTest {
             IdMatchResult result = ExactIdMatcher.compareCryptoWallets(query, index, 15.0);
 
             assertNotNull(result);
-            assertTrue(result.getScore() > 0, "Matching crypto addresses should score > 0");
-            assertTrue(result.isExact(), "Exact crypto match should be marked as exact");
-            assertEquals(15.0, result.getWeight());
+            assertTrue(result.score() > 0, "Matching crypto addresses should score > 0");
+            assertTrue(result.exact(), "Exact crypto match should be marked as exact");
+            assertEquals(15.0, result.weight());
         }
     }
 
@@ -1132,7 +1111,7 @@ class Phase16ZoneOneCompletionTest {
             assertNotNull(result);
             assertEquals(2, result.matches());
             assertEquals(2, result.totalQuery());
-            assertEquals(1.0, result.getScore(), 0.001);
+            assertEquals(1.0, result.score(), 0.001);
         }
 
         @Test
@@ -1146,7 +1125,7 @@ class Phase16ZoneOneCompletionTest {
             assertNotNull(result);
             assertEquals(1, result.matches());
             assertEquals(3, result.totalQuery());
-            assertEquals(1.0 / 3.0, result.getScore(), 0.001);
+            assertEquals(1.0 / 3.0, result.score(), 0.001);
         }
 
         @Test
@@ -1160,7 +1139,7 @@ class Phase16ZoneOneCompletionTest {
             assertNotNull(result);
             assertEquals(0, result.matches());
             assertEquals(1, result.totalQuery());
-            assertEquals(0.0, result.getScore(), 0.001);
+            assertEquals(0.0, result.score(), 0.001);
         }
 
         @Test
@@ -1173,7 +1152,7 @@ class Phase16ZoneOneCompletionTest {
 
             assertNotNull(result);
             assertEquals(1, result.matches());
-            assertEquals(1.0, result.getScore(), 0.001);
+            assertEquals(1.0, result.score(), 0.001);
         }
     }
 }
