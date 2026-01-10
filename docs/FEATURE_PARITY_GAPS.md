@@ -1,8 +1,8 @@
 # WATCHMAN FEATURE PARITY: Go vs Java
 
 **Last Updated:** January 10, 2026  
-**Status:** 108/177 features (61%) ✅ | 12 features (7%) ⚠️ | 57 features (32%) ❌  
-**Test Suite:** 1053/1053 passing (100%) ✅ | 1 skipped performance test
+**Status:** 109/177 features (62%) ✅ | 12 features (7%) ⚠️ | 56 features (31%) ❌  
+**Test Suite:** 1075/1075 passing (100%) ✅ | 1 skipped performance test
 
 ---
 
@@ -44,9 +44,9 @@ This document tracks **feature parity** between the Go and Java implementations�
 
 | Status | Count | Percentage | Description |
 |--------|-------|------------|-------------|
-| ✅ Fully Implemented | 108/177 | 61% | Complete behavioral parity with Go |
+| ✅ Fully Implemented | 109/177 | 62% | Complete behavioral parity with Go |
 | ⚠️ Partially Implemented | 12/177 | 7% | Core logic present, missing edge cases |
-| ❌ Not Implemented | 57/177 | 32% | Pending implementation in Java codebase |
+| ❌ Not Implemented | 56/177 | 31% | Pending implementation in Java codebase |
 
 ### Progress by Priority Zone
 
@@ -54,7 +54,7 @@ This document tracks **feature parity** between the Go and Java implementations�
 |------|----------|----------|--------|----------|
 | 🎯 **Zone 1** | **Scoring Functions** | **100%** (71/71) | 0 partial, 0 pending | **✅ COMPLETE** |
 | 🟢 **Zone 2** | **Entity Models** | **100%** (14/16) | 0 partial, 2 N/A | **✅ COMPLETE** |
-| 🟡 **Zone 3** | **Core Algorithms** | **64%** (18/28) | 3 partial, 7 pending | IN PROGRESS |
+| 🟡 **Zone 3** | **Core Algorithms** | **68%** (19/28) | 3 partial, 6 pending | IN PROGRESS |
 | 🔴 **Zone 4** | **Client & API** | **6%** (1/16) | 3 partial, 12 pending | LOW PRIORITY |
 | ⚪ **Zone 5** | **Environment Vars** | **37%** (4/27) | 6 partial, 17 pending | OPTIONAL |
 | ⚫ **Zone 6** | **Pending Modules** | **0%** (0/21) | 0 partial, 21 pending | OUT OF SCOPE |
@@ -63,6 +63,7 @@ This document tracks **feature parity** between the Go and Java implementations�
 - 🎯 **Phase 16:** Zone 1 (Scoring Functions) at 100% - First category complete!
 - 🟢 **Phase 17+18:** Zone 2 (Entity Models) at 100% (effective) - Second category complete!
 - 🟡 **Phase 19:** Zone 3 (Core Algorithms) at 64% - Country & gender normalization
+- 🟡 **Phase 20:** Zone 3 (Core Algorithms) at 68% - JaroWinklerWithFavoritism
 
 ### Recent Phases (Jan 8-10, 2026)
 
@@ -86,8 +87,9 @@ This document tracks **feature parity** between the Go and Java implementations�
 - ✅ **Phase 17:** Zone 2 quality - Stopword/address/phone integration into Entity.normalize() (3 features)
 - ✅ **Phase 18:** ID normalization from A2 proposal (1 feature)
 - ✅ **Phase 19:** Country & gender normalization (2 features)
+- ✅ **Phase 20:** JaroWinklerWithFavoritism - exact match favoritism boost (1 feature)
 
-**Velocity:** 19 phases, 91 functions, 1053 tests in 3 days
+**Velocity:** 20 phases, 92 functions, 1075 tests in 3 days
 
 ---
 
@@ -120,7 +122,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 2 | `BestPairsJaroWinkler()` | jaro_winkler.go | `bestPairJaro()` | ✅ | **Phase 2 (Jan 9):** Verified unmatched penalty logic present |
 | 3 | `BestPairCombinationJaroWinkler()` | jaro_winkler.go | `bestPairCombinationJaroWinkler()` | ✅ | **Phase 3 (Jan 9):** Generates word combinations for both inputs, tries all pairs, returns max score |
 | 4 | `GenerateWordCombinations()` | jaro_winkler.go | `generateWordCombinations()` | ✅ | **Phase 3 (Jan 9):** Token array-based (String[] → List<List<String>>), generic ≤3 char rule, forward/backward combinations |
-| 5 | `JaroWinklerWithFavoritism()` | jaro_winkler.go | N/A | ❌ | **PENDING** - exact match boost |
+| 5 | `JaroWinklerWithFavoritism()` | jaro_winkler.go | `JaroWinklerWithFavoritism.score()` | ✅ | **Phase 20 (Jan 10):** Exact match favoritism boost - adjacent position matching (±3), length ratio adjustments, scores capped at 1.00 |
 | 6 | `customJaroWinkler()` | jaro_winkler.go | `customJaroWinkler()` | ✅ | **Phase 2 (Jan 9):** Token-level penalties - first char (0.9x), length cutoff (0.9) |
 | 7 | `lengthDifferenceFactor()` | jaro_winkler.go | `lengthDifferenceFactor()` | ✅ | **Phase 2 (Jan 9):** Weight updated to 0.30, dedicated method added |
 | 8 | `scalingFactor()` | jaro_winkler.go | Inline in customJaroWinkler | ✅ | **Phase 2 (Jan 9):** Implemented as inline calculation |
@@ -399,18 +401,17 @@ All normalization and merge functions from Go's entity model pipeline are now in
 - ✅ Entity merging - 9 functions (mergeTwo, mergeAddresses, mergeStrings, mergeCryptoAddresses, mergeGovernmentIds, etc.)
 - ❌ 2 N/A features - mergeAffiliations, mergeHistoricalInfo (Go-only fields not present in Java Entity model)
 
-**Next Focus:** Zone 3 (Core Algorithms) - 7 pending functions remain (64% complete → target 100%)
+**Next Focus:** Zone 3 (Core Algorithms) - 6 pending functions remain (68% complete → target 100%)
 
-### Core Algorithms (7/28 pending, 25% remaining)
+### Core Algorithms (6/28 pending, 21% remaining)
 
 **Remaining Functions:**
 - `RemoveStopwordsCountry()` - Country-aware stopword removal fallback
 - Environment variable parsers (`readFloat()`, `readInt()`)
 - Unicode normalization chain (`getTransformChain()`, `newTransformChain()`, `saveBuffer()`)
 - Base score calculation (`calculateBaseScore()`)
-- Exact match favoritism (`JaroWinklerWithFavoritism()`)
 
-**Note:** Zone 3 is 64% complete (18/28 implemented). These remaining functions are primarily infrastructure (env vars, Unicode chains) or optional optimizations (exact match boost).
+**Note:** Zone 3 is 68% complete (19/28 implemented). These remaining functions are primarily infrastructure (env vars, Unicode chains) or optional optimizations.
 
 ### Pending Modules (21 modules, ~6,450 lines)
 
@@ -2322,3 +2323,72 @@ Tests run: 1053, Failures: 0, Errors: 0, Skipped: 1
   - GB/UK: Both map to "United Kingdom" (UK is non-ISO alias)
 
 **Next Phase:** Target remaining Zone 3 functions (environment variable parsing, Unicode normalization chains, exact match favoritism)
+
+---
+
+### PHASE 20 COMPLETE (January 10, 2026): JaroWinklerWithFavoritism
+
+**Implemented Features (1 new):**
+1. ✅ `JaroWinklerWithFavoritism()` (feature 5) - Exact match favoritism boost
+
+**Go References:**
+- `internal/stringscore/jaro_winkler.go` → `JaroWinklerWithFavoritism`
+
+**Test Coverage (22 new tests):**
+- **JaroWinklerWithFavoritism (22 tests):**
+  - Favoritism boost for perfect word matches (score >= 1.0)
+  - Adjacent position matching within ±3 positions
+  - Length ratio adjustments (query vs indexed word counts)
+  - Single-word vs multi-word capping (0.9x when indexed=1, query>1)
+  - Term length similarity weighting
+  - Score averaging behavior:
+    * Averages ALL indexed word scores when query ≤5 words
+    * Truncates to top N (N=query.length) only when query >5 words
+  - Scores capped at 1.00 (Go behavior)
+  - Null-safe input handling
+  - Edge cases (empty strings, partial matches, long names)
+
+**Full Test Suite:**
+```
+Tests run: 1075, Failures: 0, Errors: 0, Skipped: 1
+```
+- 22 new tests (JaroWinklerWithFavoritism)
+- 1053 existing tests still passing
+- 100% test pass rate maintained
+
+**Algorithm Details:**
+1. Split indexed term and query into words
+2. For each indexed word:
+   - Find best matching query word within ±3 positions (adjacent similarity)
+   - If perfect match (score >= 1.0):
+     * Apply length-based adjustments (query/indexed ratio, single-word capping)
+     * Add favoritism boost for perfect matches (e.g., +0.05)
+   - If partial match:
+     * Apply query/indexed length ratio penalty (if query > indexed)
+     * Apply term length similarity weight
+3. Sort scores, truncate to top N only if indexed > query AND query > 5
+4. Average the scores
+5. Cap final result at 1.00 (Go behavior)
+
+**Production Impact:**
+- **Exact match prioritization**: Perfect word matches receive bonus boost (configurable favoritism parameter)
+- **Name variations**: "José de la Cruz" vs "Jose Cruz" correctly matches main components (score: 0.5)
+- **Partial term matching**: Adjacent position search (±3) handles minor word order differences
+- **Length penalties**: Multi-word indexed vs single-word query averages all scores (prevents over-weighting single perfect match)
+- **Cap at 1.00**: Prevents artificially inflated scores exceeding maximum confidence
+- **Zone 3 progress**: 64.3% → 67.9% complete (19/28 functions)
+
+**Implementation Notes:**
+- **Why cap at 1.00?** Go's design prevents favoritism from dominating score when only subset of words match
+- **Why average all scores for short queries?** Forces matching across multiple terms, not just one perfect match
+  - Example: "john smith doe" vs "john" = 0.35 (not 1.05), because only 1/3 words match
+- **Adjacent similarity positions (±3)**: Handles minor word order differences without full combinatorial explosion
+- **Length-based capping**: Single indexed word vs multiple query words gets 0.9x cap (prevents short names dominating)
+
+**Real-World Examples:**
+- "Vladimir Putin" vs "PUTIN, Vladimir Vladimirovich" (favoritism=1.0) → 1.00 (capped perfect match)
+- "nicolas, maduro moros" vs "nicolás maduro" (favoritism=0.25) → 0.96 (high match with boost)
+- "john smith doe" vs "john" (favoritism=0.05) → 0.35 (averages all 3 indexed words: [1.05, 0.0, 0.0])
+- "jose de la cruz" vs "jose cruz" (favoritism=0.0) → 0.5 (averages: [1.0, 0.0, 0.0, 1.0])
+
+**Next Phase:** Target remaining Zone 3 functions (5 pending: environment variable parsing, Unicode normalization chains, base score calculation, RemoveStopwordsCountry)
