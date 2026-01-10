@@ -1,5 +1,6 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.config.ScoringConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.similarity.SimilarityService;
 import io.moov.watchman.similarity.TextNormalizer;
@@ -13,29 +14,38 @@ import java.util.Objects;
 
 /**
  * Implementation of EntityScorer using weighted multi-factor comparison.
- * 
+ *
  * Ported from Go implementation: pkg/search/similarity.go
- * 
- * Weights (from Go):
+ *
+ * Default weights (configurable via ScoringConfig):
  * - Critical identifiers (sourceId, crypto, govId, contact): 50
  * - Name comparison: 35
  * - Address matching: 25
  * - Supporting info (dates, etc.): 15
+ *
+ * All factors can be enabled/disabled via ScoringConfig for testing
+ * or compliance requirements.
  */
 public class EntityScorerImpl implements EntityScorer {
 
-    // Weights from Go implementation
-    private static final double CRITICAL_ID_WEIGHT = 50.0;
-    private static final double NAME_WEIGHT = 35.0;
-    private static final double ADDRESS_WEIGHT = 25.0;
-    private static final double SUPPORTING_INFO_WEIGHT = 15.0;
-
     private final SimilarityService similarityService;
     private final TextNormalizer normalizer;
+    private final ScoringConfig config;
 
-    public EntityScorerImpl(SimilarityService similarityService) {
+    /**
+     * Constructor with configurable scoring parameters.
+     */
+    public EntityScorerImpl(SimilarityService similarityService, ScoringConfig config) {
         this.similarityService = similarityService;
         this.normalizer = new TextNormalizer();
+        this.config = config;
+    }
+
+    /**
+     * Constructor using default configuration (backward compatibility).
+     */
+    public EntityScorerImpl(SimilarityService similarityService) {
+        this(similarityService, new ScoringConfig());
     }
 
     @Override
@@ -72,12 +82,18 @@ public class EntityScorerImpl implements EntityScorer {
             "candidateId", candidate.id() != null ? candidate.id() : "unknown"
         ));
 
-        // Calculate individual factor scores
-        double nameScore = ctx.traced(Phase.NAME_COMPARISON, "Comparing primary name",
-            () -> compareNames(queryName, candidate, ctx));
+        // Calculate individual factor scores (respecting configuration)
+        double nameScore = 0.0;
+        if (config.isNameEnabled()) {
+            nameScore = ctx.traced(Phase.NAME_COMPARISON, "Comparing primary name",
+                () -> compareNames(queryName, candidate, ctx));
+        }
 
-        double altNamesScore = ctx.traced(Phase.ALT_NAME_COMPARISON, "Comparing alternate names",
-            () -> compareAltNames(queryName, candidate, ctx));
+        double altNamesScore = 0.0;
+        if (config.isAltNamesEnabled()) {
+            altNamesScore = ctx.traced(Phase.ALT_NAME_COMPARISON, "Comparing alternate names",
+                () -> compareAltNames(queryName, candidate, ctx));
+        }
 
         double addressScore = 0.0; // No query address for simple name search
         double govIdScore = 0.0;   // No query ID for simple name search
@@ -95,9 +111,15 @@ public class EntityScorerImpl implements EntityScorer {
         ));
 
         // Calculate weighted final score
-        double totalWeight = NAME_WEIGHT;
-        double weightedSum = bestNameScore * NAME_WEIGHT;
-        double finalScore = weightedSum / totalWeight;
+        double totalWeight = 0.0;
+        double weightedSum = 0.0;
+
+        if (config.isNameEnabled() || config.isAltNamesEnabled()) {
+            totalWeight = config.getNameWeight();
+            weightedSum = bestNameScore * config.getNameWeight();
+        }
+
+        double finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
 
         ctx.record(Phase.AGGREGATION, "Calculated final score", () -> Map.of(
             "totalWeight", totalWeight,
@@ -140,6 +162,21 @@ public class EntityScorerImpl implements EntityScorer {
             "candidateId", index.id() != null ? index.id() : "unknown"
         ));
 
+        // Record configuration being applied
+        ctx.record(Phase.AGGREGATION, "Applying scoring configuration", () -> Map.of(
+            "nameEnabled", config.isNameEnabled(),
+            "altNamesEnabled", config.isAltNamesEnabled(),
+            "govIdEnabled", config.isGovernmentIdEnabled(),
+            "cryptoEnabled", config.isCryptoEnabled(),
+            "contactEnabled", config.isContactEnabled(),
+            "addressEnabled", config.isAddressEnabled(),
+            "dateEnabled", config.isDateEnabled(),
+            "nameWeight", config.getNameWeight(),
+            "criticalIdWeight", config.getCriticalIdWeight(),
+            "addressWeight", config.getAddressWeight(),
+            "supportingInfoWeight", config.getSupportingInfoWeight()
+        ));
+
         // Check for exact sourceId match (critical identifier)
         // If both entities have sourceId set and they match, it's a perfect match
         if (query.sourceId() != null && !query.sourceId().isBlank()
@@ -156,27 +193,62 @@ public class EntityScorerImpl implements EntityScorer {
             return breakdown;
         }
 
-        // Calculate individual factor scores with tracing
-        double nameScore = ctx.traced(Phase.NAME_COMPARISON, "Comparing primary names",
-            () -> compareNames(query.name(), index, ctx));
+        // Calculate individual factor scores with tracing (only if enabled)
+        double nameScore = 0.0;
+        if (config.isNameEnabled()) {
+            nameScore = ctx.traced(Phase.NAME_COMPARISON, "Comparing primary names",
+                () -> compareNames(query.name(), index, ctx));
+        } else {
+            ctx.record(Phase.NAME_COMPARISON, "Name comparison disabled by configuration");
+        }
 
-        double altNamesScore = ctx.traced(Phase.ALT_NAME_COMPARISON, "Comparing alternate names",
-            () -> compareAltNames(query.name(), index, ctx));
+        double altNamesScore = 0.0;
+        if (config.isAltNamesEnabled()) {
+            altNamesScore = ctx.traced(Phase.ALT_NAME_COMPARISON, "Comparing alternate names",
+                () -> compareAltNames(query.name(), index, ctx));
+        } else {
+            ctx.record(Phase.ALT_NAME_COMPARISON, "Alternate names comparison disabled by configuration");
+        }
 
-        double govIdScore = ctx.traced(Phase.GOV_ID_COMPARISON, "Comparing government IDs",
-            () -> compareGovernmentIds(query.governmentIds(), index.governmentIds(), ctx));
+        double govIdScore = 0.0;
+        if (config.isGovernmentIdEnabled()) {
+            govIdScore = ctx.traced(Phase.GOV_ID_COMPARISON, "Comparing government IDs",
+                () -> compareGovernmentIds(query.governmentIds(), index.governmentIds(), ctx));
+        } else {
+            ctx.record(Phase.GOV_ID_COMPARISON, "Government ID comparison disabled by configuration");
+        }
 
-        double cryptoScore = ctx.traced(Phase.CRYPTO_COMPARISON, "Comparing crypto addresses",
-            () -> compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses(), ctx));
+        double cryptoScore = 0.0;
+        if (config.isCryptoEnabled()) {
+            cryptoScore = ctx.traced(Phase.CRYPTO_COMPARISON, "Comparing crypto addresses",
+                () -> compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses(), ctx));
+        } else {
+            ctx.record(Phase.CRYPTO_COMPARISON, "Crypto comparison disabled by configuration");
+        }
 
-        double addressScore = ctx.traced(Phase.ADDRESS_COMPARISON, "Comparing addresses",
-            () -> compareAddresses(query.addresses(), index.addresses(), ctx));
+        double addressScore = 0.0;
+        if (config.isAddressEnabled()) {
+            addressScore = ctx.traced(Phase.ADDRESS_COMPARISON, "Comparing addresses",
+                () -> compareAddresses(query.addresses(), index.addresses(), ctx));
+        } else {
+            ctx.record(Phase.ADDRESS_COMPARISON, "Address comparison disabled by configuration");
+        }
 
-        double contactScore = ctx.traced(Phase.CONTACT_COMPARISON, "Comparing contact info",
-            () -> compareContact(query.contact(), index.contact(), ctx));
+        double contactScore = 0.0;
+        if (config.isContactEnabled()) {
+            contactScore = ctx.traced(Phase.CONTACT_COMPARISON, "Comparing contact info",
+                () -> compareContact(query.contact(), index.contact(), ctx));
+        } else {
+            ctx.record(Phase.CONTACT_COMPARISON, "Contact comparison disabled by configuration");
+        }
 
-        double dateScore = ctx.traced(Phase.DATE_COMPARISON, "Comparing dates",
-            () -> compareDates(query, index, ctx));
+        double dateScore = 0.0;
+        if (config.isDateEnabled()) {
+            dateScore = ctx.traced(Phase.DATE_COMPARISON, "Comparing dates",
+                () -> compareDates(query, index, ctx));
+        } else {
+            ctx.record(Phase.DATE_COMPARISON, "Date comparison disabled by configuration");
+        }
 
         // SourceId mismatch penalty: if both have sourceIds but they don't match,
         // this counts as a critical identifier mismatch (score 0 for that factor)
@@ -242,22 +314,22 @@ public class EntityScorerImpl implements EntityScorer {
     @Override
     public double score(String queryName, String queryAddress, Entity candidate) {
         ScoreBreakdown breakdown = scoreWithBreakdown(queryName, candidate);
-        
-        // Add address comparison if provided
-        if (queryAddress != null && !queryAddress.isBlank() && candidate.addresses() != null) {
+
+        // Add address comparison if provided and enabled
+        if (config.isAddressEnabled() && queryAddress != null && !queryAddress.isBlank() && candidate.addresses() != null) {
             double addressScore = 0.0;
             for (Address addr : candidate.addresses()) {
                 String candidateAddr = formatAddress(addr);
                 double score = similarityService.tokenizedSimilarity(queryAddress, candidateAddr);
                 addressScore = Math.max(addressScore, score);
             }
-            
-            // Recalculate with address
-            double totalWeight = NAME_WEIGHT + ADDRESS_WEIGHT;
-            double weightedSum = breakdown.nameScore() * NAME_WEIGHT + addressScore * ADDRESS_WEIGHT;
+
+            // Recalculate with address using config weights
+            double totalWeight = config.getNameWeight() + config.getAddressWeight();
+            double weightedSum = breakdown.nameScore() * config.getNameWeight() + addressScore * config.getAddressWeight();
             return weightedSum / totalWeight;
         }
-        
+
         return breakdown.totalWeightedScore();
     }
 
@@ -606,54 +678,59 @@ public class EntityScorerImpl implements EntityScorer {
         double totalWeight = 0.0;
         double weightedSum = 0.0;
 
-        // Best name score
+        // Best name score - only count if name is enabled
         double bestNameScore = Math.max(nameScore, altNameScore);
-        weightedSum += bestNameScore * NAME_WEIGHT;
-        totalWeight += NAME_WEIGHT;
+        if (config.isNameEnabled() || config.isAltNamesEnabled()) {
+            weightedSum += bestNameScore * config.getNameWeight();
+            totalWeight += config.getNameWeight();
+        }
 
         // If sourceIds were both provided but don't match, add a 0 score with critical weight
         // This prevents a name-only match from being 1.0 when sourceIds are mismatched
         if (sourceIdMismatch) {
-            weightedSum += 0.0 * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+            weightedSum += 0.0 * config.getCriticalIdWeight();
+            totalWeight += config.getCriticalIdWeight();
         }
 
-        // Add other factors if present
-        if (govIdScore > 0) {
-            weightedSum += govIdScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+        // Add other factors if present (and enabled)
+        if (govIdScore > 0 && config.isGovernmentIdEnabled()) {
+            weightedSum += govIdScore * config.getCriticalIdWeight();
+            totalWeight += config.getCriticalIdWeight();
         }
-        if (cryptoScore > 0) {
-            weightedSum += cryptoScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+        if (cryptoScore > 0 && config.isCryptoEnabled()) {
+            weightedSum += cryptoScore * config.getCriticalIdWeight();
+            totalWeight += config.getCriticalIdWeight();
         }
-        if (contactScore > 0) {
-            weightedSum += contactScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+        if (contactScore > 0 && config.isContactEnabled()) {
+            weightedSum += contactScore * config.getCriticalIdWeight();
+            totalWeight += config.getCriticalIdWeight();
         }
-        if (addressScore > 0) {
-            weightedSum += addressScore * ADDRESS_WEIGHT;
-            totalWeight += ADDRESS_WEIGHT;
+        if (addressScore > 0 && config.isAddressEnabled()) {
+            weightedSum += addressScore * config.getAddressWeight();
+            totalWeight += config.getAddressWeight();
         }
-        if (dateScore > 0) {
-            weightedSum += dateScore * SUPPORTING_INFO_WEIGHT;
-            totalWeight += SUPPORTING_INFO_WEIGHT;
+        if (dateScore > 0 && config.isDateEnabled()) {
+            weightedSum += dateScore * config.getSupportingInfoWeight();
+            totalWeight += config.getSupportingInfoWeight();
         }
 
         double finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
 
         ctx.record(Phase.AGGREGATION, "Normal score formula applied", () -> Map.of(
             "bestNameScore", bestNameScore,
-            "NAME_WEIGHT", NAME_WEIGHT,
+            "nameWeight", config.getNameWeight(),
+            "criticalIdWeight", config.getCriticalIdWeight(),
+            "addressWeight", config.getAddressWeight(),
+            "supportingInfoWeight", config.getSupportingInfoWeight(),
             "totalWeight", totalWeight,
             "weightedSum", weightedSum,
             "finalScore", finalScore,
             "activeFactors", java.util.List.of(
-                govIdScore > 0 ? "govId" : null,
-                cryptoScore > 0 ? "crypto" : null,
-                contactScore > 0 ? "contact" : null,
-                addressScore > 0 ? "address" : null,
-                dateScore > 0 ? "date" : null,
+                (govIdScore > 0 && config.isGovernmentIdEnabled()) ? "govId" : null,
+                (cryptoScore > 0 && config.isCryptoEnabled()) ? "crypto" : null,
+                (contactScore > 0 && config.isContactEnabled()) ? "contact" : null,
+                (addressScore > 0 && config.isAddressEnabled()) ? "address" : null,
+                (dateScore > 0 && config.isDateEnabled()) ? "date" : null,
                 sourceIdMismatch ? "sourceIdMismatch" : null
             ).stream().filter(Objects::nonNull).toList()
         ));

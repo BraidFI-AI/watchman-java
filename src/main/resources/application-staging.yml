@@ -1,0 +1,19 @@
+# Staging configuration for faster testing
+# Name-only mode - disables all factors except primary name
+
+watchman:
+  scoring:
+    # Weights (name is the only enabled factor)
+    name-weight: 100.0
+
+    # Enable only name comparison for faster testing
+    name-enabled: true
+    alt-names-enabled: false
+    government-id-enabled: false
+    crypto-enabled: false
+    contact-enabled: false
+    address-enabled: false
+    date-enabled: false
+
+  search:
+    min-match: 0.85  # Slightly lower threshold for more results in testing

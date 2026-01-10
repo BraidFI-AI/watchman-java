@@ -30,6 +30,22 @@ watchman:
     max-limit: 100
     min-match: 0.88
   scoring:
+    # Factor weights (default values shown)
+    name-weight: 35.0
+    address-weight: 25.0
+    critical-id-weight: 50.0
+    supporting-info-weight: 15.0
+
+    # Factor enable/disable flags (all enabled by default)
+    name-enabled: true
+    alt-names-enabled: true
+    government-id-enabled: true
+    crypto-enabled: true
+    contact-enabled: true
+    address-enabled: true
+    date-enabled: true
+
+    # Legacy jaro-winkler settings (under similarity config)
     jaro-winkler:
       boost-threshold: 0.7
       prefix-size: 4

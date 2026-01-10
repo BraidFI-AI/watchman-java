@@ -1,0 +1,22 @@
+# Compliance mode - address matching disabled for certain jurisdictions
+# Example: Some regulatory environments don't allow address-based screening
+
+watchman:
+  scoring:
+    # Weights adjusted for missing address factor
+    name-weight: 40.0
+    address-weight: 0.0  # Not used when disabled
+    critical-id-weight: 50.0
+    supporting-info-weight: 20.0
+
+    # Name and IDs enabled, address disabled
+    name-enabled: true
+    alt-names-enabled: true
+    government-id-enabled: true
+    crypto-enabled: true
+    contact-enabled: true
+    address-enabled: false  # Disabled for compliance
+    date-enabled: true
+
+  search:
+    min-match: 0.88

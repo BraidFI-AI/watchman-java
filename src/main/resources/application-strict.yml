@@ -1,0 +1,22 @@
+# Strict production configuration
+# All factors enabled with emphasis on critical identifiers
+
+watchman:
+  scoring:
+    # Weights - heavily favor exact identifier matches
+    name-weight: 30.0
+    address-weight: 20.0
+    critical-id-weight: 70.0  # Increased from default 50
+    supporting-info-weight: 10.0
+
+    # All factors enabled
+    name-enabled: true
+    alt-names-enabled: true
+    government-id-enabled: true
+    crypto-enabled: true
+    contact-enabled: true
+    address-enabled: true
+    date-enabled: true
+
+  search:
+    min-match: 0.92  # Higher threshold for stricter matching
