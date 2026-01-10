@@ -118,8 +118,8 @@ class Phase12SupportingInfoTest {
         }
 
         @Test
-        @DisplayName("Should count only distinct matches")
-        void distinctMatches() {
+        @DisplayName("Should count each query occurrence separately")
+        void eachOccurrenceCounted() {
             SanctionsInfo query = new SanctionsInfo(
                     List.of("OFAC", "OFAC", "EU"),
                     false,
@@ -133,8 +133,8 @@ class Phase12SupportingInfoTest {
 
             double score = SupportingInfoComparer.compareSanctionsPrograms(query, index);
 
-            // Go code: matches = 2 (OFAC, EU), total = 3 (OFAC, OFAC, EU) → 2/3 = 0.667
-            assertEquals(0.667, score, 0.001, "2 of 3 query programs match");
+            // Go code: each query occurrence matches separately → 3/3 = 1.0
+            assertEquals(1.0, score, 0.001, "All 3 query occurrences match (OFAC, OFAC, EU)");
         }
     }
 
