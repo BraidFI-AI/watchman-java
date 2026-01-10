@@ -656,6 +656,158 @@ class EntityMergerTest {
             // Then: Non-empty preserved
             assertThat(merged).hasSize(1);
         }
+
+        // ==================== PHASE 18: ID NORMALIZATION (A2 Proposal) ====================
+
+        @Test
+        @DisplayName("Phase 18: Should deduplicate hyphenated SSN formats")
+        void normalizeHyphenatedSSN() {
+            // Given: Same SSN in different formats
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.SSN, "US", "123-45-6789")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.SSN, "US", "123456789")  // Same but no hyphens
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: Recognized as duplicate (normalized)
+            assertThat(merged).hasSize(1);
+            assertThat(merged.get(0).identifier()).isEqualTo("123-45-6789");  // Keeps first occurrence
+        }
+
+        @Test
+        @DisplayName("Phase 18: Should deduplicate spaced ID formats")
+        void normalizeSpacedID() {
+            // Given: Same ID with spaces vs no spaces
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.PASSPORT, "US", "AB 12 34 56 C")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.PASSPORT, "US", "AB123456C")
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: Recognized as duplicate
+            assertThat(merged).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Phase 18: Should deduplicate mixed space/hyphen formats")
+        void normalizeMixedFormats() {
+            // Given: Same ID in three different formats
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.TAX_ID, "UK", "AB-12-34-56-C")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.TAX_ID, "UK", "AB 12 34 56 C"),
+                createGovId(GovernmentIdType.TAX_ID, "UK", "AB123456C")
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: All three recognized as same ID
+            assertThat(merged).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Phase 18: Should be case-insensitive with normalization")
+        void normalizeCaseAndFormat() {
+            // Given: Same ID with case and format variations
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.PASSPORT, "US", "ab-123-456")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.PASSPORT, "US", "AB123456")
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: Recognized as duplicate (case + format normalized)
+            assertThat(merged).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Phase 18: Should keep IDs with same format but different values")
+        void differentIDsNotDeduped() {
+            // Given: Different IDs in same format
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.SSN, "US", "123-45-6789")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.SSN, "US", "987-65-4321")
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: Two distinct IDs
+            assertThat(merged).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Phase 18: Should keep same ID with different type")
+        void sameIDDifferentTypeNotDeduped() {
+            // Given: Same number, different ID types
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.SSN, "US", "123456789")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.TAX_ID, "US", "123-45-6789")  // Same number
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: Two distinct IDs (different types)
+            assertThat(merged).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Phase 18: Should keep same ID with different country")
+        void sameIDDifferentCountryNotDeduped() {
+            // Given: Same number, different countries
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.PASSPORT, "US", "123456789")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.PASSPORT, "UK", "123-45-6789")
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: Two distinct IDs (different countries)
+            assertThat(merged).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Phase 18: Real-world example with multiple format variations")
+        void realWorldMultipleFormats() {
+            // Given: Real-world data with inconsistent formatting
+            List<GovernmentId> list1 = List.of(
+                createGovId(GovernmentIdType.SSN, "US", "123-45-6789"),
+                createGovId(GovernmentIdType.PASSPORT, "US", "AB1234567")
+            );
+            List<GovernmentId> list2 = List.of(
+                createGovId(GovernmentIdType.SSN, "US", "123 45 6789"),      // Duplicate (spaces)
+                createGovId(GovernmentIdType.SSN, "US", "123456789"),        // Duplicate (no format)
+                createGovId(GovernmentIdType.PASSPORT, "US", "ab-123-4567"), // Duplicate (case+hyphens)
+                createGovId(GovernmentIdType.TAX_ID, "US", "98-7654321")     // New ID
+            );
+
+            // When: Merge
+            List<GovernmentId> merged = EntityMerger.mergeGovernmentIds(list1, list2);
+
+            // Then: Only 3 unique IDs (SSN, PASSPORT, TAX_ID)
+            assertThat(merged).hasSize(3);
+        }
     }
 
     @Nested
