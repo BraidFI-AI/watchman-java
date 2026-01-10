@@ -1,11 +1,12 @@
 package io.moov.watchman.scorer;
 
 import io.moov.watchman.model.PreparedAddress;
+import io.moov.watchman.similarity.JaroWinklerSimilarity;
 
 import java.util.List;
 
 /**
- * TDD Phase 7 - STUB
+ * TDD Phase 7 - GREEN PHASE
  * Address comparison utilities
  * 
  * Ported from Go: pkg/search/similarity_address.go (lines 53-161)
@@ -31,6 +32,8 @@ public class AddressComparer {
     // High confidence threshold for early exit (from Go)
     private static final double HIGH_CONFIDENCE_THRESHOLD = 0.92;
     
+    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+    
     /**
      * Compares two prepared addresses using weighted field comparison.
      * 
@@ -44,7 +47,57 @@ public class AddressComparer {
      * @return Similarity score [0.0, 1.0]
      */
     public static double compareAddress(PreparedAddress query, PreparedAddress index) {
-        throw new UnsupportedOperationException("Not implemented yet - TDD RED phase");
+        double totalScore = 0.0;
+        double totalWeight = 0.0;
+        
+        // Compare line1 (highest weight)
+        if (!query.line1Fields().isEmpty() && !index.line1Fields().isEmpty()) {
+            double similarity = bestPairCombinationJaroWinkler(query.line1Fields(), index.line1Fields());
+            totalScore += similarity * LINE1_WEIGHT;
+            totalWeight += LINE1_WEIGHT;
+        }
+        
+        // Compare line2
+        if (!query.line2Fields().isEmpty() && !index.line2Fields().isEmpty()) {
+            double similarity = bestPairCombinationJaroWinkler(query.line2Fields(), index.line2Fields());
+            totalScore += similarity * LINE2_WEIGHT;
+            totalWeight += LINE2_WEIGHT;
+        }
+        
+        // Compare city
+        if (!query.cityFields().isEmpty() && !index.cityFields().isEmpty()) {
+            double similarity = bestPairCombinationJaroWinkler(query.cityFields(), index.cityFields());
+            totalScore += similarity * CITY_WEIGHT;
+            totalWeight += CITY_WEIGHT;
+        }
+        
+        // Compare state (exact match)
+        if (!query.state().isEmpty() && !index.state().isEmpty()) {
+            double score = query.state().equalsIgnoreCase(index.state()) ? 1.0 : 0.0;
+            totalScore += score * STATE_WEIGHT;
+            totalWeight += STATE_WEIGHT;
+        }
+        
+        // Compare postal code (exact match)
+        if (!query.postalCode().isEmpty() && !index.postalCode().isEmpty()) {
+            double score = query.postalCode().equalsIgnoreCase(index.postalCode()) ? 1.0 : 0.0;
+            totalScore += score * POSTAL_WEIGHT;
+            totalWeight += POSTAL_WEIGHT;
+        }
+        
+        // Compare country (exact match)
+        if (!query.country().isEmpty() && !index.country().isEmpty()) {
+            double score = query.country().equalsIgnoreCase(index.country()) ? 1.0 : 0.0;
+            totalScore += score * COUNTRY_WEIGHT;
+            totalWeight += COUNTRY_WEIGHT;
+        }
+        
+        // Return weighted average, or 0.0 if no fields compared
+        if (totalWeight == 0.0) {
+            return 0.0;
+        }
+        
+        return totalScore / totalWeight;
     }
     
     /**
@@ -58,6 +111,41 @@ public class AddressComparer {
      * @return Best match score [0.0, 1.0], or 0.0 if either list is empty
      */
     public static double findBestAddressMatch(List<PreparedAddress> queryAddrs, List<PreparedAddress> indexAddrs) {
-        throw new UnsupportedOperationException("Not implemented yet - TDD RED phase");
+        if (queryAddrs == null || queryAddrs.isEmpty() || indexAddrs == null || indexAddrs.isEmpty()) {
+            return 0.0;
+        }
+        
+        double bestScore = 0.0;
+        
+        for (PreparedAddress queryAddr : queryAddrs) {
+            for (PreparedAddress indexAddr : indexAddrs) {
+                double score = compareAddress(queryAddr, indexAddr);
+                if (score > bestScore) {
+                    bestScore = score;
+                    
+                    // Early exit on high confidence match
+                    if (score > HIGH_CONFIDENCE_THRESHOLD) {
+                        return score;
+                    }
+                }
+            }
+        }
+        
+        return bestScore;
+    }
+    
+    /**
+     * Compares two token lists using BestPairCombinationJaroWinkler.
+     * Joins tokens to strings and calls JaroWinkler.
+     * 
+     * Go: stringscore.BestPairCombinationJaroWinkler(query.Line1Fields, index.Line1Fields)
+     */
+    private static double bestPairCombinationJaroWinkler(List<String> queryTokens, List<String> indexTokens) {
+        // Join tokens to strings
+        String queryStr = String.join(" ", queryTokens);
+        String indexStr = String.join(" ", indexTokens);
+        
+        // Use JaroWinkler similarity
+        return jaroWinkler.jaroWinkler(queryStr, indexStr);
     }
 }
