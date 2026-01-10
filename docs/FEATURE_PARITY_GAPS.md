@@ -12,12 +12,32 @@
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ Fully Implemented | 69 | 34.5% |
+| ✅ Fully Implemented | 79 | 39.5% |
 | ⚠️ Partially Implemented | 69 | 34.5% |
-| ❌ Completely Missing | 62 | 31% |
+| ❌ Completely Missing | 52 | 26% |
 | **TOTAL FEATURES** | **200** | **100%** |
 
-**Critical Finding:** Java is missing or has incomplete implementations for **65.5% of Go's features** (down from 69%).
+**Critical Finding:** Java is missing or has incomplete implementations for **60.5% of Go's features** (down from 65.5%).
+
+**Phase 4 Complete (Jan 9, 2026):** Quality & Coverage Scoring - 43/43 tests passing ✅
+  - QualityPenaltyTest: 16/16 ✅
+  - CoverageCalculationTest: 14/14 ✅
+  - ConfidenceTest: 13/13 ✅
+- ✅ Quality-based penalties (16/16 tests) - term count threshold (matchingTerms < 2 → 0.8x penalty)
+- ✅ Coverage calculation (14/14 tests) - field coverage ratios (overall + critical fields)
+- ✅ High confidence determination (13/13 tests) - confidence rules (matchingTerms >= 2 AND score > 0.85)
+- ✅ Type-aware field counting (7 functions) - countPersonFields, countBusinessFields, countOrganizationFields, countAircraftFields, countVesselFields, countCommonFields, countFieldsByImportance
+
+**Phase 5 Complete (Jan 9, 2026):** Title & Affiliation Matching - 85/85 tests passing ✅
+  - TitleNormalizationTest: 27/27 ✅
+  - TitleComparisonTest: 21/21 ✅
+  - AffiliationMatchingTest: 37/37 ✅
+- ✅ Title normalization (27/27 tests) - normalizeTitle() + expandAbbreviations() with 16 abbreviation mappings
+- ✅ Title comparison (21/21 tests) - calculateTitleSimilarity() + findBestTitleMatch() with Jaro-Winkler + length penalties
+- ✅ Affiliation matching (37/37 tests) - normalizeAffiliationName(), calculateTypeScore(), calculateCombinedScore(), getTypeGroup()
+  * 4 type groups: ownership, control, association, leadership (26 types)
+  * Type-aware scoring: exact match (+0.15), related type (+0.08), mismatch (-0.15)
+  * Business suffix removal: corporation, inc, ltd, llc, corp, co, company
 
 **Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 24/24 tests passing ✅
   - EntityNormalizationTest: 13/13 ✅
@@ -150,20 +170,20 @@
 | 44 | `compareName()` | similarity_fuzzy.go | `compareNames()` | ✅ | Primary name matching |
 | 45 | `compareNameTerms()` | similarity_fuzzy.go | `bestPairJaro()` | ⚠️ | Token-based matching |
 | 46 | `calculateNameScore()` | similarity_fuzzy.go | Inline | ⚠️ | Name score calculation |
-| 47 | `calculateTitleSimilarity()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - title matching |
-| 48 | `normalizeTitle()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - title normalization |
-| 49 | `expandAbbreviations()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - title abbreviations |
+| 47 | `calculateTitleSimilarity()` | similarity_fuzzy.go | `TitleMatcher.calculateTitleSimilarity()` | ✅ | **Phase 5 (Jan 9):** Jaro-Winkler + term filtering (<2 chars) + length penalty (0.1 per term diff) |
+| 48 | `normalizeTitle()` | similarity_fuzzy.go | `TitleMatcher.normalizeTitle()` | ✅ | **Phase 5 (Jan 9):** Lowercase + punctuation removal (except hyphens) + whitespace normalization |
+| 49 | `expandAbbreviations()` | similarity_fuzzy.go | `TitleMatcher.expandAbbreviations()` | ✅ | **Phase 5 (Jan 9):** 16 abbreviations (ceo, cfo, coo, pres, vp, dir, exec, mgr, sr, jr, asst, assoc, tech, admin, eng, dev) |
 | 50 | `compareEntityTitlesFuzzy()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - entity title comparison |
-| 51 | `findBestTitleMatch()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - best title pair |
+| 51 | `findBestTitleMatch()` | similarity_fuzzy.go | `TitleMatcher.findBestTitleMatch()` | ✅ | **Phase 5 (Jan 9):** Best title pair selection with early exit at 0.92+ threshold |
 | 52 | `compareAffiliationsFuzzy()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - affiliation matching |
 | 53 | `findBestAffiliationMatch()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - best affiliation pair |
-| 54 | `normalizeAffiliationName()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - affiliation normalization |
-| 55 | `calculateCombinedScore()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - combine scores |
+| 54 | `normalizeAffiliationName()` | similarity_fuzzy.go | `AffiliationMatcher.normalizeAffiliationName()` | ✅ | **Phase 5 (Jan 9):** Lowercase + punctuation removal + suffix removal (7 suffixes: corporation, inc, ltd, llc, corp, co, company) |
+| 55 | `calculateCombinedScore()` | similarity_fuzzy.go | `AffiliationMatcher.calculateCombinedScore()` | ✅ | **Phase 5 (Jan 9):** Name+type scoring (exact: +0.15, related: +0.08, mismatch: -0.15), clamped [0.0, 1.0] |
 | 56 | `calculateFinalAffiliateScore()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - affiliation scoring |
-| 57 | `calculateTypeScore()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - entity type scoring |
-| 58 | `getTypeGroup()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - group entities by type |
+| 57 | `calculateTypeScore()` | similarity_fuzzy.go | `AffiliationMatcher.calculateTypeScore()` | ✅ | **Phase 5 (Jan 9):** Type similarity (exact: 1.0, same group: 0.8, different: 0.0) |
+| 58 | `getTypeGroup()` | similarity_fuzzy.go | `AffiliationMatcher.getTypeGroup()` | ✅ | **Phase 5 (Jan 9):** 4 groups (ownership, control, association, leadership) with 26 total types |
 | 59 | `isNameCloseEnough()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - proximity check |
-| 60 | `filterTerms()` | similarity_fuzzy.go | N/A | ❌ | **MISSING** - term filtering |
+| 60 | `filterTerms()` | similarity_fuzzy.go | `TitleMatcher.filterTerms()` | ✅ | **Phase 5 (Jan 9):** Private helper - removes terms with length < 2 |
 | 61 | `compareAddresses()` | similarity_address.go | `compareAddresses()` | ⚠️ | Basic implementation |
 | 62 | `compareAddress()` | similarity_address.go | N/A | ❌ | **MISSING** - single address compare |
 | 63 | `findBestAddressMatch()` | similarity_address.go | N/A | ❌ | **MISSING** - best match selection |
@@ -203,9 +223,9 @@
 | 97 | `countVesselFields()` | similarity_supporting.go | `EntityScorer.countVesselFields()` | ✅ | **Phase 4 (Jan 9):** Private helper - 10 fields (name, altNames, type, flag, callSign, tonnage, owner, imoNumber, built, mmsi) |
 
 **Summary: 69 scoring functions**
-- ✅ 17 fully implemented (25%) - **+12 in Phase 4 (Jan 9)**
-- ⚠️ 1 partially implemented (1%) - **-12 in Phase 4**
-- ❌ 51 completely missing (74%)
+- ✅ 26 fully implemented (38%) - **+9 in Phase 5 (Jan 9)**
+- ⚠️ 11 partially implemented (16%) - unchanged
+- ❌ 42 completely missing (61%) - **-9 in Phase 5**
 
 ---
 
