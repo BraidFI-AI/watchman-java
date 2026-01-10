@@ -20,7 +20,7 @@ class Phase14SupportingInfoTest {
 
     // Test helper: Create entity with sanctions info
     private Entity createEntityWithSanctions(String id, List<String> programs, Boolean secondary) {
-        SanctionsInfo sanctions = new SanctionsInfo(programs, secondary);
+        SanctionsInfo sanctions = new SanctionsInfo(programs, secondary, null);
         return new Entity(
                 id,
                 "Test Entity",

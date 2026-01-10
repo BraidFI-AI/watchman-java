@@ -1,17 +1,82 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.HistoricalInfo;
 import io.moov.watchman.model.SanctionsInfo;
+import io.moov.watchman.search.ScorePiece;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Phase 12: Supporting Information Comparison Functions
+ * Phase 12-14: Supporting Information Comparison Functions
  * Compares sanctions programs and historical data between entities.
  */
 public class SupportingInfoComparer {
 
     private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+
+    /**
+     * Aggregates supporting information comparison (sanctions + historical).
+     * Filters out zero scores and averages the remaining scores.
+     * 
+     * Go equivalent: compareSupportingInfo() in similarity_supporting.go
+     *
+     * @param query Query entity
+     * @param index Index entity
+     * @param weight Score weight
+     * @return ScorePiece with aggregated supporting info score
+     */
+    public static ScorePiece compareSupportingInfo(Entity query, Entity index, double weight) {
+        int fieldsCompared = 0;
+        List<Double> scores = new ArrayList<>();
+
+        // Compare sanctions
+        if (query.sanctionsInfo() != null && index.sanctionsInfo() != null) {
+            fieldsCompared++;
+            double score = compareSanctionsPrograms(query.sanctionsInfo(), index.sanctionsInfo());
+            if (score > 0) {
+                scores.add(score);
+            }
+        }
+
+        // Compare historical info
+        if (query.historicalInfo() != null && !query.historicalInfo().isEmpty() &&
+                index.historicalInfo() != null && !index.historicalInfo().isEmpty()) {
+            fieldsCompared++;
+            double score = compareHistoricalValues(query.historicalInfo(), index.historicalInfo());
+            if (score > 0) {
+                scores.add(score);
+            }
+        }
+
+        // No scores to average
+        if (scores.isEmpty()) {
+            return ScorePiece.builder()
+                    .pieceType("supporting")
+                    .score(0.0)
+                    .weight(weight)
+                    .matched(false)
+                    .exact(false)
+                    .fieldsCompared(0)
+                    .build();
+        }
+
+        // Calculate average of non-zero scores
+        double avgScore = scores.stream()
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0.0);
+
+        return ScorePiece.builder()
+                .pieceType("supporting")
+                .score(avgScore)
+                .weight(weight)
+                .matched(avgScore > 0.5)
+                .exact(avgScore > 0.99)
+                .fieldsCompared(fieldsCompared)
+                .build();
+    }
 
     /**
      * Compares sanctions programs between two entities.
