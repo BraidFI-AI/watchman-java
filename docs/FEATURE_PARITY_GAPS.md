@@ -1,8 +1,8 @@
 # WATCHMAN FEATURE PARITY: Go vs Java
 
 **Last Updated:** January 10, 2026  
-**Status:** 103/177 features (58%) ✅ | 13 features (7%) ⚠️ | 61 features (35%) ❌  
-**Test Suite:** 976/976 passing (100%) ✅ | 1 skipped performance test
+**Status:** 108/177 features (61%) ✅ | 12 features (7%) ⚠️ | 57 features (32%) ❌  
+**Test Suite:** 1053/1053 passing (100%) ✅ | 1 skipped performance test
 
 ---
 
@@ -38,28 +38,31 @@ This document tracks **feature parity** between the Go and Java implementations�
 ## CURRENT STATUS
 
 **Go Codebase:** 16,337 lines, 88 files, 604 exported functions  
-**Java Codebase:** 64 files, 968 test cases
+**Java Codebase:** 64 files, 1053 test cases
 
 ### Implementation Progress
 
 | Status | Count | Percentage | Description |
 |--------|-------|------------|-------------|
-| ✅ Fully Implemented | 100/177 | 56% | Complete behavioral parity with Go |
-| ⚠️ Partially Implemented | 16/177 | 9% | Core logic present, missing edge cases |
-| ❌ Not Implemented | 61/177 | 34% | Pending implementation in Java codebase |
+| ✅ Fully Implemented | 108/177 | 61% | Complete behavioral parity with Go |
+| ⚠️ Partially Implemented | 12/177 | 7% | Core logic present, missing edge cases |
+| ❌ Not Implemented | 57/177 | 32% | Pending implementation in Java codebase |
 
 ### Progress by Priority Zone
 
 | Zone | Category | Complete | Status | Priority |
 |------|----------|----------|--------|----------|
-| 🎯 **Zone 1** | **Scoring Functions** | **100%** (69/69) | 0 partial, 0 pending | **✅ COMPLETE** |
+| 🎯 **Zone 1** | **Scoring Functions** | **100%** (71/71) | 0 partial, 0 pending | **✅ COMPLETE** |
 | 🟢 **Zone 2** | **Entity Models** | **100%** (14/16) | 0 partial, 2 N/A | **✅ COMPLETE** |
-| 🟡 **Zone 3** | **Core Algorithms** | **54%** (15/28) | 4 partial, 9 pending | IN PROGRESS |
-| 🔴 **Zone 4** | **Client & API** | **25%** (1/16) | 3 partial, 12 pending | LOW PRIORITY |
+| 🟡 **Zone 3** | **Core Algorithms** | **64%** (18/28) | 3 partial, 7 pending | IN PROGRESS |
+| 🔴 **Zone 4** | **Client & API** | **6%** (1/16) | 3 partial, 12 pending | LOW PRIORITY |
 | ⚪ **Zone 5** | **Environment Vars** | **37%** (4/27) | 6 partial, 17 pending | OPTIONAL |
 | ⚫ **Zone 6** | **Pending Modules** | **0%** (0/21) | 0 partial, 21 pending | OUT OF SCOPE |
 
-**Milestone Achievement:** Phase 16 completed Zone 1 - Scoring Functions at 100%! 🚀 First category fully complete!
+**Milestone Achievements:** 
+- 🎯 **Phase 16:** Zone 1 (Scoring Functions) at 100% - First category complete!
+- 🟢 **Phase 17+18:** Zone 2 (Entity Models) at 100% (effective) - Second category complete!
+- 🟡 **Phase 19:** Zone 3 (Core Algorithms) at 64% - Country & gender normalization
 
 ### Recent Phases (Jan 8-10, 2026)
 
@@ -82,8 +85,9 @@ This document tracks **feature parity** between the Go and Java implementations�
 - ✅ **Phase 16:** Zone 1 completion - debug utilities, entity title comparison, generic dispatchers (6 functions)
 - ✅ **Phase 17:** Zone 2 quality - Stopword/address/phone integration into Entity.normalize() (3 features)
 - ✅ **Phase 18:** ID normalization from A2 proposal (1 feature)
+- ✅ **Phase 19:** Country & gender normalization (2 features)
 
-**Velocity:** 18 phases, 89 functions, 976 tests in 3 days
+**Velocity:** 19 phases, 91 functions, 1053 tests in 3 days
 
 ---
 
@@ -137,14 +141,14 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 23 | `ReorderSDNName()` | pipeline_reorder.go | `Entity.reorderSDNName()` | ✅ | "LAST, FIRST" → "FIRST LAST" |
 | 24 | `ReorderSDNNames()` | pipeline_reorder.go | `Entity.normalize()` | ⚠️ | Batch via normalize() pipeline |
 | 25 | `RemoveCompanyTitles()` | pipeline_company_name_cleanup.go | `Entity.removeCompanyTitles()` | ✅ | **Phase 1 Complete (Jan 8): Iterative removal** - removes all company titles (LLC, INC, CORP, LTD, etc.) |
-| 26 | `NormalizeGender()` | prepare_gender.go | N/A | ❌ | **PENDING** - "M"/"MALE" → "male" |
-| 27 | `Country()` | norm/country.go | N/A | ❌ | **PENDING** - country name normalization |
+| 26 | `NormalizeGender()` | prepare_gender.go | `GenderNormalizer.normalize()` | ✅ | **Phase 19 (Jan 10):** Gender normalization - m/male/man/guy → "male", f/female/woman/gal/girl → "female", else → "unknown" |
+| 27 | `Country()` | norm/country.go | `CountryNormalizer.normalize()` | ✅ | **Phase 19 (Jan 10):** Country normalization - ISO 3166 alpha-2/alpha-3 codes to standard names, 19 overrides (Czech Republic, United Kingdom, Iran, North Korea, etc.) |
 | 28 | `PhoneNumber()` | norm/phone.go | `PhoneNormalizer.normalizePhoneNumber()` | ✅ | **Phase 17 (Jan 10):** Phone formatting removal - strips +, -, space, (, ), . - matches Go behavior exactly |
 
 **Summary: 28 core algorithm features**
-- ✅ 16 fully implemented (57.1%)
+- ✅ 18 fully implemented (64.3%)
 - ⚠️ 3 partially implemented (10.7%)
-- ❌ 9 pending implementation (32.1%)
+- ❌ 7 pending implementation (25.0%)
 
 ---
 
@@ -395,20 +399,18 @@ All normalization and merge functions from Go's entity model pipeline are now in
 - ✅ Entity merging - 9 functions (mergeTwo, mergeAddresses, mergeStrings, mergeCryptoAddresses, mergeGovernmentIds, etc.)
 - ❌ 2 N/A features - mergeAffiliations, mergeHistoricalInfo (Go-only fields not present in Java Entity model)
 
-**Next Focus:** Zone 3 (Core Algorithms) - 13 pending functions remain (54% complete)
+**Next Focus:** Zone 3 (Core Algorithms) - 7 pending functions remain (64% complete → target 100%)
 
-### Core Algorithms (13/28 pending, 46% remaining)
+### Core Algorithms (7/28 pending, 25% remaining)
 
 **Remaining Functions:**
 - `RemoveStopwordsCountry()` - Country-aware stopword removal fallback
 - Environment variable parsers (`readFloat()`, `readInt()`)
 - Unicode normalization chain (`getTransformChain()`, `newTransformChain()`, `saveBuffer()`)
-- Country normalization (`Country()`)
-- Gender normalization (`NormalizeGender()`)
 - Base score calculation (`calculateBaseScore()`)
 - Exact match favoritism (`JaroWinklerWithFavoritism()`)
 
-**Note:** Zone 3 is 54% complete (15/28 implemented). These remaining functions are primarily infrastructure (env vars, Unicode chains) or optional optimizations (country/gender normalization, exact match boost).
+**Note:** Zone 3 is 64% complete (18/28 implemented). These remaining functions are primarily infrastructure (env vars, Unicode chains) or optional optimizations (exact match boost).
 
 ### Pending Modules (21 modules, ~6,450 lines)
 
@@ -452,13 +454,14 @@ Most environment variables control optional features (database connections, geoc
 - **Implemented:** Full Entity.normalize() pipeline (stopwords, addresses, phones, word combinations), all merging functions, enhanced ID normalization
 - **Impact:** Entity preparation and deduplication at full parity with Go
 
-**Zone 3: Core Algorithms (54% complete)** 🟡 **IN PROGRESS**
-- **Status:** 15/28 complete, 3 partial implementations, 10 pending
-- **Strong Foundation:** Jaro-Winkler complete, stopwords integrated, phonetic filtering operational
-- **Remaining:** Environment variable config (readFloat/readInt), Unicode normalization chains, country/gender normalization, exact match favoritism
+**Zone 3: Core Algorithms (64% complete)** 🟡 **HIGH QUALITY**
+- **Status:** 18/28 complete, 3 partial implementations, 7 pending
+- **Achievement:** Phase 19 added country & gender normalization - critical for data quality
+- **Strong Foundation:** Jaro-Winkler complete, stopwords integrated, phonetic filtering operational, normalization utilities ready
+- **Remaining:** Environment variable config (readFloat/readInt), Unicode normalization chains, base score calculation, exact match favoritism
 
-**Zone 4: Client & API (25% complete)** 🔴 **LOW PRIORITY**
-- **Status:** 4/16 complete, 3 partial, 9 pending
+**Zone 4: Client & API (6% complete)** 🔴 **LOW PRIORITY**
+- **Status:** 1/16 complete, 3 partial, 12 pending
 - **Note:** Most functions are integration/API wrappers, not core matching logic
 - **Strategy:** Implement as needed for specific use cases
 
@@ -477,17 +480,18 @@ Most environment variables control optional features (database connections, geoc
 
 | Category | Total | ✅ Full | ⚠️ Partial | ❌ Pending/N/A | % Complete |
 |----------|-------|---------|-----------|---------------|-----------|
-| **Core Algorithms** | 28 | 16 | 3 | 9 | 57.1% |
+| **Core Algorithms** | 28 | 18 | 3 | 7 | 64.3% |
 | **Scoring Functions** | 71 | 71 | 0 | 0 | **100%** ✅ |
 | **Entity Models** | 16 | 14 | 0 | 2 (N/A) | **87.5%** ✅ |
 | **Client & API** | 16 | 1 | 3 | 12 | 6.3% |
 | **Environment Variables** | 27 | 4 | 6 | 17 | 14.8% |
 | **Pending Modules** | 21 | 0 | 0 | 21 | 0% |
-| **TOTAL** | **179** | **106** | **12** | **61** | **59.2%** |
+| **TOTAL** | **179** | **108** | **12** | **59** | **60.3%** |
 
 **Milestones:**
 - ✅ **Zone 1 (Phase 16):** Scoring Functions at 100% (71/71)
 - ✅ **Zone 2 (Phase 17+18):** Entity Models at 87.5% (14/16, 2 N/A) - Effective 100% for applicable features
+- 🚀 **Zone 3 (Phase 19):** Core Algorithms at 64.3% (18/28) - Country & gender normalization complete
 
 ---
 
@@ -2251,9 +2255,70 @@ Tests run: 938, Failures: 0, Errors: 0, Skipped: 1
 - **Quality achievement**: Zero partial implementations across all 71 scoring functions
 - **Test coverage**: 938 total tests (20 new) strengthen confidence in complete system
 
-**Next Steps (Phase 19+):**
+**Next Steps (Phase 20+):**
 - ✅ **Zone 1 COMPLETE (100%)** - All 71 scoring functions implemented
 - ✅ **Zone 2 COMPLETE (100%)** - All entity models and normalization features integrated
-- Target Zone 3 (Core Algorithms) - 13 pending functions remain (54% → 100%)
-- Consider implementing remaining utility functions (country/gender normalization, env var config)
+- ✅ **Phase 19 COMPLETE** - Country & gender normalization (Zone 3: 64%)
+- Target Zone 3 (Core Algorithms) - 7 pending functions remain (64% → 100%)
+- Consider implementing remaining utility functions (env var config, Unicode chains)
 - Evaluate client/API functions for practical use cases
+
+---
+
+### PHASE 19 COMPLETE (January 10, 2026): Country & Gender Normalization
+
+**Implemented Features (2 new):**
+1. ✅ `Country()` (feature 27) - Country normalization via ISO 3166
+2. ✅ `NormalizeGender()` (feature 26) - Gender value standardization
+
+**Go References:**
+- `internal/norm/country.go` → `CountryNormalizer`
+- `internal/prepare/prepare_gender.go` → `GenderNormalizer`
+
+**Test Coverage (77 new tests):**
+- **CountryNormalizer (28 tests):**
+  - ISO 3166 alpha-2 code normalization (US → United States)
+  - ISO 3166 alpha-3 code normalization (USA → United States)
+  - Country name lookups (case-insensitive)
+  - 19 country code overrides (CZ → Czech Republic, GB/UK → United Kingdom, KP → North Korea, etc.)
+  - Sanctioned country handling (Iran, Syria, Russia, Venezuela, North Korea)
+  - Uses Java Locale for ISO 3166 (no external dependencies)
+  - Null-safe, returns empty string for null/empty input
+
+- **GenderNormalizer (49 tests):**
+  - Male variations: m, male, man, guy → "male"
+  - Female variations: f, female, woman, gal, girl → "female"
+  - Unknown handling: null, empty, unrecognized → "unknown"
+  - Case-insensitive with whitespace trimming
+  - Exact Go behavioral parity
+
+**Full Test Suite:**
+```
+Tests run: 1053, Failures: 0, Errors: 0, Skipped: 1
+```
+- 77 new tests (28 Country + 49 Gender)
+- 976 existing tests still passing
+- 100% test pass rate maintained
+
+**Production Impact:**
+- **Data quality**: Standardized country and gender values improve match accuracy
+- **Sanctions screening**: Correct country names (Iran vs. Islamic Republic of Iran) critical for compliance
+- **ISO 3166 compliance**: Standard codes recognized across international systems
+- **Gender normalization**: Handles variations from diverse data sources (M/male/man → "male")
+- **Zero dependencies**: Uses Java Locale, no external ISO 3166 libraries needed
+- **Zone 3 progress**: 57.1% → 64.3% complete (18/28 functions)
+
+**Implementation Notes:**
+- **CountryNormalizer algorithm:**
+  1. Try input as ISO 3166 code (alpha-2 or alpha-3)
+  2. Check overrides map for preferred names (19 entries)
+  3. Try input as country name, lookup code, return official name
+  4. Return override or original input if no match
+  
+- **Override rationale:**
+  - CZ: "Czech Republic" preferred over ISO's "Czechia"
+  - KP/KR: "North Korea"/"South Korea" clearer than ISO official names
+  - Sanctioned countries: Consistent naming for screening accuracy
+  - GB/UK: Both map to "United Kingdom" (UK is non-ISO alias)
+
+**Next Phase:** Target remaining Zone 3 functions (environment variable parsing, Unicode normalization chains, exact match favoritism)
