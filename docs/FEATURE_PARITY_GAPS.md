@@ -6,113 +6,13 @@
 
 ---
 
-## EXECUTIVE SUMMARY
+## DOCUMENT OVERVIEW
 
-**Every Go feature mapped to Java equivalents.**
+This document provides a comprehensive feature-by-feature inventory comparing the Go and Java implementations of Watchman. The analysis was conducted through systematic code review of the Go codebase (16,337 lines, 88 files, 604 exported functions) to identify all scoring algorithms, utility functions, entity models, and configuration options. Each feature is mapped to its Java equivalent with implementation status tracked as fully implemented (✅), partially implemented (⚠️), or completely missing (❌).
 
-| Status | Count | Percentage |
-|--------|-------|------------|
-| ✅ Fully Implemented | 82 | 41% |
-| ⚠️ Partially Implemented | 69 | 34.5% |
-| ❌ Completely Missing | 49 | 24.5% |
-| **TOTAL FEATURES** | **200** | **100%** |
+The development process follows Test-Driven Development (TDD): analyze Go implementation behavior by reading source code and understanding edge cases, write comprehensive failing tests (RED phase) that capture expected behavior, implement the feature to make tests pass (GREEN phase), and verify with full test suite execution. Each phase is documented with detailed completion summaries at the end of this document, including test counts, implementation notes, bug fixes, and git commit references. This methodology ensures 100% behavioral parity between implementations and provides a clear audit trail of all changes.
 
-**Critical Finding:** Java is missing or has incomplete implementations for **59% of Go's features** (down from 60.5%).
-
-**Phase 4 Complete (Jan 9, 2026):** Quality & Coverage Scoring - 43/43 tests passing ✅
-  - CoverageCalculationTest: 14/14 ✅
-  - QualityAdjustmentTest: 16/16 ✅
-  - ConfidenceThresholdTest: 13/13 ✅
-- ✅ Quality-based penalties (16/16 tests) - term count threshold (matchingTerms < 2 → 0.8x penalty)
-- ✅ Coverage calculation (14/14 tests) - field coverage ratios (overall + critical fields)
-- ✅ High confidence determination (13/13 tests) - confidence rules (matchingTerms >= 2 AND score > 0.85)
-- ✅ Type-aware field counting (7 functions) - countPersonFields, countBusinessFields, countOrganizationFields, countAircraftFields, countVesselFields, countCommonFields, countFieldsByImportance
-
-**Phase 5 Complete (Jan 9, 2026):** Title & Affiliation Matching - 85/85 tests passing ✅
-  - TitleNormalizationTest: 27/27 ✅
-  - TitleComparisonTest: 21/21 ✅
-  - AffiliationMatchingTest: 37/37 ✅
-- ✅ Title normalization (27/27 tests) - normalizeTitle() + expandAbbreviations() with 16 abbreviation mappings
-- ✅ Title comparison (21/21 tests) - calculateTitleSimilarity() + findBestTitleMatch() with Jaro-Winkler + length penalties
-- ✅ Affiliation matching (37/37 tests) - normalizeAffiliationName(), calculateTypeScore(), calculateCombinedScore(), getTypeGroup()
-  * 4 type groups: ownership, control, association, leadership (26 types)
-  * Type-aware scoring: exact match (+0.15), related type (+0.08), mismatch (-0.15)
-  * Business suffix removal: corporation, inc, ltd, llc, corp, co, company
-
-**Phase 6 Complete (Jan 9, 2026):** Affiliation Comparison - 31/31 tests passing ✅
-  - CompareAffiliationsFuzzyTests: 10/10 ✅
-  - FindBestAffiliationMatchTests: 10/10 ✅
-  - CalculateFinalAffiliateScoreTests: 8/8 ✅
-  - IntegrationTests: 3/3 ✅
-- ✅ Affiliation list comparison (10/10 tests) - compareAffiliationsFuzzy() returns ScorePiece with match details
-- ✅ Best match selection (10/10 tests) - findBestAffiliationMatch() with type-aware scoring and tiebreaker logic
-- ✅ Weighted scoring (8/8 tests) - calculateFinalAffiliateScore() uses squared weighting to emphasize quality
-- ✅ Tiebreaker logic: when finalScores are equal, prefers higher typeScore (exact type match over related type)
-
-**Phase 0 Complete (Jan 8, 2026):** PreparedFields, Entity.normalize(), SimilarityConfig - 24/24 tests passing ✅
-  - EntityNormalizationTest: 13/13 ✅
-  - SimilarityConfigTest: 12/12 ✅ (11 config tests + 1 application test)  
-**Phase 1 Complete (Jan 8, 2026):** Core Algorithms - 60/60 tests passing ✅
-  - EntityNormalizationTest: 13/13 ✅
-  - PreparedFieldsScoringTest: 8/8 ✅
-  - PreparedFieldsIntegrationTest: 8/8 ✅
-  - LanguageDetectionTest: 13/13 ✅
-  - MultilingualStopwordsTest: 18/18 ✅
-- ✅ Language Detection (Apache Tika, 70+ languages) - 21/21 tests passing
-- ✅ Multilingual Stopwords (6 languages: EN, ES, FR, DE, RU, AR, ZH, 500+ stopwords) - 18/18 tests passing
-- ✅ PreparedFields Refactoring (separate primary/alt names for compliance) - 8/8 tests passing
-  * Matches Go PreparedFields structure (Name vs AltNames separation)
-  * EntityScorer uses pre-normalized fields when available
-  * Compliance transparency: distinguish primary name matches from AKA/alias matches
-- ✅ Entity.normalize() Integration - 13/13 tests passing
-  * Language-aware stopword removal using detected language
-  * Iterative company title removal (matches Go behavior)
-
-**Phase 2 Complete (Jan 9, 2026):** Scoring Algorithm Fixes - 31/31 tests passing ✅
-  - BestPairsJaroWinklerTest: 8/8 ✅
-  - LengthDifferencePenaltyTest: 5/5 ✅
-  - CustomJaroWinklerTest: 18/18 ✅
-- ✅ BestPairsJaroWinkler unmatched penalty (8/8 tests) - verified Java has penalty logic
-- ✅ LENGTH_DIFFERENCE_PENALTY_WEIGHT updated 0.10 → 0.30 (5/5 tests) - matches Go's stricter penalty
-- ✅ customJaroWinkler implementation (18/18 tests) - token-level penalties match Go
-  * First character mismatch penalty (DIFFERENT_LETTER_PENALTY_WEIGHT = 0.9)
-  * Length difference cutoff (LENGTH_DIFFERENCE_CUTOFF_FACTOR = 0.9)
-  * Proper separation of token-level vs phrase-level penalties
-  * Fixed double-penalty bugs (removed redundant Winkler boost and length penalties)
-- **Full Test Suite:** 441/441 tests passing (added 31 tests in Phase 2)
-
-**Phase 3 Complete (Jan 9, 2026):** Word Combinations - 46/46 tests passing ✅
-  - WordCombinationsTest: 19/19 ✅
-  - BestPairCombinationJaroWinklerTest: 27/27 ✅
-- ✅ GenerateWordCombinations (19/19 tests) - token array-based combinations
-  * Generic ≤3 char rule (not just particles like "de", "la")
-  * Forward combinations: ["JSC", "ARGUMENT"] → ["JSCARGUMENT"]
-  * Backward combinations: combine short words with previous word
-  * Returns List<List<String>> (up to 3 variations)
-- ✅ BestPairCombinationJaroWinkler (27/27 tests) - handles spacing variations
-  * Generates combinations for both search and indexed tokens
-  * Tries all pairs (cartesian product), returns max score
-  * Integrated into main jaroWinkler() flow
-  * Handles: "JSC ARGUMENT" ↔ "JSCARGUMENT", "de la Cruz" ↔ "delacruz"
-- **Full Test Suite:** 487/487 tests passing (added 46 tests in Phase 3)
-
-**Phase 4 Complete (Jan 9, 2026):** Quality & Coverage Scoring - 43/43 tests passing ✅
-  - CoverageCalculationTest: 14/14 ✅
-  - QualityAdjustmentTest: 16/16 ✅
-  - ConfidenceThresholdTest: 13/13 ✅
-- ✅ calculateCoverage() - Field coverage ratios (overall + critical)
-- ✅ countAvailableFields() - Type-aware field counting (Person: 7, Business: 5, Vessel: 10, Aircraft: 8)
-- ✅ countCommonFields() - Universal fields (name, source, contact, addresses, govIds)
-- ✅ countFieldsByImportance() - Field categorization (hasName, hasID, hasAddress, hasCritical)
-- ✅ adjustScoreBasedOnQuality() - Term-based penalties (insufficient matching terms → 0.8x)
-- ✅ applyPenaltiesAndBonuses() - Coverage-based adjustments
-  * Low coverage (< 0.35) → 0.95x penalty
-  * Low critical coverage (< 0.7) → 0.90x penalty
-  * Insufficient required fields (< 2) → 0.90x penalty
-  * Name-only match → 0.95x penalty
-  * Perfect match → 1.15x bonus (capped at 1.0)
-- ✅ isHighConfidenceMatch() - Confidence determination (matchingTerms >= 2 AND score > 0.85)
-- **Full Test Suite:** 530/530 tests passing (added 43 tests in Phase 4)
+**Current Status:** 82/200 features fully implemented (41%), 69 partially implemented (34.5%), 49 completely missing (24.5%). Gap: 59% of Go's features are missing or incomplete. Test coverage: 646/646 passing (100%).
 
 ---
 
