@@ -47,7 +47,7 @@ This document tracks **feature parity** between the Go and Java implementations�
 | ⚠️ Partially Implemented | 21/177 | 12% | Core logic present, missing edge cases |
 | ❌ Not Implemented | 63/177 | 36% | Pending implementation in Java codebase |
 
-### Recent Phases (Jan 8-9, 2026)
+### Recent Phases (Jan 8-10, 2026)
 
 - ✅ **Phase 0:** PreparedFields, Entity normalization pipeline
 - ✅ **Phase 1:** Multilingual stopword removal (6 languages, 500+ words)
