@@ -13,6 +13,38 @@ import java.util.regex.Pattern;
  */
 public class TitleMatcher {
 
+    // Regex pattern to remove punctuation except hyphens
+    // Matches: [^\w\s-] (anything that's not word char, space, or hyphen)
+    private static final Pattern PUNCT_PATTERN = Pattern.compile("[^\\w\\s-]");
+    
+    // Regex pattern to normalize multiple spaces to single space
+    private static final Pattern SPACE_PATTERN = Pattern.compile("\\s+");
+    
+    // Common title abbreviations mapping
+    // From Go: titleAbbreviations map in pkg/search/similarity_fuzzy.go lines 156-179
+    private static final Map<String, String> TITLE_ABBREVIATIONS = createAbbreviationsMap();
+    
+    private static Map<String, String> createAbbreviationsMap() {
+        Map<String, String> map = new HashMap<>();
+        map.put("ceo", "chief executive officer");
+        map.put("cfo", "chief financial officer");
+        map.put("coo", "chief operating officer");
+        map.put("pres", "president");
+        map.put("vp", "vice president");
+        map.put("dir", "director");
+        map.put("exec", "executive");
+        map.put("mgr", "manager");
+        map.put("sr", "senior");
+        map.put("jr", "junior");
+        map.put("asst", "assistant");
+        map.put("assoc", "associate");
+        map.put("tech", "technical");
+        map.put("admin", "administrator");
+        map.put("eng", "engineer");
+        map.put("dev", "developer");
+        return Collections.unmodifiableMap(map);
+    }
+
     /**
      * Normalize a title string by lowercasing, removing punctuation (except hyphens),
      * and normalizing whitespace.
@@ -26,7 +58,22 @@ public class TitleMatcher {
      * @return Normalized title string
      */
     public static String normalizeTitle(String title) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        if (title == null || title.isEmpty()) {
+            return "";
+        }
+        
+        // Step 1: Trim and lowercase
+        String normalized = title.trim().toLowerCase();
+        
+        // Step 2: Remove punctuation except hyphens (replace with empty string, not space)
+        // This keeps "C.E.O." as "ceo" instead of "c e o"
+        normalized = PUNCT_PATTERN.matcher(normalized).replaceAll("");
+        
+        // Step 3: Normalize whitespace (multiple spaces → single space)
+        normalized = SPACE_PATTERN.matcher(normalized).replaceAll(" ");
+        
+        // Step 4: Final trim
+        return normalized.trim();
     }
 
     /**
@@ -41,6 +88,20 @@ public class TitleMatcher {
      * @return Title with abbreviations expanded
      */
     public static String expandAbbreviations(String title) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        if (title == null || title.isEmpty()) {
+            return "";
+        }
+        
+        // Split by whitespace
+        String[] words = title.split("\\s+");
+        List<String> expanded = new ArrayList<>(words.length);
+        
+        // Replace each word with its expansion if it exists
+        for (String word : words) {
+            String expansion = TITLE_ABBREVIATIONS.get(word);
+            expanded.add(expansion != null ? expansion : word);
+        }
+        
+        return String.join(" ", expanded);
     }
 }
