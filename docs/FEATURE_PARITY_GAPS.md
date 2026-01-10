@@ -1,7 +1,7 @@
 # WATCHMAN FEATURE PARITY: Go vs Java
 
 **Last Updated:** January 10, 2026  
-**Status:** 109/177 features (62%) ✅ | 12 features (7%) ⚠️ | 56 features (31%) ❌  
+**Status:** 109/179 features (61%) ✅ | 12 features (7%) ⚠️ | 58 features (32%) ❌  
 **Test Suite:** 1075/1075 passing (100%) ✅ | 1 skipped performance test
 
 ---
@@ -38,15 +38,15 @@ This document tracks **feature parity** between the Go and Java implementations�
 ## CURRENT STATUS
 
 **Go Codebase:** 16,337 lines, 88 files, 604 exported functions  
-**Java Codebase:** 64 files, 1053 test cases
+**Java Codebase:** 64 files, 1075 test cases
 
 ### Implementation Progress
 
 | Status | Count | Percentage | Description |
 |--------|-------|------------|-------------|
-| ✅ Fully Implemented | 109/177 | 62% | Complete behavioral parity with Go |
-| ⚠️ Partially Implemented | 12/177 | 7% | Core logic present, missing edge cases |
-| ❌ Not Implemented | 56/177 | 31% | Pending implementation in Java codebase |
+| ✅ Fully Implemented | 109/179 | 61% | Complete behavioral parity with Go |
+| ⚠️ Partially Implemented | 12/179 | 7% | Core logic present, missing edge cases |
+| ❌ Not Implemented | 58/179 | 32% | Pending implementation in Java codebase |
 
 ### Progress by Priority Zone
 
@@ -148,9 +148,9 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 28 | `PhoneNumber()` | norm/phone.go | `PhoneNormalizer.normalizePhoneNumber()` | ✅ | **Phase 17 (Jan 10):** Phone formatting removal - strips +, -, space, (, ), . - matches Go behavior exactly |
 
 **Summary: 28 core algorithm features**
-- ✅ 18 fully implemented (64.3%)
+- ✅ 19 fully implemented (67.9%)
 - ⚠️ 3 partially implemented (10.7%)
-- ❌ 7 pending implementation (25.0%)
+- ❌ 6 pending implementation (21.4%)
 
 ---
 
@@ -481,18 +481,19 @@ Most environment variables control optional features (database connections, geoc
 
 | Category | Total | ✅ Full | ⚠️ Partial | ❌ Pending/N/A | % Complete |
 |----------|-------|---------|-----------|---------------|-----------|
-| **Core Algorithms** | 28 | 18 | 3 | 7 | 64.3% |
+| **Core Algorithms** | 28 | 19 | 3 | 6 | 67.9% |
 | **Scoring Functions** | 71 | 71 | 0 | 0 | **100%** ✅ |
 | **Entity Models** | 16 | 14 | 0 | 2 (N/A) | **87.5%** ✅ |
 | **Client & API** | 16 | 1 | 3 | 12 | 6.3% |
 | **Environment Variables** | 27 | 4 | 6 | 17 | 14.8% |
 | **Pending Modules** | 21 | 0 | 0 | 21 | 0% |
-| **TOTAL** | **179** | **108** | **12** | **59** | **60.3%** |
+| **TOTAL** | **179** | **109** | **12** | **58** | **60.9%** |
 
 **Milestones:**
 - ✅ **Zone 1 (Phase 16):** Scoring Functions at 100% (71/71)
 - ✅ **Zone 2 (Phase 17+18):** Entity Models at 87.5% (14/16, 2 N/A) - Effective 100% for applicable features
-- 🚀 **Zone 3 (Phase 19):** Core Algorithms at 64.3% (18/28) - Country & gender normalization complete
+- ✅ **Zone 3 (Phase 19):** Core Algorithms at 64.3% (18/28) - Country & gender normalization complete
+- 🚀 **Zone 3 (Phase 20):** Core Algorithms at 67.9% (19/28) - JaroWinklerWithFavoritism complete
 
 ---
 
