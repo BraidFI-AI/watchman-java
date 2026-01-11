@@ -22,7 +22,7 @@ This document provides comprehensive test coverage information for the Watchman 
 | **Integration Tests** | 3 | 29 | End-to-end pipeline tests |
 | **Normalization** | 5 | 58 | Text, country, gender, phone, unicode |
 | **Configuration** | 2 | 24 | Similarity config, utilities |
-| **Tracing** | 2 | 32 | Scoring trace infrastructure |
+| **Tracing** | 2 | 32 | ScoreTrace infrastructure |
 | **Phase Tests** | 6 | 113 | Phase-specific Go parity tests |
 | **Model Tests** | 2 | 16 | Entity normalization, debug |
 | **TOTAL** | **63** | **1,032** | - |
@@ -222,7 +222,7 @@ Similarity configuration and utilities.
 
 ### 11. TRACING (32 tests across 2 classes)
 
-Scoring trace infrastructure for debugging and compliance.
+ScoreTrace infrastructure for debugging and compliance.
 
 | # | Test Class | Tests | Purpose |
 |---|------------|-------|---------|

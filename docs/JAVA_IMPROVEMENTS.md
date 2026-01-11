@@ -15,7 +15,7 @@ This document catalogs improvements, enhancements, and features in the Java impl
 - 🏗️ **JAVA ADVANTAGE** - Benefits from using Java 17, Spring Boot, and the Java ecosystem
 
 **What's Included:**
-1. ✨ **New Features Added** - Features that don't exist in Go at all (e.g., Scoring Trace Infrastructure)
+1. ✨ **New Features Added** - Features that don't exist in Go at all (e.g., ScoreTrace Infrastructure)
 2. 🔧 **Improvements to Existing Features** - Better implementations than Go's version (e.g., enhanced ID normalization)
 3. 🏗️ **Java Language/Ecosystem Advantages** - Benefits from using Java 17, Spring Boot, and the Java ecosystem (e.g., records, better IDE support)
 
@@ -127,11 +127,11 @@ Java:   Call /batch once with 1000 items = 1 HTTP request
 
 ## OBSERVABILITY & DEBUGGING
 
-### 2. Scoring Trace Infrastructure ✨ NEW FEATURE
+### 2. ScoreTrace Infrastructure ✨ NEW FEATURE
 
 **Status:** ✅ Complete Java-exclusive feature  
 **Location:** `io.moov.watchman.scoring.trace.*`  
-**Documentation:** [SCORING_TRACING.md](SCORING_TRACING.md)
+**Documentation:** [SCORETRACE.md](SCORETRACE.md)
 
 **What It Does:**
 - Captures detailed execution traces of entity scoring operations
@@ -658,7 +658,7 @@ double avgScore = scores.stream()
 
 | Category | Java Improvements | Impact |
 |----------|------------------|---------|
-| **Observability** | ✨ Scoring Trace Infrastructure | High - Enterprise compliance |
+| **Observability** | ✨ ScoreTrace Infrastructure | High - Enterprise compliance |
 | **Type Safety** | 🏗️ Records, Enums, Interfaces | High - Fewer runtime errors |
 | **Testing** | 🔧 1,132 tests (11x Go) | High - Better quality assurance |
 | **Documentation** | 🔧 7 technical docs, full Javadoc | Medium - Better maintainability |
@@ -697,4 +697,4 @@ double avgScore = scores.stream()
 
 **Last Updated:** January 10, 2026  
 **Maintained By:** Watchman Java Team  
-**Related Documents:** [FEATURE_PARITY_GAPS.md](FEATURE_PARITY_GAPS.md), [SCORING_TRACING.md](SCORING_TRACING.md)
+**Related Documents:** [FEATURE_PARITY_GAPS.md](FEATURE_PARITY_GAPS.md), [SCORETRACE.md](SCORETRACE.md)

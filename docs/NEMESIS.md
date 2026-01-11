@@ -94,7 +94,7 @@ Reports are saved to `/data/reports/nemesis-YYYYMMDD.json` with:
 | **java_extra** | Java returns results Go doesn't | Moderate |
 | **go_extra** | Go returns results Java doesn't | Moderate |
 
-### Scoring Trace for Root Cause Analysis
+### ScoreTrace for Root Cause Analysis
 
 Nemesis automatically captures **detailed scoring traces** for critical and moderate divergences to understand WHY scores differ, not just THAT they differ.
 

@@ -1,4 +1,4 @@
-# Scoring Trace & Observability
+# ScoreTrace & Observability
 
 **Zero-overhead state management for debugging entity similarity scoring in sanctions screening.**
 
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The Scoring Trace infrastructure provides **full visibility** into how and why the sanctions screening engine scores entity matches. When enabled, it captures every decision made during the scoring process—from text normalization through final score aggregation—creating a complete audit trail.
+The ScoreTrace infrastructure provides **full visibility** into how and why the sanctions screening engine scores entity matches. When enabled, it captures every decision made during the scoring process—from text normalization through final score aggregation—creating a complete audit trail.
 
 **Key Value:**
 - **Debugging**: "Why did this entity score 0.72 instead of 0.85?"
@@ -581,7 +581,7 @@ public double compareNames(String name1, String name2, ScoringContext ctx) {
 
 ## Summary
 
-The Scoring Trace infrastructure provides **enterprise-grade observability** for sanctions screening:
+The ScoreTrace infrastructure provides **enterprise-grade observability** for sanctions screening:
 
 ✅ **Zero-overhead** when disabled (production default)  
 ✅ **Full visibility** when enabled (debug/compliance mode)  

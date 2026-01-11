@@ -2,7 +2,7 @@
 
 ## Overview
 
-Integrated Java's **Scoring Trace** feature into Nemesis for detailed root cause analysis of scoring divergences. When Nemesis detects a critical or moderate divergence, it automatically re-queries Java with `trace=true` to capture phase-by-phase scoring details.
+Integrated Java's **ScoreTrace** feature into Nemesis for detailed root cause analysis of scoring divergences. When Nemesis detects a critical or moderate divergence, it automatically re-queries Java with `trace=true` to capture phase-by-phase scoring details.
 
 ## What Was Implemented
 
@@ -150,7 +150,7 @@ if result.java_trace:
 
 **File:** `docs/NEMESIS.md`
 
-**Added Section:** "Scoring Trace for Root Cause Analysis"
+**Added Section:** "ScoreTrace for Root Cause Analysis"
 - Explains what trace captures
 - When tracing occurs
 - Example trace output in report
