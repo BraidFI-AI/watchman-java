@@ -18,18 +18,19 @@ Nemesis automatically:
 
 ## Comparison Modes
 
-### 2-Way Comparison (Default)
+### Default: Java vs Go (Parity Testing)
 - **Java vs Go** - Validates Java implementation against Go baseline
+- This is the core mission: feature parity
 - Use for daily automated runs
-- No external API costs
+- No additional API costs
 
-### 3-Way Comparison (Optional)
-- **Java vs Go vs OFAC-API** - Adds OFAC-API (commercial service at ofac-api.com) as peer comparison
+### Optional: Add OFAC-API (3-Way Validation)
+- **Java vs Go vs OFAC-API** - Adds OFAC-API (commercial service) as validation layer
 - Observes agreement patterns:
   - All three agree → High confidence
-  - Java+Go vs External → Note commercial algorithm differences
-  - Go+External vs Java → Potential Java issue
-  - Java+External vs Go → Potential Go issue
+  - Java+Go vs OFAC-API → Note commercial algorithm differences
+  - Go+OFAC-API vs Java → Potential Java issue
+  - Java+OFAC-API vs Go → Potential Go issue
   - All three differ → Interesting scoring variations
 - Requires OFAC-API (commercial service) API key - paid subscription required
 - Use for spot-checking or compliance validation
@@ -278,28 +279,20 @@ tail -f /data/logs/nemesis.log
 
 Use the trigger script for on-demand testing with custom parameters:
 
-#### Basic Usage (Java vs Go only)
+#### Default Usage (Java vs Go parity testing)
 ```bash
 ./scripts/trigger-nemesis.sh --queries 100
 ```
 
-#### With OFAC-API Commercial Service (3-way comparison)
+#### With OFAC-API Commercial Service (3-way validation)
 ```bash
 export OFAC_API_KEY='your-api-key'  # From ofac-api.com paid subscription
-./scripts/trigger-nemesis.sh --queries 50 --compare-external
-```
-
-#### OFAC-API Only (Java vs commercial service)
-```bash
-export OFAC_API_KEY='your-api-key'  # From ofac-api.com paid subscription
-./scripts/trigger-nemesis.sh --queries 100 --external-only
+./scripts/trigger-nemesis.sh --queries 100 --include-ofac-api
 ```
 
 #### Available Options
 - `--queries N` - Number of test queries (default: 100)
-- `--compare-external` - Enable OFAC-API (commercial service) comparison
-- `--external-only` - Compare Java vs OFAC-API (commercial) only (skip Go)
-- `--no-go` - Skip Go comparison
+- `--include-ofac-api` - Add OFAC-API (commercial service) for 3-way comparison
 - `--output-dir PATH` - Custom report directory
 - `--help` - Show help message
 

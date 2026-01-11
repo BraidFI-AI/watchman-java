@@ -68,21 +68,15 @@
 
 ## Usage Examples
 
-### Run with OFAC-API Commercial Service (3-way)
-```bash
-export OFAC_API_KEY='your-key-here'  # Obtain from ofac-api.com paid subscription
-./scripts/trigger-nemesis.sh --queries 50 --compare-external
-```
-
-### Run Java vs OFAC-API Commercial Service Only
-```bash
-export OFAC_API_KEY='your-key-here'  # Obtain from ofac-api.com paid subscription
-./scripts/trigger-nemesis.sh --queries 100 --external-only
-```
-
-### Run Standard 2-Way (Java vs Go)
+### Default (Java vs Go Parity Testing)
 ```bash
 ./scripts/trigger-nemesis.sh --queries 100
+```
+
+### With OFAC-API Commercial Service (3-way Validation)
+```bash
+export OFAC_API_KEY='your-key-here'  # Obtain from ofac-api.com paid subscription
+./scripts/trigger-nemesis.sh --queries 100 --include-ofac-api
 ```
 
 ## Configuration
