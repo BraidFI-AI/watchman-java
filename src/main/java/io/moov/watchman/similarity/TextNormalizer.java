@@ -358,6 +358,136 @@ public class TextNormalizer {
     }
     
     /**
+     * Removes stopwords using country-aware language detection.
+     * 
+     * Ported from Go: internal/prepare/pipeline_stopwords.go RemoveStopwordsCountry()
+     * 
+     * Algorithm:
+     * 1. Detect language from input text
+     * 2. If detection is unreliable (confidence < 0.5), use country's primary language
+     * 3. If detection is reliable and matches a language spoken in the country, use it
+     * 4. Otherwise fall back to English
+     * 
+     * @param input Text to process
+     * @param countryName Country name to guide language detection (e.g., "Spain", "France")
+     * @return Text with language-specific stopwords removed
+     */
+    public String removeStopwordsCountry(String input, String countryName) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+        
+        // Detect language from text
+        LanguageDetector detector = new LanguageDetector();
+        LanguageDetectionResult detection = detector.detectWithConfidence(input);
+        
+        String language;
+        
+        // If detection is reliable (confidence >= 0.5), use detected language
+        if (detection.confidence() >= 0.5) {
+            language = detection.language();
+            
+            // If country is provided, verify detected language is spoken there
+            if (countryName != null && !countryName.isBlank()) {
+                String countryLanguage = getPrimaryLanguageForCountry(countryName);
+                
+                // If country has a primary language and detection matches, use it
+                if (countryLanguage != null && 
+                    (countryLanguage.equals(detection.language()) || 
+                     detection.confidence() >= 0.7)) {
+                    // High confidence or exact match - use detected language
+                    language = detection.language();
+                } else if (countryLanguage != null && detection.confidence() < 0.7) {
+                    // Low confidence and mismatch - use country's language
+                    language = countryLanguage;
+                }
+            }
+        } else {
+            // Detection unreliable - fall back to country's primary language
+            if (countryName != null && !countryName.isBlank()) {
+                language = getPrimaryLanguageForCountry(countryName);
+                if (language == null) {
+                    language = "en"; // Default to English
+                }
+            } else {
+                language = "en"; // No country provided, default to English
+            }
+        }
+        
+        // Remove stopwords using selected language
+        return removeStopwords(input, language);
+    }
+    
+    /**
+     * Gets the primary language for a country.
+     * 
+     * This is a simplified mapping of major countries to their primary languages.
+     * Go uses the gountries library for comprehensive ISO 639-1/3 mapping.
+     * 
+     * @param countryName Country name (e.g., "Spain", "France", "Germany")
+     * @return ISO 639-1 language code, or null if unknown
+     */
+    private String getPrimaryLanguageForCountry(String countryName) {
+        if (countryName == null) {
+            return null;
+        }
+        
+        String country = countryName.toLowerCase().trim();
+        
+        // Map major countries to their primary languages
+        return switch (country) {
+            // English-speaking countries
+            case "united states", "usa", "us", "united kingdom", "uk", "gb", "canada", "australia",
+                 "new zealand", "ireland", "south africa" -> "en";
+            
+            // Spanish-speaking countries
+            case "spain", "mexico", "argentina", "colombia", "chile", "peru", "venezuela",
+                 "ecuador", "guatemala", "cuba", "bolivia", "dominican republic", "honduras",
+                 "paraguay", "el salvador", "nicaragua", "costa rica", "panama", "uruguay" -> "es";
+            
+            // French-speaking countries
+            case "france", "belgium", "switzerland", "luxembourg", "monaco", "haiti",
+                 "senegal", "ivory coast", "mali", "niger", "burkina faso", "madagascar" -> "fr";
+            
+            // German-speaking countries
+            case "germany", "austria", "liechtenstein" -> "de";
+            
+            // Russian-speaking countries
+            case "russia", "belarus", "kazakhstan", "kyrgyzstan", "tajikistan" -> "ru";
+            
+            // Arabic-speaking countries
+            case "saudi arabia", "egypt", "uae", "united arab emirates", "iraq", "syria",
+                 "jordan", "lebanon", "kuwait", "yemen", "oman", "qatar", "bahrain",
+                 "libya", "tunisia", "algeria", "morocco", "sudan" -> "ar";
+            
+            // Chinese-speaking regions
+            case "china", "taiwan", "hong kong", "macau", "singapore" -> "zh";
+            
+            // Other major languages
+            case "japan" -> "ja";
+            case "korea", "south korea" -> "ko";
+            case "portugal", "brazil" -> "pt";
+            case "italy" -> "it";
+            case "netherlands" -> "nl";
+            case "poland" -> "pl";
+            case "turkey" -> "tr";
+            case "iran" -> "fa";
+            case "thailand" -> "th";
+            case "vietnam" -> "vi";
+            case "greece" -> "el";
+            case "sweden" -> "sv";
+            case "norway" -> "no";
+            case "denmark" -> "da";
+            case "finland" -> "fi";
+            case "czech republic" -> "cs";
+            case "hungary" -> "hu";
+            case "romania" -> "ro";
+            
+            default -> null; // Unknown country
+        };
+    }
+
+    /**
      * Gets the appropriate stopword set for a given language.
      * 
      * @param language ISO 639-1 language code
