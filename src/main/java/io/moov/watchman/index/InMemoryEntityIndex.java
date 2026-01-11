@@ -1,6 +1,7 @@
 package io.moov.watchman.index;
 
 import io.moov.watchman.model.Entity;
+import io.moov.watchman.model.EntityMerger;
 import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.SourceList;
 
@@ -36,6 +37,71 @@ public class InMemoryEntityIndex implements EntityIndex {
         lock.writeLock().lock();
         try {
             entities.addAll(newEntities);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Adds entities to the index with automatic deduplication.
+     *
+     * <p>This method merges duplicate entities from multiple data sources (OFAC SDN, EU CSL, UK CSL)
+     * before adding them to the index. Entities with the same normalized name and type are merged
+     * together, combining their data.</p>
+     *
+     * <h3>Algorithm:</h3>
+     * <ol>
+     *   <li>Read all existing entities from index</li>
+     *   <li>Combine existing entities with new entities</li>
+     *   <li>Use EntityMerger.merge() to deduplicate and merge</li>
+     *   <li>Replace all entities in index with merged result</li>
+     * </ol>
+     *
+     * <h3>Thread Safety:</h3>
+     * <p>This method acquires a write lock for the entire operation to ensure atomicity.
+     * No partial updates will be visible to concurrent readers.</p>
+     *
+     * <h3>Use Cases:</h3>
+     * <ul>
+     *   <li>Loading sanctions lists from multiple sources</li>
+     *   <li>Incremental updates with automatic deduplication</li>
+     *   <li>Merging entities across OFAC, EU, and UK sanctions lists</li>
+     * </ul>
+     *
+     * <h3>Example:</h3>
+     * <pre>
+     * // Load OFAC entities
+     * index.addAllWithMerge(ofacEntities);
+     *
+     * // Load EU entities (duplicates will be merged with OFAC)
+     * index.addAllWithMerge(euEntities);
+     *
+     * // Result: Deduplicated entities combining data from both sources
+     * </pre>
+     *
+     * @param newEntities The entities to add (may contain duplicates with existing entities)
+     */
+    public void addAllWithMerge(Collection<Entity> newEntities) {
+        if (newEntities == null || newEntities.isEmpty()) {
+            return;
+        }
+
+        lock.writeLock().lock();
+        try {
+            // Get all existing entities
+            List<Entity> existing = new ArrayList<>(entities);
+
+            // Combine existing and new entities
+            List<Entity> combined = new ArrayList<>();
+            combined.addAll(existing);
+            combined.addAll(newEntities);
+
+            // Merge duplicates
+            List<Entity> merged = EntityMerger.merge(combined);
+
+            // Replace all entities with merged result
+            entities.clear();
+            entities.addAll(merged);
         } finally {
             lock.writeLock().unlock();
         }
