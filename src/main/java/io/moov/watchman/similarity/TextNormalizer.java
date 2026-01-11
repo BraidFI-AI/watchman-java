@@ -509,4 +509,33 @@ public class TextNormalizer {
             default -> ENGLISH_STOPWORDS; // Fallback to English
         };
     }
+
+    // Public getters for stopword sets (used by Phase 22 StopwordHelper)
+    public static Set<String> getEnglishStopwords() {
+        return ENGLISH_STOPWORDS;
+    }
+
+    public static Set<String> getSpanishStopwords() {
+        return SPANISH_STOPWORDS;
+    }
+
+    public static Set<String> getFrenchStopwords() {
+        return FRENCH_STOPWORDS;
+    }
+
+    public static Set<String> getGermanStopwords() {
+        return GERMAN_STOPWORDS;
+    }
+
+    public static Set<String> getRussianStopwords() {
+        return RUSSIAN_STOPWORDS;
+    }
+
+    public static Set<String> getArabicStopwords() {
+        return ARABIC_STOPWORDS;
+    }
+
+    public static Set<String> getChineseStopwords() {
+        return CHINESE_STOPWORDS;
+    }
 }
