@@ -13,6 +13,7 @@
    - [Health Check](#health-check)
    - [Search](#search)
    - [Batch Screening](#batch-screening)
+   - [Scoring Trace](#scoring-trace-debug-mode)
    - [List Information](#list-information)
    - [Data Management](#data-management)
 4. [Data Models](#data-models)
@@ -30,6 +31,7 @@ Watchman Java provides a REST API for sanctions screening against global watchli
 - Batch screening for up to 1,000 entities per request
 - Multiple filter options (source list, entity type, minimum match score)
 - Automatic daily data refresh from official government sources
+- **ScoreTrace:** Optional scoring breakdown for debugging and compliance (`trace=true`)
 
 ### Content Type
 All endpoints accept and return `application/json`.
@@ -90,6 +92,7 @@ Search sanctions lists for matching entities.
 | `minMatch` | float | No | 0.85 | Minimum match score (0.0-1.0) |
 | `source` | string | No | all | Filter by source list |
 | `type` | string | No | all | Filter by entity type |
+| `trace` | boolean | No | false | Enable scoring trace (debug mode) |
 
 **Source List Values:**
 - `OFAC_SDN` - US OFAC Specially Designated Nationals
@@ -140,6 +143,7 @@ Search sanctions lists for matching entities.
 | `results[].remarks` | string | Additional information |
 | `query` | string | Original search query |
 | `totalResults` | integer | Number of results returned |
+| `trace` | object | Scoring trace (only when `trace=true`) |
 
 **Status Codes:**
 - `200 OK` - Search completed successfully
@@ -156,6 +160,9 @@ curl "https://watchman-java.fly.dev/v2/search?name=Bank&type=BUSINESS&source=OFA
 
 # Lower threshold for fuzzy matches
 curl "https://watchman-java.fly.dev/v2/search?name=Mohammad&minMatch=0.70&limit=50"
+
+# Debug mode with scoring trace
+curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro&trace=true"
 ```
 
 ---
@@ -269,6 +276,80 @@ curl -X POST https://watchman-java.fly.dev/v2/search/batch \
     "minMatch": 0.85
   }'
 ```
+
+---
+
+### Scoring Trace (Debug Mode)
+
+Enable detailed scoring breakdowns by adding `trace=true` to any search request.
+
+#### When to Use
+- **Development:** Understand why entities matched or didn't match
+- **Tuning:** Optimize scoring parameters (see [ScoreConfig](SCORECONFIG.md))
+- **Debugging:** Investigate unexpected match scores
+- **Compliance:** Document scoring methodology for audits
+
+#### Trace Response Structure
+
+When `trace=true` is included, the response adds a `trace` object:
+
+```json
+{
+  "results": [...],
+  "trace": {
+    "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+    "durationMs": 23,
+    "events": [
+      {
+        "timestamp": "2026-01-11T08:15:30.123Z",
+        "phase": "NORMALIZATION",
+        "description": "Entities normalized during construction",
+        "data": {}
+      },
+      {
+        "timestamp": "2026-01-11T08:15:30.125Z",
+        "phase": "NAME_COMPARISON",
+        "description": "Compare names",
+        "data": {
+          "durationMs": 2,
+          "success": true
+        }
+      }
+    ],
+    "breakdown": {
+      "nameScore": 0.95,
+      "altNamesScore": 0.0,
+      "addressScore": 0.0,
+      "finalScore": 0.95
+    }
+  }
+}
+```
+
+#### Trace Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sessionId` | string | Unique trace session identifier |
+| `durationMs` | integer | Total scoring duration in milliseconds |
+| `events` | array | Phase-by-phase execution events |
+| `events[].timestamp` | string | ISO 8601 timestamp |
+| `events[].phase` | string | Scoring phase (NORMALIZATION, NAME_COMPARISON, etc.) |
+| `events[].description` | string | Human-readable description |
+| `events[].data` | object | Phase-specific data |
+| `breakdown` | object | Component-level score breakdown |
+| `breakdown.nameScore` | float | Primary name match score |
+| `breakdown.altNamesScore` | float | Alternative names match score |
+| `breakdown.addressScore` | float | Address match score |
+| `breakdown.finalScore` | float | Aggregated final score |
+
+#### Performance Impact
+
+- **Production:** Keep `trace=false` (default) - zero overhead
+- **Debug Mode:** `trace=true` adds ~5-10ms per query
+- **Best Practice:** Enable only for investigation, not production traffic
+
+**See also:** [ScoreTrace Documentation](SCORETRACE.md)
 
 ---
 
