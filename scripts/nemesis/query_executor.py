@@ -101,6 +101,7 @@ class QueryExecutor:
         test_cases: List, 
         compare_go: bool = False,
         compare_external: bool = False,
+        enable_trace: bool = False,
         timeout: float = 10.0,
         show_progress: bool = True
     ) -> List[QueryResult]:
@@ -111,6 +112,7 @@ class QueryExecutor:
             test_cases: List of TestCase objects
             compare_go: Whether to compare with Go implementation
             compare_external: Whether to compare with external provider
+            enable_trace: Whether to request scoring trace from Java API
             timeout: Request timeout in seconds
             show_progress: Whether to print progress
             
@@ -128,6 +130,7 @@ class QueryExecutor:
                 tc.query, 
                 compare_go=compare_go,
                 compare_external=compare_external,
+                enable_trace=enable_trace,
                 timeout=timeout
             )
             results.append(result)

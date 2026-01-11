@@ -164,6 +164,7 @@ def main():
         test_cases, 
         compare_go=COMPARE_IMPLEMENTATIONS,
         compare_external=COMPARE_EXTERNAL,
+        enable_trace=True,
         show_progress=True
     )
     
@@ -196,7 +197,8 @@ def main():
                         "go_data": div.go_data,
                         "external_data": div.external_data,
                         "score_difference": div.score_difference,
-                        "agreement_pattern": div.agreement_pattern
+                        "agreement_pattern": div.agreement_pattern,
+                        "java_trace": result.java_trace
                     })
         # 2-way comparison (Java vs Go) if external not enabled
         elif COMPARE_IMPLEMENTATIONS and result.java_results and result.go_results:
@@ -210,7 +212,8 @@ def main():
                         "description": div.description,
                         "java_data": div.java_data,
                         "go_data": div.go_data,
-                        "score_difference": div.score_difference
+                        "score_difference": div.score_difference,
+                        "java_trace": result.java_trace
                     })
     
     print(f"✓ Found {len(all_divergences)} divergences")
@@ -224,39 +227,12 @@ def main():
     if by_severity:
         print(f"  By severity: {', '.join(f'{k}={v}' for k, v in sorted(by_severity.items()))}")
     
-    # Step 5a: Re-query divergences with trace enabled (Java only feature)
-    if len(all_divergences) > 0:
-        print(f"\n  Re-querying divergences with trace enabled for root cause analysis...")
-        
-        # Track unique queries to avoid duplicates
-        traced_queries = set()
-        trace_count = 0
-        
-        for div in all_divergences:
-            query = div["query"]
-            
-            # Only trace each query once, and only for critical/moderate divergences
-            if query not in traced_queries and div["severity"] in ["critical", "moderate"]:
-                traced_queries.add(query)
-                
-                # Re-run query with trace enabled (Java only)
-                trace_result = executor.execute(
-                    query,
-                    compare_go=False,  # Don't need Go for trace
-                    compare_external=False,  # Don't need external for trace
-                    enable_trace=True,  # Enable detailed scoring trace
-                    timeout=15.0  # Longer timeout for trace query
-                )
-                
-                # Attach trace data to this divergence
-                if trace_result.java_trace:
-                    div["java_trace"] = trace_result.java_trace
-                    trace_count += 1
-        
-        if trace_count > 0:
-            print(f"  ✓ Captured {trace_count} trace(s) for root cause analysis")
+    # Count traces captured
+    trace_count = sum(1 for div in all_divergences if div.get("java_trace"))
+    if trace_count > 0:
+        print(f"  ✓ Captured {trace_count} trace(s) for root cause analysis")
     
-    # Step 5b: AI Analysis of divergences
+    # Step 5a: AI Analysis of divergences
     if len(all_divergences) > 0:
         print(f"\n  Running AI analysis...")
         
