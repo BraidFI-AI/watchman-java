@@ -20,18 +20,114 @@ This document catalogs improvements, enhancements, and features in the Java impl
 3. 🏗️ **Java Language/Ecosystem Advantages** - Benefits from using Java 17, Spring Boot, and the Java ecosystem (e.g., records, better IDE support)
 
 **Categories:**
-1. [Observability & Debugging](#observability--debugging) - ✨ New + 🏗️ Java advantages
-2. [Data Quality & Normalization](#data-quality--normalization) - 🔧 Improvements + 🏗️ Java features
-3. [Type Safety & Architecture](#type-safety--architecture) - 🏗️ Java language advantages
-4. [Test Coverage & Quality](#test-coverage--quality) - 🔧 Improvements + 🏗️ Java tooling
-5. [API & Integration](#api--integration) - 🏗️ Java ecosystem (Spring Boot)
-6. [Documentation & Developer Experience](#documentation--developer-experience) - 🔧 Improvements + 🏗️ Java tooling
+1. [Batch Screening](#batch-screening) - ✨ New feature (not in Go)
+2. [Observability & Debugging](#observability--debugging) - ✨ New + 🏗️ Java advantages
+3. [Data Quality & Normalization](#data-quality--normalization) - 🔧 Improvements + 🏗️ Java features
+4. [Type Safety & Architecture](#type-safety--architecture) - 🏗️ Java language advantages
+5. [Test Coverage & Quality](#test-coverage--quality) - 🔧 Improvements + 🏗️ Java tooling
+6. [API & Integration](#api--integration) - 🏗️ Java ecosystem (Spring Boot)
+7. [Documentation & Developer Experience](#documentation--developer-experience) - 🔧 Improvements + 🏗️ Java tooling
+
+---
+
+## BATCH SCREENING
+
+### 1. Batch Screening API ✨ NEW FEATURE
+
+**Status:** ✅ Complete Java-exclusive feature (Go has no batch API)  
+**Location:** `io.moov.watchman.batch.*`, `BatchScreeningController`  
+**Endpoints:** `POST /v2/search/batch`, `POST /v2/search/batch/async`
+
+**What It Does:**
+- Screen multiple entities (up to 1000) in a single API request
+- Parallel processing with optimized resource utilization
+- Both synchronous and asynchronous screening modes
+- Batch-level statistics and aggregated metrics
+
+**API Structure:**
+```java
+POST /v2/search/batch
+{
+  "items": [
+    {
+      "name": "John Smith",
+      "altNames": ["Jonathan Smith"],
+      "type": "INDIVIDUAL"
+    },
+    {
+      "name": "ABC Corporation",
+      "type": "ENTITY"
+    }
+  ],
+  "minMatch": 0.88,
+  "limit": 10
+}
+
+Response:
+{
+  "batchId": "uuid",
+  "results": [
+    {
+      "index": 0,
+      "input": {...},
+      "matches": [
+        {
+          "entityId": "14121",
+          "name": "SMITH, John",
+          "score": 0.92,
+          "matchLevel": "HIGH"
+        }
+      ],
+      "matchCount": 1,
+      "hasMatches": true
+    }
+  ],
+  "statistics": {
+    "totalItems": 2,
+    "itemsWithMatches": 1,
+    "totalMatches": 1,
+    "avgMatchesPerItem": 0.5,
+    "processingTimeMs": 145
+  }
+}
+```
+
+**Features:**
+- **Parallel Processing**: Uses Java's parallel streams for concurrent screening
+- **Async Mode**: `POST /batch/async` returns immediately with batch ID
+- **Statistics**: Aggregated metrics across the entire batch
+- **Validation**: Request size limits (max 1000 items)
+- **Efficient**: Single HTTP request vs 1000 individual requests
+
+**Why Java-Exclusive:**
+- Go implementation has no batch endpoint (only single-item `/search`)
+- Java's `CompletableFuture` and parallel streams ideal for batch operations
+- Enterprise use case: bulk customer screening during onboarding
+- Reduces network overhead by 1000x for bulk operations
+
+**Use Cases:**
+- Customer onboarding (screen 100s of customers at once)
+- Periodic rescreening of entire customer database
+- Bulk import/migration scenarios
+- Integration with upstream batch systems
+
+**Performance:**
+- Synchronous: Completes all items before returning response
+- Asynchronous: Returns immediately, process continues in background
+- Parallel execution: Utilizes all available CPU cores
+- Typical throughput: 100 items in ~2-3 seconds
+
+**Comparison to Go:**
+```
+Go:     Must call /search 1000 times = 1000 HTTP requests
+Java:   Call /batch once with 1000 items = 1 HTTP request
+```
 
 ---
 
 ## OBSERVABILITY & DEBUGGING
 
-### 1. Scoring Trace Infrastructure ✨ NEW FEATURE
+### 2. Scoring Trace Infrastructure ✨ NEW FEATURE
 
 **Status:** ✅ Complete Java-exclusive feature  
 **Location:** `io.moov.watchman.scoring.trace.*`  
