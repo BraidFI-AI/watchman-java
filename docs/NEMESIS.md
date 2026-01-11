@@ -9,7 +9,7 @@
 Nemesis automatically:
 - ✅ Generates 10 dynamic test queries per run
 - ✅ Tests queries against Java and Go implementations
-- ✅ **NEW:** Optionally compares against ofac-api.com (3-way comparison)
+- ✅ **NEW:** Optionally compares against OFAC-API (commercial service at ofac-api.com) for 3-way comparison
 - ✅ Detects divergences (different results, scores, or ordering)
 - ✅ Tracks coverage to ensure all OFAC SDN entities are tested (~12,500+)
 - ✅ Uses AI to identify patterns and recommend fixes
@@ -24,14 +24,14 @@ Nemesis automatically:
 - No external API costs
 
 ### 3-Way Comparison (Optional)
-- **Java vs Go vs ofac-api.com** - Adds commercial provider as peer comparison
+- **Java vs Go vs OFAC-API** - Adds OFAC-API (commercial service at ofac-api.com) as peer comparison
 - Observes agreement patterns:
   - All three agree → High confidence
   - Java+Go vs External → Note commercial algorithm differences
   - Go+External vs Java → Potential Java issue
   - Java+External vs Go → Potential Go issue
   - All three differ → Interesting scoring variations
-- Requires OFAC-API.com API key
+- Requires OFAC-API (commercial service) API key - paid subscription required
 - Use for spot-checking or compliance validation
 
 ## Daily Reports
@@ -221,12 +221,12 @@ WATCHMAN_GO_API_URL=https://watchman-go.fly.dev
 COMPARE_IMPLEMENTATIONS=true
 ```
 
-### Optional - External Provider (ofac-api.com)
+### Optional - OFAC-API Commercial Service
 ```bash
-# Enable 3-way comparison with commercial provider
+# Enable 3-way comparison with OFAC-API (commercial service)
 COMPARE_EXTERNAL=true
-EXTERNAL_PROVIDER=ofac-api  # Currently only ofac-api supported
-OFAC_API_KEY=your-api-key-here
+EXTERNAL_PROVIDER=ofac-api  # OFAC-API commercial service (paid subscription required)
+OFAC_API_KEY=your-api-key-here  # Obtain from ofac-api.com subscription
 ```
 
 ### Optional - AI Analysis
@@ -283,22 +283,22 @@ Use the trigger script for on-demand testing with custom parameters:
 ./scripts/trigger-nemesis.sh --queries 100
 ```
 
-#### With External Provider (3-way comparison)
+#### With OFAC-API Commercial Service (3-way comparison)
 ```bash
-export OFAC_API_KEY='your-api-key'
+export OFAC_API_KEY='your-api-key'  # From ofac-api.com paid subscription
 ./scripts/trigger-nemesis.sh --queries 50 --compare-external
 ```
 
-#### External Provider Only (Java vs ofac-api.com)
+#### OFAC-API Only (Java vs commercial service)
 ```bash
-export OFAC_API_KEY='your-api-key'
+export OFAC_API_KEY='your-api-key'  # From ofac-api.com paid subscription
 ./scripts/trigger-nemesis.sh --queries 100 --external-only
 ```
 
 #### Available Options
 - `--queries N` - Number of test queries (default: 100)
-- `--compare-external` - Enable ofac-api.com comparison
-- `--external-only` - Compare Java vs External only (skip Go)
+- `--compare-external` - Enable OFAC-API (commercial service) comparison
+- `--external-only` - Compare Java vs OFAC-API (commercial) only (skip Go)
 - `--no-go` - Skip Go comparison
 - `--output-dir PATH` - Custom report directory
 - `--help` - Show help message

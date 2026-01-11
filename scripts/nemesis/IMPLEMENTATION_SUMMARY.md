@@ -10,11 +10,11 @@
 
 ## What Was Added
 
-### 1. External Provider Support (ofac-api.com)
+### 1. OFAC-API Commercial Service Integration
 **File:** `scripts/nemesis/external_provider_adapter.py`
-- Adapter for ofac-api.com v4 API
+- Adapter for OFAC-API commercial service (ofac-api.com v4 API)
 - Batch query support (send multiple names in one request)
-- Format translation: ofac-api.com → standardized format
+- Format translation: OFAC-API commercial service → standardized format
 - SDN-only filtering for apples-to-apples comparison
 - Score normalization (0-100 → 0.0-1.0)
 
@@ -68,15 +68,15 @@
 
 ## Usage Examples
 
-### Run with External Provider (3-way)
+### Run with OFAC-API Commercial Service (3-way)
 ```bash
-export OFAC_API_KEY='your-key-here'
+export OFAC_API_KEY='your-key-here'  # Obtain from ofac-api.com paid subscription
 ./scripts/trigger-nemesis.sh --queries 50 --compare-external
 ```
 
-### Run Java vs External Only
+### Run Java vs OFAC-API Commercial Service Only
 ```bash
-export OFAC_API_KEY='your-key-here'
+export OFAC_API_KEY='your-key-here'  # Obtain from ofac-api.com paid subscription
 ./scripts/trigger-nemesis.sh --queries 100 --external-only
 ```
 
@@ -89,10 +89,10 @@ export OFAC_API_KEY='your-key-here'
 
 ### Environment Variables
 ```bash
-# Required for external comparison
-export OFAC_API_KEY='your-api-key'
+# Required for OFAC-API commercial service comparison
+export OFAC_API_KEY='your-api-key'  # Obtain from ofac-api.com paid subscription
 
-# Optional - provider selection (currently only ofac-api supported)
+# Optional - provider selection (currently only OFAC-API commercial service supported)
 export EXTERNAL_PROVIDER='ofac-api'
 
 # Optional - enable external comparison
@@ -171,11 +171,11 @@ Divergence entries now include:
 
 ### API Format Differences
 - **Java/Go:** Return entities with `match` score (0.0-1.0)
-- **ofac-api.com:** Returns matches with `score` (0-100)
-- **Adapter:** Normalizes external scores to 0.0-1.0 range
+- **OFAC-API (commercial service):** Returns matches with `score` (0-100)
+- **Adapter:** Normalizes OFAC-API commercial service scores to 0.0-1.0 range
 
 ### ID Normalization
-External provider may prefix IDs (e.g., "sdn-14121")
+OFAC-API commercial service may prefix IDs (e.g., "sdn-14121")
 Analyzer strips prefixes for comparison:
 - `sdn-` → removed
 - `ofac-` → removed
@@ -186,7 +186,7 @@ Analyzer strips prefixes for comparison:
 All three providers configured to search only OFAC SDN list:
 - Java: Built-in SDN-only data
 - Go: Built-in SDN-only data
-- External: `sources: ["sdn"]` parameter
+- OFAC-API (commercial service): `sources: ["sdn"]` parameter
 
 ## Files Modified
 
@@ -239,9 +239,9 @@ results = executor.execute_batch(
 **Files:** `fix_generator.py`, `fix_applicator.py`
 
 **Philosophy:**
-- **OFAC-API**: Commercial gold standard (ground truth)
+- **OFAC-API**: Commercial service providing reference implementation (validation/comparison only)
 - **Moov/Go**: Parity baseline (but may have bugs from multiple contributors)
-- **Java**: Must match Go (parity), but can propose improvements based on OFAC-API
+- **Java**: Must match Go (parity), but can propose improvements based on OFAC-API commercial service insights
 
 **Bucket 1: Parity Fix (Ready to Merge)**
 - Generate code changes to make Java match Go exactly
@@ -250,10 +250,10 @@ results = executor.execute_batch(
 - Validate trace breakdown correctness
 - This is objective #1: measurable technical parity
 
-**Bucket 2: OFAC-API Intelligence (Discussion Only)**
-- Only when OFAC-API differs significantly (>0.3 score difference)
-- Analyze trace data to understand WHY OFAC-API scored differently
-- Propose improvements based on commercial best practices
+**Bucket 2: OFAC-API Commercial Service Intelligence (Discussion Only)**
+- Only when OFAC-API commercial service differs significantly (>0.3 score difference)
+- Analyze trace data to understand WHY OFAC-API commercial service scored differently
+- Propose improvements based on OFAC-API commercial service best practices
 - Include risk assessment (false positives/negatives)
 - Clearly marked "for discussion" - NOT ready to merge
 
@@ -271,8 +271,8 @@ results = executor.execute_batch(
 - Test cases
 - Parity achievement metrics
 
-## 💡 BUCKET 2: OFAC-API INTELLIGENCE (Discussion Only)
-- OFAC-API behavior analysis
+## 💡 BUCKET 2: OFAC-API COMMERCIAL SERVICE INTELLIGENCE (Discussion Only)
+- OFAC-API commercial service behavior analysis
 - Observations from trace data
 - Proposed improvement (optional)
 - Risk assessment
@@ -293,9 +293,9 @@ results = executor.execute_batch(
 - Includes trace data for each divergence
 
 ## Testing Checklist
-- [x] Test trigger script without external provider (2-way)
-- [x] Test trigger script with external provider (3-way)
-- [x] Verify ofac-api.com adapter with real API key
+- [x] Test trigger script without OFAC-API commercial service (2-way)
+- [x] Test trigger script with OFAC-API commercial service (3-way)
+- [x] Verify OFAC-API commercial service adapter with real API key
 - [x] Check 3-way comparison logic with various agreement patterns
 - [x] Validate report format with external data
 - [x] Verify trace integration works from start
