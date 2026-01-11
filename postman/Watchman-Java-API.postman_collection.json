@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "watchman-java-api-collection",
     "name": "Watchman Java API",
-    "description": "API collection for Watchman Java - Sanctions Screening Service\n\nThis collection covers all endpoints for the Java port of the Watchman sanctions screening platform.\n\n## Features\n- Single entity search\n- Batch screening (up to 1000 items)\n- Data refresh management\n- Health monitoring\n\n## Base URL\n- Local: http://localhost:8084\n- Fly.io: https://watchman-java.fly.dev",
+    "description": "# Watchman Java API\n\n**Sanctions Screening Service** - Screen individuals and businesses against global sanctions lists (OFAC, EU, UK, UN).\n\n## 🚀 Quick Start\n\n1. Set `baseUrl` variable to your environment\n2. Use `/v2/search` for single entity screening\n3. Use `/v2/search/batch` for bulk screening (up to 1000 items)\n\n## 📚 Key Features\n\n- **Single Entity Search**: Real-time screening with fuzzy matching\n- **Batch Screening**: Process up to 1000 entities in one request\n- **Score Tracing**: Debug scoring with `trace=true` for detailed breakdowns\n- **Flexible Filtering**: Filter by source list, entity type, or custom thresholds\n- **High Performance**: Parallel processing with sub-second response times\n\n## 🎯 Common Use Cases\n\n**KYC Onboarding**: Screen new customers during registration\n```\nGET /v2/search?name=John%20Doe&minMatch=0.85\n```\n\n**Transaction Monitoring**: Batch screen payment recipients\n```\nPOST /v2/search/batch\n{ \"items\": [{\"id\": \"txn-1\", \"name\": \"Recipient Name\"}], \"minMatch\": 0.9 }\n```\n\n**Score Tuning**: Use trace mode to optimize thresholds\n```\nGET /v2/search?name=Test&trace=true\n```\n\n## 🌍 Data Sources\n\n- **OFAC SDN**: US Treasury sanctions list (~12,500 entities)\n- **US CSL**: Consolidated Screening List (~8,000 entities)\n- **EU CSL**: European Union sanctions (~5,000 entities)\n- **UK CSL**: UK sanctions list (~3,000 entities)\n\n## ⚙️ Configuration\n\n**Base URLs**:\n- Local Development: `http://localhost:8084`\n- Production (Fly.io): `https://watchman-java.fly.dev`\n\n**Default Parameters**:\n- `minMatch`: 0.85 (85% similarity threshold)\n- `limit`: 10 results per query\n\n## 📖 Documentation\n\nEach folder contains detailed endpoint documentation with:\n- Parameter descriptions and examples\n- Response schemas with sample data\n- Best practices and performance tips\n- Common error scenarios\n\n## 🔍 Score Tracing\n\nEnable detailed scoring breakdowns for debugging:\n- **Single Search**: Add `?trace=true` query parameter\n- **Batch Search**: Add `\"trace\": true` to request body\n\nTrace output includes:\n- Component scores (name, address, DOB, ID)\n- Normalization steps\n- Candidate selection process\n- Final score calculation",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -15,7 +15,7 @@
   "item": [
     {
       "name": "Health & Info",
-      "description": "Health check and system information endpoints",
+      "description": "## Health & System Information\n\nMonitor service health and get information about loaded sanctions data.\n\n### Endpoints\n\n- **GET /health** - Service health check\n- **GET /v2/listinfo** - Available sanctions lists and counts\n\n### Use Cases\n\n✅ **Readiness Checks**: Verify service is ready before screening\n✅ **Monitoring**: Set up health check alerts\n✅ **Data Validation**: Confirm expected entity counts are loaded\n✅ **Debugging**: Check which lists are available for filtering\n\n### Best Practices\n\n- Poll `/health` endpoint for uptime monitoring\n- Check `/listinfo` after data refresh to verify counts\n- Use list names from `/listinfo` for source filtering in searches",
       "item": [
         {
           "name": "Health Check",
@@ -72,7 +72,7 @@
     },
     {
       "name": "Search",
-      "description": "Single entity search endpoints",
+      "description": "## Single Entity Search\n\nScreen individual names against global sanctions lists with real-time fuzzy matching.\n\n### Endpoint\n\n```\nGET /v2/search?name={query}&minMatch={threshold}&limit={max_results}\n```\n\n### Key Parameters\n\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| `name` | string | required | Name to screen (person or business) |\n| `minMatch` | float | 0.85 | Score threshold (0.0-1.0) |\n| `limit` | int | 10 | Maximum results to return |\n| `source` | string | all | Filter by list (OFAC_SDN, US_CSL, EU_CSL, UK_CSL) |\n| `type` | string | all | Filter by type (PERSON, BUSINESS, VESSEL, AIRCRAFT) |\n| `trace` | boolean | false | Enable detailed score breakdown |\n\n### Response Structure\n\n```json\n{\n  \"entities\": [\n    {\n      \"id\": \"12345\",\n      \"name\": \"JOHN DOE\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"score\": 0.95,\n      \"altNames\": [...],\n      \"programs\": [\"SDGT\"],\n      \"breakdown\": null  // populated when trace=true\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-123\",\n  \"debug\": null  // populated when trace=true\n}\n```\n\n### Performance\n\n- **Average Response Time**: < 50ms\n- **P99 Response Time**: < 200ms\n- **Concurrent Requests**: 100+ per second\n\n### Scoring Guidelines\n\n| Threshold | Use Case | False Positive Rate |\n|-----------|----------|-------------------|\n| 0.95+ | High confidence matches only | Very Low |\n| 0.85-0.94 | Standard screening (recommended) | Low |\n| 0.70-0.84 | Fuzzy matching for variants | Medium |\n| < 0.70 | Not recommended | High |\n\n### Best Practices\n\n✅ **Start with 0.85**: Good balance of accuracy and coverage\n✅ **Use trace mode**: Debug unexpected scores or missing matches\n✅ **Filter by source**: Reduce false positives for specific jurisdictions\n✅ **Handle high scores first**: Review 0.95+ matches as highest priority\n✅ **Log request IDs**: Include in audit trails for compliance\n\n### Common Patterns\n\n**1. KYC Screening**\n```\n/v2/search?name=Customer%20Name&minMatch=0.85&limit=5\n```\n\n**2. Vendor Due Diligence**\n```\n/v2/search?name=Vendor%20Corp&type=BUSINESS&minMatch=0.90\n```\n\n**3. OFAC-Only Check**\n```\n/v2/search?name=Test%20Entity&source=OFAC_SDN&minMatch=0.85\n```\n\n**4. Debug Low Scores**\n```\n/v2/search?name=John%20Doe&trace=true&minMatch=0.70\n```",
       "item": [
         {
           "name": "Search by Name",
@@ -106,7 +106,7 @@
                 }
               ]
             },
-            "description": "Search sanctions lists by name"
+            "description": "## Basic Name Search\n\nScreen a name against all sanctions lists using fuzzy matching.\n\n### When to Use\n- ✅ KYC customer onboarding\n- ✅ Payment beneficiary screening  \n- ✅ Vendor due diligence\n- ✅ Employee background checks\n\n### Query Parameters\n\n- **name** (required): Name to screen\n  - Can be person or business name\n  - Case-insensitive\n  - Handles name variations automatically\n\n- **limit** (optional, default: 10): Max results\n  - Range: 1-100\n  - Higher values = more candidates but slower response\n  - Tip: Start with 10, increase if missing matches\n\n- **minMatch** (optional, default: 0.85): Score threshold\n  - Range: 0.0-1.0\n  - 0.85 = 85% similarity\n  - Lower values = more matches but more false positives\n\n### Response\n\n**entities[]**: Array of matches\n- `id`: Unique entity identifier\n- `name`: Official name on sanctions list\n- `score`: Match confidence (0.0-1.0)\n- `type`: PERSON, BUSINESS, VESSEL, or AIRCRAFT\n- `source`: Which list (OFAC_SDN, EU_CSL, etc.)\n- `altNames`: Known aliases and variations\n- `programs`: Sanctions programs (e.g., SDGT, IRAN)\n\n### Examples\n\n**Person**:\n```\n/v2/search?name=John%20Doe&limit=10\n```\n\n**Business**:\n```\n/v2/search?name=Acme%20Corporation&limit=10\n```\n\n**Low confidence check**:\n```\n/v2/search?name=Mohammad&minMatch=0.70&limit=50\n```\n\n### Tips\n\n💡 **Review scores carefully**: 0.95+ are strong matches, 0.85-0.94 need review\n💡 **Check altNames**: Shows why the match was found\n💡 **Log requestID**: Include in compliance audit logs"
           },
           "response": [
             {
@@ -245,12 +245,60 @@
               "body": "{\n  \"entities\": [\n    {\n      \"id\": \"45678\",\n      \"name\": \"MOHAMMAD ALI AHMED\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"45678\",\n      \"score\": 0.78,\n      \"altNames\": [\n        \"MOHAMMED ALI AHMAD\",\n        \"MUHAMMAD A. AHMED\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": null\n    },\n    {\n      \"id\": \"45679\",\n      \"name\": \"MOHAMMAD HASSAN\",\n      \"type\": \"PERSON\",\n      \"source\": \"EU_CSL\",\n      \"sourceId\": \"45679\",\n      \"score\": 0.72,\n      \"altNames\": [\n        \"MOHAMMED HASAN\"\n      ],\n      \"programs\": null,\n      \"breakdown\": null\n    }\n  ],\n  \"totalResults\": 2,\n  \"requestID\": null,\n  \"debug\": null\n}"
             }
           ]
+        },
+        {
+          "name": "Search with ScoreTrace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/search?name=John%20Doe&limit=10&minMatch=0.85&trace=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "John%20Doe",
+                  "description": "Name to search for"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Maximum number of results"
+                },
+                {
+                  "key": "minMatch",
+                  "value": "0.85",
+                  "description": "Minimum match score threshold"
+                },
+                {
+                  "key": "trace",
+                  "value": "true",
+                  "description": "Enable detailed scoring breakdown for debugging (default: false)"
+                }
+              ]
+            },
+            "description": "Search with trace enabled to see detailed score breakdown for debugging/tuning"
+          },
+          "response": [
+            {
+              "name": "Search Results with Trace",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"12345\",\n      \"name\": \"JOHN DOE\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"12345\",\n      \"score\": 0.95,\n      \"altNames\": [\n        \"JOHNNY DOE\",\n        \"DOE, JOHN\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": {\n        \"primaryNameScore\": 0.95,\n        \"altNameScore\": 0.88,\n        \"addressScore\": 0.0,\n        \"dobScore\": 0.0,\n        \"idScore\": 0.0,\n        \"totalWeightedScore\": 0.95,\n        \"components\": [\n          {\n            \"field\": \"primaryName\",\n            \"queryValue\": \"John Doe\",\n            \"candidateValue\": \"JOHN DOE\",\n            \"rawScore\": 0.95,\n            \"weight\": 1.0,\n            \"weightedScore\": 0.95\n          },\n          {\n            \"field\": \"altName\",\n            \"queryValue\": \"John Doe\",\n            \"candidateValue\": \"JOHNNY DOE\",\n            \"rawScore\": 0.88,\n            \"weight\": 0.9,\n            \"weightedScore\": 0.792\n          }\n        ]\n      }\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-123\",\n  \"debug\": {\n    \"traceId\": \"trace-abc-123\",\n    \"events\": [\n      {\n        \"timestamp\": \"2026-01-11T00:00:00Z\",\n        \"phase\": \"NORMALIZATION\",\n        \"message\": \"Normalized query name: John Doe -> john doe\"\n      },\n      {\n        \"timestamp\": \"2026-01-11T00:00:01Z\",\n        \"phase\": \"CANDIDATE_SELECTION\",\n        \"message\": \"Found 50 candidates\"\n      },\n      {\n        \"timestamp\": \"2026-01-11T00:00:02Z\",\n        \"phase\": \"SCORING\",\n        \"message\": \"Scored 50 candidates\"\n      }\n    ]\n  }\n}"
+            }
+          ]
         }
       ]
     },
     {
       "name": "Batch Screening",
-      "description": "Batch screening endpoints for processing multiple entities",
+      "description": "## Batch Screening\n\nScreen multiple entities simultaneously with efficient parallel processing.\n\n### Endpoints\n\n- **POST /v2/search/batch** - Synchronous batch screening (up to 1000 items)\n- **POST /v2/search/batch/async** - Asynchronous processing for large batches\n\n### Request Format\n\n```json\n{\n  \"items\": [\n    {\"id\": \"req-1\", \"name\": \"John Smith\"},\n    {\"id\": \"req-2\", \"name\": \"Acme Corp\", \"type\": \"BUSINESS\", \"source\": \"OFAC_SDN\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10,\n  \"trace\": false\n}\n```\n\n### Parameters\n\n| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n| `items` | array | ✅ Yes | 1-1000 entities to screen |\n| `items[].id` | string | ✅ Yes | Your unique ID for this entity |\n| `items[].name` | string | ✅ Yes | Entity name to screen |\n| `items[].type` | string | ❌ No | Filter: PERSON, BUSINESS, VESSEL, AIRCRAFT |\n| `items[].source` | string | ❌ No | Filter: OFAC_SDN, US_CSL, EU_CSL, UK_CSL |\n| `minMatch` | float | ❌ No | Score threshold (default: 0.85) |\n| `limit` | int | ❌ No | Max results per item (default: 10) |\n| `trace` | boolean | ❌ No | Enable detailed breakdowns (default: false) |\n\n### Response Structure\n\n```json\n{\n  \"results\": [\n    {\n      \"itemId\": \"req-1\",\n      \"name\": \"John Smith\",\n      \"matches\": [\n        {\n          \"entityId\": \"12345\",\n          \"name\": \"JOHN SMITH\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"score\": 0.98,\n          \"breakdown\": null  // present when trace=true\n        }\n      ],\n      \"matchCount\": 1,\n      \"trace\": null  // present when trace=true\n    }\n  ],\n  \"statistics\": {\n    \"totalItems\": 1,\n    \"itemsWithMatches\": 1,\n    \"itemsWithoutMatches\": 0,\n    \"totalMatches\": 1,\n    \"processingTimeMs\": 45\n  }\n}\n```\n\n### Performance\n\n| Batch Size | Avg Response Time | Recommended Use |\n|------------|------------------|----------------|\n| 1-10 items | < 100ms | Real-time checks |\n| 11-100 items | < 500ms | Transaction monitoring |\n| 101-500 items | 1-3s | Periodic screening |\n| 501-1000 items | 3-8s | Batch processing |\n| 1000+ items | Use async | Large bulk imports |\n\n### Best Practices\n\n✅ **Use meaningful IDs**: Include your system IDs for easy correlation\n✅ **Batch related items**: Group by transaction, user session, or business process\n✅ **Handle partial failures**: Check `status` field for each item\n✅ **Enable trace sparingly**: Only for debugging (increases response time)\n✅ **Use async for 1000+ items**: Better for large batches and reduces timeouts\n\n### Common Use Cases\n\n**1. Transaction Batch Screening**\n```json\n{\n  \"items\": [\n    {\"id\": \"txn-001\", \"name\": \"Sender Name\"},\n    {\"id\": \"txn-001-recipient\", \"name\": \"Recipient Name\"}\n  ],\n  \"minMatch\": 0.90\n}\n```\n\n**2. Customer Onboarding Batch**\n```json\n{\n  \"items\": [\n    {\"id\": \"cust-100\", \"name\": \"Primary Account Holder\"},\n    {\"id\": \"cust-100-auth-1\", \"name\": \"Authorized User 1\"},\n    {\"id\": \"cust-100-auth-2\", \"name\": \"Authorized User 2\"}\n  ],\n  \"minMatch\": 0.85\n}\n```\n\n**3. Vendor Screening with Filters**\n```json\n{\n  \"items\": [\n    {\"id\": \"vendor-1\", \"name\": \"Supplier Co\", \"type\": \"BUSINESS\"},\n    {\"id\": \"vendor-2\", \"name\": \"Logistics LLC\", \"type\": \"BUSINESS\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 5\n}\n```\n\n**4. Debug with Trace**\n```json\n{\n  \"items\": [{\"id\": \"test-1\", \"name\": \"Test Name\"}],\n  \"trace\": true,\n  \"minMatch\": 0.70\n}\n```\n\n### Error Handling\n\n**400 Bad Request**\n- Empty items array\n- More than 1000 items\n- Missing required fields (id, name)\n- Invalid parameter values\n\n**429 Too Many Requests**\n- Rate limit exceeded\n- Solution: Implement exponential backoff\n\n**503 Service Unavailable**\n- Service temporarily down\n- Solution: Retry with delay or use async endpoint\n\n### Sync vs Async\n\n**Use Sync (`/v2/search/batch`)** when:\n- Batch size < 1000 items\n- Need immediate results\n- Real-time transaction processing\n\n**Use Async (`/v2/search/batch/async`)** when:\n- Batch size > 1000 items\n- Can wait for results\n- Background job processing\n- Want to avoid timeouts",
       "item": [
         {
           "name": "Batch Screen - Simple",
@@ -321,6 +369,42 @@
               "status": "OK",
               "code": 200,
               "body": "{\n  \"batchId\": \"batch-xyz-456\",\n  \"results\": [\n    {\n      \"requestId\": \"cust-001\",\n      \"query\": \"Global Trading LLC\",\n      \"status\": \"COMPLETED\",\n      \"errorMessage\": null,\n      \"matches\": [\n        {\n          \"entityId\": \"99887\",\n          \"name\": \"GLOBAL TRADING LIMITED\",\n          \"entityType\": \"BUSINESS\",\n          \"sourceList\": \"OFAC_SDN\",\n          \"score\": 0.89,\n          \"remarks\": \"Linked to sanctioned entity\"\n        }\n      ]\n    },\n    {\n      \"requestId\": \"cust-002\",\n      \"query\": \"Mohammad Ali\",\n      \"status\": \"COMPLETED\",\n      \"errorMessage\": null,\n      \"matches\": []\n    }\n  ],\n  \"statistics\": {\n    \"totalProcessed\": 5,\n    \"withMatches\": 1,\n    \"withoutMatches\": 4,\n    \"failed\": 0\n  },\n  \"totalItems\": 5,\n  \"totalMatches\": 1,\n  \"itemsWithMatches\": 1,\n  \"processingTimeMs\": 123,\n  \"processedAt\": \"2026-01-04T12:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Batch Screen - With ScoreTrace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\"id\": \"1\", \"name\": \"John Smith\"},\n    {\"id\": \"2\", \"name\": \"Acme Corporation\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10,\n  \"trace\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search",
+                "batch"
+              ]
+            },
+            "description": "Batch screening with trace enabled to see detailed scoring breakdowns per match"
+          },
+          "response": [
+            {
+              "name": "Batch Response with Trace",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"results\": [\n    {\n      \"itemId\": \"1\",\n      \"name\": \"John Smith\",\n      \"matches\": [\n        {\n          \"entityId\": \"12345\",\n          \"name\": \"JOHN SMITH\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"score\": 0.98,\n          \"breakdown\": {\n            \"primaryNameScore\": 0.98,\n            \"altNameScore\": 0.95,\n            \"addressScore\": 0.0,\n            \"dobScore\": 0.0,\n            \"idScore\": 0.0,\n            \"totalWeightedScore\": 0.98,\n            \"components\": [\n              {\n                \"field\": \"primaryName\",\n                \"queryValue\": \"John Smith\",\n                \"candidateValue\": \"JOHN SMITH\",\n                \"rawScore\": 0.98,\n                \"weight\": 1.0,\n                \"weightedScore\": 0.98\n              }\n            ]\n          }\n        }\n      ],\n      \"matchCount\": 1,\n      \"trace\": {\n        \"traceId\": \"batch-trace-1\",\n        \"events\": [\n          {\n            \"timestamp\": \"2026-01-11T00:00:00Z\",\n            \"phase\": \"NORMALIZATION\",\n            \"message\": \"Normalized query: John Smith -> john smith\"\n          },\n          {\n            \"timestamp\": \"2026-01-11T00:00:01Z\",\n            \"phase\": \"SCORING\",\n            \"message\": \"Scored 45 candidates\"\n          }\n        ]\n      }\n    },\n    {\n      \"itemId\": \"2\",\n      \"name\": \"Acme Corporation\",\n      \"matches\": [],\n      \"matchCount\": 0,\n      \"trace\": {\n        \"traceId\": \"batch-trace-2\",\n        \"events\": [\n          {\n            \"timestamp\": \"2026-01-11T00:00:00Z\",\n            \"phase\": \"NORMALIZATION\",\n            \"message\": \"Normalized query: Acme Corporation -> acme corporation\"\n          },\n          {\n            \"timestamp\": \"2026-01-11T00:00:01Z\",\n            \"phase\": \"SCORING\",\n            \"message\": \"No candidates above threshold\"\n          }\n        ]\n      }\n    }\n  ],\n  \"statistics\": {\n    \"totalItems\": 2,\n    \"itemsWithMatches\": 1,\n    \"itemsWithoutMatches\": 1,\n    \"totalMatches\": 1,\n    \"processingTimeMs\": 67\n  }\n}"
             }
           ]
         },
@@ -482,6 +566,181 @@
               "status": "OK",
               "code": 200,
               "body": "{\n  \"status\": \"READY\",\n  \"lastRefresh\": \"2026-01-03T00:00:00Z\",\n  \"sources\": [\n    {\"name\": \"OFAC_SDN\", \"status\": \"LOADED\", \"entityCount\": 12500, \"lastUpdated\": \"2026-01-03T00:00:00Z\"},\n    {\"name\": \"US_CSL\", \"status\": \"LOADED\", \"entityCount\": 8000, \"lastUpdated\": \"2026-01-03T00:00:00Z\"},\n    {\"name\": \"EU_CSL\", \"status\": \"LOADED\", \"entityCount\": 5000, \"lastUpdated\": \"2026-01-03T00:00:00Z\"},\n    {\"name\": \"UK_CSL\", \"status\": \"LOADED\", \"entityCount\": 3000, \"lastUpdated\": \"2026-01-03T00:00:00Z\"}\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nemesis Testing",
+      "description": "Endpoints for triggering and monitoring Nemesis parity testing runs",
+      "item": [
+        {
+          "name": "Trigger Nemesis (Async - Default)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"queries\": 100,\n  \"includeOfacApi\": false,\n  \"async\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/nemesis/trigger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "nemesis",
+                "trigger"
+              ]
+            },
+            "description": "Trigger a Nemesis parity testing run (Java vs Go baseline). Returns immediately with job ID."
+          },
+          "response": [
+            {
+              "name": "Async Started",
+              "status": "Accepted",
+              "code": 202,
+              "body": "{\n  \"jobId\": \"nemesis-20260111-143052\",\n  \"status\": \"running\",\n  \"statusUrl\": \"/v2/nemesis/status/nemesis-20260111-143052\",\n  \"reportPath\": null,\n  \"executionTimeSeconds\": null,\n  \"message\": \"Nemesis run started asynchronously\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Trigger Nemesis (Sync)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"queries\": 50,\n  \"includeOfacApi\": false,\n  \"async\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/nemesis/trigger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "nemesis",
+                "trigger"
+              ]
+            },
+            "description": "Trigger a Nemesis run and wait for completion. Use for small query counts."
+          },
+          "response": [
+            {
+              "name": "Sync Completed",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"jobId\": \"nemesis-20260111-143052\",\n  \"status\": \"completed\",\n  \"statusUrl\": \"/v2/nemesis/status/nemesis-20260111-143052\",\n  \"reportPath\": \"/data/reports/nemesis-20260111.json\",\n  \"executionTimeSeconds\": 43,\n  \"message\": \"Nemesis run completed successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Trigger with OFAC-API (3-way)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"queries\": 100,\n  \"includeOfacApi\": true,\n  \"async\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/nemesis/trigger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "nemesis",
+                "trigger"
+              ]
+            },
+            "description": "Trigger 3-way comparison: Java vs Go vs OFAC-API commercial service. Requires OFAC_API_KEY environment variable on server."
+          },
+          "response": [
+            {
+              "name": "3-way Started",
+              "status": "Accepted",
+              "code": 202,
+              "body": "{\n  \"jobId\": \"nemesis-20260111-143052\",\n  \"status\": \"running\",\n  \"statusUrl\": \"/v2/nemesis/status/nemesis-20260111-143052\",\n  \"reportPath\": null,\n  \"executionTimeSeconds\": null,\n  \"message\": \"Nemesis run started asynchronously\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Check Job Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/nemesis/status/nemesis-20260111-143052",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "nemesis",
+                "status",
+                "nemesis-20260111-143052"
+              ]
+            },
+            "description": "Check the status of a Nemesis job. Replace job ID with actual job ID from trigger response."
+          },
+          "response": [
+            {
+              "name": "Job Running",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"jobId\": \"nemesis-20260111-143052\",\n  \"status\": \"running\",\n  \"queries\": 100,\n  \"includeOfacApi\": false,\n  \"startTime\": \"2026-01-11T14:30:52\",\n  \"endTime\": null,\n  \"executionTimeSeconds\": null,\n  \"reportPath\": null,\n  \"message\": null,\n  \"logs\": [\n    \"Starting Nemesis run...\",\n    \"Queries: 100\",\n    \"Include OFAC-API: false\"\n  ]\n}"
+            },
+            {
+              "name": "Job Completed",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"jobId\": \"nemesis-20260111-143052\",\n  \"status\": \"completed\",\n  \"queries\": 100,\n  \"includeOfacApi\": false,\n  \"startTime\": \"2026-01-11T14:30:52\",\n  \"endTime\": \"2026-01-11T14:31:35\",\n  \"executionTimeSeconds\": 43,\n  \"reportPath\": \"/data/reports/nemesis-20260111.json\",\n  \"message\": \"Nemesis run completed successfully\",\n  \"logs\": [\n    \"Starting Nemesis run...\",\n    \"Queries: 100\",\n    \"Include OFAC-API: false\",\n    \"✓ Nemesis run completed\"\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Recent Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/nemesis/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "nemesis",
+                "reports"
+              ]
+            },
+            "description": "List the 10 most recent Nemesis report files"
+          },
+          "response": [
+            {
+              "name": "Reports List",
+              "status": "OK",
+              "code": 200,
+              "body": "[\n  {\n    \"filename\": \"nemesis-20260111.json\",\n    \"sizeBytes\": 125840,\n    \"lastModified\": 1736608295000,\n    \"downloadUrl\": \"/v2/nemesis/reports/nemesis-20260111.json\"\n  },\n  {\n    \"filename\": \"nemesis-20260110.json\",\n    \"sizeBytes\": 118320,\n    \"lastModified\": 1736521895000,\n    \"downloadUrl\": \"/v2/nemesis/reports/nemesis-20260110.json\"\n  }\n]"
             }
           ]
         }

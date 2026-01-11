@@ -52,7 +52,12 @@ public class BatchScreeningController {
         BatchScreeningRequest batchRequest = toBatchRequest(request);
 
         try {
-            BatchScreeningResponse response = batchScreeningService.screen(batchRequest);
+            BatchScreeningResponse response;
+            if (Boolean.TRUE.equals(request.trace())) {
+                response = batchScreeningService.screenWithTrace(batchRequest);
+            } else {
+                response = batchScreeningService.screen(batchRequest);
+            }
             return ResponseEntity.ok(BatchSearchResponseDTO.from(response));
         } catch (IllegalArgumentException e) {
             log.warn("Invalid batch request: {}", e.getMessage());
@@ -97,6 +102,7 @@ public class BatchScreeningController {
     private BatchScreeningRequest toBatchRequest(BatchSearchRequestDTO dto) {
         double minMatch = dto.minMatch() != null ? dto.minMatch() : DEFAULT_MIN_MATCH;
         int limit = dto.limit() != null ? dto.limit() : DEFAULT_LIMIT;
+        boolean trace = Boolean.TRUE.equals(dto.trace());
 
         List<BatchScreeningItem> items = dto.items().stream()
             .map(itemDto -> BatchScreeningItem.builder()
@@ -111,6 +117,7 @@ public class BatchScreeningController {
             .items(items)
             .minMatch(minMatch)
             .limit(limit)
+            .trace(trace)
             .build();
     }
 

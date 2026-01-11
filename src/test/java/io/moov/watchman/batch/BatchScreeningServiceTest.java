@@ -28,11 +28,14 @@ class BatchScreeningServiceTest {
     @Mock
     private SearchService searchService;
 
+    @Mock
+    private io.moov.watchman.search.EntityScorer entityScorer;
+
     private BatchScreeningService batchService;
 
     @BeforeEach
     void setUp() {
-        batchService = new BatchScreeningServiceImpl(searchService);
+        batchService = new BatchScreeningServiceImpl(searchService, entityScorer);
     }
 
     @Nested

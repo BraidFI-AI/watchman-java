@@ -16,6 +16,7 @@
    - [ScoreTrace](#scoretrace-debug-mode)
    - [List Information](#list-information)
    - [Data Management](#data-management)
+   - [Nemesis Testing](#nemesis-testing)
 4. [Data Models](#data-models)
 5. [Error Handling](#error-handling)
 6. [Rate Limits](#rate-limits)
@@ -614,6 +615,169 @@ Result for a single item in batch screening.
 
 ---
 
+## Nemesis Testing
+
+Trigger parity testing runs to validate Java implementation against Go baseline.
+
+### Trigger Nemesis Run
+
+#### `POST /v2/nemesis/trigger`
+
+Trigger a new Nemesis parity testing run. By default, runs asynchronously and returns immediately with a job ID.
+
+**Request Body:**
+
+```json
+{
+  "queries": 100,
+  "includeOfacApi": false,
+  "async": true
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `queries` | integer | No | 100 | Number of test queries (1-1000) |
+| `includeOfacApi` | boolean | No | false | Add OFAC-API commercial service for 3-way comparison |
+| `async` | boolean | No | true | Run asynchronously (true) or wait for completion (false) |
+
+**Response (async=true):**
+
+```json
+{
+  "jobId": "nemesis-20260111-143052",
+  "status": "running",
+  "statusUrl": "/v2/nemesis/status/nemesis-20260111-143052",
+  "reportPath": null,
+  "executionTimeSeconds": null,
+  "message": "Nemesis run started asynchronously"
+}
+```
+
+**Response (async=false):**
+
+```json
+{
+  "jobId": "nemesis-20260111-143052",
+  "status": "completed",
+  "statusUrl": "/v2/nemesis/status/nemesis-20260111-143052",
+  "reportPath": "/data/reports/nemesis-20260111.json",
+  "executionTimeSeconds": 43,
+  "message": "Nemesis run completed successfully"
+}
+```
+
+**Status Codes:**
+- `202 Accepted` - Async job started
+- `200 OK` - Sync job completed
+- `400 Bad Request` - Invalid parameters
+- `500 Internal Server Error` - Execution failed
+
+**Example:**
+
+```bash
+# Async trigger (default - Java vs Go parity)
+curl -X POST https://watchman-java.fly.dev/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 100, "async": true}'
+
+# Sync trigger with OFAC-API (3-way validation)
+curl -X POST https://watchman-java.fly.dev/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 50, "includeOfacApi": true, "async": false}'
+```
+
+---
+
+### Check Job Status
+
+#### `GET /v2/nemesis/status/{jobId}`
+
+Check the status of a Nemesis run.
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `jobId` | string | Yes | Job identifier returned from trigger |
+
+**Response:**
+
+```json
+{
+  "jobId": "nemesis-20260111-143052",
+  "status": "completed",
+  "queries": 100,
+  "includeOfacApi": false,
+  "startTime": "2026-01-11T14:30:52",
+  "endTime": "2026-01-11T14:31:35",
+  "executionTimeSeconds": 43,
+  "reportPath": "/data/reports/nemesis-20260111.json",
+  "message": "Nemesis run completed successfully",
+  "logs": [
+    "Starting Nemesis run...",
+    "Queries: 100",
+    "Include OFAC-API: false",
+    "✓ Nemesis run completed"
+  ]
+}
+```
+
+**Status Values:**
+- `pending` - Job queued but not started
+- `running` - Job currently executing
+- `completed` - Job finished successfully
+- `failed` - Job failed with error
+
+**Status Codes:**
+- `200 OK` - Job found
+- `404 Not Found` - Job ID not found
+
+**Example:**
+
+```bash
+curl https://watchman-java.fly.dev/v2/nemesis/status/nemesis-20260111-143052
+```
+
+---
+
+### List Recent Reports
+
+#### `GET /v2/nemesis/reports`
+
+List the 10 most recent Nemesis report files.
+
+**Response:**
+
+```json
+[
+  {
+    "filename": "nemesis-20260111.json",
+    "sizeBytes": 125840,
+    "lastModified": 1736608295000,
+    "downloadUrl": "/v2/nemesis/reports/nemesis-20260111.json"
+  },
+  {
+    "filename": "nemesis-20260110.json",
+    "sizeBytes": 118320,
+    "lastModified": 1736521895000,
+    "downloadUrl": "/v2/nemesis/reports/nemesis-20260110.json"
+  }
+]
+```
+
+**Status Codes:**
+- `200 OK` - Reports listed
+- `500 Internal Server Error` - Failed to read reports directory
+
+**Example:**
+
+```bash
+curl https://watchman-java.fly.dev/v2/nemesis/reports
+```
+
+---
+
 ## Rate Limits
 
 | Endpoint | Rate Limit |
@@ -656,6 +820,13 @@ curl -X POST https://watchman-java.fly.dev/v1/download/refresh
 ---
 
 ## Changelog
+
+### v1.1.0 (2026-01-11)
+- **NEW:** Nemesis Testing API for triggering parity testing runs
+- Added `/v2/nemesis/trigger` - Trigger parity testing
+- Added `/v2/nemesis/status/{jobId}` - Check job status
+- Added `/v2/nemesis/reports` - List recent reports
+- Simplified Nemesis parameters to `--include-ofac-api` flag
 
 ### v1.0.0 (2026-01-03)
 - Initial release

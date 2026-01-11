@@ -11,10 +11,10 @@ public record ErrorResponse(
     int status,
     String path,
     String requestId,
-    Instant timestamp
+    String timestamp
 ) {
     public static ErrorResponse of(String error, String message, int status, String path, String requestId) {
-        return new ErrorResponse(error, message, status, path, requestId, Instant.now());
+        return new ErrorResponse(error, message, status, path, requestId, Instant.now().toString());
     }
     
     public static ErrorResponse badRequest(String message, String path, String requestId) {
