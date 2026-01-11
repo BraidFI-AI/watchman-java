@@ -156,9 +156,124 @@ AddressNormalizer.normalizeAddress(null) → null
 
 ---
 
+### 5. Centralized Scoring Configuration 🔧 IMPROVEMENT
+
+**Status:** ✅ Enhanced (Phase 0)  
+**Location:** `SimilarityConfig` class  
+**Go Reference:** Scattered `os.Getenv()` calls in `jaro_winkler.go`, `pipeline_stopwords.go`
+
+**Enhancement:**
+
+**Go Implementation:**
+```go
+// Scattered throughout multiple files
+var (
+    boostThreshold = readFloat(os.Getenv("JARO_WINKLER_BOOST_THRESHOLD"), 0.7)
+    prefixSize     = readInt(os.Getenv("JARO_WINKLER_PREFIX_SIZE"), 4)
+    lengthDifferenceCutoffFactor = readFloat(os.Getenv("LENGTH_DIFFERENCE_CUTOFF_FACTOR"), 0.9)
+    // ... many more scattered across files
+)
+```
+
+**Java Implementation:**
+```java
+@Configuration
+@ConfigurationProperties(prefix = "watchman.similarity")
+public class SimilarityConfig {
+    /** Jaro-Winkler boost threshold (default: 0.7) */
+    private double jaroWinklerBoostThreshold = 0.7;
+    
+    /** Jaro-Winkler prefix size (default: 4) */
+    private int jaroWinklerPrefixSize = 4;
+    
+    /** Length difference cutoff factor (default: 0.9) */
+    private double lengthDifferenceCutoffFactor = 0.9;
+    
+    // ... 13 total parameters, all in ONE place
+}
+```
+
+**Improvements Over Go:**
+
+1. **Centralized Configuration**
+   - Go: 27+ environment variables scattered across 5+ files
+   - Java: All 13 scoring parameters in ONE class
+   - Easy to discover what's configurable
+
+2. **Type Safety**
+   - Go: String parsing with runtime panics on invalid values
+   - Java: Type-safe properties with Spring validation
+   - Compile-time checks for configuration access
+
+3. **Documentation**
+   - Go: No inline documentation of environment variables
+   - Java: Full Javadoc on every parameter with defaults
+   - Self-documenting configuration
+
+4. **Multiple Configuration Sources**
+   - Go: Environment variables only
+   - Java: `application.yml`, `application.properties`, environment variables, command-line args
+   - Flexible deployment options
+
+5. **IDE Support**
+   - Go: No autocomplete for environment variable names
+   - Java: Full IntelliJ/VS Code autocomplete
+   - Typo-proof configuration
+
+6. **Testing**
+   - Go: No tests for configuration loading
+   - Java: 12 comprehensive tests verifying all defaults match Go
+   - Validated configuration behavior
+
+**Configuration Parameters (13 total):**
+- Jaro-Winkler boost threshold (0.7)
+- Jaro-Winkler prefix size (4)
+- Length difference cutoff factor (0.9)
+- Length difference penalty weight (0.3)
+- Different letter penalty weight (0.9)
+- Exact match favoritism (0.0)
+- Unmatched index token weight (0.15)
+- Phonetic filtering enabled (true)
+- Stopwords enabled (true)
+- Stopword debugging (false)
+- Adjacent similarity positions (3)
+- First character penalty weight (0.9)
+- Scaling factor weight (1.0)
+
+**Example Configuration:**
+```yaml
+# application.yml
+watchman:
+  similarity:
+    jaro-winkler-boost-threshold: 0.8
+    length-difference-penalty-weight: 0.4
+    phonetic-filtering-enabled: false
+```
+
+**Test Coverage:** 12/12 tests passing (100%)
+
+**Production Impact:**
+- **Discoverability:** Developers can see all tunable parameters in one place
+- **Safety:** Type-safe configuration prevents runtime parsing errors
+- **Flexibility:** Can tune scoring behavior per environment (dev/staging/prod)
+- **Documentation:** Self-documenting with inline Javadoc
+- **Validation:** Spring Boot validates configuration at startup
+- **Testing:** Comprehensive test coverage ensures Go parity
+
+**Why This Matters:**
+Go's scattered environment variables make it difficult to:
+- Discover what's configurable
+- Understand parameter relationships
+- Validate configuration completeness
+- Test configuration behavior
+
+Java's centralized approach makes configuration a **first-class feature** with full IDE support, documentation, and type safety.
+
+---
+
 ## TYPE SAFETY & ARCHITECTURE
 
-### 5. Immutable Record Classes 🏗️ JAVA ADVANTAGE
+### 6. Immutable Record Classes 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Java 17 feature throughout  
 **Locations:** All model classes
@@ -186,7 +301,7 @@ AddressNormalizer.normalizeAddress(null) → null
 
 ---
 
-### 6. Type-Safe Enums 🏗️ JAVA ADVANTAGE
+### 7. Type-Safe Enums 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Java enum advantage  
 **Examples:**
@@ -202,7 +317,7 @@ AddressNormalizer.normalizeAddress(null) → null
 
 ---
 
-### 7. Interface-Based Scoring Architecture 🏗️ JAVA ADVANTAGE
+### 8. Interface-Based Scoring Architecture 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Clean architecture  
 **Components:**
@@ -221,7 +336,7 @@ AddressNormalizer.normalizeAddress(null) → null
 
 ## TEST COVERAGE & QUALITY
 
-### 8. Comprehensive Test Suite 🔧 IMPROVEMENT
+### 9. Comprehensive Test Suite 🔧 IMPROVEMENT
 
 **Status:** ✅ 1,075 tests (100% passing)  
 **Coverage:** All scoring algorithms, normalizations, edge cases
@@ -247,7 +362,7 @@ AddressNormalizer.normalizeAddress(null) → null
 
 ---
 
-### 9. Parameterized Testing 🏗️ JAVA ADVANTAGE
+### 10. Parameterized Testing 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Extensive use of @ParameterizedTest  
 **Examples:**
@@ -271,7 +386,7 @@ void shouldMatchGoBehavior(String indexed, String query,
 
 ---
 
-### 10. Test Data Separation 🔧 IMPROVEMENT
+### 11. Test Data Separation 🔧 IMPROVEMENT
 
 **Status:** ✅ Organized test resources  
 **Structure:**
@@ -283,7 +398,7 @@ void shouldMatchGoBehavior(String indexed, String query,
 
 ## API & INTEGRATION
 
-### 11. Spring Boot Integration 🏗️ JAVA ADVANTAGE
+### 12. Spring Boot Integration 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Modern REST API  
 **Features:**
@@ -301,7 +416,7 @@ void shouldMatchGoBehavior(String indexed, String query,
 
 ---
 
-### 12. Dependency Injection 🏗️ JAVA ADVANTAGE
+### 13. Dependency Injection 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Spring DI throughout  
 **Benefits:**
@@ -325,7 +440,7 @@ public class SearchService {
 
 ---
 
-### 13. Configuration Management 🏗️ JAVA ADVANTAGE
+### 14. Configuration Management 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ application.yml + @ConfigurationProperties  
 **Features:**
@@ -343,7 +458,7 @@ public class SearchService {
 
 ## DOCUMENTATION & DEVELOPER EXPERIENCE
 
-### 14. Comprehensive Javadoc 🔧 IMPROVEMENT
+### 15. Comprehensive Javadoc 🔧 IMPROVEMENT
 
 **Status:** ✅ All public APIs documented  
 **Coverage:**
@@ -370,7 +485,7 @@ public class SearchService {
 
 ---
 
-### 15. Technical Documentation 🔧 IMPROVEMENT
+### 16. Technical Documentation 🔧 IMPROVEMENT
 
 **Status:** ✅ 7 comprehensive documents  
 **Documents:**
@@ -389,7 +504,7 @@ public class SearchService {
 
 ---
 
-### 16. Implementation History 🔧 IMPROVEMENT
+### 17. Implementation History 🔧 IMPROVEMENT
 
 **Status:** ✅ Phase-by-phase documentation  
 **Location:** FEATURE_PARITY_GAPS.md sections
@@ -410,7 +525,7 @@ public class SearchService {
 
 ## PERFORMANCE OPTIMIZATIONS
 
-### 17. Lazy Initialization 🏗️ JAVA ADVANTAGE
+### 18. Lazy Initialization 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Strategic use throughout  
 **Examples:**
@@ -420,7 +535,7 @@ public class SearchService {
 
 ---
 
-### 18. Stream API Usage 🏗️ JAVA ADVANTAGE
+### 19. Stream API Usage 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Modern Java collections  
 **Benefits:**
@@ -441,7 +556,7 @@ double avgScore = scores.stream()
 
 ## DEVELOPMENT TOOLING
 
-### 19. Maven Build System 🏗️ JAVA ADVANTAGE
+### 20. Maven Build System 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Industry standard  
 **Features:**
@@ -453,7 +568,7 @@ double avgScore = scores.stream()
 
 ---
 
-### 20. IDE Support 🏗️ JAVA ADVANTAGE
+### 21. IDE Support 🏗️ JAVA ADVANTAGE
 
 **Status:** ✅ Excellent IntelliJ/Eclipse/VS Code support  
 **Features:**
@@ -485,14 +600,14 @@ double avgScore = scores.stream()
 | Category | ✨ New | 🔧 Improved | 🏗️ Java Advantage | Total |
 |----------|--------|------------|-------------------|-------|
 | **Observability & Debugging** | 1 | 0 | 0 | 1 |
-| **Data Quality & Normalization** | 0 | 3 | 1 | 4 |
+| **Data Quality & Normalization** | 0 | 4 | 1 | 5 |
 | **Type Safety & Architecture** | 0 | 0 | 3 | 3 |
 | **Test Coverage & Quality** | 0 | 2 | 1 | 3 |
 | **API & Integration** | 0 | 0 | 3 | 3 |
 | **Documentation & Dev Experience** | 0 | 3 | 0 | 3 |
 | **Performance Optimizations** | 0 | 0 | 2 | 2 |
 | **Development Tooling** | 0 | 0 | 2 | 2 |
-| **TOTAL** | **1** | **8** | **12** | **21** |
+| **TOTAL** | **1** | **9** | **12** | **22** |
 
 ### Java Advantages Over Go
 
@@ -503,7 +618,7 @@ double avgScore = scores.stream()
 | **Testing** | 🔧 1,075 tests (10x Go) | High - Better quality assurance |
 | **Documentation** | 🔧 7 technical docs, full Javadoc | Medium - Better maintainability |
 | **API** | 🏗️ Spring Boot ecosystem | Medium - Faster development |
-| **Configuration** | 🏗️ Type-safe config | Medium - Fewer deployment issues |
+| **Configuration** | 🔧 Centralized scoring config | Medium - Better maintainability |
 | **Data Quality** | 🔧 Enhanced normalization | Medium - Better deduplication |
 | **IDE Support** | 🏗️ Excellent tooling | Low - Developer productivity |
 
@@ -516,6 +631,7 @@ double avgScore = scores.stream()
 | **Documentation** | Basic | 7 docs, 2,395+ lines | **20x+** |
 | **Null Safety** | Implicit | Explicit with checks | **Better** |
 | **Type Safety** | Good | Excellent (records/enums) | **Better** |
+| **Configuration** | 27 scattered env vars | 13 centralized params | **Better** |
 | **Observability** | Logging only | Structured traces | **New feature** |
 | **API Features** | Custom handlers | Spring Boot | **Modern** |
 
@@ -528,8 +644,9 @@ double avgScore = scores.stream()
 4. ✅ **Better documentation** - Easier maintenance and onboarding
 5. ✅ **Modern architecture** - Spring Boot, DI, records, streams
 6. ✅ **Enhanced data quality** - Better normalization and null handling
+7. ✅ **Centralized configuration** - 13 scoring parameters in one discoverable, type-safe class vs 27 scattered env vars
 
-**Total Value:** Java implementation is not just a port—it's a **production-hardened, enterprise-ready evolution** of the Go codebase with significant improvements in quality, observability, and maintainability.
+**Total Value:** Java implementation is not just a port—it's a **production-hardened, enterprise-ready evolution** of the Go codebase with significant improvements in quality, observability, maintainability, and configuration management.
 
 ---
 
