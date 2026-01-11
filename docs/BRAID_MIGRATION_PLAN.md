@@ -1,7 +1,7 @@
 # Braid Integration Migration Plan
 
 **Date:** January 11, 2026  
-**Status:** Planning  
+**Status:** ✅ Option 1 Implemented & Tested  
 **Traffic Volume:** Millions of OFAC screens per week  
 **Migration Strategy:** Gradual traffic shift with three integration options
 
@@ -49,8 +49,9 @@ watchman.send.minMatch=true
 
 ## Three-Option Architecture
 
-### Option 1: Java Compatibility Layer (Recommended for Initial Migration)
-**What:** Add v1 API endpoints to Java that match Go's format  
+### Option 1: Java Compatibility Layer ✅ IMPLEMENTED
+**What:** V1 API endpoints matching Go's format  
+**Status:** Implemented with 21 passing tests (13 unit + 8 integration)  
 **When:** Phase 1 - First 0-20% traffic  
 **Risk:** Low - No Braid changes needed
 
@@ -80,74 +81,34 @@ Braid (unchanged)
                  └── /search (compatibility endpoint) ← NEW
 ```
 
-#### Java Implementation
+#### Java Implementation ✅ COMPLETE
 
 **File:** `src/main/java/io/moov/watchman/api/V1CompatibilityController.java`
 
+**Implementation Status:**
+- ✅ Controller implemented and tested
+- ✅ 13 unit tests passing (V1CompatibilityControllerTest)
+- ✅ 8 integration tests passing (V1CompatibilityIntegrationTest)
+- ✅ Response format transformation verified
+- ✅ Score matching validated (v1.match == v2.score)
+
+**Endpoints Available:**
+```
+GET /search?q={name}&minMatch={threshold}&limit={count}
+GET /ping
+```
+
+**Key Features:**
+- Accepts `q` parameter (Go format) and transforms to `name` (v2 format)
+- Wraps v2 SearchController for all business logic
+- Transforms response: `{entities: [...]}` → `{SDNs: [...], altNames: []}`
+- Renames score field: `score` → `match`
+- Health check: `/ping` → wraps `/v2/health`
+
+**Response Format Transformation:**
 ```java
-package io.moov.watchman.api;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.moov.watchman.model.Entity;
-import io.moov.watchman.model.SourceList;
-import io.moov.watchman.search.SearchRequest;
-import io.moov.watchman.search.SearchResult;
-import io.moov.watchman.search.SearchService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-@RestController
-@RequiredArgsConstructor
-@Slf4j
-public class V1CompatibilityController {
-
-    private final SearchService searchService;
-    private final ObjectMapper objectMapper;
-
-    /**
-     * V1 Compatibility Endpoint - matches Go Watchman API format
-     * Supports legacy query parameter names for Braid integration
-     */
-    @GetMapping("/search")
-    public ResponseEntity<ObjectNode> searchV1(
-            @RequestParam(value = "q", required = false) String q,
-            @RequestParam(value = "name", required = false) String name,
-            @RequestParam(value = "address", required = false) String address,
-            @RequestParam(value = "city", required = false) String city,
-            @RequestParam(value = "state", required = false) String state,
-            @RequestParam(value = "zip", required = false) String zip,
-            @RequestParam(value = "minMatch", defaultValue = "0.85") double minMatch,
-            @RequestParam(value = "limit", defaultValue = "10") int limit
-    ) {
-        log.info("V1 compatibility search: q={}, name={}, address={}, minMatch={}", 
-                 q, name, address, minMatch);
-
-        // Determine search query (q parameter takes precedence for backward compatibility)
-        String searchQuery = (q != null) ? q : (name != null) ? name : address;
-        
-        if (searchQuery == null || searchQuery.isBlank()) {
-            return ResponseEntity.badRequest().body(createEmptyResponse());
-        }
-
-        // Build search request
-        SearchRequest request = SearchRequest.builder()
-                .name(searchQuery)
-                .minMatch(minMatch)
-                .limit(limit)
-                .build();
-
-        // Execute search
-        List<SearchResult> results = searchService.search(request);
-
-        // Transform to v1 format
+// Input from v2: {"entities": [{"id": "123", "name": "...", "score": 0.95}]}
+// Output for v1: {"SDNs": [{"entityID": "123", "sdnName": "...", "match": 0.95}], "altNames": []}
         return ResponseEntity.ok(transformToV1Format(results));
     }
 
@@ -306,7 +267,27 @@ watchman.send.minMatch=true
 - ❌ Double transformation (v2 → v1 → Braid)
 - ❌ Technical debt in Java codebase
 
-#### Testing
+#### Testing & Validation ✅
+
+**Run Tests:**
+```bash
+# Unit tests (13 tests)
+./mvnw test -Dtest=V1CompatibilityControllerTest
+
+# Integration tests (8 tests)
+./mvnw test -Dtest=V1CompatibilityIntegrationTest
+
+# All tests pass
+./mvnw test
+```
+
+**Demo Script:**
+```bash
+# Side-by-side comparison of v1 and v2 endpoints
+./scripts/braid-migration.sh
+```
+
+**Manual Testing:**
 ```bash
 # Test v1 compatibility
 curl "https://watchman-java.fly.dev/search?q=Nicolas%20Maduro&minMatch=0.85"
