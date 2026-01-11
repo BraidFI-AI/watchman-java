@@ -271,7 +271,16 @@ API REFERENCE (USE ONLY THESE METHODS/CLASSES):
 CRITICAL: Only use methods and classes from the API reference above.
 """
         
-        prompt = f"""You are an expert Java developer fixing implementation divergences between Java and Go services.
+        prompt = f"""You are an expert Java developer working on Moov Watchman Java - a critical financial compliance system.
+
+CONTEXT:
+You are implementing parity with the Go implementation while leveraging insights from OFAC-API (a commercial gold-standard service).
+This is NOT about blindly copying Go - it's about achieving technical parity while recognizing better approaches when evidence suggests them.
+
+THREE IMPLEMENTATIONS IN PLAY:
+1. **OFAC-API** (Commercial) - Production-proven, used by major financial institutions - the gold standard
+2. **Moov/Go** (Open Source) - Our parity baseline, but has known issues from multiple contributors with competing priorities
+3. **Watchman-Java** (This codebase) - Our implementation that must match Go behavior, but can propose improvements
 
 {api_section}
 
@@ -288,7 +297,7 @@ CODE ANALYSIS:
 - Blast radius: {analysis['blast_radius']}
 - Dependencies: {len(analysis['dependencies'])}
 
-SAMPLE DIVERGENCES:
+SAMPLE DIVERGENCES (with 3-way comparison):
 {self._format_divergences(divergences)}
 
 CURRENT IMPLEMENTATION:
@@ -299,12 +308,21 @@ TEST FILES:
 
 {self._format_files(tests)}
 
-TASK:
-Generate a code fix that resolves the divergences. The fix should:
-1. Match the Go implementation behavior (as evidenced by divergences)
-2. Maintain existing test compatibility (update tests if needed)
-3. Follow Java best practices and existing code style
-4. Be minimal and focused on the issue
+YOUR TASK - TWO BUCKETS:
+
+**BUCKET 1: PARITY FIX (Required - Ready to Merge)**
+Generate code changes to make Java match Go behavior exactly.
+- This is objective #1: Technical parity
+- Must be measurable: Java score now matches Go score
+- Include JUnit test cases proving parity is achieved
+- Tests should use actual divergence data from above
+
+**BUCKET 2: OFAC-API INTELLIGENCE (Optional - For Discussion)**
+If OFAC-API shows significantly different behavior (score difference >0.3):
+- Analyze trace data to understand WHY OFAC-API scored differently
+- Propose what Java COULD do differently to align with commercial best practices
+- Explain risks/benefits of the proposed change
+- This is NOT ready to merge - it's for team discussion
 
 CRITICAL CONSTRAINTS - YOU MUST FOLLOW THESE:
 1. ONLY use methods and classes that exist in the provided code above
@@ -321,39 +339,117 @@ VALIDATION CHECKLIST (verify before responding):
 - [ ] All field accesses use actual getter/setter methods
 - [ ] No hallucinated Contact, normalize(), similarity() or other non-existent methods
 - [ ] Code will compile with provided classes
+- [ ] Test cases use actual divergence data and prove parity
 
 OUTPUT FORMAT:
-For each file that needs changes, provide:
+
+## BUCKET 1: PARITY FIX ✅ (Ready to Merge)
+
+### Root Cause Analysis
+<Brief explanation of why Java and Go diverge based on trace data>
+
+### Code Changes
 
 FILE: <relative/path/to/File.java>
-EXPLANATION: <brief explanation of changes>
+EXPLANATION: <what changed and why>
 ```java
 <complete modified file content>
 ```
 
-FILE: <next/file.java>
-...
+### Test Cases (Parity Verification)
 
-SUMMARY:
-<overall explanation of the fix strategy>
+FILE: src/test/java/io/moov/watchman/<TestFile>Test.java
+```java
+<JUnit test class with test cases proving parity>
+// Test structure:
+// - Use actual divergence queries from above
+// - Assert Java now matches Go score
+// - Include trace breakdown validation
+```
+
+### Parity Achievement
+- Before: Java={java_score}, Go={go_score}, Difference={diff}
+- After:  Java={go_score}, Go={go_score}, ✓ Parity achieved
+
+---
+
+## BUCKET 2: OFAC-API INTELLIGENCE 💡 (Discussion Only)
+
+<Only include this section if OFAC-API shows significant divergence (>0.3 score difference)>
+
+### OFAC-API Behavior Analysis
+<What does OFAC-API do differently based on scores and trace data?>
+
+### Observations
+- OFAC-API Score: {ofac_score}
+- Go Score: {go_score}
+- Java Score (after parity): {go_score}
+- Divergence: OFAC-API is {higher/lower} by {difference}
+
+### Trace Analysis
+<Use trace data to hypothesize WHY OFAC-API scored differently>
+Examples:
+- "OFAC-API appears to weight exact name matches more heavily (score jumped from 0.4 to 0.9 on exact match)"
+- "OFAC-API may use different phonetic algorithm (similar names scored very differently)"
+
+### Proposed Improvement (Optional)
+<Only if there's clear evidence OFAC-API approach is better>
+- Suggested change: <what to modify>
+- Expected impact: <how scores would change>
+- Risk assessment: <potential for false positives/negatives>
+- Requires: Further investigation and team discussion
+
+---
+
+## SUMMARY
+<Overall explanation covering both buckets>
 
 Begin your response:"""
         
         return prompt
     
     def _format_divergences(self, divergences: List[Dict]) -> str:
-        """Format divergences for prompt."""
+        """Format divergences for prompt, including 3-way comparison data."""
         if not divergences:
             return "No sample divergences available"
         
         formatted = []
         for i, div in enumerate(divergences[:5], 1):
-            formatted.append(f"""
+            # Check if this is a 3-way comparison (includes external_data)
+            has_external = 'external_data' in div and div['external_data']
+            
+            entry = f"""
 Example {i}:
-  Type: {div.get('type', 'unknown')}
   Query: {div.get('query', 'N/A')}
-  Details: {div.get('details', 'N/A')}
-""")
+  Type: {div.get('type', 'unknown')}
+  Severity: {div.get('severity', 'N/A')}
+  
+  Java Score:    {div.get('java_data', {}).get('score', 'N/A')}
+  Go Score:      {div.get('go_data', {}).get('score', 'N/A')}"""
+            
+            if has_external:
+                external_score = div.get('external_data', {}).get('score', 'N/A')
+                agreement = div.get('agreement_pattern', 'unknown')
+                entry += f"""
+  OFAC-API Score: {external_score}
+  Agreement Pattern: {agreement}
+  
+  Analysis: """
+                if agreement == "go_external_agree":
+                    entry += "Go and OFAC-API agree - Java should match them"
+                elif agreement == "java_external_agree":
+                    entry += "Java and OFAC-API agree - Go may be wrong"
+                elif agreement == "java_go_agree":
+                    entry += "Java and Go agree - OFAC-API differs (investigate why)"
+                else:
+                    entry += "All three implementations disagree - needs investigation"
+            
+            entry += f"""
+  
+  Java Trace: {div.get('java_trace', 'Not available')}
+  Details: {div.get('description', 'N/A')}
+"""
+            formatted.append(entry)
         
         return "\n".join(formatted)
     
