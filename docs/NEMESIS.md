@@ -7,7 +7,7 @@
 ## What Nemesis Does
 
 Nemesis automatically:
-- ✅ Generates 100 dynamic test queries per run
+- ✅ Generates 10 dynamic test queries per run
 - ✅ Tests queries against Java and Go implementations
 - ✅ **NEW:** Optionally compares against ofac-api.com (3-way comparison)
 - ✅ Detects divergences (different results, scores, or ordering)
