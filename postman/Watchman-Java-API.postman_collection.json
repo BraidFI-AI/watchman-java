@@ -312,7 +312,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\"id\": \"1\", \"name\": \"John Smith\"},\n    {\"id\": \"2\", \"name\": \"Acme Corporation\"},\n    {\"id\": \"3\", \"name\": \"Jane Doe\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
+              "raw": "{\n  \"items\": [\n    {\"requestId\": \"1\", \"name\": \"John Smith\"},\n    {\"requestId\": \"2\", \"name\": \"Acme Corporation\"},\n    {\"requestId\": \"3\", \"name\": \"Jane Doe\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch",
@@ -348,7 +348,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\"id\": \"cust-001\", \"name\": \"Global Trading LLC\"},\n    {\"id\": \"cust-002\", \"name\": \"Mohammad Ali\"},\n    {\"id\": \"cust-003\", \"name\": \"Petrochemical Industries\"},\n    {\"id\": \"cust-004\", \"name\": \"Al-Rashid Enterprises\"},\n    {\"id\": \"cust-005\", \"name\": \"Northern Bank\"}\n  ],\n  \"minMatch\": 0.80,\n  \"limit\": 5,\n  \"sourceFilter\": \"OFAC_SDN\",\n  \"typeFilter\": \"BUSINESS\"\n}"
+              "raw": "{\n  \"items\": [\n    {\"requestId\": \"cust-001\", \"name\": \"Global Trading LLC\", \"entityType\": \"BUSINESS\", \"source\": \"OFAC_SDN\"},\n    {\"requestId\": \"cust-002\", \"name\": \"Mohammad Ali\", \"entityType\": \"PERSON\"},\n    {\"requestId\": \"cust-003\", \"name\": \"Petrochemical Industries\", \"entityType\": \"BUSINESS\"},\n    {\"requestId\": \"cust-004\", \"name\": \"Al-Rashid Enterprises\", \"entityType\": \"BUSINESS\"},\n    {\"requestId\": \"cust-005\", \"name\": \"Northern Bank\", \"entityType\": \"BUSINESS\", \"source\": \"US_CSL\"}\n  ],\n  \"minMatch\": 0.80,\n  \"limit\": 5\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch",
@@ -384,7 +384,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\"id\": \"1\", \"name\": \"John Smith\"},\n    {\"id\": \"2\", \"name\": \"Acme Corporation\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10,\n  \"trace\": true\n}"
+              "raw": "{\n  \"items\": [\n    {\"requestId\": \"1\", \"name\": \"John Smith\"},\n    {\"requestId\": \"2\", \"name\": \"Acme Corporation\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10,\n  \"trace\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch",
@@ -420,7 +420,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\"id\": \"1\", \"name\": \"Customer One\"},\n    {\"id\": \"2\", \"name\": \"Customer Two\"},\n    {\"id\": \"3\", \"name\": \"Customer Three\"},\n    {\"id\": \"4\", \"name\": \"Customer Four\"},\n    {\"id\": \"5\", \"name\": \"Customer Five\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
+              "raw": "{\n  \"items\": [\n    {\"requestId\": \"1\", \"name\": \"Customer One\"},\n    {\"requestId\": \"2\", \"name\": \"Customer Two\"},\n    {\"requestId\": \"3\", \"name\": \"Customer Three\"},\n    {\"requestId\": \"4\", \"name\": \"Customer Four\"},\n    {\"requestId\": \"5\", \"name\": \"Customer Five\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch",
@@ -456,7 +456,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\"id\": \"async-1\", \"name\": \"Async Test One\"},\n    {\"id\": \"async-2\", \"name\": \"Async Test Two\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10,\n  \"webhookUrl\": \"https://your-webhook.example.com/callback\"\n}"
+              "raw": "{\n  \"items\": [\n    {\"requestId\": \"async-1\", \"name\": \"Async Test One\"},\n    {\"requestId\": \"async-2\", \"name\": \"Async Test Two\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v2/search/batch/async",
