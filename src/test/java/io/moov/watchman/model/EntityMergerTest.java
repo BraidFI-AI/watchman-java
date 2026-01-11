@@ -666,4 +666,174 @@ class EntityMergerTest {
         // French ID should be present
         assertThat(result).anyMatch(id -> "FRANCE".equals(id.country()));
     }
+
+    // ==================== mergeCryptoAddresses() Tests ====================
+
+    @Test
+    void mergeCryptoAddresses_withTwoDistinctAddresses_shouldCombineBoth() {
+        // Given: Two different crypto addresses
+        List<CryptoAddress> list1 = List.of(
+            new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+        );
+        List<CryptoAddress> list2 = List.of(
+            new CryptoAddress("ETH", "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+        );
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should contain both addresses
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(CryptoAddress::currency)
+            .containsExactlyInAnyOrder("BTC", "ETH");
+    }
+
+    @Test
+    void mergeCryptoAddresses_withIdenticalAddresses_shouldDeduplicateExactMatches() {
+        // Given: Two identical crypto addresses
+        CryptoAddress address = new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+        List<CryptoAddress> list1 = List.of(address);
+        List<CryptoAddress> list2 = List.of(address);
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should have only one copy
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).address()).isEqualTo("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+    }
+
+    @Test
+    void mergeCryptoAddresses_withSameAddressDifferentCurrency_shouldKeepBoth() {
+        // Given: Same address string but different currency (edge case)
+        List<CryptoAddress> list1 = List.of(
+            new CryptoAddress("BTC", "ABC123")
+        );
+        List<CryptoAddress> list2 = List.of(
+            new CryptoAddress("ETH", "ABC123")
+        );
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should keep both (different currencies = different addresses)
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void mergeCryptoAddresses_isCaseSensitive_shouldKeepBothWhenCaseDiffers() {
+        // Given: Same address with different case (crypto addresses are case-sensitive)
+        List<CryptoAddress> list1 = List.of(
+            new CryptoAddress("BTC", "1a1zp1ep5qgefi2dmptftl5slmv7divfna")
+        );
+        List<CryptoAddress> list2 = List.of(
+            new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+        );
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should keep both (case matters for crypto addresses)
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void mergeCryptoAddresses_withEmptyLists_shouldReturnEmptyList() {
+        // Given: Two empty lists
+        List<CryptoAddress> list1 = List.of();
+        List<CryptoAddress> list2 = List.of();
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should return empty list
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void mergeCryptoAddresses_withNullLists_shouldReturnEmptyList() {
+        // Given: Null lists
+        List<CryptoAddress> list1 = null;
+        List<CryptoAddress> list2 = null;
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should return empty list (not null)
+        assertThat(result).isNotNull();
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void mergeCryptoAddresses_withOneNullList_shouldReturnOtherList() {
+        // Given: One null, one with data
+        List<CryptoAddress> list1 = List.of(
+            new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+        );
+        List<CryptoAddress> list2 = null;
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should return non-null list
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).currency()).isEqualTo("BTC");
+    }
+
+    @Test
+    void mergeCryptoAddresses_withMultipleAddressesInEachList_shouldMergeCorrectly() {
+        // Given: Multiple addresses in each list with some duplicates
+        List<CryptoAddress> list1 = List.of(
+            new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"),
+            new CryptoAddress("ETH", "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+        );
+        List<CryptoAddress> list2 = List.of(
+            new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"),  // Duplicate
+            new CryptoAddress("LTC", "LQTpS7fKDmqeWwg87KbqhrsH6y4dY9x3gU")
+        );
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(list1, list2);
+
+        // Then: Should have 3 unique addresses
+        assertThat(result).hasSize(3);
+        assertThat(result).extracting(CryptoAddress::currency)
+            .containsExactlyInAnyOrder("BTC", "ETH", "LTC");
+    }
+
+    @Test
+    void mergeCryptoAddresses_realWorldExample_sanctionedEntity() {
+        // Given: Sanctioned entity with crypto addresses from multiple sources
+        List<CryptoAddress> ofacAddresses = List.of(
+            new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"),
+            new CryptoAddress("ETH", "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
+        );
+        List<CryptoAddress> euAddresses = List.of(
+            new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"),  // Same as OFAC
+            new CryptoAddress("ETH", "0x0000000000000000000000000000000000000000"),  // Different
+            new CryptoAddress("USDT", "TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS")  // New currency
+        );
+
+        // When: Merging
+        List<CryptoAddress> result = EntityMerger.mergeCryptoAddresses(ofacAddresses, euAddresses);
+
+        // Then: Should deduplicate BTC, keep all unique ETH and USDT
+        assertThat(result).hasSize(4);
+
+        // BTC should be deduplicated (exact match)
+        long btcCount = result.stream()
+            .filter(addr -> "BTC".equals(addr.currency()))
+            .count();
+        assertThat(btcCount).isEqualTo(1);
+
+        // ETH should have 2 different addresses
+        long ethCount = result.stream()
+            .filter(addr -> "ETH".equals(addr.currency()))
+            .count();
+        assertThat(ethCount).isEqualTo(2);
+
+        // USDT should be present
+        assertThat(result).anyMatch(addr -> "USDT".equals(addr.currency()));
+    }
 }
+

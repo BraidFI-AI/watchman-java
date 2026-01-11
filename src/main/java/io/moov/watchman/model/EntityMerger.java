@@ -167,4 +167,51 @@ public class EntityMerger {
         }
         return identifier.replaceAll("[\\s\\-]", "");
     }
+
+    /**
+     * Merges two crypto address lists, removing exact duplicates.
+     *
+     * Algorithm:
+     * 1. Combine both lists
+     * 2. Use LinkedHashMap with case-sensitive key to deduplicate
+     * 3. IMPORTANT: Crypto addresses are CASE-SENSITIVE (unlike other fields)
+     * 4. Keep first occurrence when duplicates found
+     *
+     * Duplicate detection considers currency and exact address (case-sensitive).
+     * Example: "1a1z..." and "1A1Z..." are different addresses.
+     *
+     * @param list1 First crypto address list (can be null)
+     * @param list2 Second crypto address list (can be null)
+     * @return Merged, deduplicated crypto address list (never null)
+     */
+    public static List<CryptoAddress> mergeCryptoAddresses(List<CryptoAddress> list1, List<CryptoAddress> list2) {
+        Map<String, CryptoAddress> cryptoMap = new LinkedHashMap<>();
+
+        // Process both lists
+        Stream.concat(
+                list1 != null ? list1.stream() : Stream.empty(),
+                list2 != null ? list2.stream() : Stream.empty()
+            )
+            .forEach(crypto -> {
+                String key = getCryptoAddressKey(crypto);
+                cryptoMap.putIfAbsent(key, crypto);  // Keep first occurrence
+            });
+
+        return new ArrayList<>(cryptoMap.values());
+    }
+
+    /**
+     * Generates a case-sensitive key for crypto address deduplication.
+     *
+     * Format: "currency|address" (CASE-SENSITIVE)
+     * Note: Unlike other merge functions, this does NOT lowercase the key
+     * because crypto addresses are case-sensitive.
+     */
+    private static String getCryptoAddressKey(CryptoAddress crypto) {
+        return String.format("%s|%s",
+            crypto.currency() != null ? crypto.currency() : "",
+            crypto.address() != null ? crypto.address() : ""
+        );
+        // NOTE: No .toLowerCase() - crypto addresses are case-sensitive!
+    }
 }
