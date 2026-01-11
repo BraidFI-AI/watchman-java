@@ -13,7 +13,7 @@
    - [Health Check](#health-check)
    - [Search](#search)
    - [Batch Screening](#batch-screening)
-   - [Scoring Trace](#scoring-trace-debug-mode)
+   - [ScoreTrace](#scoretrace-debug-mode)
    - [List Information](#list-information)
    - [Data Management](#data-management)
 4. [Data Models](#data-models)
@@ -92,7 +92,7 @@ Search sanctions lists for matching entities.
 | `minMatch` | float | No | 0.85 | Minimum match score (0.0-1.0) |
 | `source` | string | No | all | Filter by source list |
 | `type` | string | No | all | Filter by entity type |
-| `trace` | boolean | No | false | Enable scoring trace (debug mode) |
+| `trace` | boolean | No | false | Enable ScoreTrace (debug mode) |
 
 **Source List Values:**
 - `OFAC_SDN` - US OFAC Specially Designated Nationals
@@ -143,7 +143,7 @@ Search sanctions lists for matching entities.
 | `results[].remarks` | string | Additional information |
 | `query` | string | Original search query |
 | `totalResults` | integer | Number of results returned |
-| `trace` | object | Scoring trace (only when `trace=true`) |
+| `trace` | object | ScoreTrace data (only when `trace=true`) |
 
 **Status Codes:**
 - `200 OK` - Search completed successfully
@@ -161,7 +161,7 @@ curl "https://watchman-java.fly.dev/v2/search?name=Bank&type=BUSINESS&source=OFA
 # Lower threshold for fuzzy matches
 curl "https://watchman-java.fly.dev/v2/search?name=Mohammad&minMatch=0.70&limit=50"
 
-# Debug mode with scoring trace
+# Debug mode with ScoreTrace
 curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro&trace=true"
 ```
 
@@ -279,7 +279,7 @@ curl -X POST https://watchman-java.fly.dev/v2/search/batch \
 
 ---
 
-### Scoring Trace (Debug Mode)
+### ScoreTrace (Debug Mode)
 
 Enable detailed scoring breakdowns by adding `trace=true` to any search request.
 
