@@ -3,17 +3,23 @@
 **Date:** January 11, 2026  
 **Status:** ✅ Option 1 Implemented & Tested  
 **Traffic Volume:** Millions of OFAC screens per week  
-**Migration Strategy:** Gradual traffic shift with three integration options
+**Migration Strategy:** Four options with **internal network deployment recommended**
 
 ---
 
 ## Executive Summary
 
-Braid currently integrates with Watchman Go for OFAC screening. This plan provides **three migration paths** to support gradual traffic migration to Watchman Java while maintaining zero downtime and rollback capability.
+Braid currently integrates with Watchman Go for OFAC screening. This plan provides **four migration paths** to support gradual traffic migration to Watchman Java while maintaining zero downtime and rollback capability.
 
-**Key Principle:** All three options run in parallel, allowing Braid to:
+**🆕 Recommended Approach:** Deploy Watchman Java on Braid's internal network (Option 4) for:
+- **10-20x faster latency** (sub-3ms vs 50-150ms external)
+- **Maximum security** (no public exposure)
+- **80-90% cost savings** vs external hosting
+- **Instant rollback** via Kubernetes/Istio traffic split
+
+**Key Principle:** All four options run in parallel, allowing Braid to:
 - Start with 1% traffic to Java
-- Compare results between Go and Java
+- Compare results between Go and Java  
 - Gradually increase Java traffic based on confidence
 - Instant rollback if issues detected
 
@@ -47,23 +53,32 @@ watchman.send.minMatch=true
 
 ---
 
-## Three-Option Architecture
+## Four-Option Architecture
 
 ### Option 1: Java Compatibility Layer ✅ IMPLEMENTED
 **What:** V1 API endpoints matching Go's format  
 **Status:** Implemented with 21 passing tests (13 unit + 8 integration)  
 **When:** Phase 1 - First 0-20% traffic  
-**Risk:** Low - No Braid changes needed
+**Risk:** Low - No Braid changes needed  
+**Network:** External (Fly.dev) or Internal (Braid network)
 
 ### Option 2: Braid Dual-Client (Recommended for 20-80% Traffic)
 **What:** Braid supports both Go and Java formats via configuration  
 **When:** Phase 2 - Parallel validation  
-**Risk:** Medium - Requires Braid deployment
+**Risk:** Medium - Requires Braid deployment  
+**Network:** External (Fly.dev) or Internal (Braid network)
 
 ### Option 3: API Gateway (Recommended for 80-100% Traffic)
 **What:** Nginx/Kong transforms requests/responses  
 **When:** Phase 3 - Final migration and optimization  
-**Risk:** Low - No code changes, easy rollback
+**Risk:** Low - No code changes, easy rollback  
+**Network:** External or Internal
+
+### Option 4: Internal Network Deployment 🆕 (Recommended)
+**What:** Deploy Watchman Java inside Braid's private network  
+**When:** Any phase - superior option if Braid moves service internal  
+**Risk:** Lowest - No internet latency, highest security  
+**Network:** Internal (Kubernetes/Docker on Braid infrastructure)
 
 ---
 
@@ -830,6 +845,454 @@ curl "http://watchman-gateway:8080/admin/traffic"
 
 ---
 
+### **OPTION 4: Internal Network Deployment** 🆕
+
+#### Overview
+**Best for:** Production migration when Braid moves Watchman Java to internal infrastructure  
+**Network:** Same internal network as Braid application  
+**Latency:** Sub-millisecond (no internet hop)  
+**Security:** Maximum (no external exposure)
+
+#### Architecture
+```
+Braid Internal Network (Kubernetes/Docker)
+  ├── Braid Application Pods
+  │     └── MoovService.java
+  │          └── http://watchman-java-service:8080/search
+  │
+  ├── Watchman Java Service (NEW)
+  │     ├── Pod 1 (replica)
+  │     ├── Pod 2 (replica)
+  │     └── Pod 3 (replica)
+  │
+  └── Watchman Go Service (existing - being phased out)
+        ├── Pod 1
+        └── Pod 2
+
+Internal DNS:
+  - watchman-java-service:8080 → Load balanced Java pods
+  - watchman-go-service:8080   → Load balanced Go pods
+```
+
+#### Why This is Superior
+
+**Performance Benefits:**
+- ✅ **0-3ms latency** vs 50-150ms over internet
+- ✅ **No SSL overhead** (can use HTTP internally)
+- ✅ **No NAT/proxy hops**
+- ✅ **Direct pod-to-pod communication**
+- ✅ **10-20x faster response times**
+
+**Security Benefits:**
+- ✅ **No public exposure** of OFAC API
+- ✅ **Network policies** restrict access to Braid only
+- ✅ **Service mesh** (Istio/Linkerd) for mTLS
+- ✅ **No API keys needed** (internal trust)
+- ✅ **Audit logs** at infrastructure level
+
+**Operational Benefits:**
+- ✅ **Single deployment pipeline** for all services
+- ✅ **Shared monitoring/logging** infrastructure
+- ✅ **Autoscaling** based on Braid traffic
+- ✅ **Blue-green deployments** trivial
+- ✅ **Instant rollback** via Kubernetes
+- ✅ **Cost savings** (no Fly.dev hosting)
+
+#### Kubernetes Deployment
+
+**File:** `k8s/watchman-java-deployment.yaml`
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: watchman-java
+  namespace: braid
+  labels:
+    app: watchman-java
+    version: v2
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: watchman-java
+  template:
+    metadata:
+      labels:
+        app: watchman-java
+        version: v2
+    spec:
+      containers:
+      - name: watchman-java
+        image: ghcr.io/braidfi-ai/watchman-java:latest
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        - name: JAVA_OPTS
+          value: "-Xmx2g -XX:+UseG1GC"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: watchman-java-service
+  namespace: braid
+  labels:
+    app: watchman-java
+spec:
+  type: ClusterIP
+  selector:
+    app: watchman-java
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  sessionAffinity: None
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: watchman-java-hpa
+  namespace: braid
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: watchman-java
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: watchman-java-pdb
+  namespace: braid
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: watchman-java
+```
+
+#### Network Policy (Optional - if using NetworkPolicy)
+
+**File:** `k8s/watchman-java-network-policy.yaml`
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: watchman-java-policy
+  namespace: braid
+spec:
+  podSelector:
+    matchLabels:
+      app: watchman-java
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Only allow traffic from Braid application
+  - from:
+    - podSelector:
+        matchLabels:
+          app: braid-api
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow monitoring/logging
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+```
+
+#### Service Mesh Integration (Istio Example)
+
+**File:** `k8s/watchman-java-istio.yaml`
+
+```yaml
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: watchman-java-vs
+  namespace: braid
+spec:
+  hosts:
+  - watchman-java-service
+  http:
+  - match:
+    - uri:
+        prefix: /search
+    - uri:
+        prefix: /v2/search
+    - uri:
+        prefix: /health
+    route:
+    - destination:
+        host: watchman-java-service
+        port:
+          number: 8080
+      weight: 90  # 90% traffic to Java
+    - destination:
+        host: watchman-go-service
+        port:
+          number: 8080
+      weight: 10  # 10% still on Go
+    timeout: 5s
+    retries:
+      attempts: 2
+      perTryTimeout: 2s
+      retryOn: 5xx,reset,connect-failure
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: watchman-java-dr
+  namespace: braid
+spec:
+  host: watchman-java-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 2
+    loadBalancer:
+      simple: LEAST_REQUEST
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+```
+
+#### Braid Configuration (No Code Changes!)
+
+**File:** `application.properties`
+
+```properties
+# Option 1: Use compatibility endpoint (no Braid changes)
+watchman.server=watchman-java-service
+watchman.port=8080
+watchman.send.minMatch=true
+
+# Option 2: Or use native v2 with MoovServiceV2
+watchman.v2.server=watchman-java-service
+watchman.v2.port=8080
+```
+
+#### Gradual Migration with Istio Traffic Split
+
+```bash
+# Start: 10% to Java, 90% to Go
+kubectl patch virtualservice watchman-java-vs -n braid --type merge -p '
+spec:
+  http:
+  - route:
+    - destination:
+        host: watchman-java-service
+      weight: 10
+    - destination:
+        host: watchman-go-service
+      weight: 90'
+
+# Increase: 50% to Java
+kubectl patch virtualservice watchman-java-vs -n braid --type merge -p '
+spec:
+  http:
+  - route:
+    - destination:
+        host: watchman-java-service
+      weight: 50
+    - destination:
+        host: watchman-go-service
+      weight: 50'
+
+# Final: 100% to Java
+kubectl patch virtualservice watchman-java-vs -n braid --type merge -p '
+spec:
+  http:
+  - route:
+    - destination:
+        host: watchman-java-service
+      weight: 100'
+```
+
+#### Monitoring & Observability
+
+**Prometheus Metrics:**
+```yaml
+# Automatically scraped via Istio service mesh
+watchman_requests_total{service="watchman-java"}
+watchman_request_duration_seconds{service="watchman-java",quantile="0.99"}
+watchman_cache_hits_total{service="watchman-java"}
+```
+
+**Grafana Dashboard:**
+- Pod CPU/Memory usage
+- Request rate, latency (p50, p95, p99)
+- Error rate comparison (Java vs Go)
+- Cache hit rate
+- Network traffic
+
+**Distributed Tracing:**
+- Jaeger/Tempo integration via Istio
+- End-to-end trace: Braid → Watchman Java → Database
+- Identify slow queries
+
+#### Deployment Process
+
+```bash
+# 1. Build and push image
+mvn clean package -DskipTests
+docker build -t ghcr.io/braidfi-ai/watchman-java:v2.1.0 .
+docker push ghcr.io/braidfi-ai/watchman-java:v2.1.0
+
+# 2. Deploy to Kubernetes
+kubectl apply -f k8s/watchman-java-deployment.yaml
+
+# 3. Verify pods are running
+kubectl get pods -n braid -l app=watchman-java
+
+# 4. Test internal connectivity
+kubectl run test -n braid --rm -i --tty --image=curlimages/curl -- sh
+curl http://watchman-java-service:8080/health
+curl "http://watchman-java-service:8080/search?q=test&minMatch=0.85"
+
+# 5. Configure traffic split (start at 10%)
+kubectl apply -f k8s/watchman-java-istio.yaml
+
+# 6. Monitor metrics
+kubectl port-forward -n monitoring svc/grafana 3000:3000
+# Open: http://localhost:3000
+```
+
+#### Rollback Strategy
+
+**Instant Rollback via Traffic Split:**
+```bash
+# Zero Java traffic immediately
+kubectl patch virtualservice watchman-java-vs -n braid --type merge -p '
+spec:
+  http:
+  - route:
+    - destination:
+        host: watchman-go-service
+      weight: 100'
+```
+
+**Rollback to Previous Version:**
+```bash
+# Rollback Kubernetes deployment
+kubectl rollout undo deployment/watchman-java -n braid
+
+# Check rollout status
+kubectl rollout status deployment/watchman-java -n braid
+```
+
+#### Cost Comparison
+
+| Deployment | Monthly Cost | Notes |
+|------------|--------------|-------|
+| **Fly.dev (External)** | ~$500-1000 | 3 VMs, egress fees, SSL |
+| **Internal K8s** | ~$50-100 | Shared cluster resources |
+| **Savings** | **~$450-900/mo** | 80-90% cost reduction |
+
+#### Pros
+- ✅ **10-20x faster** (sub-3ms latency)
+- ✅ **Maximum security** (no public exposure)
+- ✅ **80-90% cost savings**
+- ✅ **Instant rollback** via traffic split
+- ✅ **Auto-scaling** with HPA
+- ✅ **Blue-green deployments**
+- ✅ **Service mesh** features (mTLS, retry, timeout)
+- ✅ **Unified monitoring** with existing infrastructure
+- ✅ **Works with any migration option** (1, 2, or 3)
+
+#### Cons
+- ❌ Requires Kubernetes expertise (likely already have)
+- ❌ One-time deployment setup
+- ❌ Cluster capacity planning
+
+---
+
 ## Simulation & Testing Script
 
 **File:** `scripts/test-braid-integration.sh`
@@ -1094,7 +1557,86 @@ echo ""
 
 ## Recommended Migration Timeline
 
-### Phase 1: Validation
+### **Recommended: Internal Network Deployment**
+
+#### Phase 1: Internal Deployment & Validation
+**Goal:** Prove Java works on internal network  
+**Approach:** Option 4 (Internal K8s) + Option 1 (Compatibility endpoint)  
+**Traffic:** 0% → 1% → 10%  
+**Duration:** 1-2 weeks
+
+**Steps:**
+1. Deploy Watchman Java to Braid's Kubernetes cluster
+2. Configure Istio VirtualService for traffic split (10% Java, 90% Go)
+3. Update Braid config: `watchman.server=watchman-java-service`
+4. Run test-braid-integration.sh
+5. Monitor Grafana dashboards (latency, errors, cache hit rate)
+6. Verify sub-3ms latency vs 50-150ms external
+
+**Success Criteria:**
+- ✅ Pods healthy and auto-scaling
+- ✅ Latency < 5ms (vs 50-150ms external)
+- ✅ Zero increase in error rate
+- ✅ Cache hit rate maintained
+
+#### Phase 2: Confidence Building
+**Goal:** Validate at scale internally  
+**Traffic:** 10% → 25% → 50%  
+**Duration:** 2-4 weeks
+
+**Steps:**
+1. Gradually increase traffic via Istio: `kubectl patch virtualservice...`
+2. Run Nemesis daily to compare Go vs Java results
+3. Monitor for any divergences or errors
+4. Verify HPA scaling works under load
+5. Test circuit breaker and retry policies
+
+**Success Criteria:**
+- ✅ Error rate ≤ Go baseline
+- ✅ Latency p99 < 10ms (vs 200ms+ external)
+- ✅ Score divergence < 5%
+- ✅ Auto-scaling functions correctly
+
+#### Phase 3: Major Migration
+**Goal:** Move majority of traffic  
+**Traffic:** 50% → 75% → 90%  
+**Duration:** 2-3 weeks
+
+**Steps:**
+1. Continue increasing traffic percentage
+2. Monitor closely for any issues
+3. Keep Go deployment alive for instant rollback
+4. Test rollback procedure at 75% to verify
+
+**Success Criteria:**
+- ✅ All metrics within SLA
+- ✅ Cost savings realized (~80% vs external)
+- ✅ No customer impact
+- ✅ Rollback tested and verified
+
+#### Phase 4: Completion
+**Goal:** Full migration  
+**Traffic:** 90% → 100%  
+**Duration:** 1-2 weeks
+
+**Steps:**
+1. Increase to 100% Java traffic
+2. Monitor for 1-2 weeks until stable
+3. Scale down Go deployment to 0 replicas (don't delete yet)
+4. After 30 days stable, decommission Go completely
+5. Optional: Migrate to native v2 API (remove compatibility layer)
+
+**Success Criteria:**
+- ✅ 100% traffic on Java
+- ✅ 30 days stable operation
+- ✅ Go can be safely decommissioned
+- ✅ Documentation updated
+
+---
+
+### **Alternative: External Hosting (Fly.dev)**
+
+If keeping Watchman Java external (not recommended due to latency and cost):
 **Goal:** Prove Java works with Braid  
 **Approach:** Option 1 (Java Compatibility Layer)  
 **Traffic:** 0% → 1% → 5%
