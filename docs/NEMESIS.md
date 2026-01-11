@@ -7,7 +7,7 @@
 ## What Nemesis Does
 
 Nemesis automatically:
-- ✅ Generates 10 dynamic test queries per run
+- ✅ Generates dynamic test queries per run (configurable: 1-1000, default: 100)
 - ✅ Tests queries against Java and Go implementations
 - ✅ Compares against OFAC-API (commercial service at ofac-api.com) for 3-way comparison
 - ✅ Detects divergences (different results, scores, or ordering)
@@ -252,7 +252,7 @@ GITHUB_REPO=moov-io/watchman-java
 
 ### Optional - Tuning
 ```bash
-# Number of queries per run (default: 100)
+# Default number of queries when using cron/automated runs (range: 1-1000)
 QUERIES_PER_RUN=100
 
 # Coverage target percentage (default: 90)
@@ -291,7 +291,7 @@ export OFAC_API_KEY='your-api-key'  # From ofac-api.com paid subscription
 ```
 
 #### Available Options
-- `--queries N` - Number of test queries (default: 100)
+- `--queries N` - Number of test queries (1-1000, default: 100)
 - `--include-ofac-api` - Add OFAC-API (commercial service) for 3-way comparison
 - `--output-dir PATH` - Custom report directory
 - `--help` - Show help message
@@ -415,7 +415,7 @@ scripts/
 
 1. **Fetch Entities:** Downloads complete OFAC SDN list from Java API (~12,500+ entities)
 2. **Check Coverage:** Loads coverage state, identifies untested entities
-3. **Generate Queries:** Creates 100 test queries (5 variation types per entity)
+3. **Generate Queries:** Creates test queries (configurable count, 5 variation types per entity)
 4. **Execute:** Runs queries against Java and Go APIs in parallel
 5. **Analyze:** Detects divergences, classifies by severity
 6. **Update Coverage:** Marks entities as tested, saves state
@@ -433,9 +433,14 @@ Track Nemesis effectiveness:
 
 ## FAQ
 
-### Why 100 queries per run?
+### How many queries should I run?
 
-Balance between coverage speed and execution time. 100 queries takes ~45 seconds, allowing daily runs without impacting production.
+**Default: 100** - Good balance between coverage speed and execution time. 100 queries takes ~45 seconds, suitable for daily automated runs.
+
+**Range: 1-1000** - API caller controls the count:
+- **10-50**: Quick spot checks or debugging
+- **100-200**: Standard daily runs (recommended)
+- **500-1000**: Comprehensive regression testing before releases
 
 ### How does coverage tracking work?
 

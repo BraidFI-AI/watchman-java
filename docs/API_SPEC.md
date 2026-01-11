@@ -637,7 +637,7 @@ Trigger a new Nemesis parity testing run. By default, runs asynchronously and re
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `queries` | integer | No | 100 | Number of test queries (1-1000) |
+| `queries` | integer | No | 100 | Number of test queries to generate (1-1000). API caller controls this value. |
 | `includeOfacApi` | boolean | No | false | Add OFAC-API commercial service for 3-way comparison |
 | `async` | boolean | No | true | Run asynchronously (true) or wait for completion (false) |
 
