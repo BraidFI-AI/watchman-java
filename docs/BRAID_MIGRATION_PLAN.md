@@ -52,19 +52,16 @@ watchman.send.minMatch=true
 ### Option 1: Java Compatibility Layer (Recommended for Initial Migration)
 **What:** Add v1 API endpoints to Java that match Go's format  
 **When:** Phase 1 - First 0-20% traffic  
-**Effort:** 2-3 hours Java development  
 **Risk:** Low - No Braid changes needed
 
 ### Option 2: Braid Dual-Client (Recommended for 20-80% Traffic)
 **What:** Braid supports both Go and Java formats via configuration  
 **When:** Phase 2 - Parallel validation  
-**Effort:** 4-6 hours Braid development  
 **Risk:** Medium - Requires Braid deployment
 
 ### Option 3: API Gateway (Recommended for 80-100% Traffic)
 **What:** Nginx/Kong transforms requests/responses  
 **When:** Phase 3 - Final migration and optimization  
-**Effort:** 3-4 hours infrastructure  
 **Risk:** Low - No code changes, easy rollback
 
 ---
@@ -595,22 +592,22 @@ watchman.java.traffic.percent=10  # Start with 10%
 
 #### Gradual Migration Path
 ```properties
-# Week 1: Testing
+# Phase 1: Testing
 watchman.java.traffic.percent=1
 
-# Week 2: Validation
+# Phase 2: Validation
 watchman.java.traffic.percent=10
 
-# Week 3: Confidence building
+# Phase 3: Confidence building
 watchman.java.traffic.percent=25
 
-# Week 4: Major shift
+# Phase 4: Major shift
 watchman.java.traffic.percent=50
 
-# Week 5: Near complete
+# Phase 5: Near complete
 watchman.java.traffic.percent=90
 
-# Week 6: Complete
+# Phase 6: Complete
 watchman.java.traffic.percent=100
 ```
 
@@ -1104,7 +1101,6 @@ echo ""
 
 | Criterion | Option 1: Java Compat | Option 2: Dual Client | Option 3: Gateway |
 |-----------|----------------------|---------------------|-------------------|
-| **Time to Deploy** | 2-3 hours | 1-2 days | 4-6 hours |
 | **Braid Changes** | None | Medium | None |
 | **Java Changes** | Medium | None | None |
 | **Rollback Speed** | Instant (config) | Fast (config) | Instant (routing) |
@@ -1117,7 +1113,7 @@ echo ""
 
 ## Recommended Migration Timeline
 
-### Phase 1: Validation (Week 1-2)
+### Phase 1: Validation
 **Goal:** Prove Java works with Braid  
 **Approach:** Option 1 (Java Compatibility Layer)  
 **Traffic:** 0% → 1% → 5%
@@ -1128,9 +1124,9 @@ echo ""
 3. Run test-braid-integration.sh
 4. Fix any issues
 5. Deploy to production at 1%
-6. Monitor for 1 week
+6. Monitor until stable
 
-### Phase 2: Confidence Building (Week 3-4)
+### Phase 2: Confidence Building
 **Goal:** Validate at scale  
 **Approach:** Option 2 (Dual Client) OR keep Option 1  
 **Traffic:** 5% → 25% → 50%
@@ -1142,7 +1138,7 @@ echo ""
 4. Monitor error rates, latency, cache hit rates
 5. Investigate any divergences
 
-### Phase 3: Major Migration (Week 5-6)
+### Phase 3: Major Migration
 **Goal:** Move majority of traffic  
 **Approach:** Option 3 (Gateway) for fine control  
 **Traffic:** 50% → 75% → 90%
@@ -1154,14 +1150,14 @@ echo ""
 4. Monitor closely
 5. Keep Go warm for rollback
 
-### Phase 4: Completion (Week 7+)
+### Phase 4: Completion
 **Goal:** Full migration  
 **Approach:** All options support 100%  
 **Traffic:** 90% → 100%
 
 **Steps:**
 1. Increase to 100% Java traffic
-2. Run for 2 weeks monitoring
+2. Monitor until stable
 3. Decommission Go instance
 4. Remove compatibility layers (optional)
 5. Optimize Java-native integration
@@ -1198,19 +1194,19 @@ braid_cache_hit_rate < baseline_cache_hit_rate * 0.8
 
 ### Rollback Procedures
 
-**Option 1: Config Rollback (5 minutes)**
+**Option 1: Config Rollback**
 ```properties
 # Revert single line
 watchman.server=watchman-go-hostname
 ```
 
-**Option 2: Traffic Percentage Rollback (Instant)**
+**Option 2: Traffic Percentage Rollback**
 ```properties
 # Reduce Java traffic immediately
 watchman.java.traffic.percent=0
 ```
 
-**Option 3: Gateway Rollback (Instant)**
+**Option 3: Gateway Rollback**
 ```bash
 # Update gateway routing
 curl "http://watchman-gateway:8080/admin/traffic?java_percent=0"
@@ -1230,11 +1226,11 @@ curl "http://watchman-gateway:8080/admin/traffic?java_percent=0"
 - ✅ Error rate ≤ Go baseline
 - ✅ Latency p99 ≤ 2x Go baseline
 - ✅ Score divergence < 5%
-- ✅ 1 week stable operation
+- ✅ Stable operation verified
 
 ### Phase 3 Success (100% Traffic)
 - ✅ All metrics within SLA
-- ✅ 2 weeks stable operation
+- ✅ Stable operation verified
 - ✅ Go instance can be decommissioned
 - ✅ Cost savings realized
 
@@ -1247,8 +1243,6 @@ curl "http://watchman-gateway:8080/admin/traffic?java_percent=0"
 3. **Deploy to staging** environment
 4. **Schedule production rollout** (off-peak hours)
 5. **Monitor and iterate**
-
-**Estimated Total Migration Time:** 6-8 weeks for complete transition
 
 ---
 
