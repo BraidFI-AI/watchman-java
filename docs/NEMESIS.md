@@ -9,7 +9,7 @@
 Nemesis automatically:
 - ✅ Generates 10 dynamic test queries per run
 - ✅ Tests queries against Java and Go implementations
-- ✅ **NEW:** Optionally compares against OFAC-API (commercial service at ofac-api.com) for 3-way comparison
+- ✅ Compares against OFAC-API (commercial service at ofac-api.com) for 3-way comparison
 - ✅ Detects divergences (different results, scores, or ordering)
 - ✅ Tracks coverage to ensure all OFAC SDN entities are tested (~12,500+)
 - ✅ Uses AI to identify patterns and recommend fixes
