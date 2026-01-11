@@ -1529,5 +1529,248 @@ class EntityMergerTest {
         assertThat(merged.sanctionsInfo().programs()).contains("SDGT");
         assertThat(merged.remarks()).isEqualTo("Sanctioned for terrorism");
     }
+
+    // ==================== EntityMerger.merge(List<Entity>) Tests ====================
+
+    @Test
+    void batchMerge_withNoDuplicates_shouldReturnAllEntities() {
+        // Given: Three completely different entities
+        List<Entity> entities = List.of(
+            Entity.of("1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("2", "Jane Smith", EntityType.INDIVIDUAL, SourceList.EU_CSL),
+            Entity.of("3", "Acme Corp", EntityType.ENTITY, SourceList.UK_CSL)
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should return all 3 entities (no duplicates to merge)
+        assertThat(merged).hasSize(3);
+    }
+
+    @Test
+    void batchMerge_withTwoDuplicates_shouldMergeIntoOne() {
+        // Given: Two entities representing the same person from different sources
+        List<Entity> entities = List.of(
+            Entity.of("ofac-123", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("eu-456", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL)
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should merge into 1 entity
+        assertThat(merged).hasSize(1);
+
+        // And should preserve first entity's metadata
+        Entity result = merged.get(0);
+        assertThat(result.id()).isEqualTo("ofac-123");
+        assertThat(result.source()).isEqualTo(SourceList.OFAC_SDN);
+    }
+
+    @Test
+    void batchMerge_withThreeDuplicates_shouldMergeIntoOne() {
+        // Given: Same entity from OFAC, EU, and UK
+        List<Entity> entities = List.of(
+            Entity.of("ofac-123", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("eu-456", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL),
+            Entity.of("uk-789", "John Doe", EntityType.INDIVIDUAL, SourceList.UK_CSL)
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should merge all three into 1 entity
+        assertThat(merged).hasSize(1);
+        assertThat(merged.get(0).id()).isEqualTo("ofac-123");  // First one wins
+    }
+
+    @Test
+    void batchMerge_withMultipleGroups_shouldMergeEachGroupSeparately() {
+        // Given: 6 entities forming 2 groups of duplicates
+        List<Entity> entities = List.of(
+            // Group 1: John Doe (3 sources)
+            Entity.of("ofac-1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("eu-1", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL),
+            Entity.of("uk-1", "John Doe", EntityType.INDIVIDUAL, SourceList.UK_CSL),
+
+            // Group 2: Jane Smith (2 sources)
+            Entity.of("ofac-2", "Jane Smith", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("eu-2", "Jane Smith", EntityType.INDIVIDUAL, SourceList.EU_CSL)
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should produce 2 merged entities (one per group)
+        assertThat(merged).hasSize(2);
+
+        // Verify both groups are present
+        assertThat(merged).anyMatch(e -> "John Doe".equals(e.name()));
+        assertThat(merged).anyMatch(e -> "Jane Smith".equals(e.name()));
+    }
+
+    @Test
+    void batchMerge_withCaseVariations_shouldRecognizeAsDuplicates() {
+        // Given: Same person with different case variations
+        List<Entity> entities = List.of(
+            Entity.of("ofac-1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("eu-1", "JOHN DOE", EntityType.INDIVIDUAL, SourceList.EU_CSL),
+            Entity.of("uk-1", "john doe", EntityType.INDIVIDUAL, SourceList.UK_CSL)
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should merge all three (case-insensitive)
+        assertThat(merged).hasSize(1);
+    }
+
+    @Test
+    void batchMerge_withSDNNameFormat_shouldRecognizeAsDuplicate() {
+        // Given: Same person with SDN "Last, First" format vs normal format
+        List<Entity> entities = List.of(
+            Entity.of("ofac-1", "Doe, John", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("eu-1", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL)
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should merge (SDN name reordering handles "Doe, John" -> "John Doe")
+        assertThat(merged).hasSize(1);
+        assertThat(merged.get(0).name()).isEqualTo("Doe, John");  // First format preserved
+    }
+
+    @Test
+    void batchMerge_preservesDataFromAllSources() {
+        // Given: Same entity with different data from each source
+        Entity ofacEntity = new Entity(
+            "ofac-1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "ofac-1",
+            null, null, null, null, null,
+            null,
+            List.of(new Address("123 Main St", null, "New York", "NY", "10001", "USA")),
+            List.of(),
+            List.of("Johnny"),
+            List.of(new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "USA")),
+            null, null, null
+        );
+
+        Entity euEntity = new Entity(
+            "eu-1", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL, "eu-1",
+            null, null, null, null, null,
+            null,
+            List.of(new Address("456 Park Ave", null, "London", "LDN", "SW1", "UK")),
+            List.of(),
+            List.of("J. Doe"),
+            List.of(new GovernmentId(GovernmentIdType.TAX_ID, "987654321", "UK")),
+            null, null, null
+        );
+
+        List<Entity> entities = List.of(ofacEntity, euEntity);
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should combine data from both sources
+        assertThat(merged).hasSize(1);
+
+        Entity result = merged.get(0);
+        assertThat(result.addresses()).hasSize(2);          // Both addresses
+        assertThat(result.altNames()).hasSize(2);           // Both alt names
+        assertThat(result.governmentIds()).hasSize(2);      // Both IDs
+    }
+
+    @Test
+    void batchMerge_withEmptyList_shouldReturnEmptyList() {
+        // Given: Empty entity list
+        List<Entity> entities = List.of();
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should return empty list
+        assertThat(merged).isEmpty();
+    }
+
+    @Test
+    void batchMerge_withSingleEntity_shouldReturnSameEntity() {
+        // Given: Single entity
+        List<Entity> entities = List.of(
+            Entity.of("1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should return single entity unchanged
+        assertThat(merged).hasSize(1);
+        assertThat(merged.get(0).id()).isEqualTo("1");
+    }
+
+    @Test
+    void batchMerge_maintainsInsertionOrder_firstEntityPerGroupWins() {
+        // Given: Duplicates where order matters
+        List<Entity> entities = List.of(
+            Entity.of("eu-1", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL),      // EU first
+            Entity.of("ofac-1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),  // OFAC second
+            Entity.of("uk-1", "John Doe", EntityType.INDIVIDUAL, SourceList.UK_CSL)       // UK third
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should use first entity (EU) as base
+        assertThat(merged).hasSize(1);
+        assertThat(merged.get(0).id()).isEqualTo("eu-1");
+        assertThat(merged.get(0).source()).isEqualTo(SourceList.EU_CSL);
+    }
+
+    @Test
+    void batchMerge_realWorldScenario_mixedDuplicatesAndUniques() {
+        // Given: Realistic mix of entities (some duplicates, some unique)
+        List<Entity> entities = List.of(
+            // Duplicate group 1: Evil dictator (3 sources)
+            Entity.of("ofac-1", "Vladimir Putin", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+            Entity.of("eu-1", "Vladimir Putin", EntityType.INDIVIDUAL, SourceList.EU_CSL),
+            Entity.of("uk-1", "Vladimir Putin", EntityType.INDIVIDUAL, SourceList.UK_CSL),
+
+            // Unique entity 1: Only on OFAC
+            Entity.of("ofac-2", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN),
+
+            // Duplicate group 2: Sanctioned business (2 sources)
+            Entity.of("ofac-3", "Bank of Evil Holdings", EntityType.ENTITY, SourceList.OFAC_SDN),
+            Entity.of("eu-2", "Bank of Evil Holdings", EntityType.ENTITY, SourceList.EU_CSL),
+
+            // Unique entity 2: Only on EU
+            Entity.of("eu-3", "Jane Smith", EntityType.INDIVIDUAL, SourceList.EU_CSL),
+
+            // Duplicate group 3: Terrorist org (2 sources)
+            Entity.of("ofac-4", "Al-Qaeda", EntityType.ENTITY, SourceList.OFAC_SDN),
+            Entity.of("eu-4", "Al Qaeda", EntityType.ENTITY, SourceList.EU_CSL)  // Punctuation difference
+        );
+
+        // When: Batch merging
+        List<Entity> merged = EntityMerger.merge(entities);
+
+        // Then: Should produce 5 unique entities (3 merged groups + 2 uniques)
+        assertThat(merged).hasSize(5);
+
+        // Verify Putin merged from 3 sources
+        assertThat(merged).filteredOn(e -> "Vladimir Putin".equals(e.name()))
+            .hasSize(1);
+
+        // Verify both unique entities present
+        assertThat(merged).anyMatch(e -> "John Doe".equals(e.name()));
+        assertThat(merged).anyMatch(e -> "Jane Smith".equals(e.name()));
+
+        // Verify Bank merged from 2 sources
+        assertThat(merged).filteredOn(e -> "Bank of Evil Holdings".equals(e.name()))
+            .hasSize(1);
+
+        // Verify Al-Qaeda merged (punctuation normalized)
+        assertThat(merged).filteredOn(e -> e.name().contains("Qaeda"))
+            .hasSize(1);
+    }
 }
 

@@ -300,4 +300,76 @@ public class EntityMerger {
 
         return String.format("%s|%s", normalizedName, type);
     }
+
+    /**
+     * Merges a list of entities, deduplicating across data sources.
+     *
+     * <p>This method takes a list of entities from multiple sources (OFAC SDN, EU CSL, UK CSL)
+     * and merges duplicate entities together, combining their data.</p>
+     *
+     * <h3>Algorithm:</h3>
+     * <ol>
+     *   <li>Normalize all entities to generate merge keys</li>
+     *   <li>Group entities by merge key (using getMergeKey())</li>
+     *   <li>For each group, merge all entities together using Entity.merge()</li>
+     *   <li>Return deduplicated list of merged entities</li>
+     * </ol>
+     *
+     * <h3>Deduplication Strategy:</h3>
+     * <ul>
+     *   <li>Entities with same normalized name and type are considered duplicates</li>
+     *   <li>First entity in each group becomes the base (preserves ID, source, etc.)</li>
+     *   <li>List fields (addresses, altNames, etc.) are combined from all entities in group</li>
+     *   <li>Maintains insertion order (LinkedHashMap)</li>
+     * </ul>
+     *
+     * <h3>Example:</h3>
+     * <pre>
+     * List&lt;Entity&gt; entities = List.of(
+     *     Entity.of("ofac-1", "John Doe", INDIVIDUAL, OFAC_SDN),
+     *     Entity.of("eu-1", "John Doe", INDIVIDUAL, EU_CSL),
+     *     Entity.of("uk-1", "John Doe", INDIVIDUAL, UK_CSL)
+     * );
+     * List&lt;Entity&gt; merged = EntityMerger.merge(entities);
+     * // Result: 1 merged entity (instead of 3 duplicates)
+     * </pre>
+     *
+     * @param entities The list of entities to merge
+     * @return A deduplicated list where duplicate entities have been merged
+     */
+    public static List<Entity> merge(List<Entity> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return List.of();
+        }
+
+        // Group entities by merge key
+        // LinkedHashMap preserves insertion order (first entity per group wins)
+        Map<String, List<Entity>> groups = new LinkedHashMap<>();
+
+        for (Entity entity : entities) {
+            String mergeKey = getMergeKey(entity);
+
+            // Add entity to its group
+            groups.computeIfAbsent(mergeKey, k -> new ArrayList<>()).add(entity);
+        }
+
+        // Merge each group and collect results
+        List<Entity> mergedEntities = new ArrayList<>();
+
+        for (List<Entity> group : groups.values()) {
+            if (group.size() == 1) {
+                // No duplicates - add as-is
+                mergedEntities.add(group.get(0));
+            } else {
+                // Multiple entities - merge them together
+                Entity merged = group.get(0);  // Start with first entity
+                for (int i = 1; i < group.size(); i++) {
+                    merged = merged.merge(group.get(i));
+                }
+                mergedEntities.add(merged);
+            }
+        }
+
+        return mergedEntities;
+    }
 }
