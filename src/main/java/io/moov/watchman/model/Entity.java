@@ -272,4 +272,82 @@ public record Entity(
         
         return cleaned;
     }
+
+    /**
+     * Merges this entity with another entity, combining their data.
+     *
+     * <p>This method is used for entity deduplication when the same real-world entity
+     * appears in multiple sanctions lists (OFAC SDN, EU CSL, UK CSL).</p>
+     *
+     * <h3>Merge Strategy:</h3>
+     * <ul>
+     *   <li><b>Singular fields</b> (id, name, type, source, person, business, etc.):
+     *       Preserved from THIS entity (first entity wins)</li>
+     *   <li><b>List fields</b> (addresses, altNames, governmentIds, etc.):
+     *       Combined and deduplicated using EntityMerger utilities</li>
+     * </ul>
+     *
+     * <h3>Merge Rules:</h3>
+     * <ul>
+     *   <li>Addresses: Deduplicated using normalized form (case-insensitive)</li>
+     *   <li>Alternate names: Deduplicated (exact matches only)</li>
+     *   <li>Government IDs: Deduplicated using normalized identifier (spaces/hyphens removed)</li>
+     *   <li>Crypto addresses: Case-sensitive deduplication</li>
+     *   <li>Person/Business details: From first entity only (no merge)</li>
+     *   <li>Sanctions info: From first entity only</li>
+     *   <li>Remarks: From first entity only</li>
+     * </ul>
+     *
+     * <h3>Example:</h3>
+     * <pre>
+     * Entity ofac = Entity.of("ofac-123", "John Doe", INDIVIDUAL, OFAC_SDN);
+     * Entity eu = Entity.of("eu-456", "John Doe", INDIVIDUAL, EU_CSL);
+     * Entity merged = ofac.merge(eu);
+     * // Result: ID from OFAC, combined addresses/names from both
+     * </pre>
+     *
+     * @param other The entity to merge into this one
+     * @return A new merged entity combining data from both
+     */
+    public Entity merge(Entity other) {
+        // Merge list fields using EntityMerger utilities
+        List<Address> mergedAddresses = EntityMerger.mergeAddresses(
+            this.addresses, other.addresses
+        );
+
+        List<CryptoAddress> mergedCryptoAddresses = EntityMerger.mergeCryptoAddresses(
+            this.cryptoAddresses, other.cryptoAddresses
+        );
+
+        List<String> mergedAltNames = EntityMerger.mergeStrings(
+            this.altNames, other.altNames
+        );
+
+        List<GovernmentId> mergedGovernmentIds = EntityMerger.mergeGovernmentIDs(
+            this.governmentIds, other.governmentIds
+        );
+
+        // Create new entity with merged data
+        // Keep all singular fields from THIS entity (first entity wins)
+        return new Entity(
+            this.id,                    // Keep first entity's ID
+            this.name,                  // Keep first entity's name
+            this.type,                  // Keep first entity's type
+            this.source,                // Keep first entity's source
+            this.sourceId,              // Keep first entity's source ID
+            this.person,                // Keep first entity's person details
+            this.business,              // Keep first entity's business details
+            this.organization,          // Keep first entity's organization details
+            this.aircraft,              // Keep first entity's aircraft details
+            this.vessel,                // Keep first entity's vessel details
+            this.contact,               // Keep first entity's contact info
+            mergedAddresses,            // MERGED: Combine both address lists
+            mergedCryptoAddresses,      // MERGED: Combine both crypto address lists
+            mergedAltNames,             // MERGED: Combine both alternate name lists
+            mergedGovernmentIds,        // MERGED: Combine both government ID lists
+            this.sanctionsInfo,         // Keep first entity's sanctions info
+            this.remarks,               // Keep first entity's remarks
+            this.preparedFields         // Keep first entity's prepared fields (may need re-normalization)
+        );
+    }
 }

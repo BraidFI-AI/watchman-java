@@ -1184,5 +1184,350 @@ class EntityMergerTest {
         assertThat(key).isNotNull();
         assertThat(key).contains("INDIVIDUAL");
     }
+
+    // ==================== Entity.merge() Tests ====================
+
+    @Test
+    void entityMerge_withTwoSimpleEntities_shouldCombineBasicFields() {
+        // Given: Two entities with same identity but different sources
+        Entity ofacEntity = Entity.of("ofac-123", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN);
+        Entity euEntity = Entity.of("eu-456", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL);
+
+        // When: Merging
+        Entity merged = ofacEntity.merge(euEntity);
+
+        // Then: Should preserve name and type from first entity
+        assertThat(merged.name()).isEqualTo("John Doe");
+        assertThat(merged.type()).isEqualTo(EntityType.INDIVIDUAL);
+
+        // And should track that it came from first entity
+        assertThat(merged.source()).isEqualTo(SourceList.OFAC_SDN);
+        assertThat(merged.id()).isEqualTo("ofac-123");
+    }
+
+    @Test
+    void entityMerge_withDifferentAltNames_shouldCombineAndDeduplicate() {
+        // Given: Two entities with different alternate names
+        Entity entity1 = new Entity(
+            "1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            null, List.of(), List.of(),
+            List.of("Johnny", "J. Doe"),
+            List.of(), null, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL, "2",
+            null, null, null, null, null,
+            null, List.of(), List.of(),
+            List.of("J. Doe", "John D."),  // "J. Doe" is duplicate
+            List.of(), null, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should combine and deduplicate alternate names
+        assertThat(merged.altNames()).hasSize(3);
+        assertThat(merged.altNames()).containsExactlyInAnyOrder("J. Doe", "John D.", "Johnny");
+    }
+
+    @Test
+    void entityMerge_withDifferentAddresses_shouldCombineAndDeduplicate() {
+        // Given: Two entities with overlapping addresses
+        Address address1 = new Address("123 Main St", null, "New York", "NY", "10001", "USA");
+        Address address2 = new Address("123 MAIN ST", null, "new york", "ny", "10001", "usa");  // Duplicate
+        Address address3 = new Address("456 Park Ave", null, "New York", "NY", "10002", "USA");
+
+        Entity entity1 = new Entity(
+            "1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            null, List.of(address1, address3), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL, "2",
+            null, null, null, null, null,
+            null, List.of(address2), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should deduplicate normalized addresses (2 unique, not 3)
+        assertThat(merged.addresses()).hasSize(2);
+        assertThat(merged.addresses()).contains(address1);  // Keeps first occurrence
+        assertThat(merged.addresses()).contains(address3);
+    }
+
+    @Test
+    void entityMerge_withDifferentGovernmentIDs_shouldCombineAndDeduplicate() {
+        // Given: Two entities with overlapping government IDs
+        GovernmentId id1 = new GovernmentId(GovernmentIdType.TAX_ID, "123-45-6789", "USA");
+        GovernmentId id2 = new GovernmentId(GovernmentIdType.TAX_ID, "123456789", "USA");  // Duplicate (normalized)
+        GovernmentId id3 = new GovernmentId(GovernmentIdType.PASSPORT, "AB1234567", "USA");
+
+        Entity entity1 = new Entity(
+            "1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            null, List.of(), List.of(),
+            List.of(), List.of(id1, id3),
+            null, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL, "2",
+            null, null, null, null, null,
+            null, List.of(), List.of(),
+            List.of(), List.of(id2),
+            null, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should deduplicate normalized IDs (2 unique, not 3)
+        assertThat(merged.governmentIds()).hasSize(2);
+        assertThat(merged.governmentIds()).contains(id1);  // Keeps first occurrence
+        assertThat(merged.governmentIds()).contains(id3);
+    }
+
+    @Test
+    void entityMerge_withDifferentCryptoAddresses_shouldCombineWithCaseSensitivity() {
+        // Given: Two entities with crypto addresses (case-sensitive)
+        CryptoAddress crypto1 = new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+        CryptoAddress crypto2 = new CryptoAddress("BTC", "1a1zp1ep5qgefi2dmptftl5slmv7divfna");  // Different case
+        CryptoAddress crypto3 = new CryptoAddress("ETH", "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb");
+
+        Entity entity1 = new Entity(
+            "1", "Evil Corp", EntityType.ENTITY, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            null, List.of(), List.of(crypto1, crypto3),
+            List.of(), List.of(), null, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "Evil Corp", EntityType.ENTITY, SourceList.EU_CSL, "2",
+            null, null, null, null, null,
+            null, List.of(), List.of(crypto2),
+            List.of(), List.of(), null, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should keep both BTC addresses (case-sensitive)
+        assertThat(merged.cryptoAddresses()).hasSize(3);
+    }
+
+    @Test
+    void entityMerge_withPersonDetails_shouldPreserveFromFirstEntity() {
+        // Given: Two entities with person details (only first should be kept)
+        Person person1 = new Person("1960-01-01", "New York, USA", List.of("USA"));
+        Person person2 = new Person("1960-01-02", "London, UK", List.of("GBR"));
+
+        Entity entity1 = new Entity(
+            "1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "1",
+            person1, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL, "2",
+            person2, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should keep person details from first entity
+        assertThat(merged.person()).isNotNull();
+        assertThat(merged.person().birthDate()).isEqualTo("1960-01-01");
+        assertThat(merged.person().birthPlace()).isEqualTo("New York, USA");
+    }
+
+    @Test
+    void entityMerge_withBusinessDetails_shouldPreserveFromFirstEntity() {
+        // Given: Two entities with business details
+        Business business1 = new Business("USA", "2000-01-01");
+        Business business2 = new Business("UK", "2000-01-02");
+
+        Entity entity1 = new Entity(
+            "1", "Acme Corp", EntityType.ENTITY, SourceList.OFAC_SDN, "1",
+            null, business1, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "Acme Corp", EntityType.ENTITY, SourceList.EU_CSL, "2",
+            null, business2, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should keep business details from first entity
+        assertThat(merged.business()).isNotNull();
+        assertThat(merged.business().incorporationCountry()).isEqualTo("USA");
+        assertThat(merged.business().incorporationDate()).isEqualTo("2000-01-01");
+    }
+
+    @Test
+    void entityMerge_withContactInfo_shouldPreferFirstEntity() {
+        // Given: Two entities with contact info
+        ContactInfo contact1 = new ContactInfo(List.of("john@example.com"), List.of("+1-555-1234"));
+        ContactInfo contact2 = new ContactInfo(List.of("john@eu.example.com"), List.of("+44-555-5678"));
+
+        Entity entity1 = new Entity(
+            "1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            contact1, List.of(), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL, "2",
+            null, null, null, null, null,
+            contact2, List.of(), List.of(), List.of(), List.of(),
+            null, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should keep contact info from first entity
+        assertThat(merged.contact()).isNotNull();
+        assertThat(merged.contact().emailAddresses()).contains("john@example.com");
+    }
+
+    @Test
+    void entityMerge_withSanctionsInfo_shouldPreferFirstEntity() {
+        // Given: Two entities with sanctions info
+        SanctionsInfo sanctions1 = new SanctionsInfo(
+            List.of("SDGT", "IRAQ2"),
+            "Secondary sanctions"
+        );
+        SanctionsInfo sanctions2 = new SanctionsInfo(
+            List.of("EU-TERRORISM"),
+            "EU sanctions"
+        );
+
+        Entity entity1 = new Entity(
+            "1", "Evil Corp", EntityType.ENTITY, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            sanctions1, null, null
+        );
+        Entity entity2 = new Entity(
+            "2", "Evil Corp", EntityType.ENTITY, SourceList.EU_CSL, "2",
+            null, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            sanctions2, null, null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should keep sanctions info from first entity
+        assertThat(merged.sanctionsInfo()).isNotNull();
+        assertThat(merged.sanctionsInfo().programs()).contains("SDGT");
+    }
+
+    @Test
+    void entityMerge_withRemarks_shouldPreferFirstEntity() {
+        // Given: Two entities with remarks
+        Entity entity1 = new Entity(
+            "1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            null, "OFAC remarks here", null
+        );
+        Entity entity2 = new Entity(
+            "2", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL, "2",
+            null, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            null, "EU remarks here", null
+        );
+
+        // When: Merging
+        Entity merged = entity1.merge(entity2);
+
+        // Then: Should keep remarks from first entity
+        assertThat(merged.remarks()).isEqualTo("OFAC remarks here");
+    }
+
+    @Test
+    void entityMerge_realWorldExample_comprehensiveMerge() {
+        // Given: Comprehensive entities from OFAC and EU with many fields
+        Entity ofacEntity = new Entity(
+            "ofac-12345",
+            "Doe, John",  // SDN format
+            EntityType.INDIVIDUAL,
+            SourceList.OFAC_SDN,
+            "ofac-12345",
+            new Person("1960-01-01", "Moscow, Russia", List.of("RUS")),
+            null, null, null, null,
+            new ContactInfo(List.of("john@evil.com"), List.of()),
+            List.of(new Address("123 Main St", null, "New York", "NY", "10001", "USA")),
+            List.of(new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")),
+            List.of("Johnny", "J. Doe"),
+            List.of(new GovernmentId(GovernmentIdType.PASSPORT, "AB123456", "RUS")),
+            new SanctionsInfo(List.of("SDGT"), "Terrorism"),
+            "Sanctioned for terrorism",
+            null
+        );
+
+        Entity euEntity = new Entity(
+            "eu-67890",
+            "John Doe",  // Normal format
+            EntityType.INDIVIDUAL,
+            SourceList.EU_CSL,
+            "eu-67890",
+            new Person("1960-01-01", "Moscow, Russia", List.of("RUS")),
+            null, null, null, null,
+            new ContactInfo(List.of("john@eu.example.com"), List.of()),
+            List.of(
+                new Address("123 MAIN ST", null, "new york", "ny", "10001", "usa"),  // Duplicate
+                new Address("456 Park Ave", null, "London", "LDN", "SW1", "UK")
+            ),
+            List.of(new CryptoAddress("ETH", "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")),
+            List.of("J. Doe", "John D."),  // "J. Doe" overlaps
+            List.of(
+                new GovernmentId(GovernmentIdType.PASSPORT, "AB 123456", "RUS"),  // Duplicate (normalized)
+                new GovernmentId(GovernmentIdType.TAX_ID, "987654321", "UK")
+            ),
+            new SanctionsInfo(List.of("EU-TERRORISM"), "EU sanctions"),
+            "EU remarks",
+            null
+        );
+
+        // When: Merging
+        Entity merged = ofacEntity.merge(euEntity);
+
+        // Then: Verify all merged fields
+        assertThat(merged.id()).isEqualTo("ofac-12345");  // First entity ID
+        assertThat(merged.name()).isEqualTo("Doe, John");  // First entity name
+        assertThat(merged.source()).isEqualTo(SourceList.OFAC_SDN);  // First source
+
+        // Alt names: 3 unique (Johnny, J. Doe, John D.)
+        assertThat(merged.altNames()).hasSize(3);
+        assertThat(merged.altNames()).contains("Johnny", "J. Doe", "John D.");
+
+        // Addresses: 2 unique (123 Main deduplicated, 456 Park added)
+        assertThat(merged.addresses()).hasSize(2);
+
+        // Crypto: 2 unique (BTC, ETH)
+        assertThat(merged.cryptoAddresses()).hasSize(2);
+
+        // Gov IDs: 2 unique (RUS passport deduplicated, UK tax ID added)
+        assertThat(merged.governmentIds()).hasSize(2);
+
+        // Singular fields from first entity
+        assertThat(merged.person().birthDate()).isEqualTo("1960-01-01");
+        assertThat(merged.contact().emailAddresses()).contains("john@evil.com");
+        assertThat(merged.sanctionsInfo().programs()).contains("SDGT");
+        assertThat(merged.remarks()).isEqualTo("Sanctioned for terrorism");
+    }
 }
 
