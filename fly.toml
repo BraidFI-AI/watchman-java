@@ -9,6 +9,8 @@ primary_region = 'ord'
   JAVA_OPTS = '-Xmx512m -Xms256m'
   SERVER_PORT = '8080'
   SPRING_PROFILES_ACTIVE = 'production'
+  COMPARE_EXTERNAL = 'true'
+  EXTERNAL_PROVIDER = 'ofac-api'
 
 [http_service]
   internal_port = 8080

@@ -2,18 +2,37 @@
 
 ## Overview
 
-**Nemesis** is an autonomous testing system that continuously validates the Watchman Java implementation against the Go baseline. It runs daily, generating dynamic test queries, detecting divergences automatically, and using AI to identify patterns and root causes.
+**Nemesis** is an autonomous testing system that continuously validates the Watchman Java implementation against the Go baseline and optionally against external commercial providers. It runs daily, generating dynamic test queries, detecting divergences automatically, and using AI to identify patterns and root causes.
 
 ## What Nemesis Does
 
 Nemesis automatically:
 - ✅ Generates 100 dynamic test queries per run
-- ✅ Tests queries against both Java and Go implementations
+- ✅ Tests queries against Java and Go implementations
+- ✅ **NEW:** Optionally compares against ofac-api.com (3-way comparison)
 - ✅ Detects divergences (different results, scores, or ordering)
 - ✅ Tracks coverage to ensure all 1000+ OFAC entities are tested
 - ✅ Uses AI to identify patterns and recommend fixes
 - ✅ Generates daily reports with prioritized issues
 - ✅ Optionally creates GitHub issues for critical divergences
+
+## Comparison Modes
+
+### 2-Way Comparison (Default)
+- **Java vs Go** - Validates Java implementation against Go baseline
+- Use for daily automated runs
+- No external API costs
+
+### 3-Way Comparison (Optional)
+- **Java vs Go vs ofac-api.com** - Adds commercial provider as peer comparison
+- Observes agreement patterns:
+  - All three agree → High confidence
+  - Java+Go vs External → Note commercial algorithm differences
+  - Go+External vs Java → Potential Java issue
+  - Java+External vs Go → Potential Go issue
+  - All three differ → Interesting scoring variations
+- Requires OFAC-API.com API key
+- Use for spot-checking or compliance validation
 
 ## Daily Reports
 
@@ -74,6 +93,66 @@ Reports are saved to `/data/reports/nemesis-YYYYMMDD.json` with:
 | **result_order** | Same entities, different ordering | Minor |
 | **java_extra** | Java returns results Go doesn't | Moderate |
 | **go_extra** | Go returns results Java doesn't | Moderate |
+
+### Scoring Trace for Root Cause Analysis
+
+Nemesis automatically captures **detailed scoring traces** for critical and moderate divergences to understand WHY scores differ, not just THAT they differ.
+
+**What is Captured:**
+- Phase-by-phase execution (NAME_COMPARISON, NORMALIZATION, ADDRESS_MATCHING, etc.)
+- Individual component scores (name: 0.92, address: 0.85, etc.)
+- Timing information for each phase
+- Final score breakdown and aggregation
+
+**When Tracing Occurs:**
+- Automatically enabled after divergences are detected
+- Only for critical/moderate severity divergences
+- Only queries Java API (Go doesn't support tracing yet)
+
+**Example Trace Output in Report:**
+```json
+{
+  "query": "Nicolas Maduro",
+  "type": "score_difference",
+  "severity": "critical",
+  "java_data": {"id": "14121", "score": 0.92},
+  "go_data": {"id": "14121", "score": 0.85"},
+  "score_difference": 0.07,
+  "java_trace": {
+    "sessionId": "abc-123",
+    "durationMs": 45,
+    "metadata": {
+      "queryName": "Nicolas Maduro",
+      "candidateCount": 1
+    },
+    "breakdown": {
+      "nameScore": 0.92,
+      "addressScore": 0.0,
+      "govIdScore": 0.0,
+      "totalWeightedScore": 0.92
+    },
+    "events": [
+      {
+        "phase": "NAME_COMPARISON",
+        "description": "Comparing query name with candidate primary name",
+        "timestamp": "2026-01-04T08:15:23.456Z",
+        "data": {
+          "durationMs": 12,
+          "queryName": "Nicolas Maduro",
+          "candidateName": "MADURO MOROS, Nicolas",
+          "similarity": 0.92
+        }
+      }
+    ]
+  }
+}
+```
+
+**Benefits:**
+- Pinpoints exact scoring phase causing divergence
+- Shows which components differ (name vs address vs other fields)
+- Helps identify algorithm bugs or normalization issues
+- Provides concrete data for AI analysis
 
 ## Understanding Coverage
 
@@ -142,6 +221,14 @@ WATCHMAN_GO_API_URL=https://watchman-go.fly.dev
 COMPARE_IMPLEMENTATIONS=true
 ```
 
+### Optional - External Provider (ofac-api.com)
+```bash
+# Enable 3-way comparison with commercial provider
+COMPARE_EXTERNAL=true
+EXTERNAL_PROVIDER=ofac-api  # Currently only ofac-api supported
+OFAC_API_KEY=your-api-key-here
+```
+
 ### Optional - AI Analysis
 ```bash
 # AI provider (openai, anthropic, or omit for rule-based only)
@@ -187,7 +274,36 @@ fly ssh console -a watchman-java
 tail -f /data/logs/nemesis.log
 ```
 
-### Manual Execution
+### Manual Execution - On-Demand Trigger
+
+Use the trigger script for on-demand testing with custom parameters:
+
+#### Basic Usage (Java vs Go only)
+```bash
+./scripts/trigger-nemesis.sh --queries 100
+```
+
+#### With External Provider (3-way comparison)
+```bash
+export OFAC_API_KEY='your-api-key'
+./scripts/trigger-nemesis.sh --queries 50 --compare-external
+```
+
+#### External Provider Only (Java vs ofac-api.com)
+```bash
+export OFAC_API_KEY='your-api-key'
+./scripts/trigger-nemesis.sh --queries 100 --external-only
+```
+
+#### Available Options
+- `--queries N` - Number of test queries (default: 100)
+- `--compare-external` - Enable ofac-api.com comparison
+- `--external-only` - Compare Java vs External only (skip Go)
+- `--no-go` - Skip Go comparison
+- `--output-dir PATH` - Custom report directory
+- `--help` - Show help message
+
+### Manual Execution - Direct Python
 
 For testing or troubleshooting:
 

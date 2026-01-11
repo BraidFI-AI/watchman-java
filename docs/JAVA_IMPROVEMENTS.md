@@ -338,7 +338,7 @@ Java's centralized approach makes configuration a **first-class feature** with f
 
 ### 9. Comprehensive Test Suite 🔧 IMPROVEMENT
 
-**Status:** ✅ 1,075 tests (100% passing)  
+**Status:** ✅ 1,132 tests (100% passing)  
 **Coverage:** All scoring algorithms, normalizations, edge cases
 
 **Test Breakdown:**
@@ -602,7 +602,7 @@ double avgScore = scores.stream()
 |----------|------------------|---------|
 | **Observability** | ✨ Scoring Trace Infrastructure | High - Enterprise compliance |
 | **Type Safety** | 🏗️ Records, Enums, Interfaces | High - Fewer runtime errors |
-| **Testing** | 🔧 1,075 tests (10x Go) | High - Better quality assurance |
+| **Testing** | 🔧 1,132 tests (11x Go) | High - Better quality assurance |
 | **Documentation** | 🔧 7 technical docs, full Javadoc | Medium - Better maintainability |
 | **API** | 🏗️ Spring Boot ecosystem | Medium - Faster development |
 | **Configuration** | 🔧 Centralized scoring config | Medium - Better maintainability |
@@ -613,12 +613,12 @@ double avgScore = scores.stream()
 
 | Metric | Go | Java | Improvement |
 |--------|-------|------|------------|
-| **Test Count** | ~100 | 1,075 | **10.75x** |
+| **Test Count** | ~100 | 1,132 | **11.3x** |
 | **Test Coverage** | Basic | Comprehensive | **High** |
 | **Documentation** | Basic | 7 docs, 2,395+ lines | **20x+** |
 | **Null Safety** | Implicit | Explicit with checks | **Better** |
 | **Type Safety** | Good | Excellent (records/enums) | **Better** |
-| **Configuration** | 27 scattered env vars | 13 centralized params | **Better** |
+| **Configuration** | 27 scattered env vars | 14 centralized params (52% coverage) | **Better** |
 | **Observability** | Logging only | Structured traces | **New feature** |
 | **API Features** | Custom handlers | Spring Boot | **Modern** |
 
@@ -631,7 +631,7 @@ double avgScore = scores.stream()
 4. ✅ **Better documentation** - Easier maintenance and onboarding
 5. ✅ **Modern architecture** - Spring Boot, DI, records, streams
 6. ✅ **Enhanced data quality** - Better normalization and null handling
-7. ✅ **Centralized configuration** - 13 scoring parameters in one discoverable, type-safe class vs 27 scattered env vars
+7. ✅ **Centralized configuration** - 10 similarity tuning parameters in SimilarityConfig class + 4 server params, totaling 14/27 supported (52% coverage) vs Go's 27 scattered env vars across 5+ files
 
 **Total Value:** Java implementation is not just a port—it's a **production-hardened, enterprise-ready evolution** of the Go codebase with significant improvements in quality, observability, maintainability, and configuration management.
 

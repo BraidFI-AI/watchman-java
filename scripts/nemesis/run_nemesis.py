@@ -15,6 +15,7 @@ from nemesis.query_executor import QueryExecutor
 from nemesis.result_analyzer import ResultAnalyzer
 from nemesis.coverage_tracker import CoverageTracker
 from nemesis.ai_analyzer import AIAnalyzer
+from nemesis.external_provider_adapter import OFACAPIAdapter
 
 # Import configuration (simplified for v2)
 import os
@@ -23,6 +24,14 @@ import os
 WATCHMAN_JAVA_API_URL = os.environ.get("WATCHMAN_JAVA_API_URL", "https://watchman-java.fly.dev")
 WATCHMAN_GO_API_URL = os.environ.get("WATCHMAN_GO_API_URL", "https://watchman-go.fly.dev")
 COMPARE_IMPLEMENTATIONS = os.environ.get("COMPARE_IMPLEMENTATIONS", "true").lower() == "true"
+
+# External provider configuration
+COMPARE_EXTERNAL = os.environ.get("COMPARE_EXTERNAL", "false").lower() == "true"
+EXTERNAL_PROVIDER = os.environ.get("EXTERNAL_PROVIDER", "ofac-api")  # Currently only ofac-api supported
+OFAC_API_KEY = os.environ.get("OFAC_API_KEY", "")
+
+# Query configuration
+QUERIES_PER_RUN = int(os.environ.get("QUERIES_PER_RUN", "100"))
 
 # Setup directories (local or Fly)
 if Path("/data").exists():
@@ -83,11 +92,26 @@ def main():
     coverage_file = state_dir / "nemesis_coverage.json"
     
     print(f"\nConfiguration:")
-    print(f"  Java API: {WATCHMAN_JAVA_API_URL}")
-    print(f"  Go API:   {WATCHMAN_GO_API_URL}")
-    print(f"  Compare:  {COMPARE_IMPLEMENTATIONS}")
-    print(f"  Output:   {output_file}")
-    print(f"  Coverage: {coverage_file}")
+    print(f"  Java API:   {WATCHMAN_JAVA_API_URL}")
+    print(f"  Go API:     {WATCHMAN_GO_API_URL}")
+    print(f"  Compare:    {COMPARE_IMPLEMENTATIONS}")
+    print(f"  External:   {COMPARE_EXTERNAL}")
+    if COMPARE_EXTERNAL:
+        print(f"  Provider:   {EXTERNAL_PROVIDER}")
+        print(f"  API Key:    {'***' + OFAC_API_KEY[-4:] if OFAC_API_KEY and len(OFAC_API_KEY) > 4 else 'Not set'}")
+    print(f"  Output:     {output_file}")
+    print(f"  Coverage:   {coverage_file}")
+    
+    # Initialize external provider adapter if enabled
+    external_adapter = None
+    if COMPARE_EXTERNAL:
+        if not OFAC_API_KEY:
+            print("\n✗ ERROR: COMPARE_EXTERNAL=true but OFAC_API_KEY not set")
+            return 1
+        
+        print(f"\n  Initializing {EXTERNAL_PROVIDER} adapter...")
+        external_adapter = OFACAPIAdapter(api_key=OFAC_API_KEY)
+        print(f"  ✓ External provider ready")
     
     # Step 1: Fetch OFAC entities
     print(f"\n{'='*80}")
@@ -116,7 +140,7 @@ def main():
     # Use prioritized entities for better coverage
     prioritized_entities = tracker.get_prioritized_entities(entities, count=min(200, len(entities)))
     generator = RandomSamplingGenerator(entities=prioritized_entities)
-    test_cases = generator.generate(count=100)
+    test_cases = generator.generate(count=QUERIES_PER_RUN)
     
     print(f"✓ Generated {len(test_cases)} dynamic test queries")
     
@@ -132,12 +156,14 @@ def main():
     
     executor = QueryExecutor(
         java_url=WATCHMAN_JAVA_API_URL,
-        go_url=WATCHMAN_GO_API_URL if COMPARE_IMPLEMENTATIONS else None
+        go_url=WATCHMAN_GO_API_URL if COMPARE_IMPLEMENTATIONS else None,
+        external_adapter=external_adapter if COMPARE_EXTERNAL else None
     )
     
     results = executor.execute_batch(
         test_cases, 
         compare_go=COMPARE_IMPLEMENTATIONS,
+        compare_external=COMPARE_EXTERNAL,
         show_progress=True
     )
     
@@ -152,7 +178,28 @@ def main():
     all_divergences = []
     
     for result in results:
-        if COMPARE_IMPLEMENTATIONS and result.java_results and result.go_results:
+        # 3-way comparison if external provider enabled
+        if COMPARE_EXTERNAL and result.java_results and result.go_results and result.external_results:
+            divergences = analyzer.compare_three_way(
+                result.java_results, 
+                result.go_results,
+                result.external_results
+            )
+            if divergences:
+                for div in divergences:
+                    all_divergences.append({
+                        "query": result.query,
+                        "type": div.type.value,
+                        "severity": div.severity,
+                        "description": div.description,
+                        "java_data": div.java_data,
+                        "go_data": div.go_data,
+                        "external_data": div.external_data,
+                        "score_difference": div.score_difference,
+                        "agreement_pattern": div.agreement_pattern
+                    })
+        # 2-way comparison (Java vs Go) if external not enabled
+        elif COMPARE_IMPLEMENTATIONS and result.java_results and result.go_results:
             divergences = analyzer.compare(result.java_results, result.go_results)
             if divergences:
                 for div in divergences:
@@ -176,6 +223,38 @@ def main():
     
     if by_severity:
         print(f"  By severity: {', '.join(f'{k}={v}' for k, v in sorted(by_severity.items()))}")
+    
+    # Step 5a: Re-query divergences with trace enabled (Java only feature)
+    if len(all_divergences) > 0:
+        print(f"\n  Re-querying divergences with trace enabled for root cause analysis...")
+        
+        # Track unique queries to avoid duplicates
+        traced_queries = set()
+        trace_count = 0
+        
+        for div in all_divergences:
+            query = div["query"]
+            
+            # Only trace each query once, and only for critical/moderate divergences
+            if query not in traced_queries and div["severity"] in ["critical", "moderate"]:
+                traced_queries.add(query)
+                
+                # Re-run query with trace enabled (Java only)
+                trace_result = executor.execute(
+                    query,
+                    compare_go=False,  # Don't need Go for trace
+                    compare_external=False,  # Don't need external for trace
+                    enable_trace=True,  # Enable detailed scoring trace
+                    timeout=15.0  # Longer timeout for trace query
+                )
+                
+                # Attach trace data to this divergence
+                if trace_result.java_trace:
+                    div["java_trace"] = trace_result.java_trace
+                    trace_count += 1
+        
+        if trace_count > 0:
+            print(f"  ✓ Captured {trace_count} trace(s) for root cause analysis")
     
     # Step 5b: AI Analysis of divergences
     if len(all_divergences) > 0:

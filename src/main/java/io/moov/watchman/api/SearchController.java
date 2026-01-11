@@ -3,9 +3,13 @@ package io.moov.watchman.api;
 import io.moov.watchman.index.EntityIndex;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
+import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.model.SearchResult;
 import io.moov.watchman.model.SourceList;
+import io.moov.watchman.search.EntityScorer;
 import io.moov.watchman.search.SearchService;
+import io.moov.watchman.trace.ScoringContext;
+import io.moov.watchman.trace.ScoringTrace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -29,17 +34,19 @@ public class SearchController {
 
     private final SearchService searchService;
     private final EntityIndex entityIndex;
+    private final EntityScorer entityScorer;
     private Instant lastUpdated = Instant.now();
 
-    public SearchController(SearchService searchService, EntityIndex entityIndex) {
+    public SearchController(SearchService searchService, EntityIndex entityIndex, EntityScorer entityScorer) {
         this.searchService = searchService;
         this.entityIndex = entityIndex;
+        this.entityScorer = entityScorer;
     }
 
     /**
      * Search for entities matching the given criteria.
      * 
-     * GET /v2/search?name=...&limit=...&minMatch=...
+     * GET /v2/search?name=...&limit=...&minMatch=...&trace=true
      */
     @GetMapping("/search")
     public ResponseEntity<SearchResponse> search(
@@ -51,7 +58,8 @@ public class SearchController {
             @RequestParam(required = false, defaultValue = "10") Integer limit,
             @RequestParam(required = false, defaultValue = "0.88") Double minMatch,
             @RequestParam(required = false) String requestID,
-            @RequestParam(required = false, defaultValue = "false") Boolean debug
+            @RequestParam(required = false, defaultValue = "false") Boolean debug,
+            @RequestParam(required = false, defaultValue = "false") Boolean trace
     ) {
         logger.info("Search request: name={}, source={}, type={}, limit={}, minMatch={}", 
             name, source, type, limit, minMatch);
@@ -60,7 +68,7 @@ public class SearchController {
         if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest()
                 .body(new SearchResponse(List.of(), 0, requestID, 
-                    new SearchResponse.DebugInfo("Name parameter is required")));
+                    new SearchResponse.DebugInfo("Name parameter is required"), null));
         }
 
         // Build search request
@@ -72,11 +80,27 @@ public class SearchController {
         // Get candidates from index (filtered by source/type if specified)
         List<Entity> candidates = getCandidates(request);
 
-        // Score and filter candidates
+        // Enable tracing if requested
+        ScoringContext ctx = Boolean.TRUE.equals(trace) 
+            ? ScoringContext.enabled(UUID.randomUUID().toString())
+            : ScoringContext.disabled();
+
+        // Score and filter candidates (with optional tracing)
         List<SearchResult> results = candidates.stream()
             .map(entity -> {
-                double score = searchService.scoreEntity(request.name(), entity);
-                return SearchResult.of(entity, score);
+                if (Boolean.TRUE.equals(trace)) {
+                    // Use trace-enabled scoring with breakdown
+                    ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(
+                        Entity.of(null, request.name(), null, null),
+                        entity, 
+                        ctx
+                    );
+                    return new SearchResult(entity, breakdown.totalWeightedScore(), breakdown);
+                } else {
+                    // Use regular scoring
+                    double score = searchService.scoreEntity(request.name(), entity);
+                    return SearchResult.of(entity, score);
+                }
             })
             .filter(result -> result.score() >= request.minMatch())
             .sorted((a, b) -> Double.compare(b.score(), a.score()))
@@ -85,7 +109,9 @@ public class SearchController {
 
         logger.info("Search completed: {} results for name={}", results.size(), name);
 
-        SearchResponse response = SearchResponse.from(results, requestID, Boolean.TRUE.equals(debug));
+        // Build response with optional trace data
+        ScoringTrace traceData = Boolean.TRUE.equals(trace) ? ctx.toTrace() : null;
+        SearchResponse response = SearchResponse.from(results, requestID, Boolean.TRUE.equals(debug), traceData);
         return ResponseEntity.ok(response);
     }
 

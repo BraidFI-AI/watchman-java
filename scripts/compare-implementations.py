@@ -38,6 +38,12 @@ except ImportError:
     print("Install with: pip3 install requests")
     sys.exit(1)
 
+# Import external provider adapter if available
+try:
+    from nemesis.external_provider_adapter import OFACAPIAdapter
+except ImportError:
+    OFACAPIAdapter = None
+
 
 @dataclass
 class SearchResult:
@@ -72,11 +78,19 @@ class ComparisonResult:
     java_response_ms: float = 0.0
     java_error: str = ""
     
+    external_status: int = 0
+    external_results_count: int = 0
+    external_top_match: str = ""
+    external_top_score: float = 0.0
+    external_response_ms: float = 0.0
+    external_error: str = ""
+    
     score_diff: float = 0.0
     count_diff: int = 0
     top_match_same: bool = False
     passed: bool = False
     notes: str = ""
+    agreement_pattern: str = ""  # For 3-way: "all_agree", "java+go", etc.
 
 
 class WatchmanClient:
@@ -213,9 +227,10 @@ class WatchmanClient:
 class ComparisonEngine:
     """Engine to compare Go and Java implementations"""
     
-    def __init__(self, go_url: str, java_url: str, min_match: float = 0.70, limit: int = 10):
+    def __init__(self, go_url: str, java_url: str, min_match: float = 0.70, limit: int = 10, external_adapter=None):
         self.go_client = WatchmanClient(go_url, "Go")
         self.java_client = WatchmanClient(java_url, "Java")
+        self.external_adapter = external_adapter
         self.min_match = min_match
         self.limit = limit
         self.results: List[ComparisonResult] = []
@@ -260,6 +275,24 @@ class ComparisonEngine:
             result.java_top_match = java_results[0].name
             result.java_top_score = java_results[0].score
         
+        # Search External (if enabled)
+        if self.external_adapter:
+            min_score = int(self.min_match * 100)  # Convert 0.0-1.0 to 0-100
+            ext_start = time.time()
+            results_by_query, ext_time, ext_error = self.external_adapter.search(
+                name, min_score=min_score, sources=["sdn"], timeout=30.0
+            )
+            result.external_response_ms = round((time.time() - ext_start) * 1000, 1)
+            
+            if ext_error:
+                result.external_error = ext_error
+            elif results_by_query and name in results_by_query:
+                ext_results = results_by_query[name]
+                result.external_results_count = len(ext_results)
+                if ext_results:
+                    result.external_top_match = ext_results[0].get('name', '')
+                    result.external_top_score = ext_results[0].get('match', 0.0)
+        
         # Compare results
         result.score_diff = round(abs(result.go_top_score - result.java_top_score), 4)
         result.count_diff = abs(result.go_results_count - result.java_results_count)
@@ -268,6 +301,23 @@ class ComparisonEngine:
             if result.go_top_match and result.java_top_match else
             result.go_results_count == result.java_results_count == 0
         )
+        
+        # Determine agreement pattern (3-way)
+        if self.external_adapter and result.external_top_match:
+            go_id = self._normalize_id(result.go_top_match)
+            java_id = self._normalize_id(result.java_top_match)
+            ext_id = self._normalize_id(result.external_top_match)
+            
+            if go_id == java_id == ext_id:
+                result.agreement_pattern = "all_agree"
+            elif go_id == java_id:
+                result.agreement_pattern = "java+go vs external"
+            elif go_id == ext_id:
+                result.agreement_pattern = "go+external vs java"
+            elif java_id == ext_id:
+                result.agreement_pattern = "java+external vs go"
+            else:
+                result.agreement_pattern = "all_differ"
         
         # Determine pass/fail
         result.passed = (
@@ -291,6 +341,16 @@ class ComparisonEngine:
         
         self.results.append(result)
         return result
+    
+    def _normalize_id(self, entity_id: str) -> str:
+        """Normalize entity ID for comparison (remove prefixes)"""
+        if not entity_id:
+            return ""
+        entity_id = entity_id.lower()
+        for prefix in ["sdn-", "ofac-", "un-", "eu-"]:
+            if entity_id.startswith(prefix):
+                return entity_id[len(prefix):]
+        return entity_id
     
     def run_comparison(self, test_names: List[Dict], progress_callback=None) -> List[ComparisonResult]:
         """Run comparison for all test names"""
@@ -581,20 +641,42 @@ def main():
                         help='Result limit per search (default: 10)')
     parser.add_argument('--quiet', action='store_true',
                         help='Suppress progress output')
+    parser.add_argument('--compare-external', action='store_true',
+                        help='Enable 3-way comparison with ofac-api.com')
+    parser.add_argument('--ofac-api-key',
+                        help='OFAC-API.com API key (or set OFAC_API_KEY env var)')
     
     args = parser.parse_args()
+    
+    # Initialize external provider if requested
+    external_adapter = None
+    if args.compare_external:
+        if OFACAPIAdapter is None:
+            print("Error: External provider adapter not available.")
+            print("Make sure nemesis/external_provider_adapter.py exists.")
+            sys.exit(1)
+        
+        api_key = args.ofac_api_key or os.environ.get('OFAC_API_KEY')
+        if not api_key:
+            print("Error: --compare-external requires OFAC_API_KEY")
+            print("Set with: export OFAC_API_KEY='your-key' or use --ofac-api-key")
+            sys.exit(1)
+        
+        external_adapter = OFACAPIAdapter(api_key=api_key)
     
     print("=" * 70)
     print("Watchman Go vs Java Comparison Tool")
     print("=" * 70)
     print(f"Go URL:    {args.go_url}")
     print(f"Java URL:  {args.java_url}")
+    if external_adapter:
+        print(f"External:  ofac-api.com (3-way comparison enabled)")
     print(f"Min Match: {args.min_match}")
     print(f"Limit:     {args.limit}")
     print()
     
     # Create comparison engine
-    engine = ComparisonEngine(args.go_url, args.java_url, args.min_match, args.limit)
+    engine = ComparisonEngine(args.go_url, args.java_url, args.min_match, args.limit, external_adapter)
     
     # Health check
     print("Checking service health...")
