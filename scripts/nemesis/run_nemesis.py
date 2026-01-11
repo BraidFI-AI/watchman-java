@@ -324,9 +324,9 @@ def main():
         
         if create_issues and github_token:
             try:
-                from github import Github
+                from github import Github, Auth
                 
-                gh = Github(github_token)
+                gh = Github(auth=Auth.Token(github_token))
                 repo = gh.get_repo(github_repo)
                 
                 # Create issue with summary of divergences
