@@ -214,4 +214,49 @@ public class EntityMerger {
         );
         // NOTE: No .toLowerCase() - crypto addresses are case-sensitive!
     }
+
+    /**
+     * Merges two affiliation lists, removing duplicates based on normalized entity name and type.
+     *
+     * Algorithm:
+     * 1. Combine both lists
+     * 2. Use LinkedHashMap with normalized key to deduplicate
+     * 3. Normalization: lowercase entity name and type, case-insensitive comparison
+     * 4. Keep first occurrence when duplicates found
+     *
+     * Duplicate detection considers both entity name and affiliation type.
+     * Example: "Acme Corporation|subsidiary of" and "ACME CORPORATION|SUBSIDIARY OF" are considered the same.
+     *
+     * @param list1 First affiliation list (can be null)
+     * @param list2 Second affiliation list (can be null)
+     * @return Merged, deduplicated affiliation list (never null)
+     */
+    public static List<Affiliation> mergeAffiliations(List<Affiliation> list1, List<Affiliation> list2) {
+        Map<String, Affiliation> affiliationMap = new LinkedHashMap<>();
+
+        // Process both lists
+        Stream.concat(
+                list1 != null ? list1.stream() : Stream.empty(),
+                list2 != null ? list2.stream() : Stream.empty()
+            )
+            .forEach(affiliation -> {
+                String key = getAffiliationKey(affiliation);
+                affiliationMap.putIfAbsent(key, affiliation);  // Keep first occurrence
+            });
+
+        return new ArrayList<>(affiliationMap.values());
+    }
+
+    /**
+     * Generates a normalized key for affiliation deduplication.
+     *
+     * Format: "entityName|type" (all lowercase)
+     * Null fields are represented as empty strings.
+     */
+    private static String getAffiliationKey(Affiliation affiliation) {
+        return String.format("%s|%s",
+            normalize(affiliation.entityName()),
+            normalize(affiliation.type())
+        ).toLowerCase();
+    }
 }

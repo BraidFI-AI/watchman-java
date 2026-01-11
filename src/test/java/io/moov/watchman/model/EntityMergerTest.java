@@ -835,5 +835,191 @@ class EntityMergerTest {
         // USDT should be present
         assertThat(result).anyMatch(addr -> "USDT".equals(addr.currency()));
     }
+
+    // ==================== mergeAffiliations() Tests ====================
+
+    @Test
+    void mergeAffiliations_withTwoDistinctAffiliations_shouldCombineBoth() {
+        // Given: Two different affiliations
+        List<Affiliation> list1 = List.of(
+            new Affiliation("Acme Corporation", "subsidiary of")
+        );
+        List<Affiliation> list2 = List.of(
+            new Affiliation("XYZ Holdings", "parent of")
+        );
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should contain both affiliations
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(Affiliation::entityName)
+            .containsExactlyInAnyOrder("Acme Corporation", "XYZ Holdings");
+    }
+
+    @Test
+    void mergeAffiliations_withIdenticalAffiliations_shouldDeduplicateExactMatches() {
+        // Given: Two identical affiliations
+        Affiliation affiliation = new Affiliation("Acme Corporation", "subsidiary of");
+        List<Affiliation> list1 = List.of(affiliation);
+        List<Affiliation> list2 = List.of(affiliation);
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should have only one copy
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).entityName()).isEqualTo("Acme Corporation");
+        assertThat(result.get(0).type()).isEqualTo("subsidiary of");
+    }
+
+    @Test
+    void mergeAffiliations_withNormalizedDuplicates_shouldDeduplicateByNormalizedForm() {
+        // Given: Same affiliation with different case and spacing
+        List<Affiliation> list1 = List.of(
+            new Affiliation("Acme Corporation", "subsidiary of")
+        );
+        List<Affiliation> list2 = List.of(
+            new Affiliation("ACME CORPORATION", "SUBSIDIARY OF")
+        );
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should deduplicate (case-insensitive match)
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).entityName()).isEqualTo("Acme Corporation");  // Keeps first
+    }
+
+    @Test
+    void mergeAffiliations_withSameEntityDifferentType_shouldKeepBoth() {
+        // Given: Same entity with different affiliation types
+        List<Affiliation> list1 = List.of(
+            new Affiliation("John Doe", "director of")
+        );
+        List<Affiliation> list2 = List.of(
+            new Affiliation("John Doe", "shareholder of")
+        );
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should keep both (different types = different affiliations)
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void mergeAffiliations_withEmptyLists_shouldReturnEmptyList() {
+        // Given: Two empty lists
+        List<Affiliation> list1 = List.of();
+        List<Affiliation> list2 = List.of();
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should return empty list
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void mergeAffiliations_withNullLists_shouldReturnEmptyList() {
+        // Given: Null lists
+        List<Affiliation> list1 = null;
+        List<Affiliation> list2 = null;
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should return empty list (null-safe)
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void mergeAffiliations_withOneNullList_shouldReturnNonNullList() {
+        // Given: One null list, one non-null list
+        List<Affiliation> list1 = List.of(
+            new Affiliation("Acme Corporation", "subsidiary of"),
+            new Affiliation("XYZ Holdings", "parent of")
+        );
+        List<Affiliation> list2 = null;
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should return the non-null list
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void mergeAffiliations_preservesFirstOccurrence_whenDuplicatesFound() {
+        // Given: Two lists with normalized duplicates (different case)
+        List<Affiliation> list1 = List.of(
+            new Affiliation("Acme Corporation", "subsidiary of")
+        );
+        List<Affiliation> list2 = List.of(
+            new Affiliation("acme corporation", "subsidiary of")
+        );
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should keep first occurrence's exact case
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).entityName()).isEqualTo("Acme Corporation");  // First wins
+    }
+
+    @Test
+    void mergeAffiliations_realWorldExample_sanctionedEntity() {
+        // Given: Affiliations from multiple sources (OFAC, EU CSL)
+        List<Affiliation> ofacAffiliations = List.of(
+            new Affiliation("Bank of Evil Holdings", "subsidiary of"),
+            new Affiliation("Corrupt Finance LLC", "director of")
+        );
+        List<Affiliation> euAffiliations = List.of(
+            new Affiliation("Bank of Evil Holdings", "subsidiary of"),  // Duplicate
+            new Affiliation("Money Laundering Inc", "shareholder of"),
+            new Affiliation("Corrupt Finance LLC", "DIRECTOR OF")  // Case differs
+        );
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(ofacAffiliations, euAffiliations);
+
+        // Then: Should have 3 unique affiliations
+        assertThat(result).hasSize(3);
+
+        // Bank of Evil Holdings should appear once
+        long bankCount = result.stream()
+            .filter(aff -> aff.entityName().contains("Bank of Evil"))
+            .count();
+        assertThat(bankCount).isEqualTo(1);
+
+        // Corrupt Finance should appear once (case-insensitive dedup)
+        long corruptCount = result.stream()
+            .filter(aff -> aff.entityName().contains("Corrupt Finance"))
+            .count();
+        assertThat(corruptCount).isEqualTo(1);
+
+        // Money Laundering should be present
+        assertThat(result).anyMatch(aff -> aff.entityName().contains("Money Laundering"));
+    }
+
+    @Test
+    void mergeAffiliations_withEmptyStringFields_shouldHandleGracefully() {
+        // Given: Affiliations with empty strings (edge case)
+        List<Affiliation> list1 = List.of(
+            new Affiliation("", "subsidiary of"),
+            new Affiliation("Acme Corp", "")
+        );
+        List<Affiliation> list2 = List.of(
+            new Affiliation("", "subsidiary of"),  // Duplicate with empty entityName
+            new Affiliation("Acme Corp", "")  // Duplicate with empty type
+        );
+
+        // When: Merging
+        List<Affiliation> result = EntityMerger.mergeAffiliations(list1, list2);
+
+        // Then: Should deduplicate based on normalized form
+        assertThat(result).hasSize(2);
+    }
 }
 
