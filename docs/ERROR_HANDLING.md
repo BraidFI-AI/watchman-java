@@ -272,6 +272,74 @@ Located at `src/main/resources/logback-spring.xml`:
 
 ---
 
+## Endpoint-Specific Error Handling
+
+### Nemesis Testing Endpoints
+
+**POST /v2/nemesis/trigger**
+
+| Error | Status | Message | Cause |
+|-------|--------|---------|-------|
+| Invalid query count | 400 | "queries must be between 1 and 1000" | `queries` param outside valid range |
+| Malformed JSON | 400 | "JSON parse error: Cannot construct..." | Invalid request body |
+| Process failure | 500 | Internal error | Python script execution failed |
+
+**GET /v2/nemesis/status/{jobId}**
+
+| Error | Status | Message | Cause |
+|-------|--------|---------|-------|
+| Job not found | 404 | - | Invalid or expired jobId |
+
+**GET /v2/nemesis/reports**
+
+No specific errors - returns empty array if no reports exist.
+
+**Example Error Response:**
+```json
+{
+  "error": "Bad Request",
+  "message": "JSON parse error: Cannot construct instance of `io.moov.watchman.api.NemesisController$TriggerRequest`, problem: queries must be between 1 and 1000",
+  "status": 400,
+  "path": "/v2/nemesis/trigger",
+  "requestId": "51b8f2ba",
+  "timestamp": "2026-01-11T14:49:52.752Z"
+}
+```
+
+### Search Endpoints
+
+**GET /v2/search**
+
+| Error | Status | Message | Cause |
+|-------|--------|---------|-------|
+| Missing query | 400 | "Missing required parameter: q" | No `q` parameter |
+| Invalid minScore | 400 | "Parameter type mismatch: minScore" | Non-numeric minScore |
+
+**POST /v2/search/batch**
+
+| Error | Status | Message | Cause |
+|-------|--------|---------|-------|
+| Empty batch | 400 | "Batch request cannot be empty" | No queries provided |
+| Invalid request | 400 | "Malformed request body" | Invalid JSON |
+
+### Download Endpoints
+
+**POST /v2/data/download**
+
+| Error | Status | Message | Cause |
+|-------|--------|---------|-------|
+| Download failure | 500 | "Failed to download OFAC data" | Network/source unavailable |
+| I/O error | 500 | "Failed to write data files" | Disk space/permissions |
+
+**POST /v2/data/refresh**
+
+| Error | Status | Message | Cause |
+|-------|--------|---------|-------|
+| No data | 503 | "No downloaded data available" | Must download first |
+| Parse error | 500 | "Failed to parse SDN file" | Corrupt data |
+
+---
+
 ## Best Practices
 
 ### 1. Log at Appropriate Levels
