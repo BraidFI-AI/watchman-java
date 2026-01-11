@@ -580,19 +580,6 @@ double avgScore = scores.stream()
 
 ---
 
-## FUTURE ENHANCEMENTS
-
-### Planned Java-Exclusive Features
-
-1. **GraphQL API** - Alternative to REST for flexible querying
-2. **Reactive Scoring** - Non-blocking async scoring with Project Reactor
-3. **Metrics & Monitoring** - Micrometer integration for production observability
-4. **Advanced Caching** - Redis integration for scoring result caching
-5. **Batch Processing** - Spring Batch for large-scale entity matching
-6. **Machine Learning Integration** - TensorFlow/DJL for learning scoring weights
-
----
-
 ## SUMMARY
 
 ### Category Breakdown
