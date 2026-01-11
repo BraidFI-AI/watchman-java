@@ -465,22 +465,6 @@ crontab scripts/crontab
 
 ---
 
-## 6. Deprecated / Removed Scripts
-
-**Removed January 11, 2026:**
-- ❌ test-all.sh - Use `./mvnw test` directly
-- ❌ test-api.sh - Use `./mvnw test -Dtest=SearchControllerTest`
-- ❌ test-batch.sh - Use `./mvnw test -Dtest=BatchScreeningControllerTest`
-- ❌ test-download.sh - Use `./mvnw test -Dtest=DownloadServiceTest`
-- ❌ test-integration.sh - Use `./mvnw test -Dtest=*IntegrationTest`
-- ❌ test-parsers.sh - Use `./mvnw test -Dtest=*ParserTest`
-- ❌ test-search.sh - Use `./mvnw test -Dtest=*SearchTest`
-- ❌ test-similarity.sh - Use `./mvnw test -Dtest=*SimilarityTest`
-
-**Reason:** Redundant wrappers around Maven commands. Developers can run Maven directly.
-
----
-
 ## Developer Workflows
 
 ### New Developer Setup
