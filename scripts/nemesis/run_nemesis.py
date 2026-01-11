@@ -40,21 +40,23 @@ else:
     REPORT_DIR = Path(__file__).parent.parent / "reports"
 
 
-def fetch_ofac_entities(api_url: str, max_entities: int = 1000) -> list:
-    """Fetch OFAC entities from API."""
+def fetch_ofac_entities(api_url: str, max_entities: int = None) -> list:
+    """Fetch complete OFAC SDN list from API (~12,500+ entities)."""
     import requests
     
-    print(f"Fetching OFAC entities from {api_url}...")
+    print(f"Fetching complete OFAC SDN list from {api_url}...")
     entities = []
     seen_ids = set()
     
     try:
-        # Sample diverse entities by searching common letters
-        for letter in ['A', 'B', 'C', 'M', 'K', 'S', 'W', 'G', 'L', 'H', 'R', 'T']:
+        # Fetch ALL entities by searching common letters with high limit
+        # This ensures we get the complete OFAC SDN list for comprehensive testing
+        for letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
+                      'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']:
             response = requests.get(
                 f"{api_url}/v2/search",
-                params={"name": letter, "limit": 100, "minMatch": 0.1},
-                timeout=10
+                params={"name": letter, "limit": 1000, "minMatch": 0.01},
+                timeout=30
             )
             
             if response.status_code == 200:
@@ -68,10 +70,10 @@ def fetch_ofac_entities(api_url: str, max_entities: int = 1000) -> list:
                             "altNames": entity.get("altNames", [])
                         })
                         
-            if len(entities) >= max_entities:
+            if max_entities and len(entities) >= max_entities:
                 break
         
-        print(f"✓ Fetched {len(entities)} unique OFAC entities")
+        print(f"✓ Fetched {len(entities)} unique OFAC entities from complete SDN list")
         return entities
         
     except Exception as e:
@@ -115,9 +117,9 @@ def main():
     
     # Step 1: Fetch OFAC entities
     print(f"\n{'='*80}")
-    print("STEP 1: Fetching OFAC Entities")
+    print("STEP 1: Fetching Complete OFAC SDN List")
     print('='*80)
-    entities = fetch_ofac_entities(WATCHMAN_JAVA_API_URL, max_entities=1000)
+    entities = fetch_ofac_entities(WATCHMAN_JAVA_API_URL)
     
     if not entities:
         print("✗ Failed to fetch entities")

@@ -11,7 +11,7 @@ Nemesis automatically:
 - ✅ Tests queries against Java and Go implementations
 - ✅ **NEW:** Optionally compares against ofac-api.com (3-way comparison)
 - ✅ Detects divergences (different results, scores, or ordering)
-- ✅ Tracks coverage to ensure all 1000+ OFAC entities are tested
+- ✅ Tracks coverage to ensure all OFAC SDN entities are tested (~12,500+)
 - ✅ Uses AI to identify patterns and recommend fixes
 - ✅ Generates daily reports with prioritized issues
 - ✅ Optionally creates GitHub issues for critical divergences
@@ -420,7 +420,7 @@ scripts/
 
 ### Workflow
 
-1. **Fetch Entities:** Downloads 1000+ OFAC entities from Java API
+1. **Fetch Entities:** Downloads complete OFAC SDN list from Java API (~12,500+ entities)
 2. **Check Coverage:** Loads coverage state, identifies untested entities
 3. **Generate Queries:** Creates 100 test queries (5 variation types per entity)
 4. **Execute:** Runs queries against Java and Go APIs in parallel
