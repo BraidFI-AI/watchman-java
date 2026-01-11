@@ -27,7 +27,7 @@ This document tracks **feature parity** between the Go and Java implementations�
 ## QUICK NAVIGATION
 
 - [Current Status](#current-status) - Implementation statistics
-- [Feature Inventory](#complete-function-inventory) - Complete 177-feature table
+- [Feature Inventory](#complete-function-inventory) - Complete 179-feature table
 - [Category Summary](#summary-by-category) - Breakdown by feature type
 - [Remaining Work](#remaining-work) - What's left to implement
 - [Priority Zone Analysis](#priority-zone-analysis) - Strategic completion status by zone
@@ -38,7 +38,7 @@ This document tracks **feature parity** between the Go and Java implementations�
 ## CURRENT STATUS
 
 **Go Codebase:** 16,337 lines, 88 files, 604 exported functions  
-**Java Codebase:** 64 files, 1075 test cases
+**Java Codebase:** 64 files, 1115 test cases
 
 ### Implementation Progress
 
@@ -90,8 +90,9 @@ This document tracks **feature parity** between the Go and Java implementations�
 - ✅ **Phase 18:** ID normalization from A2 proposal (1 feature)
 - ✅ **Phase 19:** Country & gender normalization (2 features)
 - ✅ **Phase 20:** JaroWinklerWithFavoritism - exact match favoritism boost (1 feature)
+- ✅ **Phase 21:** Zone 3 completion - Config utils, Unicode normalization, country-aware stopwords (6 features)
 
-**Velocity:** 20 phases, 92 functions, 1075 tests in 3 days
+**Velocity:** 21 phases, 115 functions, 1115 tests in 3 days
 
 ---
 
@@ -110,7 +111,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 - ⚠️ **Partial:** Core logic present, missing edge cases or optimizations
 - ❌ **Pending:** No Java implementation exists
 
-**Note:** This document tracks 177 curated features from Go's 604 exported functions, focusing on scoring algorithms, entity models, and configuration relevant to the Java port.
+**Note:** This document tracks 179 curated features from Go's 604 exported functions, focusing on scoring algorithms, entity models, and configuration relevant to the Java port.
 
 ---
 
