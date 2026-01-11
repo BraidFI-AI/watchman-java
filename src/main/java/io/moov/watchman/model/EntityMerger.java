@@ -259,4 +259,45 @@ public class EntityMerger {
             normalize(affiliation.type())
         ).toLowerCase();
     }
+
+    /**
+     * Generates a merge key for entity deduplication across data sources.
+     *
+     * The merge key is used to identify duplicate entities from different sources
+     * (OFAC SDN, EU CSL, UK CSL). Entities with the same merge key should be merged together.
+     *
+     * Algorithm:
+     * 1. Normalize entity if not already normalized (to get preparedFields)
+     * 2. Extract normalized primary name from preparedFields
+     * 3. Combine with entity type to create unique key
+     *
+     * Key format: "normalizedName|type"
+     * - normalizedName: Lowercase, punctuation removed, stopwords/titles removed
+     * - type: EntityType (INDIVIDUAL, ENTITY, AIRCRAFT, VESSEL)
+     *
+     * Examples:
+     * - "Doe, John" (OFAC) and "John Doe" (EU) → same key (name reordering)
+     * - "Al-Qaeda" and "Al Qaeda" → same key (punctuation normalized)
+     * - "John Doe" (INDIVIDUAL) and "John Doe" (ENTITY) → different keys (type matters)
+     *
+     * @param entity The entity to generate a merge key for
+     * @return A unique merge key for identifying duplicate entities
+     */
+    public static String getMergeKey(Entity entity) {
+        // Ensure entity is normalized (idempotent if already normalized)
+        Entity normalized = entity.preparedFields() != null ? entity : entity.normalize();
+
+        // Extract normalized primary name (empty string if null/empty)
+        String normalizedName = "";
+        if (normalized.preparedFields() != null
+                && normalized.preparedFields().normalizedPrimaryName() != null) {
+            normalizedName = normalized.preparedFields().normalizedPrimaryName();
+        }
+
+        // Combine normalized name with type
+        // Type is important: "John Doe" as INDIVIDUAL ≠ "John Doe" as ENTITY
+        String type = normalized.type() != null ? normalized.type().toString() : "";
+
+        return String.format("%s|%s", normalizedName, type);
+    }
 }

@@ -1021,5 +1021,168 @@ class EntityMergerTest {
         // Then: Should deduplicate based on normalized form
         assertThat(result).hasSize(2);
     }
+
+    // ==================== getMergeKey() Tests ====================
+
+    @Test
+    void getMergeKey_withIdenticalEntityFromDifferentSources_shouldReturnSameKey() {
+        // Given: Same entity from different sources (OFAC vs EU)
+        Entity ofacEntity = Entity.of("ofac-123", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+            .normalize();
+        Entity euEntity = Entity.of("eu-456", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL)
+            .normalize();
+
+        // When: Getting merge keys
+        String ofacKey = EntityMerger.getMergeKey(ofacEntity);
+        String euKey = EntityMerger.getMergeKey(euEntity);
+
+        // Then: Should have identical keys (for merging)
+        assertThat(ofacKey).isEqualTo(euKey);
+    }
+
+    @Test
+    void getMergeKey_withDifferentNames_shouldReturnDifferentKeys() {
+        // Given: Different entities
+        Entity entity1 = Entity.of("1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+            .normalize();
+        Entity entity2 = Entity.of("2", "Jane Smith", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+            .normalize();
+
+        // When: Getting merge keys
+        String key1 = EntityMerger.getMergeKey(entity1);
+        String key2 = EntityMerger.getMergeKey(entity2);
+
+        // Then: Should have different keys
+        assertThat(key1).isNotEqualTo(key2);
+    }
+
+    @Test
+    void getMergeKey_withDifferentTypes_shouldReturnDifferentKeys() {
+        // Given: Same name but different types (person vs business)
+        Entity person = Entity.of("1", "Acme Corp", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+            .normalize();
+        Entity business = Entity.of("2", "Acme Corp", EntityType.ENTITY, SourceList.OFAC_SDN)
+            .normalize();
+
+        // When: Getting merge keys
+        String personKey = EntityMerger.getMergeKey(person);
+        String businessKey = EntityMerger.getMergeKey(business);
+
+        // Then: Should have different keys (type matters)
+        assertThat(personKey).isNotEqualTo(businessKey);
+    }
+
+    @Test
+    void getMergeKey_withCaseVariations_shouldReturnSameKey() {
+        // Given: Same name with different case
+        Entity entity1 = Entity.of("1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+            .normalize();
+        Entity entity2 = Entity.of("2", "JOHN DOE", EntityType.INDIVIDUAL, SourceList.EU_CSL)
+            .normalize();
+
+        // When: Getting merge keys
+        String key1 = EntityMerger.getMergeKey(entity1);
+        String key2 = EntityMerger.getMergeKey(entity2);
+
+        // Then: Should have same key (case-insensitive normalization)
+        assertThat(key1).isEqualTo(key2);
+    }
+
+    @Test
+    void getMergeKey_withPunctuationVariations_shouldReturnSameKey() {
+        // Given: Same name with different punctuation
+        Entity entity1 = Entity.of("1", "Al-Qaeda", EntityType.ENTITY, SourceList.OFAC_SDN)
+            .normalize();
+        Entity entity2 = Entity.of("2", "Al Qaeda", EntityType.ENTITY, SourceList.EU_CSL)
+            .normalize();
+
+        // When: Getting merge keys
+        String key1 = EntityMerger.getMergeKey(entity1);
+        String key2 = EntityMerger.getMergeKey(entity2);
+
+        // Then: Should have same key (punctuation removed during normalization)
+        assertThat(key1).isEqualTo(key2);
+    }
+
+    @Test
+    void getMergeKey_withUnnormalizedEntity_shouldNormalizeFirst() {
+        // Given: Entity without preparedFields (not normalized yet)
+        Entity unnormalized = Entity.of("1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN);
+
+        // When: Getting merge key (should auto-normalize)
+        String key = EntityMerger.getMergeKey(unnormalized);
+
+        // Then: Should return valid key (not throw exception)
+        assertThat(key).isNotNull();
+        assertThat(key).isNotEmpty();
+        assertThat(key).contains("INDIVIDUAL");  // Should include type
+    }
+
+    @Test
+    void getMergeKey_format_shouldIncludeTypeAndNormalizedName() {
+        // Given: A normalized entity
+        Entity entity = Entity.of("1", "John Doe", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+            .normalize();
+
+        // When: Getting merge key
+        String key = EntityMerger.getMergeKey(entity);
+
+        // Then: Key should contain type
+        assertThat(key).contains("INDIVIDUAL");
+
+        // And should contain normalized name components
+        assertThat(key.toLowerCase()).contains("john");
+        assertThat(key.toLowerCase()).contains("doe");
+    }
+
+    @Test
+    void getMergeKey_realWorldExample_sanctionedIndividual() {
+        // Given: Same person from OFAC and EU CSL with slight name variations
+        Entity ofacEntity = Entity.of("ofac-12345", "Doe, John", EntityType.INDIVIDUAL, SourceList.OFAC_SDN)
+            .normalize();
+        Entity euEntity = Entity.of("eu-67890", "John Doe", EntityType.INDIVIDUAL, SourceList.EU_CSL)
+            .normalize();
+
+        // When: Getting merge keys
+        String ofacKey = EntityMerger.getMergeKey(ofacEntity);
+        String euKey = EntityMerger.getMergeKey(euEntity);
+
+        // Then: Should match (SDN name reordering handles "Doe, John" -> "John Doe")
+        assertThat(ofacKey).isEqualTo(euKey);
+    }
+
+    @Test
+    void getMergeKey_realWorldExample_sanctionedBusiness() {
+        // Given: Same business from different sources
+        Entity ofacBusiness = Entity.of("ofac-999", "Bank of Evil Holdings Ltd.", EntityType.ENTITY, SourceList.OFAC_SDN)
+            .normalize();
+        Entity euBusiness = Entity.of("eu-888", "Bank of Evil Holdings LTD", EntityType.ENTITY, SourceList.EU_CSL)
+            .normalize();
+
+        // When: Getting merge keys
+        String ofacKey = EntityMerger.getMergeKey(ofacBusiness);
+        String euKey = EntityMerger.getMergeKey(euBusiness);
+
+        // Then: Should match (punctuation and case differences normalized)
+        assertThat(ofacKey).isEqualTo(euKey);
+    }
+
+    @Test
+    void getMergeKey_withNullName_shouldHandleGracefully() {
+        // Given: Entity with null name (edge case)
+        Entity entity = new Entity(
+            "1", null, EntityType.INDIVIDUAL, SourceList.OFAC_SDN, "1",
+            null, null, null, null, null,
+            null, List.of(), List.of(), List.of(), List.of(),
+            null, null, null
+        ).normalize();
+
+        // When: Getting merge key
+        String key = EntityMerger.getMergeKey(entity);
+
+        // Then: Should not throw exception, should return valid key
+        assertThat(key).isNotNull();
+        assertThat(key).contains("INDIVIDUAL");
+    }
 }
 
