@@ -6,7 +6,7 @@ A complete Java port of [Moov Watchman](https://github.com/moov-io/watchman) - a
 
 Watchman Java is a feature-complete reimplementation of the Go-based Watchman sanctions screening platform. It provides real-time screening against global sanctions watchlists (OFAC SDN, US CSL, EU CSL, UK CSL) with fuzzy name matching using Jaro-Winkler similarity scoring.
 
-This project was built using **Test-Driven Development (TDD)**, with 330+ tests ensuring feature parity with the original Go implementation. An autonomous **Nemesis Repair Agent** continuously validates parity and auto-generates fixes.
+This project was built using **Test-Driven Development (TDD)**, with tests ensuring feature parity with the original Go implementation. An autonomous **Nemesis Repair Agent** continuously validates parity and auto-generates fixes.
 
 ## Features
 
