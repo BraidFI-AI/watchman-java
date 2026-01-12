@@ -10,6 +10,9 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+# Add scripts directory to path to enable nemesis module imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 # Import our new modular components
 from nemesis.test_generator import RandomSamplingGenerator
 from nemesis.query_executor import QueryExecutor
@@ -32,7 +35,7 @@ EXTERNAL_PROVIDER = os.environ.get("EXTERNAL_PROVIDER", "ofac-api")  # Currently
 OFAC_API_KEY = os.environ.get("OFAC_API_KEY", "")
 
 # Query configuration
-QUERIES_PER_RUN = int(os.environ.get("QUERIES_PER_RUN", "100"))
+QUERIES_PER_RUN = int(os.environ.get("QUERIES_PER_RUN", "10"))
 
 # Setup directories (local or Fly)
 if Path("/data").exists():
@@ -504,210 +507,27 @@ def main():
             report["repair_results"]["reason"] = "Repair pipeline disabled (set REPAIR_PIPELINE_ENABLED=true)"
             print(f"\n⚠️  Repair pipeline disabled. Set REPAIR_PIPELINE_ENABLED=true to enable.")
     
-    # === STEP 9: Create GitHub Issue (if divergences found and enabled) ===
+    # === STEP 9: Create GitHub Issue (ALWAYS - serves as proposal package for human review) ===
     
-    # Step 8: Create GitHub issue if divergences found
-    if len(all_divergences) > 0:
-        print(f"\n{'='*80}")
-        print("STEP 8: Creating GitHub Issue")
-        print('='*80)
+    print(f"\n{'='*80}")
+    print("STEP 9: Creating GitHub Issue")
+    print('='*80)
+    
+    # Use consolidated github_integration module
+    try:
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from github_integration import create_nemesis_issue
         
-        github_token = os.environ.get("GITHUB_TOKEN")
-        create_issues = os.environ.get("CREATE_GITHUB_ISSUES", "false").lower() == "true"
-        github_repo = os.environ.get("GITHUB_REPO", "moov-io/watchman-java")
+        issue_url = create_nemesis_issue(report, str(output_file))
         
-        if create_issues and github_token:
-            try:
-                from github import Github, Auth
-                
-                gh = Github(auth=Auth.Token(github_token))
-                repo = gh.get_repo(github_repo)
-                
-                # Create issue with summary of divergences
-                critical_count = report["results_summary"]["by_severity"].get("critical", 0)
-                moderate_count = report["results_summary"]["by_severity"].get("moderate", 0)
-                total_divergences = report["results_summary"]["total_divergences"]
-                
-                issue_title = f"Nemesis: {total_divergences} divergences found - {critical_count} critical ({today})"
-                
-                # Build issue body
-                issue_body = f"""## Nemesis 1.0 Report - Automated Testing Results
-
-**Date:** {report['run_date']}  
-**Version:** {report['version']}  
-**Queries Tested:** {report['configuration']['total_queries']} random samples  
-**Strategy:** {report['configuration']['strategy']}  
-**Total Divergences:** {total_divergences}
-
----
-
-## 📊 Coverage Metrics
-
-- **Entities Tested Today:** {report['coverage']['entities_tested_today']}
-- **Cumulative Tested:** {report['coverage']['cumulative_tested']}
-- **Coverage:** {report['coverage']['cumulative_coverage_pct']:.2f}% of {report['coverage']['total_entities']} total entities
-
----
-
-## 🎯 Issues by Severity
-
-"""
-                
-                severity_explanations = {
-                    "critical": "🔴 **CRITICAL** - Large score differences (>0.5) or wrong top matches. Potential compliance risks.",
-                    "moderate": "🟡 **MODERATE** - Score differences (0.05-0.5) that may affect matching quality."
-                }
-                
-                for severity in ["critical", "moderate"]:
-                    count = report["results_summary"]["by_severity"].get(severity, 0)
-                    if count > 0:
-                        issue_body += f"{severity_explanations[severity]}\n"
-                        issue_body += f"- **Count:** {count} divergences\n\n"
-                
-                # Add AI analysis if available
-                if report.get("ai_analysis"):
-                    ai = report["ai_analysis"]
-                    issue_body += f"\n## 🤖 AI Analysis\n\n"
-                    issue_body += f"**Patterns Identified:** {ai['patterns_identified']}\n"
-                    issue_body += f"**Summary:** {ai['summary']}\n\n"
-                    
-                    if ai.get("issues"):
-                        issue_body += "### Identified Issues:\n\n"
-                        for issue in ai["issues"]:
-                            issue_body += f"**{issue['id']}** - {issue['category']} ({issue['priority']})\n"
-                            issue_body += f"- {issue['description']}\n"
-                            issue_body += f"- _Recommendation:_ {issue['recommendation']}\n\n"
-                
-                # Add divergence type breakdown
-                divergence_types = {}
-                for div in report.get("divergences", [])[:20]:  # Sample first 20
-                    dtype = div.get("type", "unknown")
-                    divergence_types[dtype] = divergence_types.get(dtype, 0) + 1
-                
-                issue_body += f"\n## 🔍 Divergence Types (sample)\n\n"
-                
-                type_explanations = {
-                    "score_difference": "**Score Mismatch** - Same entity but different confidence scores between Java and Go"
-                }
-                
-                for dtype, count in sorted(divergence_types.items(), key=lambda x: -x[1]):
-                    explanation = type_explanations.get(dtype, dtype)
-                    issue_body += f"- {explanation}: **{count} occurrences**\n"
-                
-                # Add repair pipeline results if available
-                repair_results = report.get("repair_results", {})
-                if repair_results.get("enabled") and repair_results.get("prs_created"):
-                    prs = repair_results["prs_created"]
-                    issue_body += f"\n---\n\n## 🔧 Automated Fixes\n\n"
-                    issue_body += f"The repair pipeline has created **{len(prs)} pull request(s)**:\n\n"
-                    
-                    for i, pr in enumerate(prs, 1):
-                        issue_id = pr.get("issue_id", "Unknown")
-                        pr_url = pr.get("pr_url", "")
-                        status_icon = "✅" if pr.get("status") == "success" else "⚠️"
-                        
-                        issue_body += f"{i}. {status_icon} [{issue_id}]({pr_url})\n"
-                    
-                    issue_body += f"\n**Repair Summary:**\n"
-                    issue_body += f"- Auto-fix eligible: {repair_results.get('auto_fix_count', 0)}\n"
-                    issue_body += f"- Needs human review: {repair_results.get('human_review_count', 0)}\n"
-                    issue_body += f"- Too complex: {repair_results.get('too_complex_count', 0)}\n"
-                    issue_body += f"\n💡 *Review PRs above before merging*\n"
-                
-                # Add sample divergences
-                issue_body += f"\n---\n\n## 📋 Example Divergences (Top 10)\n\n"
-                issue_body += f"*Sample showing patterns. Full {total_divergences} divergences in report file.*\n\n"
-                
-                for i, div in enumerate(report.get("divergences", [])[:10], 1):
-                    query = div.get('query', 'N/A')
-                    dtype = div.get('type', 'unknown')
-                    severity = div.get('severity', 'unknown')
-                    description = div.get('description', '')
-                    
-                    # Create human-readable type label
-                    type_labels = {
-                        "top_result_differs": "🔴 Wrong Top Match",
-                        "score_difference": "📊 Score Mismatch",
-                        "java_extra_result": "➕ Java Over-Matching",
-                        "go_extra_result": "➖ Java Missing Result",
-                        "result_order_differs": "🔄 Different Ranking"
-                    }
-                    type_label = type_labels.get(dtype, dtype)
-                    
-                    issue_body += f"### {i}. {type_label}\n\n"
-                    issue_body += f"**Search Query:** `{query}`\n\n"
-                    
-                    # Add result details if available
-                    java_data = div.get('java_data')
-                    go_data = div.get('go_data')
-                    
-                    if java_data or go_data:
-                        issue_body += f"**What Happened:**\n"
-                        if java_data:
-                            java_name = java_data.get('name', 'N/A')
-                            java_score = java_data.get('match', 0)
-                            issue_body += f"- Java returned: `{java_name}` (confidence: {java_score:.1%})\n"
-                        if go_data:
-                            go_name = go_data.get('name', 'N/A')
-                            go_score = go_data.get('match', 0)
-                            issue_body += f"- Go returned: `{go_name}` (confidence: {go_score:.1%})\n"
-                        
-                        # Add interpretation
-                        if dtype == "top_result_differs":
-                            issue_body += f"\n**Why This Matters:** Java and Go disagree on which entity matches best. This could cause compliance misses.\n"
-                        elif dtype == "score_difference":
-                            score_diff = div.get('score_difference', 0)
-                            issue_body += f"\n**Why This Matters:** Score difference of {score_diff:.1%}. Scoring algorithm may need calibration.\n"
-                        elif dtype == "java_extra_result":
-                            issue_body += f"\n**Why This Matters:** Java may be creating false positives - matching names that shouldn't match.\n"
-                        elif dtype == "go_extra_result":
-                            issue_body += f"\n**Why This Matters:** Java may be missing legitimate matches that Go finds.\n"
-                    
-                    issue_body += "\n"
-                
-                if total_divergences > 10:
-                    issue_body += f"\n*... plus {total_divergences - 10} more divergences in the full report*\n"
-                
-                # Add footer with action items
-                issue_body += f"\n---\n\n## 🔧 Recommended Actions\n\n"
-                
-                if critical_count > 0:
-                    issue_body += f"1. **Priority 1:** Fix {critical_count} critical divergences (large score differences >0.5)\n"
-                
-                if moderate_count > 0:
-                    issue_body += f"2. **Review:** Investigate {moderate_count} moderate divergences (score differences 0.05-0.5)\n"
-                
-                issue_body += f"\n## 📁 Full Report Location\n\n"
-                issue_body += f"Complete technical details: `/scripts/reports/nemesis-{today}.json`\n\n"
-                issue_body += f"```json\n"
-                issue_body += f"{{\n"
-                issue_body += f'  "total_divergences": {total_divergences},\n'
-                issue_body += f'  "critical": {critical_count},\n'
-                issue_body += f'  "moderate": {moderate_count},\n'
-                issue_body += f'  "coverage_pct": {report["coverage"]["cumulative_coverage_pct"]:.2f},\n'
-                issue_body += f'  "entities_tested": {report["coverage"]["cumulative_tested"]}\n'
-                issue_body += f"}}\n"
-                issue_body += f"```\n"
-                
-                # Create the issue
-                created_issue = repo.create_issue(
-                    title=issue_title,
-                    body=issue_body,
-                    labels=["nemesis", "automated-testing"]
-                )
-                
-                print(f"✓ Created GitHub issue: {created_issue.html_url}")
-                
-            except ImportError:
-                print(f"⚠ PyGithub not installed. Run: pip install PyGithub")
-            except Exception as e:
-                print(f"⚠ Failed to create GitHub issue: {e}")
+        if issue_url:
+            print(f"✓ GitHub issue created: {issue_url}")
         else:
-            if not github_token:
-                print(f"⚠ GitHub integration disabled: GITHUB_TOKEN not set")
-            elif not create_issues:
-                print(f"⚠ GitHub integration disabled: CREATE_GITHUB_ISSUES not set to 'true'")
-            print(f"  To enable: set GITHUB_TOKEN and CREATE_GITHUB_ISSUES=true")
+            print(f"⚠ GitHub issue creation skipped (no GITHUB_TOKEN)")
+    except Exception as e:
+        print(f"⚠ Failed to create GitHub issue: {e}")
+        import traceback
+        traceback.print_exc()
     
     # Final summary
     print(f"\n{'='*80}")

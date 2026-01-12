@@ -1,5 +1,7 @@
 # Nemesis 1.0 - User Guide
 
+> **Note**: Production deployment has moved to AWS ECS. See [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md) for current infrastructure setup. Legacy Fly.io references in this doc are for historical context.
+
 ## Overview
 
 **Nemesis** is an autonomous testing system that continuously validates the Watchman Java implementation against the Go baseline and optionally against external commercial providers. It runs daily, generating dynamic test queries, detecting divergences automatically, and using AI to identify patterns and root causes.
@@ -13,8 +15,8 @@ Nemesis automatically:
 - ✅ Detects divergences (different results, scores, or ordering)
 - ✅ Tracks coverage to ensure all OFAC SDN entities are tested (~12,500+)
 - ✅ Uses AI to identify patterns and recommend fixes
-- ✅ Generates daily reports with prioritized issues
-- ✅ Optionally creates GitHub issues for critical divergences
+- ✅ Runs repair pipeline to auto-generate code fixes and PRs
+- ✅ Creates GitHub issues EVERY run with report summary and PR links for human review
 
 ## Comparison Modes
 
@@ -243,10 +245,9 @@ ANTHROPIC_API_KEY=sk-ant-...
 AI_MODEL=claude-sonnet-4-20250514
 ```
 
-### Optional - GitHub Integration
+### Required - GitHub Integration
 ```bash
-GITHUB_TOKEN=ghp_...
-CREATE_GITHUB_ISSUES=true
+GITHUB_TOKEN=ghp_...  # Required for PR creation and issue tracking
 GITHUB_REPO=moov-io/watchman-java
 ```
 
@@ -420,7 +421,9 @@ scripts/
 5. **Analyze:** Detects divergences, classifies by severity
 6. **Update Coverage:** Marks entities as tested, saves state
 7. **AI Analysis:** Identifies patterns and root causes
-8. **Report:** Saves JSON report, optionally creates GitHub issues
+8. **Save Report:** Writes JSON report to /data/reports/
+9. **Repair Pipeline:** Classifies issues, generates fixes, creates GitHub PRs (if divergences found)
+10. **Create GitHub Issue:** ALWAYS creates issue with report summary + PR links as proposal package for human review
 
 ## Metrics
 
