@@ -6,7 +6,7 @@ primary_region = 'ord'
   dockerfile = 'Dockerfile'
 
 [env]
-  JAVA_OPTS = '-Xmx512m -Xms256m'
+  JAVA_OPTS = '-Xmx768m -Xms512m'
   SERVER_PORT = '8080'
   SPRING_PROFILES_ACTIVE = 'production'
   COMPARE_EXTERNAL = 'true'
