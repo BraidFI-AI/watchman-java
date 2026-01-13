@@ -2,6 +2,7 @@ package io.moov.watchman.batch;
 
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
+import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.model.SourceList;
 
 /**
@@ -14,7 +15,8 @@ public record BatchScreeningMatch(
     EntityType entityType,
     SourceList sourceList,
     double score,
-    String remarks
+    String remarks,
+    ScoreBreakdown breakdown
 ) {
     /**
      * Create a match from an entity and score.
@@ -26,7 +28,23 @@ public record BatchScreeningMatch(
             entity.type(),
             entity.source(),
             score,
-            entity.remarks()
+            entity.remarks(),
+            null
+        );
+    }
+
+    /**
+     * Create a match with score breakdown.
+     */
+    public static BatchScreeningMatch withBreakdown(Entity entity, double score, ScoreBreakdown breakdown) {
+        return new BatchScreeningMatch(
+            entity.id(),
+            entity.name(),
+            entity.type(),
+            entity.source(),
+            score,
+            entity.remarks(),
+            breakdown
         );
     }
 
@@ -63,6 +81,7 @@ public record BatchScreeningMatch(
         private SourceList sourceList;
         private double score;
         private String remarks;
+        private ScoreBreakdown breakdown;
 
         public Builder entityId(String entityId) {
             this.entityId = entityId;
@@ -94,8 +113,13 @@ public record BatchScreeningMatch(
             return this;
         }
 
+        public Builder breakdown(ScoreBreakdown breakdown) {
+            this.breakdown = breakdown;
+            return this;
+        }
+
         public BatchScreeningMatch build() {
-            return new BatchScreeningMatch(entityId, name, entityType, sourceList, score, remarks);
+            return new BatchScreeningMatch(entityId, name, entityType, sourceList, score, remarks, breakdown);
         }
     }
 }

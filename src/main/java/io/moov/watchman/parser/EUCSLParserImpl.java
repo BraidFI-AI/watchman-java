@@ -226,6 +226,7 @@ public class EUCSLParserImpl implements EUCSLParser {
                 altNames,
                 List.of(), // governmentIds
                 new SanctionsInfo(List.of("EU"), false, null),
+                List.of(), // historicalInfo
                 remark,
                 null // preparedFields - computed at index time
             );

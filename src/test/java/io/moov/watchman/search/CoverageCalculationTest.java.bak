@@ -1,0 +1,373 @@
+package io.moov.watchman.search;
+
+import io.moov.watchman.model.*;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Phase 4 RED Tests: Coverage Calculation
+ * 
+ * Tests the field coverage calculation system that measures what percentage
+ * of an entity's available fields were actually compared during matching.
+ * This is critical for determining match confidence and quality.
+ */
+public class CoverageCalculationTest {
+
+    // ========== countAvailableFields Tests ==========
+
+    @Test
+    void testCountAvailableFields_Person_AllFields() {
+        // Person with all fields populated
+        Person person = new Person(
+                "John Smith",
+                Arrays.asList("J. Smith", "Johnny Smith"),
+                "M",
+                LocalDate.of(1980, 1, 1),
+                null, // deathDate
+                "New York, NY",
+                Arrays.asList("Dr.", "PhD"),
+                Collections.singletonList(new GovernmentId(GovernmentIdType.PASSPORT, "123456789", "US"))
+        );
+
+        Entity entity = new Entity(
+                "TEST001",
+                "John Smith",
+                EntityType.PERSON,
+                SourceList.US_OFAC,
+                "TEST001",
+                person,
+                null, // business
+                null, // organization
+                null, // aircraft
+                null, // vessel
+                new ContactInfo("john@example.com", "+1-555-1234", "+1-555-5678", null),
+                Collections.singletonList(new Address(
+                        "123 Main St",
+                        null,
+                        "New York",
+                        "NY",
+                        "10001",
+                        "US"
+                )),
+                Collections.singletonList(new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")),
+                Arrays.asList("J. Smith", "Johnny Smith"), // altNames
+                Collections.singletonList(new GovernmentId(GovernmentIdType.PASSPORT, "123456789", "US")),
+                null, // sanctionsInfo
+                null, // remarks
+                null  // preparedFields
+        );
+
+        // Should count: name + contact + address + crypto + altNames + govIds
+        // + person fields (gender, birthDate, birthPlace, titles, govIds)
+        int count = EntityScorer.countAvailableFields(entity);
+        assertTrue(count > 5, "Should count multiple populated fields, got: " + count);
+    }
+
+    @Test
+    void testCountAvailableFields_MinimalPerson() {
+        // Person with only name
+        Person person = Person.of("John Smith");
+
+        Entity entity = new Entity(
+                "TEST002",
+                "John Smith",
+                EntityType.PERSON,
+                SourceList.US_OFAC,
+                "TEST002",
+                person,
+                null, null, null, null,
+                ContactInfo.empty(),
+                Collections.emptyList(), // addresses
+                Collections.emptyList(), // cryptoAddresses
+                Collections.emptyList(), // altNames
+                Collections.emptyList(), // governmentIds
+                null, null, null
+        );
+
+        // Should count at least the name field
+        int count = EntityScorer.countAvailableFields(entity);
+        assertTrue(count >= 1, "Should count at least the name field, got: " + count);
+    }
+
+    @Test
+    void testCountAvailableFields_Business() {
+        Business business = new Business(
+                "Acme Corp",
+                Arrays.asList("Acme Inc", "Acme LLC"),
+                LocalDate.of(2000, 1, 1),
+                null, // dissolved
+                Collections.singletonList(new GovernmentId(GovernmentIdType.TAX_ID, "12-3456789", "US"))
+        );
+
+        Entity entity = new Entity(
+                "TEST003",
+                "Acme Corp",
+                EntityType.BUSINESS,
+                SourceList.US_OFAC,
+                "TEST003",
+                null, // person
+                business,
+                null, null, null,
+                new ContactInfo("info@acme.com", null, null, "www.acme.com"),
+                Collections.singletonList(Address.of("456 Corporate Blvd", "Boston", "US")),
+                Collections.emptyList(),
+                Arrays.asList("Acme Inc", "Acme LLC"),
+                Collections.singletonList(new GovernmentId(GovernmentIdType.TAX_ID, "12-3456789", "US")),
+                null, null, null
+        );
+
+        int count = EntityScorer.countAvailableFields(entity);
+        assertTrue(count > 3, "Should count multiple business fields, got: " + count);
+    }
+
+    @Test
+    void testCountAvailableFields_EmptyEntity() {
+        Entity entity = Entity.of("TEST004", "", EntityType.PERSON, SourceList.US_OFAC);
+
+        int count = EntityScorer.countAvailableFields(entity);
+        // Even empty entity might have source, so allow 0 or small positive
+        assertTrue(count >= 0, "Empty entity should have non-negative count, got: " + count);
+    }
+
+    // ========== countCommonFields Tests ==========
+
+    @Test
+    void testCountCommonFields_AllPopulated() {
+        Entity entity = new Entity(
+                "TEST005",
+                "Test Entity",
+                EntityType.PERSON,
+                SourceList.US_OFAC,
+                "TEST005",
+                null, null, null, null, null,
+                new ContactInfo("test@example.com", "+1-555-0000", "+1-555-9999", "www.test.com"),
+                Collections.singletonList(Address.of("123 Test St", "Test City", "US")),
+                Collections.singletonList(new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")),
+                Collections.singletonList("Alt Name"),
+                Collections.singletonList(new GovernmentId(GovernmentIdType.PASSPORT, "ABC123", "US")),
+                null, null, null
+        );
+
+        // Should count: name + contact + address + crypto + altNames + govIds + source
+        int count = EntityScorer.countCommonFields(entity);
+        assertTrue(count > 4, "Should count multiple common fields, got: " + count);
+    }
+
+    @Test
+    void testCountCommonFields_PartiallyPopulated() {
+        Entity entity = new Entity(
+                "TEST006",
+                "Test Entity",
+                EntityType.PERSON,
+                SourceList.US_OFAC,
+                "TEST006",
+                null, null, null, null, null,
+                ContactInfo.empty(),
+                Collections.singletonList(Address.of("123 Test St", "Test City", "US")),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                null, null, null
+        );
+
+        // Should count: name + source + address
+        int count = EntityScorer.countCommonFields(entity);
+        assertTrue(count >= 2, "Should count name, source, and address, got: " + count);
+    }
+
+    @Test
+    void testCountCommonFields_Empty() {
+        Entity entity = Entity.of("TEST007", "", EntityType.PERSON, SourceList.US_OFAC);
+
+        int count = EntityScorer.countCommonFields(entity);
+        assertTrue(count >= 0, "Empty entity should have non-negative common fields, got: " + count);
+    }
+
+    // ========== calculateCoverage Tests ==========
+
+    @Test
+    void testCalculateCoverage_FullCoverage() {
+        Person person = Person.of("John Smith");
+        
+        Entity indexEntity = new Entity(
+                "TEST008",
+                "John Smith",
+                EntityType.PERSON,
+                SourceList.US_OFAC,
+                "TEST008",
+                person,
+                null, null, null, null,
+                ContactInfo.empty(),
+                Collections.singletonList(Address.of("123 Main St", "New York", "US")),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                null, null, null
+        );
+
+        // Create pieces showing multiple fields were compared
+        List<ScorePiece> pieces = Arrays.asList(
+                ScorePiece.builder()
+                        .pieceType("name")
+                        .score(0.95)
+                        .weight(35.0)
+                        .fieldsCompared(1)
+                        .required(true)
+                        .matched(true)
+                        .build(),
+                ScorePiece.builder()
+                        .pieceType("address")
+                        .score(0.85)
+                        .weight(25.0)
+                        .fieldsCompared(1)
+                        .required(false)
+                        .matched(true)
+                        .build()
+        );
+
+        Coverage coverage = EntityScorer.calculateCoverage(pieces, indexEntity);
+        assertNotNull(coverage, "Coverage should not be null");
+        assertTrue(coverage.getRatio() >= 0.0 && coverage.getRatio() <= 1.0, 
+                "Coverage ratio should be between 0 and 1, got: " + coverage.getRatio());
+        assertTrue(coverage.getCriticalRatio() >= 0.0 && coverage.getCriticalRatio() <= 1.0,
+                "Critical ratio should be between 0 and 1, got: " + coverage.getCriticalRatio());
+    }
+
+    @Test
+    void testCalculateCoverage_PartialCoverage() {
+        Entity indexEntity = Entity.of("TEST009", "John Smith", EntityType.PERSON, SourceList.US_OFAC);
+
+        // Only compare name (1 field)
+        List<ScorePiece> pieces = Collections.singletonList(
+                ScorePiece.builder()
+                        .pieceType("name")
+                        .score(0.95)
+                        .weight(35.0)
+                        .fieldsCompared(1)
+                        .required(true)
+                        .matched(true)
+                        .build()
+        );
+
+        Coverage coverage = EntityScorer.calculateCoverage(pieces, indexEntity);
+        assertNotNull(coverage, "Coverage should not be null");
+        assertTrue(coverage.getRatio() >= 0.0, "Coverage ratio should be non-negative");
+    }
+
+    @Test
+    void testCalculateCoverage_ZeroFields() {
+        Entity indexEntity = Entity.of("TEST010", "John Smith", EntityType.PERSON, SourceList.US_OFAC);
+
+        List<ScorePiece> pieces = Collections.emptyList();
+
+        Coverage coverage = EntityScorer.calculateCoverage(pieces, indexEntity);
+        assertNotNull(coverage, "Coverage should not be null even with no pieces");
+        // When no fields compared, expect 0 ratio or 1.0 default for critical
+        assertTrue(coverage.getRatio() >= 0.0 && coverage.getRatio() <= 1.0);
+    }
+
+    // ========== countFieldsByImportance Tests ==========
+
+    @Test
+    void testCountFieldsByImportance_AllCriteria() {
+        List<ScorePiece> pieces = Arrays.asList(
+                ScorePiece.builder()
+                        .pieceType("name")
+                        .score(0.95)
+                        .weight(35.0)
+                        .fieldsCompared(1)
+                        .required(true)
+                        .matched(true)
+                        .build(),
+                ScorePiece.builder()
+                        .pieceType("identifiers")
+                        .score(0.99)
+                        .weight(50.0)
+                        .fieldsCompared(2)
+                        .required(true)
+                        .matched(true)
+                        .exact(true)
+                        .build(),
+                ScorePiece.builder()
+                        .pieceType("address")
+                        .score(0.85)
+                        .weight(25.0)
+                        .fieldsCompared(1)
+                        .required(false)
+                        .matched(true)
+                        .build()
+        );
+
+        EntityFields fields = EntityScorer.countFieldsByImportance(pieces);
+        assertNotNull(fields, "EntityFields should not be null");
+        assertTrue(fields.getRequired() > 0, "Should have required fields");
+        assertTrue(fields.isHasName(), "Should have name");
+        assertTrue(fields.isHasID(), "Should have exact ID match");
+        assertTrue(fields.isHasCritical(), "Should have critical field");
+        assertTrue(fields.isHasAddress(), "Should have address");
+    }
+
+    @Test
+    void testCountFieldsByImportance_NameOnly() {
+        List<ScorePiece> pieces = Collections.singletonList(
+                ScorePiece.builder()
+                        .pieceType("name")
+                        .score(0.95)
+                        .weight(35.0)
+                        .fieldsCompared(1)
+                        .required(true)
+                        .matched(true)
+                        .build()
+        );
+
+        EntityFields fields = EntityScorer.countFieldsByImportance(pieces);
+        assertNotNull(fields, "EntityFields should not be null");
+        assertTrue(fields.isHasName(), "Should have name");
+        assertFalse(fields.isHasID(), "Should not have ID");
+        assertFalse(fields.isHasAddress(), "Should not have address");
+    }
+
+    @Test
+    void testCountFieldsByImportance_NonExactID() {
+        List<ScorePiece> pieces = Arrays.asList(
+                ScorePiece.builder()
+                        .pieceType("name")
+                        .score(0.95)
+                        .weight(35.0)
+                        .fieldsCompared(1)
+                        .required(true)
+                        .matched(true)
+                        .build(),
+                ScorePiece.builder()
+                        .pieceType("identifiers")
+                        .score(0.85)  // Not exact
+                        .weight(50.0)
+                        .fieldsCompared(1)
+                        .required(true)
+                        .matched(true)
+                        .exact(false)  // Fuzzy ID match doesn't count
+                        .build()
+        );
+
+        EntityFields fields = EntityScorer.countFieldsByImportance(pieces);
+        assertTrue(fields.isHasName(), "Should have name");
+        assertFalse(fields.isHasID(), "Non-exact ID should not count");
+    }
+
+    @Test
+    void testCountFieldsByImportance_EmptyPieces() {
+        List<ScorePiece> pieces = Collections.emptyList();
+
+        EntityFields fields = EntityScorer.countFieldsByImportance(pieces);
+        assertNotNull(fields, "EntityFields should not be null even with empty pieces");
+        assertEquals(0, fields.getRequired(), "Should have 0 required fields");
+        assertFalse(fields.isHasName(), "Should not have name");
+        assertFalse(fields.isHasID(), "Should not have ID");
+    }
+}

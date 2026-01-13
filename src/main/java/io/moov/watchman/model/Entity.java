@@ -1,5 +1,7 @@
 package io.moov.watchman.model;
 
+import io.moov.watchman.normalize.PhoneNormalizer;
+import io.moov.watchman.scorer.AddressNormalizer;
 import io.moov.watchman.similarity.LanguageDetector;
 import io.moov.watchman.similarity.TextNormalizer;
 
@@ -29,6 +31,7 @@ public record Entity(
     List<String> altNames,
     List<GovernmentId> governmentIds,
     SanctionsInfo sanctionsInfo,
+    List<HistoricalInfo> historicalInfo,
     String remarks,
     PreparedFields preparedFields
 ) {
@@ -40,7 +43,7 @@ public record Entity(
             id, name, type, source, id,
             null, null, null, null, null,
             null, List.of(), List.of(), List.of(), List.of(),
-            null, null, null
+            null, List.of(), null, null
         );
     }
     
@@ -66,43 +69,70 @@ public record Entity(
             return this;
         }
         
-        // Normalize primary name
-        String normalizedPrimary = "";
+        // Detect language (needed for stopword removal)
+        String detectedLanguage = languageDetector.detect(name);
+        
+        // Phase 17 Fix: Normalize WITHOUT stopword removal first (for word combinations)
+        String normalizedPrimaryBeforeStopwords = "";
         if (name != null && !name.isEmpty()) {
             String reordered = reorderSDNName(name);
             String preprocessed = reordered.replace("'", "").replace("'", "");
-            normalizedPrimary = normalizer.lowerAndRemovePunctuation(preprocessed);
-            normalizedPrimary = normalizedPrimary.replaceAll("\\s+", " ").trim();
+            String withPunctRemoved = normalizer.lowerAndRemovePunctuation(preprocessed);
+            normalizedPrimaryBeforeStopwords = withPunctRemoved.replaceAll("\\s+", " ").trim();
         }
         
-        // Normalize alternate names (separate from primary)
+        // Then remove stopwords for final normalized primary
+        String normalizedPrimary = "";
+        if (!normalizedPrimaryBeforeStopwords.isEmpty()) {
+            normalizedPrimary = normalizer.removeStopwords(normalizedPrimaryBeforeStopwords, detectedLanguage);
+        }
+        
+        // Normalize alternate names (preserve intermediate versions for word combinations)
+        List<String> normalizedAltsBeforeStopwords = new ArrayList<>();
         List<String> normalizedAlts = List.of();
         if (altNames != null && !altNames.isEmpty()) {
-            normalizedAlts = altNames.stream()
-                .map(this::reorderSDNName)
-                .map(s -> s.replace("'", "").replace("'", ""))
-                .map(normalizer::lowerAndRemovePunctuation)
-                .map(s -> s.replaceAll("\\s+", " ").trim())
+            normalizedAltsBeforeStopwords = altNames.stream()
+                .map(altName -> {
+                    String reordered = reorderSDNName(altName);
+                    String preprocessed = reordered.replace("'", "").replace("'", "");
+                    String withPunctRemoved = normalizer.lowerAndRemovePunctuation(preprocessed);
+                    return withPunctRemoved.replaceAll("\\s+", " ").trim();
+                })
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+            
+            // Then remove stopwords
+            normalizedAlts = normalizedAltsBeforeStopwords.stream()
+                .map(norm -> {
+                    // Detect language on the intermediate normalized form
+                    String altLang = languageDetector.detect(norm);
+                    return normalizer.removeStopwords(norm, altLang);
+                })
                 .filter(s -> !s.isEmpty())
                 .distinct()
                 .collect(Collectors.toList());
         }
         
-        // Detect language (needed for stopword removal)
-        String detectedLanguage = languageDetector.detect(name);
+        // Collect ALL names (BEFORE stopword removal) for generating combinations
+        List<String> allNamesBeforeStopwords = new ArrayList<>();
+        if (!normalizedPrimaryBeforeStopwords.isEmpty()) {
+            allNamesBeforeStopwords.add(normalizedPrimaryBeforeStopwords);
+        }
+        allNamesBeforeStopwords.addAll(normalizedAltsBeforeStopwords);
         
-        // Collect ALL names for generating combinations/stopwords/titles
+        // Generate word combinations from PRE-stopword names (preserves particles like "de la")
+        List<String> wordCombinations = allNamesBeforeStopwords.stream()
+            .flatMap(name -> generateWordCombinations(name).stream())
+            .distinct()
+            .collect(Collectors.toList());
+        
+        // Collect stopword-removed names for other uses
         List<String> allNormalizedNames = new ArrayList<>();
         if (!normalizedPrimary.isEmpty()) {
             allNormalizedNames.add(normalizedPrimary);
         }
         allNormalizedNames.addAll(normalizedAlts);
-        
-        // Generate word combinations (e.g., "de la" -> "dela")
-        List<String> wordCombinations = allNormalizedNames.stream()
-            .flatMap(name -> generateWordCombinations(name).stream())
-            .distinct()
-            .collect(Collectors.toList());
         
         // Remove stopwords (use detected language)
         List<String> namesWithoutStopwords = allNormalizedNames.stream()
@@ -118,21 +148,48 @@ public record Entity(
             .distinct()
             .collect(Collectors.toList());
         
-        // Normalize addresses
-        List<String> normalizedAddresses = addresses != null ? addresses.stream()
-            .map(addr -> {
-                String fullAddr = String.format("%s %s %s %s %s", 
-                    addr.line1() != null ? addr.line1() : "",
-                    addr.city() != null ? addr.city() : "",
-                    addr.state() != null ? addr.state() : "",
-                    addr.postalCode() != null ? addr.postalCode() : "",
-                    addr.country() != null ? addr.country() : ""
+        // Phase 17: Normalize addresses using AddressNormalizer
+        List<Address> normalizedAddressList = new ArrayList<>();
+        List<String> normalizedAddressStrings = new ArrayList<>();
+        if (addresses != null && !addresses.isEmpty()) {
+            for (Address addr : addresses) {
+                // Normalize address fields
+                String line1 = normalizeAddressField(addr.line1());
+                String line2 = normalizeAddressField(addr.line2());
+                String city = normalizeAddressField(addr.city());
+                String state = normalizeAddressField(addr.state());
+                String postalCode = addr.postalCode() != null ? addr.postalCode().toLowerCase() : null;
+                String country = addr.country() != null ? addr.country().toLowerCase() : null;
+                
+                Address normalizedAddr = new Address(line1, line2, city, state, postalCode, country);
+                normalizedAddressList.add(normalizedAddr);
+                
+                // Also create string representation for PreparedFields
+                String fullAddr = String.format("%s %s %s %s %s",
+                    line1 != null ? line1 : "",
+                    city != null ? city : "",
+                    state != null ? state : "",
+                    postalCode != null ? postalCode : "",
+                    country != null ? country : ""
                 ).trim();
-                return normalizer.lowerAndRemovePunctuation(fullAddr);
-            })
-            .filter(s -> !s.isEmpty())
-            .distinct()
-            .collect(Collectors.toList()) : List.of();
+                if (!fullAddr.isEmpty()) {
+                    normalizedAddressStrings.add(fullAddr);
+                }
+            }
+        }
+        
+        // Phase 17: Normalize contact info phones using PhoneNormalizer
+        ContactInfo normalizedContact = contact;
+        if (contact != null) {
+            String normalizedPhone = PhoneNormalizer.normalizePhoneNumber(contact.phoneNumber());
+            String normalizedFax = PhoneNormalizer.normalizePhoneNumber(contact.faxNumber());
+            normalizedContact = new ContactInfo(
+                contact.emailAddress(),
+                normalizedPhone,
+                normalizedFax,
+                contact.website()
+            );
+        }
         
         PreparedFields prepared = new PreparedFields(
             normalizedPrimary,
@@ -140,15 +197,15 @@ public record Entity(
             namesWithoutStopwords,
             namesWithoutCompanyTitles,
             wordCombinations,
-            normalizedAddresses,
+            normalizedAddressStrings,
             detectedLanguage
         );
         
         return new Entity(
             id, name, type, source, sourceId,
             person, business, organization, aircraft, vessel,
-            contact, addresses, cryptoAddresses, altNames, governmentIds,
-            sanctionsInfo, remarks, prepared
+            normalizedContact, normalizedAddressList, cryptoAddresses, altNames, governmentIds,
+            sanctionsInfo, historicalInfo, remarks, prepared
         );
     }
     
@@ -271,6 +328,18 @@ public record Entity(
         }
         
         return cleaned;
+    }
+
+    /**
+     * Normalizes an address field: lowercase and remove punctuation.
+     * Phase 17: Used for normalizing address fields during Entity.normalize()
+     */
+    private String normalizeAddressField(String field) {
+        if (field == null || field.isEmpty()) {
+            return null;
+        }
+        // Lowercase and remove commas and periods
+        return field.toLowerCase().replace(",", "").replace(".", "");
     }
 
     /**

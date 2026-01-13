@@ -24,10 +24,12 @@ GO_IS_BASELINE = os.getenv('GO_IS_BASELINE', 'true').lower() == 'true'  # Treat 
 REPORT_DIR = os.getenv('REPORT_DIR', '/data/reports')
 LOG_DIR = os.getenv('LOG_DIR', '/data/logs')
 
-# GitHub Integration (optional)
+# GitHub Integration (required for PR creation and issue tracking)
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-GITHUB_REPO = os.getenv('GITHUB_REPO', 'moov-io/watchman-java')
-CREATE_GITHUB_ISSUES = os.getenv('CREATE_GITHUB_ISSUES', 'true').lower() == 'true'
+GITHUB_REPO = os.getenv('GITHUB_REPO', 'BraidFI-AI/watchman-java')
+
+# Repair Pipeline
+REPAIR_PIPELINE_ENABLED = os.getenv('REPAIR_PIPELINE_ENABLED', 'true').lower() == 'true'
 
 # Agent Behavior
 NEMESIS_MAX_ISSUES = int(os.getenv('NEMESIS_MAX_ISSUES', '50'))

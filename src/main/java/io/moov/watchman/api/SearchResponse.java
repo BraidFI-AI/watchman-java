@@ -3,6 +3,7 @@ package io.moov.watchman.api;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.model.SearchResult;
+import io.moov.watchman.trace.ScoringTrace;
 
 import java.util.List;
 
@@ -13,12 +14,20 @@ public record SearchResponse(
     List<SearchHit> entities,
     int totalResults,
     String requestID,
-    DebugInfo debug
+    DebugInfo debug,
+    ScoringTrace trace
 ) {
     /**
      * Create response from search results.
      */
     public static SearchResponse from(List<SearchResult> results, String requestId, boolean includeDebug) {
+        return from(results, requestId, includeDebug, null);
+    }
+
+    /**
+     * Create response from search results with optional trace data.
+     */
+    public static SearchResponse from(List<SearchResult> results, String requestId, boolean includeDebug, ScoringTrace trace) {
         List<SearchHit> hits = results.stream()
             .map(r -> SearchHit.from(r, includeDebug))
             .toList();
@@ -27,7 +36,8 @@ public record SearchResponse(
             hits,
             hits.size(),
             requestId,
-            includeDebug ? new DebugInfo("Search completed") : null
+            includeDebug ? new DebugInfo("Search completed") : null,
+            trace
         );
     }
 

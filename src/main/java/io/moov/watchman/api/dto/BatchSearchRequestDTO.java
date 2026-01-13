@@ -11,7 +11,8 @@ import java.util.List;
 public record BatchSearchRequestDTO(
     List<SearchItem> items,
     Double minMatch,
-    Integer limit
+    Integer limit,
+    Boolean trace
 ) {
     public record SearchItem(
         String requestId,

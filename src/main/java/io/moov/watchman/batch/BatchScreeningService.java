@@ -17,6 +17,14 @@ public interface BatchScreeningService {
     BatchScreeningResponse screen(BatchScreeningRequest request);
 
     /**
+     * Screen a batch of items with trace data enabled.
+     *
+     * @param request the batch screening request containing items to screen
+     * @return response with all screening results, statistics, and trace data
+     */
+    BatchScreeningResponse screenWithTrace(BatchScreeningRequest request);
+
+    /**
      * Screen a batch of items asynchronously.
      *
      * @param request the batch screening request containing items to screen

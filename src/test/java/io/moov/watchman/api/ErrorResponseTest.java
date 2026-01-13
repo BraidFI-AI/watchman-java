@@ -24,7 +24,8 @@ class ErrorResponseTest {
         assertThat(response.path()).isEqualTo("/test/path");
         assertThat(response.requestId()).isEqualTo("req-123");
         assertThat(response.timestamp()).isNotNull();
-        assertThat(response.timestamp()).isBeforeOrEqualTo(Instant.now());
+        // Timestamp is now a String in ISO-8601 format
+        assertThat(Instant.parse(response.timestamp())).isBeforeOrEqualTo(Instant.now());
     }
 
     @Test

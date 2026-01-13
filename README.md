@@ -6,7 +6,7 @@ A complete Java port of [Moov Watchman](https://github.com/moov-io/watchman) - a
 
 Watchman Java is a feature-complete reimplementation of the Go-based Watchman sanctions screening platform. It provides real-time screening against global sanctions watchlists (OFAC SDN, US CSL, EU CSL, UK CSL) with fuzzy name matching using Jaro-Winkler similarity scoring.
 
-This project was built using **Test-Driven Development (TDD)**, with 322 tests ensuring feature parity with the original Go implementation.
+This project was built using **Test-Driven Development (TDD)**, with tests ensuring feature parity with the original Go implementation. An autonomous **Nemesis Repair Agent** continuously validates parity and auto-generates fixes.
 
 ## Features
 
@@ -19,6 +19,8 @@ This project was built using **Test-Driven Development (TDD)**, with 322 tests e
 | **REST API** | Spring Boot API compatible with original Watchman endpoints |
 | **Auto-Refresh** | Scheduled data refresh from official sources |
 | **Filtering** | Filter by source list, entity type, minimum match score |
+| **Nemesis REST API** | Programmatic parity testing with async/sync modes |
+| **Autonomous Repair** | AI-powered divergence detection and auto-fix generation |
 
 ## Quick Start
 
@@ -35,24 +37,54 @@ This project was built using **Test-Driven Development (TDD)**, with 322 tests e
 # Run the application
 ./mvnw spring-boot:run
 
-# Run all tests (322 tests)
+# Run all tests (330+ tests)
 ./mvnw test
 ```
 
 ### API Endpoints
 
+#### Core Screening API
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/v1/search?name=<query>` | Search entities by name |
+| `GET` | `/search?q=<query>` | Search (Go-compatible, uses 'q' parameter) |
+| `GET` | `/v2/search?name=<query>` | Search (v2 API, uses 'name' parameter) |
 | `POST` | `/v2/search/batch` | Batch screening (up to 1000 items) |
-| `GET` | `/v1/download/refresh` | Trigger data refresh |
+| `POST` | `/v2/search/batch/async` | Async batch screening |
+| `POST` | `/v2/download` | Trigger data refresh |
+| `GET` | `/v2/download/status` | Check download status |
 | `GET` | `/health` | Health check with entity counts |
-| `GET` | `/v1/lists` | Get loaded list information |
+| `GET` | `/v2/listinfo` | Get loaded list information |
 
-### Example Search
+#### Nemesis Parity Testing API
 
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v2/nemesis/trigger` | Trigger parity test run (async/sync) |
+| `GET` | `/v2/nemesis/status/{jobId}` | Check job status and execution logs |
+| `GET` | `/v2/nemesis/reports` | List recent parity test reports |
+
+### Example Usage
+
+**Search Entities:**
 ```bash
-curl "http://localhost:8084/v1/search?name=Nicolas%20Maduro&limit=5"
+# V2 API (recommended)
+curl "http://localhost:8084/v2/search?name=Nicolas%20Maduro&limit=5"
+
+# Go-compatible API (legacy)
+curl "http://localhost:8084/search?q=Nicolas%20Maduro&limit=5"
+```
+
+**Trigger Parity Test (Async):**
+```bash
+curl -X POST http://localhost:8084/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 10, "async": true}'
+```
+
+**Check Test Status:**
+```bash
+curl http://localhost:8084/v2/nemesis/status/nemesis-20260111-123456
 ```
 
 ---
@@ -67,13 +99,27 @@ Watchman Java downloads sanctions data **directly from official government sourc
 | **OFAC Addresses** | https://www.treasury.gov/ofac/downloads/add.csv | Address data for SDN entries |
 | **OFAC Alt Names** | https://www.treasury.gov/ofac/downloads/alt.csv | Alternative names/aliases |
 | **US CSL** | https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.csv | US Consolidated Screening List |
-| **EU CSL** | https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content | EU Consolidated Financial Sanctions |
+| **EU CSL** | https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw | EU Consolidated Financial Sanctions |
 
 Data is automatically refreshed daily (configurable). You can also trigger a manual refresh:
 
 ```bash
-curl -X POST http://localhost:8084/v1/download/refresh
+curl -X POST http://localhost:8084/v2/download
 ```
+
+---
+
+## Architecture: Three-System Comparison
+
+Watchman Java operates within a three-system architecture for comprehensive validation:
+
+| System | Type | Purpose |
+|--------|------|----------|
+| **Moov Watchman (Go)** | Open-source baseline | Feature parity target at github.com/moov-io/watchman |
+| **Watchman Java** | This project | Complete Java port of Go implementation |
+| **OFAC-API** | Commercial service | Optional validation at ofac-api.com (paid subscription) |
+
+**Parity Testing:** The Nemesis agent continuously compares Java vs Go implementations to ensure behavioral equivalence. Optionally includes OFAC-API for commercial comparison (requires API key).
 
 ---
 
@@ -265,15 +311,23 @@ src/
 │   │   ├── SearchController.java
 │   │   ├── DownloadController.java
 │   │   ├── BatchScreeningController.java
+│   │   ├── NemesisController.java   # Parity testing API
+│   │   ├── V1CompatibilityController.java
+│   │   ├── HealthController.java
+│   │   ├── GlobalExceptionHandler.java
+│   │   ├── ErrorResponse.java
 │   │   └── dto/                     # Request/Response DTOs
 │   ├── batch/                       # Batch screening
 │   │   ├── BatchScreeningService.java
-│   │   └── BatchScreeningServiceImpl.java
+│   │   ├── BatchScreeningServiceImpl.java
+│   │   └── BatchScreening*.java     # DTOs and models
 │   ├── config/                      # Spring configuration
-│   │   └── WatchmanConfig.java
+│   │   ├── WatchmanConfig.java
+│   │   └── SimilarityConfig.java
 │   ├── download/                    # Data download service
 │   │   ├── DownloadService.java
-│   │   └── DownloadServiceImpl.java
+│   │   ├── DownloadServiceImpl.java
+│   │   └── DataRefreshService.java
 │   ├── index/                       # Entity indexing
 │   │   ├── EntityIndex.java
 │   │   └── InMemoryEntityIndex.java
@@ -281,22 +335,58 @@ src/
 │   │   ├── Entity.java
 │   │   ├── EntityType.java
 │   │   ├── SourceList.java
-│   │   └── ...
+│   │   ├── Person.java, Business.java
+│   │   └── Address.java, Contact.java...
+│   ├── normalization/               # Text normalization
+│   │   └── UnicodeNormalizer.java
+│   ├── normalize/                   # Phone/field normalization
+│   │   └── PhoneNormalizer.java
 │   ├── parser/                      # Data file parsers
 │   │   ├── OFACParser.java
+│   │   ├── OFACParserImpl.java
 │   │   ├── CSLParser.java
+│   │   ├── CSLParserImpl.java
 │   │   ├── EUCSLParser.java
-│   │   └── UKCSLParser.java
+│   │   ├── EUCSLParserImpl.java
+│   │   ├── UKCSLParser.java
+│   │   └── UKCSLParserImpl.java
+│   ├── phase22/                     # Advanced scoring (Phase 2.2)
+│   │   └── Phase22*.java            # Stop-word removal, tokenization
+│   ├── scorer/                      # Legacy scoring
+│   │   └── LegacyEntityScorer.java
+│   ├── scoring/                     # Scoring utilities
+│   │   └── JaroWinklerWithFavoritism.java
 │   ├── search/                      # Search service
 │   │   ├── SearchService.java
 │   │   ├── SearchServiceImpl.java
-│   │   └── EntityScorer.java
-│   └── similarity/                  # Fuzzy matching
-│       ├── JaroWinklerSimilarity.java
-│       ├── TextNormalizer.java
-│       └── PhoneticFilter.java
-└── test/java/io/moov/watchman/      # 322 tests
-    └── ...
+│   │   ├── EntityScorer.java
+│   │   ├── EntityScorerImpl.java
+│   │   ├── TitleMatcher.java
+│   │   ├── AffiliationMatcher.java
+│   │   └── EntityMerger.java...
+│   ├── similarity/                  # Fuzzy matching
+│   │   ├── JaroWinklerSimilarity.java
+│   │   ├── TextNormalizer.java
+│   │   ├── PhoneticFilter.java
+│   │   ├── SimilarityService.java
+│   │   ├── NameScorer.java
+│   │   ├── EntityTitleComparer.java
+│   │   └── LanguageDetector.java...
+│   └── trace/                       # Score debugging & tracing
+│       └── ScoreTrace.java...
+└── test/java/io/moov/watchman/      # 330+ tests
+    ├── api/                         # Controller tests
+    ├── batch/                       # Batch screening tests
+    ├── download/                    # Download service tests
+    ├── integration/                 # Integration tests
+    ├── model/                       # Model tests
+    ├── normalization/               # Normalization tests
+    ├── parser/                      # Parser tests
+    ├── phase22/                     # Phase 2.2 tests
+    ├── scorer/                      # Scoring tests
+    ├── scoring/                     # Scoring utility tests
+    ├── search/                      # Search service tests
+    └── similarity/                  # Similarity tests
 ```
 
 ## Test Coverage
@@ -306,16 +396,17 @@ See [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md) for detailed test documentati
 - Test case descriptions
 - Coverage of Go test cases
 
-**Summary: 322 tests across 21 test classes**
+**Summary: 330+ tests across 22+ test classes**
 
 | Area | Tests | Coverage |
 |------|-------|----------|
 | Similarity Engine | 56 | Jaro-Winkler, normalization, phonetics |
 | Parsers | 62 | OFAC, US CSL, EU CSL, UK CSL |
 | Search & Index | 48 | Scoring, filtering, ranking |
-| REST API | 55 | Controllers, DTOs, validation, error handling |
+| REST API | 62 | Controllers, DTOs, validation, error handling |
 | Download Service | 32 | Refresh, scheduling, multi-source |
 | Batch Screening | 21 | Parallel processing, statistics |
+| Nemesis API | 7 | Async/sync execution, job tracking, validation |
 | Integration | 61 | End-to-end pipeline tests |
 
 ## Nemesis Repair Agent
@@ -323,11 +414,17 @@ See [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md) for detailed test documentati
 The **Nemesis Repair Agent** is an autonomous system that continuously validates the Java implementation against the Go baseline, detects divergences, and automatically generates code fixes.
 
 **Key Features:**
-- 🤖 **Autonomous Testing** - Runs every 5 minutes via cron
+- 🤖 **Autonomous Testing** - Runs every 5 minutes via cron OR on-demand via REST API
 - 🔍 **AI-Powered Analysis** - Uses Claude/GPT-4 to analyze divergences and identify patterns
 - 🛠️ **Automated Fixes** - Generates code fixes and creates GitHub PRs automatically
 - 📊 **Coverage Tracking** - Ensures 90% of OFAC entities are tested
 - 🚀 **CI/CD Integration** - Auto-deploys to Fly.io after PR merge
+- 🌐 **REST API** - Programmatic triggering with async/sync modes and job tracking
+
+**Triggering Modes:**
+1. **Scheduled (Cron)** - Automatic every 5 minutes on Fly.io
+2. **REST API** - `POST /v2/nemesis/trigger` for on-demand execution
+3. **Manual Script** - `./scripts/trigger-nemesis.sh` for local testing
 
 **Workflow:**
 ```
@@ -335,9 +432,13 @@ Nemesis → Detect divergences → Classify issues → Analyze code →
 Generate fixes → Create PR → Human approval → Auto-deploy
 ```
 
+**Comparison Modes:**
+- **Default:** Java vs Go (feature parity testing)
+- **Optional:** Include OFAC-API commercial service with `--include-ofac-api` flag
+
 **Status:** Fully operational with human approval gate for all PRs.
 
-See [NEMESIS.md](docs/NEMESIS.md) for complete documentation.
+See [docs/NEMESIS.md](docs/NEMESIS.md) for complete documentation.
 
 ---
 
@@ -345,13 +446,13 @@ See [NEMESIS.md](docs/NEMESIS.md) for complete documentation.
 
 | Document | Description |
 |----------|-------------|
-| [API_SPEC.md](docs/API_SPEC.md) | Complete API reference with examples |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Fly.io deployment guide |
-| [SCALING_GUIDE.md](docs/SCALING_GUIDE.md) | Performance benchmarks & scaling for Fly.io/AWS |
-| [USER_GUIDE.md](docs/USER_GUIDE.md) | Business user guide |
-| [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error handling & logging guide |
-| [TEST_COVERAGE.md](docs/TEST_COVERAGE.md) | Detailed test documentation |
+| [API_SPEC.md](docs/API_SPEC.md) | Complete API reference with examples (includes Nemesis endpoints) |
 | [NEMESIS.md](docs/NEMESIS.md) | Nemesis autonomous testing & repair system |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Fly.io deployment guide |
+| [TEST_COVERAGE.md](docs/TEST_COVERAGE.md) | Detailed test documentation |
+| [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error handling & logging guide |
+| [GO_JAVA_COMPARISON_PROCEDURE.md](docs/GO_JAVA_COMPARISON_PROCEDURE.md) | Parity testing methodology |
+| [FEATURE_PARITY_GAPS.md](docs/FEATURE_PARITY_GAPS.md) | Known differences between Go and Java |
 
 ## License
 

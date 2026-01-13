@@ -9,34 +9,40 @@ from enum import Enum
 
 
 class DivergenceType(Enum):
-    """Types of divergences between Java and Go implementations."""
+    """Types of divergences between implementations."""
     TOP_RESULT_DIFFERS = "top_result_differs"
     SCORE_DIFFERENCE = "score_difference"
     RESULT_ORDER_DIFFERS = "result_order_differs"
     JAVA_EXTRA_RESULT = "java_extra_result"
     GO_EXTRA_RESULT = "go_extra_result"
+    EXTERNAL_EXTRA_RESULT = "external_extra_result"
+    THREE_WAY_SPLIT = "three_way_split"  # All three implementations differ
+    TWO_VS_ONE = "two_vs_one"  # Two implementations agree, one differs
 
 
 @dataclass
 class Divergence:
-    """Represents a divergence between Java and Go results."""
+    """Represents a divergence between implementations."""
     type: DivergenceType
     severity: str  # "critical", "moderate", "minor"
     description: str
     java_data: Optional[Dict] = None
     go_data: Optional[Dict] = None
+    external_data: Optional[Dict] = None
     score_difference: Optional[float] = None
+    agreement_pattern: Optional[str] = None  # e.g., "java+go vs external"
+    java_trace: Optional[Dict] = None  # Scoring trace data from Java
 
 
 class ResultAnalyzer:
-    """Analyzes and compares Java vs Go search results."""
+    """Analyzes and compares search results from Java, Go, and external providers."""
     
     def _get_entity_id(self, entity: Dict) -> Optional[str]:
         """
-        Extract entity ID from either Java or Go response format.
-        Java uses 'id', Go uses 'sourceID'.
+        Extract entity ID from response format.
+        Java uses 'id', Go uses 'sourceID', external may use 'uid'.
         """
-        return entity.get("id") or entity.get("sourceID")
+        return entity.get("id") or entity.get("sourceID") or entity.get("uid")
     
     def _get_entity_name(self, entity: Dict) -> str:
         """Extract entity name, handling different formats."""
@@ -48,6 +54,10 @@ class ResultAnalyzer:
             if entity.get(key) and entity[key].get("name"):
                 return entity[key]["name"]
         return entity.get("sdnName", "Unknown")
+    
+    def _get_entity_score(self, entity: Dict) -> float:
+        """Extract match score, handling different field names."""
+        return entity.get("match", 0.0)
     
     def compare(self, java_results: List[Dict], go_results: List[Dict]) -> List[Divergence]:
         """
@@ -195,3 +205,126 @@ class ResultAnalyzer:
             "by_severity": by_severity,
             "divergences": divergences
         }
+    
+    def compare_three_way(
+        self, 
+        java_results: List[Dict], 
+        go_results: List[Dict],
+        external_results: List[Dict]
+    ) -> List[Divergence]:
+        """
+        Compare Java, Go, and external provider results (3-way comparison).
+        
+        Args:
+            java_results: List of entity results from Java API
+            go_results: List of entity results from Go API
+            external_results: List of entity results from external provider
+            
+        Returns:
+            List of Divergence objects with 3-way observations
+        """
+        divergences = []
+        
+        # Handle cases where one or more implementations returned no results
+        has_java = bool(java_results)
+        has_go = bool(go_results)
+        has_external = bool(external_results)
+        
+        if not has_java and not has_go and not has_external:
+            return divergences  # All empty, no divergence
+        
+        # Check top results from each implementation
+        java_top = java_results[0] if has_java else None
+        go_top = go_results[0] if has_go else None
+        external_top = external_results[0] if has_external else None
+        
+        java_top_id = self._get_entity_id(java_top) if java_top else None
+        go_top_id = self._get_entity_id(go_top) if go_top else None
+        external_top_id = self._get_entity_id(external_top) if external_top else None
+        
+        # Normalize IDs for comparison (remove source prefixes like "sdn-")
+        def normalize_id(entity_id):
+            if not entity_id:
+                return None
+            # Remove common prefixes
+            for prefix in ["sdn-", "ofac-", "un-", "eu-"]:
+                if entity_id.startswith(prefix):
+                    return entity_id[len(prefix):]
+            return entity_id
+        
+        java_top_id = normalize_id(java_top_id)
+        go_top_id = normalize_id(go_top_id)
+        external_top_id = normalize_id(external_top_id)
+        
+        # Analyze agreement patterns
+        if java_top_id == go_top_id == external_top_id and java_top_id is not None:
+            # Universal agreement - check for score differences
+            java_score = self._get_entity_score(java_top) if java_top else 0
+            go_score = self._get_entity_score(go_top) if go_top else 0
+            external_score = self._get_entity_score(external_top) if external_top else 0
+            
+            max_diff = max(abs(java_score - go_score), 
+                          abs(java_score - external_score), 
+                          abs(go_score - external_score))
+            
+            if max_diff > 0.10:
+                divergences.append(Divergence(
+                    type=DivergenceType.SCORE_DIFFERENCE,
+                    severity="moderate",
+                    description=f"All three agree on entity but scores vary: J={java_score:.2f} G={go_score:.2f} E={external_score:.2f}",
+                    java_data=java_top,
+                    go_data=go_top,
+                    external_data=external_top,
+                    score_difference=max_diff,
+                    agreement_pattern="all_agree_entity"
+                ))
+        
+        elif java_top_id == go_top_id and java_top_id != external_top_id:
+            # Java and Go agree, External differs
+            divergences.append(Divergence(
+                type=DivergenceType.TWO_VS_ONE,
+                severity="moderate",
+                description=f"Java+Go agree ({self._get_entity_name(java_top) if java_top else 'None'}) but External differs ({self._get_entity_name(external_top) if external_top else 'None'})",
+                java_data=java_top,
+                go_data=go_top,
+                external_data=external_top,
+                agreement_pattern="java+go vs external"
+            ))
+        
+        elif java_top_id == external_top_id and java_top_id != go_top_id:
+            # Java and External agree, Go differs
+            divergences.append(Divergence(
+                type=DivergenceType.TWO_VS_ONE,
+                severity="critical",  # Go should match Java
+                description=f"Java+External agree ({self._get_entity_name(java_top) if java_top else 'None'}) but Go differs ({self._get_entity_name(go_top) if go_top else 'None'})",
+                java_data=java_top,
+                go_data=go_top,
+                external_data=external_top,
+                agreement_pattern="java+external vs go"
+            ))
+        
+        elif go_top_id == external_top_id and go_top_id != java_top_id:
+            # Go and External agree, Java differs
+            divergences.append(Divergence(
+                type=DivergenceType.TWO_VS_ONE,
+                severity="critical",  # Java should match Go
+                description=f"Go+External agree ({self._get_entity_name(go_top) if go_top else 'None'}) but Java differs ({self._get_entity_name(java_top) if java_top else 'None'})",
+                java_data=java_top,
+                go_data=go_top,
+                external_data=external_top,
+                agreement_pattern="go+external vs java"
+            ))
+        
+        else:
+            # All three differ - interesting algorithm variations
+            divergences.append(Divergence(
+                type=DivergenceType.THREE_WAY_SPLIT,
+                severity="minor",
+                description=f"All three differ: Java={self._get_entity_name(java_top) if java_top else 'None'}, Go={self._get_entity_name(go_top) if go_top else 'None'}, External={self._get_entity_name(external_top) if external_top else 'None'}",
+                java_data=java_top,
+                go_data=go_top,
+                external_data=external_top,
+                agreement_pattern="all_differ"
+            ))
+        
+        return divergences

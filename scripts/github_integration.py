@@ -1,17 +1,179 @@
 """
-GitHub integration for creating issues and discussions from agent reports.
+GitHub Integration for Watchman-Java
+Creates and manages GitHub issues for:
+- Nemesis automated testing reports (ALWAYS creates as proposal package)
+- Strategic Analyzer roadmaps
+- Repair pipeline results
 """
 
+import os
+import sys
 import json
-import requests
+from pathlib import Path
 from datetime import datetime
-from agent_config import GITHUB_TOKEN, GITHUB_REPO, CREATE_GITHUB_ISSUES
+import requests
+
+# Add parent directory to path for agent_config import
+sys.path.insert(0, str(Path(__file__).parent))
+from agent_config import GITHUB_TOKEN, GITHUB_REPO
+
+
+def format_nemesis_issue(data, report_file):
+    """
+    Format Nemesis report as GitHub issue markdown.
+    
+    Args:
+        data: Report dict from run_nemesis.py with structure:
+              {"results_summary": {"total_divergences": N, "by_severity": {...}}, 
+               "coverage": {...}, 
+               "repair_results": {"prs_created": [...]}}
+        report_file: Path to JSON report file
+        
+    Returns:
+        Tuple of (title, body) strings
+    """
+    # Extract summary data
+    results_summary = data.get('results_summary', {})
+    total_divergences = results_summary.get('total_divergences', 0)
+    by_severity = results_summary.get('by_severity', {})
+    critical_count = by_severity.get('critical', 0)
+    moderate_count = by_severity.get('moderate', 0)
+    
+    repair_results = data.get('repair_results', {})
+    analysis_date = data.get('metadata', {}).get('timestamp', 'N/A')
+    
+    # Create title
+    if total_divergences == 0:
+        title = f"✅ Nemesis Report - Clean Run ({analysis_date})"
+    else:
+        title = f"🔍 Nemesis Report - {total_divergences} Divergences Found ({analysis_date})"
+    
+    # Create body
+    body = f"# Nemesis Automated Testing Report\n\n"
+    body += f"**Analysis Date:** {analysis_date}\n"
+    body += f"**Report File:** `{report_file}`\n\n"
+    body += f"---\n\n"
+    
+    if total_divergences == 0:
+        body += f"## ✅ Clean Run\n\n"
+        body += f"No divergences detected between Java and Go implementations.\n\n"
+        body += f"### Coverage\n"
+        body += f"- **Queries Tested:** {data.get('coverage', {}).get('total_queries_tested', 0)}\n"
+        body += f"- **Cumulative Coverage:** {data.get('coverage', {}).get('cumulative_coverage_pct', 0):.2f}%\n"
+    else:
+        body += f"## 📊 Summary\n\n"
+        body += f"- **Total Divergences:** {total_divergences}\n"
+        body += f"- **Critical:** {critical_count} (score differences > 0.5)\n"
+        body += f"- **Moderate:** {moderate_count} (score differences 0.05-0.5)\n"
+        body += f"- **Coverage:** {data.get('coverage', {}).get('cumulative_coverage_pct', 0):.2f}%\n\n"
+        
+        # Severity explanations
+        if critical_count > 0 or moderate_count > 0:
+            body += f"### Severity Breakdown\n\n"
+            
+            severity_explanations = {
+                "critical": "🔴 **CRITICAL** - Score differences > 0.5, likely causing wrong matches.",
+                "moderate": "🟡 **MODERATE** - Score differences (0.05-0.5) that may affect matching quality."
+            }
+            
+            for severity in ["critical", "moderate"]:
+                count = by_severity.get(severity, 0)
+                if count > 0:
+                    body += f"{severity_explanations[severity]}\n"
+                    body += f"- **Count:** {count} divergences\n\n"
+    
+    # Footer with JSON summary
+    body += f"\n---\n\n## 📁 Full Report\n\n"
+    
+    # Upload report and add link
+    gist_url = upload_report_as_gist(report_file, f"Nemesis Report - {analysis_date}")
+    if gist_url:
+        body += f"**[📄 View Full Report on GitHub]({gist_url})**\n\n"
+    else:
+        body += f"Complete technical details: `{report_file}`\n\n"
+    
+    body += f"\n```json\n"
+    body += f"{{\n"
+    body += f'  "total_divergences": {total_divergences},\n'
+    body += f'  "critical": {critical_count},\n'
+    body += f'  "moderate": {moderate_count},\n'
+    body += f'  "coverage_pct": {data.get("coverage", {}).get("cumulative_coverage_pct", 0):.2f}\n'
+    body += f"}}\n"
+    body += f"```\n"
+    
+    # Add PR links if repair results exist
+    if repair_results and repair_results.get("prs_created"):
+        prs = repair_results["prs_created"]
+        body += f"\n---\n\n## 🔧 Automated Fixes\n\n"
+        body += f"The repair pipeline has created **{len(prs)} pull request(s)**:\n\n"
+        
+        for i, pr in enumerate(prs, 1):
+            issue_id = pr.get("issue_id", "Unknown")
+            pr_url = pr.get("pr_url", "")
+            status_icon = "✅" if pr.get("status") == "success" else "⚠️"
+            
+            body += f"{i}. {status_icon} [{issue_id}]({pr_url})\n"
+        
+        body += f"\n**Repair Summary:**\n"
+        body += f"- Auto-fix eligible: {repair_results.get('auto_fix_count', 0)}\n"
+        body += f"- Needs human review: {repair_results.get('human_review_count', 0)}\n"
+        body += f"- Too complex: {repair_results.get('too_complex_count', 0)}\n"
+        body += f"\n💡 *Review PRs above before merging*\n\n"
+    
+    body += f"\n### Next Steps\n"
+    body += f"1. Review full report: `{report_file}`\n"
+    body += f"2. Approve/merge automated fix PRs (if any)\n"
+    body += f"3. Investigate remaining divergences\n"
+    
+    return title, body
+
+
+def upload_report_as_gist(report_file, description="Nemesis Test Report"):
+    """Upload report file as a public GitHub Gist."""
+    if not GITHUB_TOKEN:
+        return None
+    
+    try:
+        with open(report_file, 'r') as f:
+            content = f.read()
+        
+        filename = Path(report_file).name
+        
+        payload = {
+            "description": description,
+            "public": False,  # Private gist
+            "files": {
+                filename: {
+                    "content": content
+                }
+            }
+        }
+        
+        response = requests.post(
+            "https://api.github.com/gists",
+            headers={
+                "Authorization": f"Bearer {GITHUB_TOKEN}",
+                "Accept": "application/vnd.github.v3+json"
+            },
+            json=payload
+        )
+        
+        if response.status_code == 201:
+            gist_url = response.json()["html_url"]
+            print(f"  ✓ Uploaded report to: {gist_url}")
+            return gist_url
+        else:
+            print(f"  ✗ Failed to upload report: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"  ✗ Error uploading report: {e}")
+        return None
 
 
 def create_issue(title, body, labels=None):
-    """Create a GitHub issue."""
-    if not CREATE_GITHUB_ISSUES or not GITHUB_TOKEN:
-        print("  ⚠️  GitHub integration disabled (no token or CREATE_GITHUB_ISSUES=false)")
+    """Create a GitHub issue using GitHub API."""
+    if not GITHUB_TOKEN:
+        print("  ⚠️  GitHub integration disabled (no GITHUB_TOKEN)")
         return None
     
     url = f"https://api.github.com/repos/{GITHUB_REPO}/issues"
@@ -41,172 +203,32 @@ def create_issue(title, body, labels=None):
         return None
 
 
-def format_nemesis_issue(data, report_file):
-    """Format Nemesis report as GitHub issue."""
-    total = data.get('total_issues_found', 0)
-    divergences = data.get('divergence_issues', 0)
-    by_priority = data.get('by_priority', {})
-    
-    title = f"Nemesis Report: {total} issues found ({divergences} Go/Java divergences)"
-    
-    # Build body
-    body = f"""## Nemesis Agent Report
-**Date:** {data.get('analysis_date', 'Unknown')}
-**Report:** `{report_file}`
-
-### Summary
-- **Total Issues:** {total}
-- **Go/Java Divergences:** {divergences}
-- **Critical (P0):** {by_priority.get('P0', 0)}
-- **High (P1):** {by_priority.get('P1', 0)}
-- **Medium (P2):** {by_priority.get('P2', 0)}
-- **Low (P3):** {by_priority.get('P3', 0)}
-
-"""
-    
-    # Add top critical issues
-    issues = data.get('issues', [])
-    critical = [i for i in issues if i.get('priority') in ['P0', 'P1']]
-    
-    if critical:
-        body += f"### Top {min(10, len(critical))} Critical Issues\n\n"
-        for issue in critical[:10]:
-            body += f"#### [{issue['id']}] {issue['title']} ({issue['priority']})\n"
-            body += f"**Category:** {issue.get('category', 'Unknown')}\n\n"
-            
-            if 'test_case' in issue:
-                tc = issue['test_case']
-                body += f"**Test Case:**\n"
-                body += f"- Query: `{tc.get('query', 'N/A')}`\n"
-                
-                if 'java_top_result' in tc and 'go_top_result' in tc:
-                    body += f"- Java: `{tc['java_top_result']}` (score: {tc.get('java_score', 0):.3f})\n"
-                    body += f"- Go: `{tc['go_top_result']}` (score: {tc.get('go_score', 0):.3f})\n"
-                    body += f"- **Divergence:** {tc.get('divergence_magnitude', 0):.3f}\n"
-            
-            body += f"\n**Root Cause:** {issue.get('root_cause', 'Unknown')}\n"
-            body += f"\n**Fix:** {issue.get('actionable_fix', 'Unknown')}\n"
-            body += f"\n---\n\n"
-    
-    body += f"\n### Next Steps\n"
-    body += f"1. Review full report: `{report_file}`\n"
-    body += f"2. Run Strategic Analyzer to create fix roadmap\n"
-    body += f"3. Prioritize P0/P1 divergences for immediate fixing\n"
-    body += f"\n**Full report available on Fly VM at:** `/data/reports/{report_file.split('/')[-1]}`"
-    
-    return title, body
-
-
-def format_roadmap_issue(data, report_file):
-    """Format Strategic Analyzer roadmap as GitHub issue."""
-    summary = data.get('executive_summary', {})
-    total = summary.get('total_issues', 0)
-    critical = summary.get('critical_issues', 0)
-    
-    title = f"Sprint Planning: {total} issues analyzed, {critical} critical"
-    
-    body = f"""## Strategic Analyzer Roadmap
-**Date:** {data.get('analysis_date', 'Unknown')}
-**Report:** `{report_file}`
-
-### Executive Summary
-- **Total Issues Analyzed:** {total}
-- **Critical Issues:** {critical}
-- **Pass Rate Goal:** Achieve Go/Java parity
-
-"""
-    
-    # Sprint 1 recommendations
-    sprint1_issues = summary.get('recommended_sprint_1', [])
-    if sprint1_issues:
-        body += f"### 🎯 Recommended for Sprint 1\n\n"
-        body += f"**Issues:** {', '.join(sprint1_issues)}\n"
-        body += f"**Expected Impact:** {summary.get('estimated_sprint_1_impact', 'N/A')}\n\n"
-        
-        # Get details for each issue
-        issue_analysis = data.get('issue_analysis', [])
-        for issue_id in sprint1_issues[:5]:  # Top 5
-            issue = next((i for i in issue_analysis if i['id'] == issue_id), None)
-            if issue:
-                body += f"#### {issue_id}: {issue.get('decision', 'Unknown')}\n"
-                body += f"- **Rationale:** {issue.get('rationale', 'N/A')}\n"
-                body += f"- **Effort:** {issue.get('effort_hours', 'N/A')} hours\n"
-                body += f"- **Impact:** {issue.get('impact_queries_per_day', 'N/A')} queries/day\n"
-                body += f"- **ROI:** {issue.get('roi', 'N/A')}\n"
-                body += f"- **Approach:** {issue.get('approach', 'N/A')}\n\n"
-    
-    # Quick wins
-    quick_wins = summary.get('quick_wins', [])
-    if quick_wins:
-        body += f"### ⚡ Quick Wins\n"
-        body += f"{', '.join(quick_wins)}\n\n"
-    
-    # Fix themes
-    themes = data.get('fix_themes', [])
-    if themes:
-        body += f"### 🎨 Fix Themes\n\n"
-        for theme in themes[:3]:  # Top 3 themes
-            body += f"#### {theme['theme']}\n"
-            body += f"- **Priority:** {theme.get('combined_priority', 'Unknown')}\n"
-            body += f"- **Effort:** {theme.get('effort_estimate_hours', 'Unknown')} hours\n"
-            body += f"- **ROI Score:** {theme.get('roi_score', 'N/A')}\n"
-            body += f"- **Approach:** {theme.get('approach', 'N/A')}\n"
-            body += f"- **Issues:** {', '.join(theme.get('issues', []))}\n\n"
-    
-    body += f"\n### 📋 Action Items\n"
-    body += f"1. Review full roadmap: `{report_file}`\n"
-    body += f"2. Assign Sprint 1 issues to developers\n"
-    body += f"3. Create individual issues for each recommended fix\n"
-    body += f"4. After fixes, re-run Nemesis to validate\n"
-    body += f"\n**Full roadmap available on Fly VM at:** `/data/reports/{report_file.split('/')[-1]}`"
-    
-    return title, body
-
-
 def create_nemesis_issue(data, report_file):
-    """Create GitHub issue from Nemesis report (only if divergences or critical issues found)."""
-    # Only create issue if there are divergences or critical issues
-    divergences = data.get('divergence_issues', 0)
-    by_priority = data.get('by_priority', {})
-    critical_count = by_priority.get('P0', 0) + by_priority.get('P1', 0)
+    """
+    Create GitHub issue from Nemesis report (ALWAYS creates issue as proposal package).
     
-    if divergences == 0 and critical_count == 0:
-        print("  ℹ️  No divergences or critical issues - skipping GitHub issue creation")
-        return None
+    Args:
+        data: Report dict from run_nemesis.py
+        report_file: Path to the JSON report file
+    
+    Returns:
+        GitHub issue URL or None if failed
+    """
+    # Always create issue - serves as proposal package for human review
+    total_divergences = data.get('results_summary', {}).get('total_divergences', 0)
+    by_severity = data.get('results_summary', {}).get('by_severity', {})
     
     title, body = format_nemesis_issue(data, report_file)
-    labels = ["nemesis", "search-quality", "automated"]
+    labels = ["nemesis", "automated-testing"]
     
-    # Add priority labels (only if critical issues recommended)."""
-    summary = data.get('executive_summary', {})
-    critical = summary.get('critical_issues', 0)
-    sprint1_issues = summary.get('recommended_sprint_1', [])
-    
-    # Only create issue if there are actionable recommendations
-    if critical == 0 and len(sprint1_issues) == 0:
-        print("  ℹ️  No critical issues or Sprint 1 recommendations - skipping GitHub issue creation")
-        return None
-    
-    if by_priority.get('P0', 0) > 0:
+    # Add priority labels based on severity
+    if by_severity.get('critical', 0) > 0:
         labels.append("priority:critical")
+    elif total_divergences == 0:
+        labels.append("status:clean")
     
     return create_issue(title, body, labels)
 
 
-def create_roadmap_issue(data, report_file):
-    """Create GitHub issue from Strategic Analyzer roadmap."""
-    title, body = format_roadmap_issue(data, report_file)
-    labels = ["strategic-analyzer", "sprint-planning", "automated"]
-    
-    return create_issue(title, body, labels)
-
-
-if __name__ == "__main__":
-    print("GitHub Integration Configuration:")
-    print(f"  Repo: {GITHUB_REPO}")
-    print(f"  Token Set: {'Yes' if GITHUB_TOKEN else 'No'}")
-    print(f"  Create Issues: {CREATE_GITHUB_ISSUES}")
-    
-    if not GITHUB_TOKEN:
-        print("\n⚠️  Set GITHUB_TOKEN environment variable to enable issue creation")
-        print("   export GITHUB_TOKEN=ghp_your_token_here")
+# Module exports
+__all__ = ['create_issue', 'create_nemesis_issue', 'format_nemesis_issue', 'upload_report_as_gist']

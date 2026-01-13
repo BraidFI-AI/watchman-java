@@ -33,7 +33,7 @@ class SearchControllerTest {
         entityIndex = new InMemoryEntityIndex();
         var scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
         SearchService searchService = new SearchServiceImpl(entityIndex, scorer);
-        controller = new SearchController(searchService, entityIndex);
+        controller = new SearchController(searchService, entityIndex, scorer);
 
         // Load test data
         entityIndex.addAll(List.of(
@@ -55,7 +55,7 @@ class SearchControllerTest {
         void shouldReturnResultsForValidSearch() {
             ResponseEntity<SearchResponse> response = controller.search(
                 "Nicolas Maduro", null, null, null, null,
-                10, 0.5, "req-123", false
+                10, 0.5, "req-123", false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -69,7 +69,7 @@ class SearchControllerTest {
         void shouldReturnEmptyForNoMatches() {
             ResponseEntity<SearchResponse> response = controller.search(
                 "XYZQWERTY", null, null, null, null,
-                10, 0.9, null, false
+                10, 0.9, null, false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -82,7 +82,7 @@ class SearchControllerTest {
         void shouldRejectRequestWithoutName() {
             ResponseEntity<SearchResponse> response = controller.search(
                 null, null, null, null, null,
-                10, 0.88, null, false
+                10, 0.88, null, false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -93,7 +93,7 @@ class SearchControllerTest {
         void shouldFilterBySource() {
             ResponseEntity<SearchResponse> response = controller.search(
                 "Test Corp", "US_CSL", null, null, null,
-                10, 0.5, null, false
+                10, 0.5, null, false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -107,7 +107,7 @@ class SearchControllerTest {
         void shouldFilterByType() {
             ResponseEntity<SearchResponse> response = controller.search(
                 "HAVANA", null, null, "vessel", null,
-                10, 0.5, null, false
+                10, 0.5, null, false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -121,7 +121,7 @@ class SearchControllerTest {
         void shouldRespectLimitParameter() {
             ResponseEntity<SearchResponse> response = controller.search(
                 "Maduro", null, null, null, null,
-                1, 0.5, null, false
+                1, 0.5, null, false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -135,7 +135,7 @@ class SearchControllerTest {
             // High threshold should filter out partial matches
             ResponseEntity<SearchResponse> response = controller.search(
                 "Maduro", null, null, null, null,
-                10, 0.99, null, false
+                10, 0.99, null, false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -148,7 +148,7 @@ class SearchControllerTest {
         void shouldIncludeDebugInfo() {
             ResponseEntity<SearchResponse> response = controller.search(
                 "Nicolas Maduro", null, null, null, null,
-                10, 0.5, null, true
+                10, 0.5, null, true, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -161,7 +161,7 @@ class SearchControllerTest {
         void resultsShouldBeSortedByScore() {
             ResponseEntity<SearchResponse> response = controller.search(
                 "Nicolas Maduro", null, null, null, null,
-                10, 0.5, null, false
+                10, 0.5, null, false, false
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

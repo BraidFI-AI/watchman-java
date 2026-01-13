@@ -3,6 +3,7 @@ package io.moov.watchman.api.dto;
 import io.moov.watchman.batch.BatchScreeningMatch;
 import io.moov.watchman.batch.BatchScreeningResponse;
 import io.moov.watchman.batch.BatchScreeningResult;
+import io.moov.watchman.trace.ScoringTrace;
 
 import java.time.Instant;
 import java.util.List;
@@ -26,7 +27,8 @@ public record BatchSearchResponseDTO(
         String query,
         String status,
         String errorMessage,
-        List<MatchDTO> matches
+        List<MatchDTO> matches,
+        ScoringTrace trace
     ) {
         public static BatchResultDTO from(BatchScreeningResult result) {
             List<MatchDTO> matchDtos = result.matches() != null
@@ -40,7 +42,8 @@ public record BatchSearchResponseDTO(
                 result.originalQuery(),
                 result.status().name(),
                 result.errorMessage(),
-                matchDtos
+                matchDtos,
+                result.trace()
             );
         }
     }
@@ -51,7 +54,8 @@ public record BatchSearchResponseDTO(
         String entityType,
         String sourceList,
         double score,
-        String remarks
+        String remarks,
+        Object breakdown
     ) {
         public static MatchDTO from(BatchScreeningMatch match) {
             return new MatchDTO(
@@ -60,7 +64,8 @@ public record BatchSearchResponseDTO(
                 match.entityType() != null ? match.entityType().name() : null,
                 match.sourceList() != null ? match.sourceList().name() : null,
                 match.score(),
-                match.remarks()
+                match.remarks(),
+                match.breakdown()
             );
         }
     }

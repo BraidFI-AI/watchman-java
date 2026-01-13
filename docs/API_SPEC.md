@@ -13,8 +13,10 @@
    - [Health Check](#health-check)
    - [Search](#search)
    - [Batch Screening](#batch-screening)
+   - [ScoreTrace](#scoretrace-debug-mode)
    - [List Information](#list-information)
    - [Data Management](#data-management)
+   - [Nemesis Testing](#nemesis-testing)
 4. [Data Models](#data-models)
 5. [Error Handling](#error-handling)
 6. [Rate Limits](#rate-limits)
@@ -30,6 +32,7 @@ Watchman Java provides a REST API for sanctions screening against global watchli
 - Batch screening for up to 1,000 entities per request
 - Multiple filter options (source list, entity type, minimum match score)
 - Automatic daily data refresh from official government sources
+- **ScoreTrace:** Optional scoring breakdown for debugging and compliance (`trace=true`)
 
 ### Content Type
 All endpoints accept and return `application/json`.
@@ -90,6 +93,7 @@ Search sanctions lists for matching entities.
 | `minMatch` | float | No | 0.85 | Minimum match score (0.0-1.0) |
 | `source` | string | No | all | Filter by source list |
 | `type` | string | No | all | Filter by entity type |
+| `trace` | boolean | No | false | Enable ScoreTrace (debug mode) |
 
 **Source List Values:**
 - `OFAC_SDN` - US OFAC Specially Designated Nationals
@@ -140,6 +144,7 @@ Search sanctions lists for matching entities.
 | `results[].remarks` | string | Additional information |
 | `query` | string | Original search query |
 | `totalResults` | integer | Number of results returned |
+| `trace` | object | ScoreTrace data (only when `trace=true`) |
 
 **Status Codes:**
 - `200 OK` - Search completed successfully
@@ -156,6 +161,9 @@ curl "https://watchman-java.fly.dev/v2/search?name=Bank&type=BUSINESS&source=OFA
 
 # Lower threshold for fuzzy matches
 curl "https://watchman-java.fly.dev/v2/search?name=Mohammad&minMatch=0.70&limit=50"
+
+# Debug mode with ScoreTrace
+curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro&trace=true"
 ```
 
 ---
@@ -269,6 +277,80 @@ curl -X POST https://watchman-java.fly.dev/v2/search/batch \
     "minMatch": 0.85
   }'
 ```
+
+---
+
+### ScoreTrace (Debug Mode)
+
+Enable detailed scoring breakdowns by adding `trace=true` to any search request.
+
+#### When to Use
+- **Development:** Understand why entities matched or didn't match
+- **Tuning:** Optimize scoring parameters (see [ScoreConfig](SCORECONFIG.md))
+- **Debugging:** Investigate unexpected match scores
+- **Compliance:** Document scoring methodology for audits
+
+#### Trace Response Structure
+
+When `trace=true` is included, the response adds a `trace` object:
+
+```json
+{
+  "results": [...],
+  "trace": {
+    "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+    "durationMs": 23,
+    "events": [
+      {
+        "timestamp": "2026-01-11T08:15:30.123Z",
+        "phase": "NORMALIZATION",
+        "description": "Entities normalized during construction",
+        "data": {}
+      },
+      {
+        "timestamp": "2026-01-11T08:15:30.125Z",
+        "phase": "NAME_COMPARISON",
+        "description": "Compare names",
+        "data": {
+          "durationMs": 2,
+          "success": true
+        }
+      }
+    ],
+    "breakdown": {
+      "nameScore": 0.95,
+      "altNamesScore": 0.0,
+      "addressScore": 0.0,
+      "finalScore": 0.95
+    }
+  }
+}
+```
+
+#### Trace Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sessionId` | string | Unique trace session identifier |
+| `durationMs` | integer | Total scoring duration in milliseconds |
+| `events` | array | Phase-by-phase execution events |
+| `events[].timestamp` | string | ISO 8601 timestamp |
+| `events[].phase` | string | Scoring phase (NORMALIZATION, NAME_COMPARISON, etc.) |
+| `events[].description` | string | Human-readable description |
+| `events[].data` | object | Phase-specific data |
+| `breakdown` | object | Component-level score breakdown |
+| `breakdown.nameScore` | float | Primary name match score |
+| `breakdown.altNamesScore` | float | Alternative names match score |
+| `breakdown.addressScore` | float | Address match score |
+| `breakdown.finalScore` | float | Aggregated final score |
+
+#### Performance Impact
+
+- **Production:** Keep `trace=false` (default) - zero overhead
+- **Debug Mode:** `trace=true` adds ~5-10ms per query
+- **Best Practice:** Enable only for investigation, not production traffic
+
+**See also:** [ScoreTrace Documentation](SCORETRACE.md)
 
 ---
 
@@ -533,6 +615,169 @@ Result for a single item in batch screening.
 
 ---
 
+## Nemesis Testing
+
+Trigger parity testing runs to validate Java implementation against Go baseline.
+
+### Trigger Nemesis Run
+
+#### `POST /v2/nemesis/trigger`
+
+Trigger a new Nemesis parity testing run. By default, runs asynchronously and returns immediately with a job ID.
+
+**Request Body:**
+
+```json
+{
+  "queries": 100,
+  "includeOfacApi": false,
+  "async": true
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `queries` | integer | No | 100 | Number of test queries to generate (1-1000). API caller controls this value. |
+| `includeOfacApi` | boolean | No | false | Add OFAC-API commercial service for 3-way comparison |
+| `async` | boolean | No | true | Run asynchronously (true) or wait for completion (false) |
+
+**Response (async=true):**
+
+```json
+{
+  "jobId": "nemesis-20260111-143052",
+  "status": "running",
+  "statusUrl": "/v2/nemesis/status/nemesis-20260111-143052",
+  "reportPath": null,
+  "executionTimeSeconds": null,
+  "message": "Nemesis run started asynchronously"
+}
+```
+
+**Response (async=false):**
+
+```json
+{
+  "jobId": "nemesis-20260111-143052",
+  "status": "completed",
+  "statusUrl": "/v2/nemesis/status/nemesis-20260111-143052",
+  "reportPath": "/data/reports/nemesis-20260111.json",
+  "executionTimeSeconds": 43,
+  "message": "Nemesis run completed successfully"
+}
+```
+
+**Status Codes:**
+- `202 Accepted` - Async job started
+- `200 OK` - Sync job completed
+- `400 Bad Request` - Invalid parameters
+- `500 Internal Server Error` - Execution failed
+
+**Example:**
+
+```bash
+# Async trigger (default - Java vs Go parity)
+curl -X POST https://watchman-java.fly.dev/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 100, "async": true}'
+
+# Sync trigger with OFAC-API (3-way validation)
+curl -X POST https://watchman-java.fly.dev/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 50, "includeOfacApi": true, "async": false}'
+```
+
+---
+
+### Check Job Status
+
+#### `GET /v2/nemesis/status/{jobId}`
+
+Check the status of a Nemesis run.
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `jobId` | string | Yes | Job identifier returned from trigger |
+
+**Response:**
+
+```json
+{
+  "jobId": "nemesis-20260111-143052",
+  "status": "completed",
+  "queries": 100,
+  "includeOfacApi": false,
+  "startTime": "2026-01-11T14:30:52",
+  "endTime": "2026-01-11T14:31:35",
+  "executionTimeSeconds": 43,
+  "reportPath": "/data/reports/nemesis-20260111.json",
+  "message": "Nemesis run completed successfully",
+  "logs": [
+    "Starting Nemesis run...",
+    "Queries: 100",
+    "Include OFAC-API: false",
+    "✓ Nemesis run completed"
+  ]
+}
+```
+
+**Status Values:**
+- `pending` - Job queued but not started
+- `running` - Job currently executing
+- `completed` - Job finished successfully
+- `failed` - Job failed with error
+
+**Status Codes:**
+- `200 OK` - Job found
+- `404 Not Found` - Job ID not found
+
+**Example:**
+
+```bash
+curl https://watchman-java.fly.dev/v2/nemesis/status/nemesis-20260111-143052
+```
+
+---
+
+### List Recent Reports
+
+#### `GET /v2/nemesis/reports`
+
+List the 10 most recent Nemesis report files.
+
+**Response:**
+
+```json
+[
+  {
+    "filename": "nemesis-20260111.json",
+    "sizeBytes": 125840,
+    "lastModified": 1736608295000,
+    "downloadUrl": "/v2/nemesis/reports/nemesis-20260111.json"
+  },
+  {
+    "filename": "nemesis-20260110.json",
+    "sizeBytes": 118320,
+    "lastModified": 1736521895000,
+    "downloadUrl": "/v2/nemesis/reports/nemesis-20260110.json"
+  }
+]
+```
+
+**Status Codes:**
+- `200 OK` - Reports listed
+- `500 Internal Server Error` - Failed to read reports directory
+
+**Example:**
+
+```bash
+curl https://watchman-java.fly.dev/v2/nemesis/reports
+```
+
+---
+
 ## Rate Limits
 
 | Endpoint | Rate Limit |
@@ -575,6 +820,13 @@ curl -X POST https://watchman-java.fly.dev/v1/download/refresh
 ---
 
 ## Changelog
+
+### v1.1.0 (2026-01-11)
+- **NEW:** Nemesis Testing API for triggering parity testing runs
+- Added `/v2/nemesis/trigger` - Trigger parity testing
+- Added `/v2/nemesis/status/{jobId}` - Check job status
+- Added `/v2/nemesis/reports` - List recent reports
+- Simplified Nemesis parameters to `--include-ofac-api` flag
 
 ### v1.0.0 (2026-01-03)
 - Initial release

@@ -286,7 +286,7 @@ class EntityScorerTest {
                 List.of(new Address("Palacio de Miraflores", null, "Caracas", null, null, "Venezuela")),
                 List.of(), List.of(), 
                 List.of(new GovernmentId(GovernmentIdType.PASSPORT, "V123456", "Venezuela")),
-                null, null, null
+                null, List.of(), null, null
             );
             
             Entity index = new Entity(
@@ -298,7 +298,7 @@ class EntityScorerTest {
                 List.of(new Address("Palacio de Miraflores", null, "Caracas", null, null, "Venezuela")),
                 List.of(), List.of("Nicolas Maduro", "El Presidente"),
                 List.of(new GovernmentId(GovernmentIdType.PASSPORT, "V123456", "Venezuela")),
-                SanctionsInfo.of(List.of("VENEZUELA")), null, null
+                SanctionsInfo.of(List.of("VENEZUELA")), List.of(), null, null
             );
             
             ScoreBreakdown breakdown = scorer.scoreWithBreakdown(query, index);
@@ -315,27 +315,27 @@ class EntityScorerTest {
     
     private Entity createEntity(String id, String name, String sourceId) {
         return new Entity(id, name, EntityType.PERSON, SourceList.US_OFAC, sourceId,
-            null, null, null, null, null, null, List.of(), List.of(), List.of(), List.of(), null, null, null);
+            null, null, null, null, null, null, List.of(), List.of(), List.of(), List.of(), null, List.of(), null, null);
     }
 
     private Entity createEntityWithCrypto(String id, String name, List<CryptoAddress> cryptoAddresses) {
         return new Entity(id, name, EntityType.PERSON, SourceList.US_OFAC, id,
-            null, null, null, null, null, null, List.of(), cryptoAddresses, List.of(), List.of(), null, null, null);
+            null, null, null, null, null, null, List.of(), cryptoAddresses, List.of(), List.of(), null, List.of(), null, null);
     }
 
     private Entity createEntityWithGovId(String id, String name, GovernmentId govId) {
         return new Entity(id, name, EntityType.PERSON, SourceList.US_OFAC, id,
-            null, null, null, null, null, null, List.of(), List.of(), List.of(), List.of(govId), null, null, null);
+            null, null, null, null, null, null, List.of(), List.of(), List.of(), List.of(govId), null, List.of(), null, null);
     }
 
     private Entity createEntityWithAddress(String id, String name, Address address) {
         return new Entity(id, name, EntityType.PERSON, SourceList.US_OFAC, id,
-            null, null, null, null, null, null, List.of(address), List.of(), List.of(), List.of(), null, null, null);
+            null, null, null, null, null, null, List.of(address), List.of(), List.of(), List.of(), null, List.of(), null, null);
     }
 
     private Entity createPersonWithDob(String id, String name, LocalDate dob) {
         Person person = new Person(name, List.of(), null, dob, null, null, List.of(), List.of());
         return new Entity(id, name, EntityType.PERSON, SourceList.US_OFAC, id,
-            person, null, null, null, null, null, List.of(), List.of(), List.of(), List.of(), null, null, null);
+            person, null, null, null, null, null, List.of(), List.of(), List.of(), List.of(), null, List.of(), null, null);
     }
 }

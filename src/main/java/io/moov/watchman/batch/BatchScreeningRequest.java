@@ -10,7 +10,8 @@ import java.util.List;
 public record BatchScreeningRequest(
     List<BatchScreeningItem> items,
     Double minMatch,
-    Integer limit
+    Integer limit,
+    Boolean trace
 ) {
     public static Builder builder() {
         return new Builder();
@@ -20,6 +21,7 @@ public record BatchScreeningRequest(
         private final List<BatchScreeningItem> items = new ArrayList<>();
         private Double minMatch = 0.88;
         private Integer limit = 10;
+        private Boolean trace = false;
 
         public Builder addItem(BatchScreeningItem item) {
             this.items.add(item);
@@ -47,8 +49,13 @@ public record BatchScreeningRequest(
             return this;
         }
 
+        public Builder trace(boolean trace) {
+            this.trace = trace;
+            return this;
+        }
+
         public BatchScreeningRequest build() {
-            return new BatchScreeningRequest(List.copyOf(items), minMatch, limit);
+            return new BatchScreeningRequest(List.copyOf(items), minMatch, limit, trace);
         }
     }
 }

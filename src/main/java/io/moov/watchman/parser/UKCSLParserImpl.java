@@ -304,6 +304,7 @@ public class UKCSLParserImpl implements UKCSLParser {
                 altNames,
                 List.of(), // governmentIds
                 new SanctionsInfo(List.of("UK"), false, null),
+                List.of(), // historicalInfo
                 otherInfo,
                 null // preparedFields - computed at index time
             );

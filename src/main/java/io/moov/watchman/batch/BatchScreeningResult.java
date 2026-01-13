@@ -1,5 +1,7 @@
 package io.moov.watchman.batch;
 
+import io.moov.watchman.trace.ScoringTrace;
+
 import java.util.List;
 
 /**
@@ -11,7 +13,8 @@ public record BatchScreeningResult(
     String originalQuery,
     List<BatchScreeningMatch> matches,
     ScreeningStatus status,
-    String errorMessage
+    String errorMessage,
+    ScoringTrace trace
 ) {
     public enum ScreeningStatus {
         SUCCESS,
@@ -26,7 +29,17 @@ public record BatchScreeningResult(
         ScreeningStatus status = (matches == null || matches.isEmpty()) 
             ? ScreeningStatus.NO_MATCHES 
             : ScreeningStatus.SUCCESS;
-        return new BatchScreeningResult(requestId, query, matches != null ? matches : List.of(), status, null);
+        return new BatchScreeningResult(requestId, query, matches != null ? matches : List.of(), status, null, null);
+    }
+
+    /**
+     * Create a result with matches and trace data.
+     */
+    public static BatchScreeningResult withTrace(String requestId, String query, List<BatchScreeningMatch> matches, ScoringTrace trace) {
+        ScreeningStatus status = (matches == null || matches.isEmpty()) 
+            ? ScreeningStatus.NO_MATCHES 
+            : ScreeningStatus.SUCCESS;
+        return new BatchScreeningResult(requestId, query, matches != null ? matches : List.of(), status, null, trace);
     }
 
     /**
@@ -40,7 +53,7 @@ public record BatchScreeningResult(
      * Create an error result.
      */
     public static BatchScreeningResult error(String requestId, String query, String errorMessage) {
-        return new BatchScreeningResult(requestId, query, List.of(), ScreeningStatus.ERROR, errorMessage);
+        return new BatchScreeningResult(requestId, query, List.of(), ScreeningStatus.ERROR, errorMessage, null);
     }
 
     /**
@@ -64,6 +77,7 @@ public record BatchScreeningResult(
         private List<BatchScreeningMatch> matches = List.of();
         private ScreeningStatus status = ScreeningStatus.SUCCESS;
         private String errorMessage;
+        private ScoringTrace trace;
 
         public Builder requestId(String requestId) {
             this.requestId = requestId;
@@ -90,8 +104,13 @@ public record BatchScreeningResult(
             return this;
         }
 
+        public Builder trace(ScoringTrace trace) {
+            this.trace = trace;
+            return this;
+        }
+
         public BatchScreeningResult build() {
-            return new BatchScreeningResult(requestId, originalQuery, matches, status, errorMessage);
+            return new BatchScreeningResult(requestId, originalQuery, matches, status, errorMessage, trace);
         }
     }
 }

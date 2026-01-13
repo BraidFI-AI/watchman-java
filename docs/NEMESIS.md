@@ -1,19 +1,41 @@
 # Nemesis 1.0 - User Guide
 
+> **Note**: Production deployment has moved to AWS ECS. See [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md) for current infrastructure setup. Legacy Fly.io references in this doc are for historical context.
+
 ## Overview
 
-**Nemesis** is an autonomous testing system that continuously validates the Watchman Java implementation against the Go baseline. It runs daily, generating dynamic test queries, detecting divergences automatically, and using AI to identify patterns and root causes.
+**Nemesis** is an autonomous testing system that continuously validates the Watchman Java implementation against the Go baseline and optionally against external commercial providers. It runs daily, generating dynamic test queries, detecting divergences automatically, and using AI to identify patterns and root causes.
 
 ## What Nemesis Does
 
 Nemesis automatically:
-- ✅ Generates 100 dynamic test queries per run
-- ✅ Tests queries against both Java and Go implementations
+- ✅ Generates dynamic test queries per run (configurable: 1-1000, default: 100)
+- ✅ Tests queries against Java and Go implementations
+- ✅ Compares against OFAC-API (commercial service at ofac-api.com) for 3-way comparison
 - ✅ Detects divergences (different results, scores, or ordering)
-- ✅ Tracks coverage to ensure all 1000+ OFAC entities are tested
+- ✅ Tracks coverage to ensure all OFAC SDN entities are tested (~12,500+)
 - ✅ Uses AI to identify patterns and recommend fixes
-- ✅ Generates daily reports with prioritized issues
-- ✅ Optionally creates GitHub issues for critical divergences
+- ✅ Runs repair pipeline to auto-generate code fixes and PRs
+- ✅ Creates GitHub issues EVERY run with report summary and PR links for human review
+
+## Comparison Modes
+
+### Default: Java vs Go (Parity Testing)
+- **Java vs Go** - Validates Java implementation against Go baseline
+- This is the core mission: feature parity
+- Use for daily automated runs
+- No additional API costs
+
+### Optional: Add OFAC-API (3-Way Validation)
+- **Java vs Go vs OFAC-API** - Adds OFAC-API (commercial service) as validation layer
+- Observes agreement patterns:
+  - All three agree → High confidence
+  - Java+Go vs OFAC-API → Note commercial algorithm differences
+  - Go+OFAC-API vs Java → Potential Java issue
+  - Java+OFAC-API vs Go → Potential Go issue
+  - All three differ → Interesting scoring variations
+- Requires OFAC-API (commercial service) API key - paid subscription required
+- Use for spot-checking or compliance validation
 
 ## Daily Reports
 
@@ -74,6 +96,66 @@ Reports are saved to `/data/reports/nemesis-YYYYMMDD.json` with:
 | **result_order** | Same entities, different ordering | Minor |
 | **java_extra** | Java returns results Go doesn't | Moderate |
 | **go_extra** | Go returns results Java doesn't | Moderate |
+
+### ScoreTrace for Root Cause Analysis
+
+Nemesis automatically captures **detailed scoring traces** for critical and moderate divergences to understand WHY scores differ, not just THAT they differ.
+
+**What is Captured:**
+- Phase-by-phase execution (NAME_COMPARISON, NORMALIZATION, ADDRESS_MATCHING, etc.)
+- Individual component scores (name: 0.92, address: 0.85, etc.)
+- Timing information for each phase
+- Final score breakdown and aggregation
+
+**When Tracing Occurs:**
+- Automatically enabled after divergences are detected
+- Only for critical/moderate severity divergences
+- Only queries Java API (Go doesn't support tracing yet)
+
+**Example Trace Output in Report:**
+```json
+{
+  "query": "Nicolas Maduro",
+  "type": "score_difference",
+  "severity": "critical",
+  "java_data": {"id": "14121", "score": 0.92},
+  "go_data": {"id": "14121", "score": 0.85"},
+  "score_difference": 0.07,
+  "java_trace": {
+    "sessionId": "abc-123",
+    "durationMs": 45,
+    "metadata": {
+      "queryName": "Nicolas Maduro",
+      "candidateCount": 1
+    },
+    "breakdown": {
+      "nameScore": 0.92,
+      "addressScore": 0.0,
+      "govIdScore": 0.0,
+      "totalWeightedScore": 0.92
+    },
+    "events": [
+      {
+        "phase": "NAME_COMPARISON",
+        "description": "Comparing query name with candidate primary name",
+        "timestamp": "2026-01-04T08:15:23.456Z",
+        "data": {
+          "durationMs": 12,
+          "queryName": "Nicolas Maduro",
+          "candidateName": "MADURO MOROS, Nicolas",
+          "similarity": 0.92
+        }
+      }
+    ]
+  }
+}
+```
+
+**Benefits:**
+- Pinpoints exact scoring phase causing divergence
+- Shows which components differ (name vs address vs other fields)
+- Helps identify algorithm bugs or normalization issues
+- Provides concrete data for AI analysis
 
 ## Understanding Coverage
 
@@ -142,6 +224,14 @@ WATCHMAN_GO_API_URL=https://watchman-go.fly.dev
 COMPARE_IMPLEMENTATIONS=true
 ```
 
+### Optional - OFAC-API Commercial Service
+```bash
+# Enable 3-way comparison with OFAC-API (commercial service)
+COMPARE_EXTERNAL=true
+EXTERNAL_PROVIDER=ofac-api  # OFAC-API commercial service (paid subscription required)
+OFAC_API_KEY=your-api-key-here  # Obtain from ofac-api.com subscription
+```
+
 ### Optional - AI Analysis
 ```bash
 # AI provider (openai, anthropic, or omit for rule-based only)
@@ -155,16 +245,15 @@ ANTHROPIC_API_KEY=sk-ant-...
 AI_MODEL=claude-sonnet-4-20250514
 ```
 
-### Optional - GitHub Integration
+### Required - GitHub Integration
 ```bash
-GITHUB_TOKEN=ghp_...
-CREATE_GITHUB_ISSUES=true
+GITHUB_TOKEN=ghp_...  # Required for PR creation and issue tracking
 GITHUB_REPO=moov-io/watchman-java
 ```
 
 ### Optional - Tuning
 ```bash
-# Number of queries per run (default: 100)
+# Default number of queries when using cron/automated runs (range: 1-1000)
 QUERIES_PER_RUN=100
 
 # Coverage target percentage (default: 90)
@@ -187,7 +276,28 @@ fly ssh console -a watchman-java
 tail -f /data/logs/nemesis.log
 ```
 
-### Manual Execution
+### Manual Execution - On-Demand Trigger
+
+Use the trigger script for on-demand testing with custom parameters:
+
+#### Default Usage (Java vs Go parity testing)
+```bash
+./scripts/trigger-nemesis.sh --queries 100
+```
+
+#### With OFAC-API Commercial Service (3-way validation)
+```bash
+export OFAC_API_KEY='your-api-key'  # From ofac-api.com paid subscription
+./scripts/trigger-nemesis.sh --queries 100 --include-ofac-api
+```
+
+#### Available Options
+- `--queries N` - Number of test queries (1-1000, default: 100)
+- `--include-ofac-api` - Add OFAC-API (commercial service) for 3-way comparison
+- `--output-dir PATH` - Custom report directory
+- `--help` - Show help message
+
+### Manual Execution - Direct Python
 
 For testing or troubleshooting:
 
@@ -304,14 +414,16 @@ scripts/
 
 ### Workflow
 
-1. **Fetch Entities:** Downloads 1000+ OFAC entities from Java API
+1. **Fetch Entities:** Downloads complete OFAC SDN list from Java API (~12,500+ entities)
 2. **Check Coverage:** Loads coverage state, identifies untested entities
-3. **Generate Queries:** Creates 100 test queries (5 variation types per entity)
+3. **Generate Queries:** Creates test queries (configurable count, 5 variation types per entity)
 4. **Execute:** Runs queries against Java and Go APIs in parallel
 5. **Analyze:** Detects divergences, classifies by severity
 6. **Update Coverage:** Marks entities as tested, saves state
 7. **AI Analysis:** Identifies patterns and root causes
-8. **Report:** Saves JSON report, optionally creates GitHub issues
+8. **Save Report:** Writes JSON report to /data/reports/
+9. **Repair Pipeline:** Classifies issues, generates fixes, creates GitHub PRs (if divergences found)
+10. **Create GitHub Issue:** ALWAYS creates issue with report summary + PR links as proposal package for human review
 
 ## Metrics
 
@@ -324,9 +436,14 @@ Track Nemesis effectiveness:
 
 ## FAQ
 
-### Why 100 queries per run?
+### How many queries should I run?
 
-Balance between coverage speed and execution time. 100 queries takes ~45 seconds, allowing daily runs without impacting production.
+**Default: 100** - Good balance between coverage speed and execution time. 100 queries takes ~45 seconds, suitable for daily automated runs.
+
+**Range: 1-1000** - API caller controls the count:
+- **10-50**: Quick spot checks or debugging
+- **100-200**: Standard daily runs (recommended)
+- **500-1000**: Comprehensive regression testing before releases
 
 ### How does coverage tracking work?
 

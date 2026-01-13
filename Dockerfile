@@ -62,7 +62,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# JVM options for container environment
+# JVM options for container environment (can be overridden by env vars)
 ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
 # Create startup script that starts cron as root, then drops to appuser for Java
@@ -75,7 +75,7 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'chown -R appuser:appgroup /data' >> /app/start.sh && \
     echo 'crond -b -l 2' >> /app/start.sh && \
     echo '# Switch to appuser and start Java' >> /app/start.sh && \
-    echo 'exec su-exec appuser java $JAVA_OPTS -jar /app/app.jar' >> /app/start.sh && \
+    echo 'exec su-exec appuser java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-production} -jar /app/app.jar' >> /app/start.sh && \
     chmod +x /app/start.sh && \
     apk add --no-cache su-exec
 

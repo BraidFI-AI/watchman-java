@@ -41,7 +41,7 @@ class EntityNormalizationTest {
             "test-1", "John Smith", EntityType.PERSON, SourceList.US_OFAC, "test-1",
             null, null, null, null, null,
             null, List.of(), List.of(), altNames, List.of(),
-            null, null, null
+            null, List.of(), null, null
         );
         
         // WHEN: Normalized
@@ -110,6 +110,10 @@ class EntityNormalizationTest {
         PreparedFields prepared = normalized.preparedFields();
         List<String> combinations = prepared.wordCombinations();
         
+        // DEBUG: Print what we actually got
+        System.out.println("Normalized primary: " + prepared.normalizedPrimaryName());
+        System.out.println("Word combinations: " + combinations);
+        
         assertTrue(combinations.contains("jean dela cruz"), "Should combine 'de la'");
         assertTrue(combinations.contains("jean delacruz"), "Should combine all particles");
         
@@ -142,7 +146,7 @@ class EntityNormalizationTest {
             "test-6", "Acme Corp", EntityType.BUSINESS, SourceList.US_OFAC, "test-6",
             null, null, null, null, null,
             null, List.of(addr1, addr2), List.of(), List.of(), List.of(),
-            null, null, null
+            null, List.of(), null, null
         );
         
         // WHEN: Normalized

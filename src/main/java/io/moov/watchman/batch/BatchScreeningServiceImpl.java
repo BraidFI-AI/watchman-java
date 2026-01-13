@@ -1,7 +1,11 @@
 package io.moov.watchman.batch;
 
+import io.moov.watchman.model.Entity;
+import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.model.SearchResult;
+import io.moov.watchman.search.EntityScorer;
 import io.moov.watchman.search.SearchService;
+import io.moov.watchman.trace.ScoringContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,22 +31,33 @@ public class BatchScreeningServiceImpl implements BatchScreeningService {
     private static final int DEFAULT_LIMIT = 10;
 
     private final SearchService searchService;
+    private final EntityScorer entityScorer;
     private final ExecutorService executorService;
     private final int maxBatchSize;
 
     @Autowired
-    public BatchScreeningServiceImpl(SearchService searchService) {
-        this(searchService, DEFAULT_MAX_BATCH_SIZE, DEFAULT_PARALLELISM);
+    public BatchScreeningServiceImpl(SearchService searchService, EntityScorer entityScorer) {
+        this(searchService, entityScorer, DEFAULT_MAX_BATCH_SIZE, DEFAULT_PARALLELISM);
     }
 
-    public BatchScreeningServiceImpl(SearchService searchService, int maxBatchSize, int parallelism) {
+    public BatchScreeningServiceImpl(SearchService searchService, EntityScorer entityScorer, int maxBatchSize, int parallelism) {
         this.searchService = searchService;
+        this.entityScorer = entityScorer;
         this.maxBatchSize = maxBatchSize;
         this.executorService = Executors.newFixedThreadPool(parallelism);
     }
 
     @Override
     public BatchScreeningResponse screen(BatchScreeningRequest request) {
+        return screenInternal(request, false);
+    }
+
+    @Override
+    public BatchScreeningResponse screenWithTrace(BatchScreeningRequest request) {
+        return screenInternal(request, true);
+    }
+
+    private BatchScreeningResponse screenInternal(BatchScreeningRequest request, boolean enableTrace) {
         Instant startTime = Instant.now();
         String batchId = generateBatchId();
 
@@ -51,12 +66,13 @@ public class BatchScreeningServiceImpl implements BatchScreeningService {
             return BatchScreeningResponse.of(batchId, List.of(), Duration.ZERO);
         }
 
-        log.info("Starting batch screening: batchId={}, items={}", batchId, request.items().size());
+        log.info("Starting batch screening: batchId={}, items={}, trace={}", batchId, request.items().size(), enableTrace);
 
         double minMatch = request.minMatch() != null ? request.minMatch() : DEFAULT_MIN_MATCH;
         int limit = request.limit() != null ? request.limit() : DEFAULT_LIMIT;
+        boolean trace = enableTrace || Boolean.TRUE.equals(request.trace());
 
-        List<BatchScreeningResult> results = processItemsInParallel(request.items(), minMatch, limit);
+        List<BatchScreeningResult> results = processItemsInParallel(request.items(), minMatch, limit, trace);
 
         Duration processingTime = Duration.between(startTime, Instant.now());
 
@@ -76,13 +92,13 @@ public class BatchScreeningServiceImpl implements BatchScreeningService {
     }
 
     private List<BatchScreeningResult> processItemsInParallel(
-            List<BatchScreeningItem> items, double minMatch, int limit) {
+            List<BatchScreeningItem> items, double minMatch, int limit, boolean trace) {
         
         // Process items and maintain order
         List<CompletableFuture<BatchScreeningResult>> futures = new ArrayList<>();
         for (BatchScreeningItem item : items) {
             futures.add(CompletableFuture.supplyAsync(
-                () -> screenSingleItem(item, minMatch, limit),
+                () -> screenSingleItem(item, minMatch, limit, trace),
                 executorService));
         }
 
@@ -104,31 +120,67 @@ public class BatchScreeningServiceImpl implements BatchScreeningService {
         return results;
     }
 
-    private BatchScreeningResult screenSingleItem(BatchScreeningItem item, double minMatch, int limit) {
+    private BatchScreeningResult screenSingleItem(BatchScreeningItem item, double minMatch, int limit, boolean trace) {
         // Handle null name gracefully
         if (item.name() == null || item.name().isBlank()) {
             return BatchScreeningResult.success(item.requestId(), item.name(), List.of());
         }
 
         try {
-            List<SearchResult> searchResults = searchService.search(
-                item.name(),
-                item.source(),
-                item.entityType(),
-                limit,
-                minMatch
-            );
+            if (trace) {
+                return screenSingleItemWithTrace(item, minMatch, limit);
+            } else {
+                List<SearchResult> searchResults = searchService.search(
+                    item.name(),
+                    item.source(),
+                    item.entityType(),
+                    limit,
+                    minMatch
+                );
 
-            List<BatchScreeningMatch> matches = searchResults.stream()
-                .map(sr -> BatchScreeningMatch.from(sr.entity(), sr.score()))
-                .collect(Collectors.toList());
+                List<BatchScreeningMatch> matches = searchResults.stream()
+                    .map(sr -> BatchScreeningMatch.from(sr.entity(), sr.score()))
+                    .collect(Collectors.toList());
 
-            return BatchScreeningResult.success(item.requestId(), item.name(), matches);
+                return BatchScreeningResult.success(item.requestId(), item.name(), matches);
+            }
 
         } catch (Exception e) {
             log.error("Error screening item: requestId={}, name={}", item.requestId(), item.name(), e);
             return BatchScreeningResult.error(item.requestId(), item.name(), e.getMessage());
         }
+    }
+
+    private BatchScreeningResult screenSingleItemWithTrace(BatchScreeningItem item, double minMatch, int limit) {
+        // Create scoring context for tracing
+        ScoringContext ctx = ScoringContext.enabled(UUID.randomUUID().toString());
+
+        // Get candidates
+        List<SearchResult> searchResults = searchService.search(
+            item.name(),
+            item.source(),
+            item.entityType(),
+            limit,
+            minMatch
+        );
+
+        // Score with breakdown
+        Entity queryEntity = Entity.of(null, item.name(), null, null);
+        List<BatchScreeningMatch> matches = searchResults.stream()
+            .map(sr -> {
+                ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(
+                    queryEntity,
+                    sr.entity(),
+                    ctx
+                );
+                return BatchScreeningMatch.withBreakdown(sr.entity(), breakdown.totalWeightedScore(), breakdown);
+            })
+            .filter(match -> match.score() >= minMatch)
+            .sorted((a, b) -> Double.compare(b.score(), a.score()))
+            .limit(limit)
+            .collect(Collectors.toList());
+
+        return BatchScreeningResult.withTrace(item.requestId(), item.name(), matches, ctx.toTrace());
     }
 
     private String generateBatchId() {
