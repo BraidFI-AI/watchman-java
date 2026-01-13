@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Watchman Java API Test Script
-# Tests the live API deployed on Fly.io
+# Tests the live API deployed on AWS ECS
 
-BASE_URL="${WATCHMAN_URL:-https://watchman-java.fly.dev}"
+BASE_URL="${WATCHMAN_URL:-http://54.209.239.50:8080}"
 PASS=0
 FAIL=0
 

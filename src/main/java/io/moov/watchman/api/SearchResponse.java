@@ -15,7 +15,8 @@ public record SearchResponse(
     int totalResults,
     String requestID,
     DebugInfo debug,
-    ScoringTrace trace
+    ScoringTrace trace,
+    String reportUrl
 ) {
     /**
      * Create response from search results.
@@ -32,12 +33,16 @@ public record SearchResponse(
             .map(r -> SearchHit.from(r, includeDebug))
             .toList();
         
+        // Generate reportUrl if trace is present
+        String reportUrl = trace != null ? "/api/reports/" + trace.sessionId() : null;
+        
         return new SearchResponse(
             hits,
             hits.size(),
             requestId,
             includeDebug ? new DebugInfo("Search completed") : null,
-            trace
+            trace,
+            reportUrl
         );
     }
 

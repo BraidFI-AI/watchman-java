@@ -156,8 +156,61 @@ Nemesis automatically captures **detailed scoring traces** for critical and mode
 - Shows which components differ (name vs address vs other fields)
 - Helps identify algorithm bugs or normalization issues
 - Provides concrete data for AI analysis
+- **NEW:** `reportUrl` field enables visual HTML reports for human review
 
-## Understanding Coverage
+### HTML Score Reports (NEW)
+
+When trace is enabled, Nemesis can leverage HTML score reports for easier divergence analysis:
+
+**What It Provides:**
+- Visual representation of scoring breakdowns
+- Color-coded risk levels (High/Medium/Low)
+- Plain English explanations of match decisions
+- One-click access from GitHub issues
+
+**Example Divergence Report with reportUrl:**
+```json
+{
+  "query": "Nicolas Maduro",
+  "divergence_type": "score_difference",
+  "java_score": 0.89,
+  "go_score": 0.85,
+  "java_trace": {
+    "sessionId": "b197229e-f7a3-4a78-84c1-51ca44740209",
+    "breakdown": {
+      "nameScore": 0.95,
+      "altNamesScore": 0.92,
+      "totalWeightedScore": 0.89
+    }
+  },
+  "reportUrl": "/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209"
+}
+```
+
+**GitHub Issue Enhancement:**
+Nemesis can include report links in divergence issues:
+```markdown
+### Divergence Found: Score Difference
+
+**Query:** Nicolas Maduro  
+**Java Score:** 0.89  
+**Go Score:** 0.85  
+**Difference:** 4.7%
+
+#### Visual Report
+View formatted HTML report: http://your-ecs-alb/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209
+
+#### Technical Details
+[Trace JSON data...]
+```
+
+**Use Cases:**
+- Compliance team reviews divergences visually
+- Faster pattern recognition in scoring issues
+- Easier communication with non-technical stakeholders
+- Documentation for regulatory audits
+
+---
 
 Nemesis tracks which OFAC entities have been tested:
 
@@ -214,12 +267,12 @@ Built-in detection for common false positives:
 
 ## Configuration
 
-Environment variables (set in fly.toml or locally):
+Environment variables (set locally or in deployment):
 
 ### Required
 ```bash
 # API endpoints for comparison testing
-WATCHMAN_JAVA_API_URL=https://watchman-java.fly.dev
+WATCHMAN_JAVA_API_URL=http://54.209.239.50:8080
 WATCHMAN_GO_API_URL=https://watchman-go.fly.dev
 COMPARE_IMPLEMENTATIONS=true
 ```

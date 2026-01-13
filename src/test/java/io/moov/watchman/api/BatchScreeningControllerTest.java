@@ -7,6 +7,7 @@ import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.SourceList;
 import io.moov.watchman.model.SearchResult;
+import io.moov.watchman.trace.ScoringTrace;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -179,6 +181,87 @@ class BatchScreeningControllerTest {
                 r.minMatch() == 0.90 &&
                 r.limit() == 5
             ));
+        }
+
+        @Test
+        @DisplayName("Should include reportUrl for each result when trace=true")
+        void shouldIncludeReportUrlForEachResultWhenTraceEnabled() {
+            ScoringTrace trace1 = new ScoringTrace("session-123", List.of(), Map.of(), null, 10L);
+            ScoringTrace trace2 = new ScoringTrace("session-456", List.of(), Map.of(), null, 15L);
+
+            Entity entity = Entity.of("1", "MATCH", EntityType.PERSON, SourceList.US_OFAC);
+            BatchScreeningMatch match = BatchScreeningMatch.of(entity, 0.95);
+
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(2)
+                .totalMatches(1)
+                .itemsWithMatches(1)
+                .processingTimeMs(25)
+                .results(List.of(
+                    BatchScreeningResult.withTrace("req-1", "John Doe", List.of(match), trace1),
+                    BatchScreeningResult.withTrace("req-2", "Jane Doe", List.of(), trace2)
+                ))
+                .build();
+            
+            when(batchService.screenWithTrace(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(
+                    new BatchSearchRequestDTO.SearchItem("req-1", "John Doe", null, null),
+                    new BatchSearchRequestDTO.SearchItem("req-2", "Jane Doe", null, null)
+                ),
+                null, null, true  // trace=true
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().results()).hasSize(2);
+            
+            // First result should have reportUrl based on its session ID
+            var result1 = response.getBody().results().get(0);
+            assertThat(result1.reportUrl()).isNotNull();
+            assertThat(result1.reportUrl()).isEqualTo("/api/reports/session-123");
+            
+            // Second result should have reportUrl based on its session ID
+            var result2 = response.getBody().results().get(1);
+            assertThat(result2.reportUrl()).isNotNull();
+            assertThat(result2.reportUrl()).isEqualTo("/api/reports/session-456");
+        }
+
+        @Test
+        @DisplayName("Should NOT include reportUrl when trace=false")
+        void shouldNotIncludeReportUrlWhenTraceDisabled() {
+            Entity entity = Entity.of("1", "MATCH", EntityType.PERSON, SourceList.US_OFAC);
+            BatchScreeningMatch match = BatchScreeningMatch.of(entity, 0.95);
+
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(1)
+                .totalMatches(1)
+                .itemsWithMatches(1)
+                .processingTimeMs(10)
+                .results(List.of(
+                    BatchScreeningResult.of("req-1", "John Doe", List.of(match))
+                ))
+                .build();
+            
+            when(batchService.screen(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "John Doe", null, null)),
+                null, null, false  // trace=false
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().results()).hasSize(1);
+            
+            var result = response.getBody().results().get(0);
+            assertThat(result.trace()).isNull();
+            assertThat(result.reportUrl()).isNull();
         }
 
         @Test

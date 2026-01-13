@@ -4,6 +4,8 @@
 **Audience:** Engineers working with Watchman Java  
 **Last Updated:** January 11, 2026
 
+> **Note**: Production deployment has moved to AWS ECS. See [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md). Update BASE_URL environment variables to point to your AWS ALB endpoint.
+
 ---
 
 ## Overview
@@ -95,7 +97,7 @@ This document catalogs all scripts in the `/scripts` directory, organized by fun
 ```bash
 # Test against deployed instances
 GO_URL=https://watchman-go.fly.dev \
-JAVA_URL=https://watchman-java.fly.dev \
+JAVA_URL=http://54.209.239.50:8080 \\
 ./scripts/test-braid-integration.sh
 
 # Test local development

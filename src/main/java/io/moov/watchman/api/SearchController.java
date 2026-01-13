@@ -35,12 +35,14 @@ public class SearchController {
     private final SearchService searchService;
     private final EntityIndex entityIndex;
     private final EntityScorer entityScorer;
+    private final io.moov.watchman.trace.TraceRepository traceRepository;
     private Instant lastUpdated = Instant.now();
 
-    public SearchController(SearchService searchService, EntityIndex entityIndex, EntityScorer entityScorer) {
+    public SearchController(SearchService searchService, EntityIndex entityIndex, EntityScorer entityScorer, io.moov.watchman.trace.TraceRepository traceRepository) {
         this.searchService = searchService;
         this.entityIndex = entityIndex;
         this.entityScorer = entityScorer;
+        this.traceRepository = traceRepository;
     }
 
     /**
@@ -68,7 +70,7 @@ public class SearchController {
         if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest()
                 .body(new SearchResponse(List.of(), 0, requestID, 
-                    new SearchResponse.DebugInfo("Name parameter is required"), null));
+                    new SearchResponse.DebugInfo("Name parameter is required"), null, null));
         }
 
         // Build search request
@@ -111,6 +113,13 @@ public class SearchController {
 
         // Build response with optional trace data
         ScoringTrace traceData = Boolean.TRUE.equals(trace) ? ctx.toTrace() : null;
+        
+        // Save trace to repository if tracing is enabled
+        if (traceData != null) {
+            traceRepository.save(traceData);
+            logger.debug("Trace saved: sessionId={}", traceData.sessionId());
+        }
+        
         SearchResponse response = SearchResponse.from(results, requestID, Boolean.TRUE.equals(debug), traceData);
         return ResponseEntity.ok(response);
     }

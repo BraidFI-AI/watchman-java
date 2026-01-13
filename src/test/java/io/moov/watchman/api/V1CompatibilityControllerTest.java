@@ -36,7 +36,8 @@ class V1CompatibilityControllerTest {
         entityIndex = new InMemoryEntityIndex();
         var scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
         SearchService searchService = new SearchServiceImpl(entityIndex, scorer);
-        SearchController v2Controller = new SearchController(searchService, entityIndex, scorer);
+        var traceRepository = new io.moov.watchman.trace.InMemoryTraceRepository();
+        SearchController v2Controller = new SearchController(searchService, entityIndex, scorer, traceRepository);
         
         // V1 controller wraps V2 controller
         controller = new V1CompatibilityController(v2Controller);

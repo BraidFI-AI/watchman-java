@@ -3,6 +3,7 @@ package io.moov.watchman.batch;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.model.SearchResult;
+import io.moov.watchman.trace.ScoringTrace;
 import io.moov.watchman.search.EntityScorer;
 import io.moov.watchman.search.SearchService;
 import io.moov.watchman.trace.ScoringContext;
@@ -32,17 +33,19 @@ public class BatchScreeningServiceImpl implements BatchScreeningService {
 
     private final SearchService searchService;
     private final EntityScorer entityScorer;
+    private final io.moov.watchman.trace.TraceRepository traceRepository;
     private final ExecutorService executorService;
     private final int maxBatchSize;
 
     @Autowired
-    public BatchScreeningServiceImpl(SearchService searchService, EntityScorer entityScorer) {
-        this(searchService, entityScorer, DEFAULT_MAX_BATCH_SIZE, DEFAULT_PARALLELISM);
+    public BatchScreeningServiceImpl(SearchService searchService, EntityScorer entityScorer, io.moov.watchman.trace.TraceRepository traceRepository) {
+        this(searchService, entityScorer, traceRepository, DEFAULT_MAX_BATCH_SIZE, DEFAULT_PARALLELISM);
     }
 
-    public BatchScreeningServiceImpl(SearchService searchService, EntityScorer entityScorer, int maxBatchSize, int parallelism) {
+    public BatchScreeningServiceImpl(SearchService searchService, EntityScorer entityScorer, io.moov.watchman.trace.TraceRepository traceRepository, int maxBatchSize, int parallelism) {
         this.searchService = searchService;
         this.entityScorer = entityScorer;
+        this.traceRepository = traceRepository;
         this.maxBatchSize = maxBatchSize;
         this.executorService = Executors.newFixedThreadPool(parallelism);
     }
@@ -180,7 +183,15 @@ public class BatchScreeningServiceImpl implements BatchScreeningService {
             .limit(limit)
             .collect(Collectors.toList());
 
-        return BatchScreeningResult.withTrace(item.requestId(), item.name(), matches, ctx.toTrace());
+        ScoringTrace trace = ctx.toTrace();
+        
+        // Save trace to repository
+        if (trace != null) {
+            traceRepository.save(trace);
+            log.debug("Trace saved for batch item: sessionId={}, requestId={}", trace.sessionId(), item.requestId());
+        }
+        
+        return BatchScreeningResult.withTrace(item.requestId(), item.name(), matches, trace);
     }
 
     private String generateBatchId() {

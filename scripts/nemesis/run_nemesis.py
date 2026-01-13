@@ -25,7 +25,7 @@ from nemesis.external_provider_adapter import OFACAPIAdapter
 import os
 
 # Get config from environment or use defaults
-WATCHMAN_JAVA_API_URL = os.environ.get("WATCHMAN_JAVA_API_URL", "https://watchman-java.fly.dev")
+WATCHMAN_JAVA_API_URL = os.environ.get("WATCHMAN_JAVA_API_URL", "http://54.209.239.50:8080")
 WATCHMAN_GO_API_URL = os.environ.get("WATCHMAN_GO_API_URL", "https://watchman-go.fly.dev")
 COMPARE_IMPLEMENTATIONS = os.environ.get("COMPARE_IMPLEMENTATIONS", "true").lower() == "true"
 

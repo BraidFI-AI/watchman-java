@@ -67,6 +67,177 @@ Test: "What if we weight government IDs higher?"
 Trace: Shows impact on 1000 test cases with full breakdown
 ```
 
+**5. Non-Technical Compliance Review**
+```
+Compliance officer: "Why did this customer match?"
+Developer: *shares HTML report link* "Here's a visual breakdown"
+```
+
+---
+
+## HTML Score Reports (NEW)
+
+### Overview
+
+While ScoreTrace provides complete technical details in JSON format, **HTML Score Reports** translate that data into human-readable, visually formatted reports suitable for:
+- Non-technical compliance staff
+- Customer explanations
+- Regulatory audits
+- Executive review
+
+### How It Works
+
+1. **Enable Tracing:** Add `trace=true` to any search request
+2. **Get Report URL:** Response includes `reportUrl` field
+3. **View Report:** Open URL in browser or save as permanent documentation
+
+```bash
+# Step 1: Search with trace enabled
+curl "http://localhost:8084/v2/search?name=Nicolas%20Maduro&trace=true"
+
+# Response includes:
+{
+  "results": [...],
+  "trace": {
+    "sessionId": "b197229e-f7a3-4a78-84c1-51ca44740209",
+    "durationMs": 23,
+    "breakdown": { "nameScore": 0.95, "totalWeightedScore": 0.89 }
+  },
+  "reportUrl": "/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209"
+}
+
+# Step 2: View HTML report
+curl "http://localhost:8084/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209" > report.html
+open report.html  # Opens in browser
+```
+
+### Report Features
+
+**Visual Score Breakdown:**
+- Color-coded overall match score (🔴 High Risk, 🟡 Medium Risk, 🟢 Low Risk)
+- Bar charts for each scoring component
+- Percentage contributions from name, address, IDs, etc.
+
+**Plain English Explanations:**
+- "Name matching contributed 85% to the final score"
+- "Address comparison found no match (0%)"
+- "Government ID match: Strong (95%)"
+
+**Processing Timeline:**
+- Phase-by-phase execution details
+- Timing information for performance analysis
+- Complete audit trail of decisions
+
+### Example Report Content
+
+```html
+┌─────────────────────────────────────────┐
+│   Watchman Score Report                 │
+│   Session: b197229e-f7a3-...           │
+└─────────────────────────────────────────┘
+
+╔═══════════════════════════════════════╗
+║   OVERALL MATCH SCORE: 89%            ║
+║   🔴 HIGH RISK - Strong Match         ║
+╚═══════════════════════════════════════╝
+
+Score Breakdown:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name Match         ████████████ 85%
+Alternative Names  ████████████ 92%
+Address Match      ░░░░░░░░░░░░  0%
+Government ID      ░░░░░░░░░░░░  0%
+Cryptocurrency     ░░░░░░░░░░░░  0%
+Contact Info       ░░░░░░░░░░░░  0%
+Date of Birth      ░░░░░░░░░░░░  0%
+
+Processing Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Data Normalization      (2ms)
+✓ Name Comparison         (8ms)
+✓ Alternative Names       (5ms)
+✓ Score Aggregation       (1ms)
+
+Total Processing Time: 23ms
+```
+
+### Batch Support
+
+When using batch screening with `trace=true`, **each item in the batch gets its own report URL**:
+
+```bash
+curl -X POST http://localhost:8084/v2/search/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {"id": "req1", "name": "Nicolas Maduro"},
+      {"id": "req2", "name": "El Chapo"}
+    ],
+    "trace": true
+  }'
+
+# Response:
+{
+  "results": [
+    {
+      "itemId": "req1",
+      "matches": [...],
+      "trace": { "sessionId": "session-123" },
+      "reportUrl": "/api/reports/session-123"  ← Unique per item
+    },
+    {
+      "itemId": "req2",
+      "matches": [...],
+      "trace": { "sessionId": "session-456" },
+      "reportUrl": "/api/reports/session-456"  ← Unique per item
+    }
+  ]
+}
+```
+
+### Storage & Expiration
+
+- **In-Memory (Default):** Reports stored in `InMemoryTraceRepository`
+  - Suitable for development and testing
+  - Lost on application restart
+  - 24-hour automatic expiration
+
+- **Redis (Production):** Use `RedisTraceRepository` (future)
+  - Persistent across restarts
+  - Configurable TTL
+  - Horizontal scalability
+
+- **S3 Archival (Future):** Convert reports to PDF and archive
+  - Long-term compliance storage
+  - Searchable audit trail
+  - Integration with document management systems
+
+### Use Cases
+
+**Compliance Officer:**
+```
+"Why did we flag this customer?"
+→ Share report link showing 89% name match + breakdown
+```
+
+**Customer Support:**
+```
+"Why am I on a watchlist?"
+→ Report shows it's a different person with similar name
+```
+
+**Developer Debugging:**
+```
+"Unexpected low score - why?"
+→ Report shows address normalization bug
+```
+
+**Executive Review:**
+```
+"How accurate is our screening?"
+→ Sample reports demonstrate decision quality
+```
+
 ---
 
 ## Architecture

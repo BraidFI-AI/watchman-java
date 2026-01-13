@@ -38,7 +38,7 @@ public ResponseEntity<SearchResponse> search(
 
 **Example API Call:**
 ```bash
-curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro&trace=true"
+curl "http://54.209.239.50:8080/v2/search?name=Nicolas%20Maduro&trace=true"
 ```
 
 ### 2. Response Enhancement - SearchResponse
@@ -121,8 +121,63 @@ if result.java_trace:
 - Added `java_trace: Optional[Dict]` field to `Divergence` dataclass
 - Trace data stored alongside divergence details
 - Available for AI analysis and report generation
+- **NEW:** `reportUrl` field included when trace is present
 
-### 5. Nemesis Main Runner - Trace Enabled From Start
+### 5. HTML Report Generation
+
+**New Component:** `ReportController` and `ReportRenderer`
+
+**Files:**
+- `src/main/java/io/moov/watchman/api/ReportController.java`
+- `src/main/java/io/moov/watchman/report/ReportRenderer.java`
+- `src/main/java/io/moov/watchman/trace/TraceRepository.java`
+
+**What It Does:**
+- Converts JSON trace data into human-readable HTML reports
+- Provides visual score breakdowns with color-coded risk levels
+- Includes plain English explanations of scoring decisions
+- Generates reports accessible via `/api/reports/{sessionId}`
+
+**Response Enhancement:**
+When `trace=true`, responses now include:
+```json
+{
+  "results": [...],
+  "trace": {
+    "sessionId": "b197229e-f7a3-4a78-84c1-51ca44740209",
+    "durationMs": 23,
+    "breakdown": {...}
+  },
+  "reportUrl": "/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209"
+}
+```
+
+**Storage:**
+- `InMemoryTraceRepository`: Default for development
+- Reports expire after 24 hours
+- Future: Redis-backed storage for production
+
+### 6. Nemesis Integration with Reports
+
+**File:** `scripts/nemesis/run_nemesis.py` (Recommended Update)
+
+**Proposed Enhancement:**
+Include `reportUrl` in GitHub issue divergence reports:
+
+```python
+# When creating divergence GitHub issues
+if result.java_trace and 'reportUrl' in result.java_trace:
+    report_url = result.java_trace['reportUrl']
+    issue_body += f"\n\n### Visual Report\n"
+    issue_body += f"View formatted HTML report: {ecs_base_url}{report_url}\n"
+```
+
+**Benefits:**
+- One-click access to visual scoring breakdown from GitHub
+- Non-technical reviewers can understand divergences
+- Faster debugging with visual representation
+
+### 7. Documentation Update
 
 **File:** `scripts/nemesis/run_nemesis.py`
 
@@ -221,10 +276,10 @@ After: "Name score differs: Java 0.92 (exact match) vs Go 0.85 (fuzzy match due 
 ### Manual Testing
 ```bash
 # Test without trace (default)
-curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro"
+curl "http://54.209.239.50:8080/v2/search?name=Nicolas%20Maduro"
 
 # Test with trace enabled
-curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro&trace=true"
+curl "http://54.209.239.50:8080/v2/search?name=Nicolas%20Maduro&trace=true"
 
 # Nemesis will automatically use trace for divergences
 ./scripts/trigger-nemesis.sh --queries 50 --compare-external

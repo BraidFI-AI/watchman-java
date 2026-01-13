@@ -117,7 +117,7 @@ echo "  • Response formats differ but semantics identical"
 echo ""
 
 echo "Braid Integration:"
-echo "  • Change: watchman.server=watchman-java.fly.dev"
+echo "  • Change: watchman.server=54.209.239.50:8080"
 echo "  • No code changes needed in Braid"
 echo "  • Instant rollback by reverting server URL"
 echo ""

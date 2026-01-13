@@ -33,7 +33,8 @@ class SearchControllerTest {
         entityIndex = new InMemoryEntityIndex();
         var scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
         SearchService searchService = new SearchServiceImpl(entityIndex, scorer);
-        controller = new SearchController(searchService, entityIndex, scorer);
+        var traceRepository = new io.moov.watchman.trace.InMemoryTraceRepository();
+        controller = new SearchController(searchService, entityIndex, scorer, traceRepository);
 
         // Load test data
         entityIndex.addAll(List.of(
@@ -172,6 +173,36 @@ class SearchControllerTest {
                 assertThat(entities.get(i).score())
                     .isGreaterThanOrEqualTo(entities.get(i + 1).score());
             }
+        }
+
+        @Test
+        @DisplayName("Should include reportUrl when trace=true")
+        void shouldIncludeReportUrlWhenTraceEnabled() {
+            ResponseEntity<SearchResponse> response = controller.search(
+                "Nicolas Maduro", null, null, null, null,
+                10, 0.5, null, false, true  // trace=true
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().trace()).isNotNull();
+            assertThat(response.getBody().reportUrl()).isNotNull();
+            assertThat(response.getBody().reportUrl()).startsWith("/api/reports/");
+            assertThat(response.getBody().reportUrl()).contains(response.getBody().trace().sessionId());
+        }
+
+        @Test
+        @DisplayName("Should NOT include reportUrl when trace=false")
+        void shouldNotIncludeReportUrlWhenTraceDisabled() {
+            ResponseEntity<SearchResponse> response = controller.search(
+                "Nicolas Maduro", null, null, null, null,
+                10, 0.5, null, false, false  // trace=false
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().trace()).isNull();
+            assertThat(response.getBody().reportUrl()).isNull();
         }
     }
 

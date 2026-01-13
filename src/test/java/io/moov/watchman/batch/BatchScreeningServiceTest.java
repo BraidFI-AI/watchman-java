@@ -35,7 +35,8 @@ class BatchScreeningServiceTest {
 
     @BeforeEach
     void setUp() {
-        batchService = new BatchScreeningServiceImpl(searchService, entityScorer);
+        var traceRepository = new io.moov.watchman.trace.InMemoryTraceRepository();
+        batchService = new BatchScreeningServiceImpl(searchService, entityScorer, traceRepository);
     }
 
     @Nested

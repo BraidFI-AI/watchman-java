@@ -16,6 +16,7 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | **Fuzzy Name Matching** | Jaro-Winkler algorithm with phonetic filtering (Soundex) |
 | **Multiple Entity Types** | Person, Business, Organization, Aircraft, Vessel |
 | **Batch Screening** | Screen up to 1,000 entities in a single request |
+| **HTML Score Reports** | Human-readable reports for compliance and debugging (when trace=true) |
 | **REST API** | Spring Boot API compatible with original Watchman endpoints |
 | **Auto-Refresh** | Scheduled data refresh from official sources |
 | **Filtering** | Filter by source list, entity type, minimum match score |
@@ -55,6 +56,7 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | `GET` | `/v2/download/status` | Check download status |
 | `GET` | `/health` | Health check with entity counts |
 | `GET` | `/v2/listinfo` | Get loaded list information |
+| `GET` | `/api/reports/{sessionId}` | Get human-readable HTML score report |
 
 #### Nemesis Parity Testing API
 
@@ -418,11 +420,11 @@ The **Nemesis Repair Agent** is an autonomous system that continuously validates
 - 🔍 **AI-Powered Analysis** - Uses Claude/GPT-4 to analyze divergences and identify patterns
 - 🛠️ **Automated Fixes** - Generates code fixes and creates GitHub PRs automatically
 - 📊 **Coverage Tracking** - Ensures 90% of OFAC entities are tested
-- 🚀 **CI/CD Integration** - Auto-deploys to Fly.io after PR merge
+- 🚀 **CI/CD Integration** - Auto-deploys to AWS ECS after PR merge
 - 🌐 **REST API** - Programmatic triggering with async/sync modes and job tracking
 
 **Triggering Modes:**
-1. **Scheduled (Cron)** - Automatic every 5 minutes on Fly.io
+1. **Scheduled (Cron)** - Automatic every 5 minutes on production
 2. **REST API** - `POST /v2/nemesis/trigger` for on-demand execution
 3. **Manual Script** - `./scripts/trigger-nemesis.sh` for local testing
 
@@ -448,7 +450,7 @@ See [docs/NEMESIS.md](docs/NEMESIS.md) for complete documentation.
 |----------|-------------|
 | [API_SPEC.md](docs/API_SPEC.md) | Complete API reference with examples (includes Nemesis endpoints) |
 | [NEMESIS.md](docs/NEMESIS.md) | Nemesis autonomous testing & repair system |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Fly.io deployment guide |
+| [AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) | AWS deployment guide (ECS + Batch) |
 | [TEST_COVERAGE.md](docs/TEST_COVERAGE.md) | Detailed test documentation |
 | [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error handling & logging guide |
 | [GO_JAVA_COMPARISON_PROCEDURE.md](docs/GO_JAVA_COMPARISON_PROCEDURE.md) | Parity testing methodology |

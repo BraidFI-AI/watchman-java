@@ -17,7 +17,7 @@
 #
 # Environment variables:
 #   OFAC_API_KEY            Required when --include-ofac-api is used
-#   WATCHMAN_JAVA_API_URL   Java API URL (default: https://watchman-java.fly.dev)
+#   WATCHMAN_JAVA_API_URL   Java API URL (default: http://54.209.239.50:8080)
 #   WATCHMAN_GO_API_URL     Go API URL (default: https://watchman-go.fly.dev)
 #
 

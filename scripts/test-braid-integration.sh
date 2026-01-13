@@ -14,7 +14,7 @@ NC='\033[0m'
 
 # Configuration
 GO_URL="${GO_URL:-https://watchman-go.fly.dev}"
-JAVA_URL="${JAVA_URL:-https://watchman-java.fly.dev}"
+JAVA_URL="${JAVA_URL:-http://54.209.239.50:8080}"
 GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
 
 # Test queries (diverse set for comprehensive testing)

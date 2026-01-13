@@ -1,7 +1,7 @@
 # Watchman Java API Specification
 
 **Version:** 1.0.0  
-**Base URL:** `https://watchman-java.fly.dev` (Production) | `http://localhost:8084` (Local)
+**Base URL:** `http://54.209.239.50:8080` (Production) | `http://localhost:8084` (Local)
 
 ---
 
@@ -14,6 +14,7 @@
    - [Search](#search)
    - [Batch Screening](#batch-screening)
    - [ScoreTrace](#scoretrace-debug-mode)
+   - [HTML Score Reports](#html-score-reports)
    - [List Information](#list-information)
    - [Data Management](#data-management)
    - [Nemesis Testing](#nemesis-testing)
@@ -73,7 +74,7 @@ Check service health and get entity count.
 **Example:**
 
 ```bash
-curl https://watchman-java.fly.dev/health
+curl http://54.209.239.50:8080/health
 ```
 
 ---
@@ -145,6 +146,7 @@ Search sanctions lists for matching entities.
 | `query` | string | Original search query |
 | `totalResults` | integer | Number of results returned |
 | `trace` | object | ScoreTrace data (only when `trace=true`) |
+| `reportUrl` | string | URL to human-readable HTML report (only when `trace=true`) |
 
 **Status Codes:**
 - `200 OK` - Search completed successfully
@@ -154,16 +156,17 @@ Search sanctions lists for matching entities.
 
 ```bash
 # Basic search
-curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro"
+curl "http://54.209.239.50:8080/v2/search?name=Nicolas%20Maduro"
 
 # Search with filters
-curl "https://watchman-java.fly.dev/v2/search?name=Bank&type=BUSINESS&source=OFAC_SDN&limit=20"
+curl "http://54.209.239.50:8080/v2/search?name=Bank&type=BUSINESS&source=OFAC_SDN&limit=20"
 
 # Lower threshold for fuzzy matches
-curl "https://watchman-java.fly.dev/v2/search?name=Mohammad&minMatch=0.70&limit=50"
+curl "http://54.209.239.50:8080/v2/search?name=Mohammad&minMatch=0.70&limit=50"
 
-# Debug mode with ScoreTrace
-curl "https://watchman-java.fly.dev/v2/search?name=Nicolas%20Maduro&trace=true"
+# Debug mode with ScoreTrace and HTML report
+curl "http://54.209.239.50:8080/v2/search?name=Nicolas%20Maduro&trace=true"
+# Response includes reportUrl: "/api/reports/{sessionId}"
 ```
 
 ---
@@ -201,6 +204,7 @@ Screen multiple entities in a single request.
 | `limit` | integer | No | 10 | Max matches per item |
 | `sourceFilter` | string | No | all | Filter by source list |
 | `typeFilter` | string | No | all | Filter by entity type |
+| `trace` | boolean | No | false | Enable ScoreTrace with HTML reports |
 
 **Response:**
 
@@ -253,6 +257,8 @@ Screen multiple entities in a single request.
 | `results[].name` | string | Screened name |
 | `results[].matches` | array | Matching entities |
 | `results[].matchCount` | integer | Number of matches |
+| `results[].trace` | object | ScoreTrace data (only when `trace=true`) |
+| `results[].reportUrl` | string | URL to HTML report (only when `trace=true`) |
 | `statistics` | object | Batch processing statistics |
 | `statistics.totalItems` | integer | Total items processed |
 | `statistics.itemsWithMatches` | integer | Items with 1+ matches |
@@ -267,7 +273,7 @@ Screen multiple entities in a single request.
 **Example:**
 
 ```bash
-curl -X POST https://watchman-java.fly.dev/v2/search/batch \
+curl -X POST http://54.209.239.50:8080/v2/search/batch \
   -H "Content-Type: application/json" \
   -d '{
     "items": [
@@ -354,6 +360,69 @@ When `trace=true` is included, the response adds a `trace` object:
 
 ---
 
+### HTML Score Reports
+
+When `trace=true` is enabled, the API automatically generates a human-readable HTML report for each scored entity. The `reportUrl` field in the response provides a link to view the detailed scoring breakdown.
+
+#### `GET /api/reports/{sessionId}`
+
+**Purpose:** Retrieve a formatted HTML report explaining scoring decisions in plain English.
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sessionId` | string | Yes | Trace session ID from search response |
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `format` | string | No | html | Report format (currently only `html`) |
+
+**Response:**
+
+Returns a complete HTML document with:
+- **Overall Match Score** - Visual gauge showing risk level (High/Medium/Low)
+- **Score Breakdown** - Bar charts for each component (name, address, IDs, etc.)
+- **Processing Details** - Phase-by-phase execution with timing
+- **Plain English Explanations** - Human-readable descriptions of scoring decisions
+
+**Status Codes:**
+- `200 OK` - Report generated successfully
+- `404 Not Found` - Session ID not found (reports expire after 24 hours)
+
+**Example Usage:**
+
+```bash
+# Step 1: Search with trace enabled
+curl "http://54.209.239.50:8080/v2/search?name=Nicolas%20Maduro&trace=true"
+
+# Response includes:
+# {
+#   "results": [...],
+#   "trace": { "sessionId": "b197229e-f7a3-4a78-84c1-51ca44740209" },
+#   "reportUrl": "/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209"
+# }
+
+# Step 2: View HTML report in browser or fetch programmatically
+curl "http://54.209.239.50:8080/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209"
+```
+
+**Use Cases:**
+- **Compliance Review** - Non-technical staff can review scoring decisions
+- **Customer Explanations** - Share reports with customers to explain match results
+- **Debugging** - Visual representation makes it easier to spot issues
+- **Audit Trail** - Save reports as permanent documentation
+
+**Report Storage:**
+- Reports are stored in-memory by default (development mode)
+- Production deployments should use Redis-backed storage
+- Reports automatically expire after 24 hours
+- Future: PDF generation and S3 archival
+
+---
+
 #### `POST /v2/search/batch/async`
 
 Submit a batch for asynchronous processing (for very large batches).
@@ -433,7 +502,7 @@ Get information about loaded sanctions lists.
 **Example:**
 
 ```bash
-curl https://watchman-java.fly.dev/v2/listinfo
+curl http://54.209.239.50:8080/v2/listinfo
 ```
 
 ---
@@ -463,7 +532,7 @@ Trigger manual refresh of all sanctions data.
 **Example:**
 
 ```bash
-curl -X POST https://watchman-java.fly.dev/v1/download/refresh
+curl -X POST http://54.209.239.50:8080/v1/download/refresh
 ```
 
 ---
@@ -677,12 +746,12 @@ Trigger a new Nemesis parity testing run. By default, runs asynchronously and re
 
 ```bash
 # Async trigger (default - Java vs Go parity)
-curl -X POST https://watchman-java.fly.dev/v2/nemesis/trigger \
+curl -X POST http://54.209.239.50:8080/v2/nemesis/trigger \
   -H "Content-Type: application/json" \
   -d '{"queries": 100, "async": true}'
 
 # Sync trigger with OFAC-API (3-way validation)
-curl -X POST https://watchman-java.fly.dev/v2/nemesis/trigger \
+curl -X POST http://54.209.239.50:8080/v2/nemesis/trigger \
   -H "Content-Type: application/json" \
   -d '{"queries": 50, "includeOfacApi": true, "async": false}'
 ```
@@ -736,7 +805,7 @@ Check the status of a Nemesis run.
 **Example:**
 
 ```bash
-curl https://watchman-java.fly.dev/v2/nemesis/status/nemesis-20260111-143052
+curl http://54.209.239.50:8080/v2/nemesis/status/nemesis-20260111-143052
 ```
 
 ---
@@ -773,7 +842,7 @@ List the 10 most recent Nemesis report files.
 **Example:**
 
 ```bash
-curl https://watchman-java.fly.dev/v2/nemesis/reports
+curl http://54.209.239.50:8080/v2/nemesis/reports
 ```
 
 ---
@@ -803,18 +872,18 @@ Import the Postman collection from:
 
 ```bash
 # Health check
-curl https://watchman-java.fly.dev/health
+curl http://54.209.239.50:8080/health
 
 # Search
-curl "https://watchman-java.fly.dev/v2/search?name=Maduro&limit=5"
+curl "http://54.209.239.50:8080/v2/search?name=Maduro&limit=5"
 
 # Batch screening
-curl -X POST https://watchman-java.fly.dev/v2/search/batch \
+curl -X POST http://54.209.239.50:8080/v2/search/batch \
   -H "Content-Type: application/json" \
   -d '{"items":[{"id":"1","name":"Test Name"}]}'
 
 # Trigger refresh
-curl -X POST https://watchman-java.fly.dev/v1/download/refresh
+curl -X POST http://54.209.239.50:8080/v1/download/refresh
 ```
 
 ---

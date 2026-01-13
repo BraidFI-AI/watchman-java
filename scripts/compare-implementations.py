@@ -627,8 +627,8 @@ def main():
     )
     parser.add_argument('--go-url', default='https://watchman-go.fly.dev',
                         help='Go Watchman URL (default: https://watchman-go.fly.dev)')
-    parser.add_argument('--java-url', default='https://watchman-java.fly.dev',
-                        help='Java Watchman URL (default: https://watchman-java.fly.dev)')
+    parser.add_argument('--java-url', default='http://54.209.239.50:8080',
+                        help='Java Watchman URL (default: http://54.209.239.50:8080)')
     parser.add_argument('--test-file', default=None,
                         help='Path to test names JSON file')
     parser.add_argument('--output', choices=['html', 'csv', 'json', 'all'], default='all',

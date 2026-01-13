@@ -28,7 +28,8 @@ public record BatchSearchResponseDTO(
         String status,
         String errorMessage,
         List<MatchDTO> matches,
-        ScoringTrace trace
+        ScoringTrace trace,
+        String reportUrl
     ) {
         public static BatchResultDTO from(BatchScreeningResult result) {
             List<MatchDTO> matchDtos = result.matches() != null
@@ -36,6 +37,10 @@ public record BatchSearchResponseDTO(
                     .map(MatchDTO::from)
                     .collect(Collectors.toList())
                 : List.of();
+            
+            // Generate reportUrl if trace is present
+            String reportUrl = result.trace() != null ? 
+                "/api/reports/" + result.trace().sessionId() : null;
 
             return new BatchResultDTO(
                 result.requestId(),
@@ -43,7 +48,8 @@ public record BatchSearchResponseDTO(
                 result.status().name(),
                 result.errorMessage(),
                 matchDtos,
-                result.trace()
+                result.trace(),
+                reportUrl
             );
         }
     }
