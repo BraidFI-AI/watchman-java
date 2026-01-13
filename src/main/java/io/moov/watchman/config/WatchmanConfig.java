@@ -8,6 +8,7 @@ import io.moov.watchman.search.EntityScorerImpl;
 import io.moov.watchman.search.SearchService;
 import io.moov.watchman.search.SearchServiceImpl;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
 import io.moov.watchman.similarity.SimilarityService;
 import io.moov.watchman.similarity.TextNormalizer;
 import org.springframework.context.annotation.Bean;
@@ -25,8 +26,12 @@ public class WatchmanConfig {
     }
 
     @Bean
-    public SimilarityService similarityService() {
-        return new JaroWinklerSimilarity();
+    public SimilarityService similarityService(SimilarityConfig similarityConfig) {
+        return new JaroWinklerSimilarity(
+            new TextNormalizer(),
+            new PhoneticFilter(true),
+            similarityConfig
+        );
     }
 
     @Bean

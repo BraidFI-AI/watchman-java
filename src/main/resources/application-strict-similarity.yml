@@ -1,0 +1,33 @@
+# Strict profile - optimized for precision with fewer false positives
+# Use case: Production compliance, regulatory screening, high-confidence matching
+#
+# Activate with: --spring.profiles.active=strict-similarity
+# Or via env: SPRING_PROFILES_ACTIVE=strict-similarity
+
+watchman:
+  search:
+    min-match: 0.95  # High threshold for strict matching (default: 0.88)
+
+  scoring:
+    # Increase weight on exact IDs for higher confidence
+    name-weight: 30.0                    # Reduce name-only matching
+    address-weight: 25.0                 # Keep address weight
+    critical-id-weight: 60.0             # Increase ID requirement (default: 50.0)
+    supporting-info-weight: 10.0         # Reduce supporting info weight
+
+  similarity:
+    # Jaro-Winkler parameters - more strict
+    jaro-winkler-boost-threshold: 0.8    # Higher threshold (default: 0.7)
+    jaro-winkler-prefix-size: 3          # Shorter prefix for less boost (default: 4)
+
+    # Penalty weights - increased for stricter matching
+    length-difference-cutoff-factor: 0.95        # Less tolerant of length diff (default: 0.9)
+    length-difference-penalty-weight: 0.4        # Heavier penalty (default: 0.3)
+    different-letter-penalty-weight: 0.8         # Heavier penalty (default: 0.9)
+    unmatched-index-token-weight: 0.20           # Heavier penalty (default: 0.15)
+    exact-match-favoritism: 0.0                  # No boost (rely on exact matching)
+
+    # Feature flags - keep filtering enabled
+    phonetic-filtering-disabled: false
+    keep-stopwords: false
+    log-stopword-debugging: false

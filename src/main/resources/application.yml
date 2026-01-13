@@ -45,7 +45,21 @@ watchman:
     address-enabled: true
     date-enabled: true
 
-    # Legacy jaro-winkler settings (under similarity config)
-    jaro-winkler:
-      boost-threshold: 0.7
-      prefix-size: 4
+  # Similarity algorithm configuration (low-level tuning parameters)
+  # These control Jaro-Winkler behavior, length penalties, and normalization
+  similarity:
+    # Jaro-Winkler parameters
+    jaro-winkler-boost-threshold: 0.7   # Only boost if base score >= threshold
+    jaro-winkler-prefix-size: 4         # Max prefix length for boost (chars)
+
+    # Penalty weights
+    length-difference-cutoff-factor: 0.9        # Apply penalty if ratio < 0.9
+    length-difference-penalty-weight: 0.3       # Penalty weight for length diff
+    different-letter-penalty-weight: 0.9        # Penalty for mismatched first char
+    unmatched-index-token-weight: 0.15          # Penalty for unmatched tokens
+    exact-match-favoritism: 0.0                 # Boost for exact matches (0.0 = disabled)
+
+    # Feature flags
+    phonetic-filtering-disabled: false  # If true, skip Soundex pre-filter
+    keep-stopwords: false               # If true, don't remove stopwords
+    log-stopword-debugging: false       # If true, log stopword details
