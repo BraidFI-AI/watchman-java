@@ -1,0 +1,33 @@
+# Lenient profile - optimized for broader matching with fewer false negatives
+# Use case: Initial screening, recall optimization, development testing
+#
+# Activate with: --spring.profiles.active=lenient
+# Or via env: SPRING_PROFILES_ACTIVE=lenient
+
+watchman:
+  search:
+    min-match: 0.80  # Lower threshold for broader matching (default: 0.88)
+
+  scoring:
+    # Reduce weight on exact IDs to allow more fuzzy matches
+    name-weight: 45.0                    # Increase name importance
+    address-weight: 20.0                 # Reduce address importance
+    critical-id-weight: 35.0             # Reduce ID requirement (default: 50.0)
+    supporting-info-weight: 20.0         # Increase supporting info weight
+
+  similarity:
+    # Jaro-Winkler parameters - more permissive
+    jaro-winkler-boost-threshold: 0.6    # Lower threshold (default: 0.7)
+    jaro-winkler-prefix-size: 5          # Longer prefix for more boost (default: 4)
+
+    # Penalty weights - reduced for more lenient matching
+    length-difference-cutoff-factor: 0.85        # More tolerant of length diff (default: 0.9)
+    length-difference-penalty-weight: 0.2        # Lighter penalty (default: 0.3)
+    different-letter-penalty-weight: 0.95        # Lighter penalty (default: 0.9)
+    unmatched-index-token-weight: 0.10           # Lighter penalty (default: 0.15)
+    exact-match-favoritism: 0.05                 # Small boost for exact matches
+
+    # Feature flags - keep filtering enabled for performance
+    phonetic-filtering-disabled: false
+    keep-stopwords: false
+    log-stopword-debugging: false

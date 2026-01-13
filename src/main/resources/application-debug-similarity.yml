@@ -1,0 +1,45 @@
+# Debug profile - optimized for observability and troubleshooting
+# Use case: Development, debugging scoring issues, testing configuration changes
+#
+# Activate with: --spring.profiles.active=debug-similarity
+# Or via env: SPRING_PROFILES_ACTIVE=debug-similarity
+#
+# WARNING: This profile has performance overhead due to extensive logging.
+#          Do NOT use in production!
+
+watchman:
+  search:
+    min-match: 0.70  # Very low threshold to see all candidates (default: 0.88)
+    default-limit: 25  # Show more results for analysis
+
+  scoring:
+    # Balanced weights for debugging
+    name-weight: 35.0
+    address-weight: 25.0
+    critical-id-weight: 50.0
+    supporting-info-weight: 15.0
+
+  similarity:
+    # Jaro-Winkler parameters - default values for baseline
+    jaro-winkler-boost-threshold: 0.7
+    jaro-winkler-prefix-size: 4
+
+    # Penalty weights - default values
+    length-difference-cutoff-factor: 0.9
+    length-difference-penalty-weight: 0.3
+    different-letter-penalty-weight: 0.9
+    unmatched-index-token-weight: 0.15
+    exact-match-favoritism: 0.0
+
+    # Feature flags - enable debugging, disable optimizations
+    phonetic-filtering-disabled: true    # Disable filtering to see all comparisons
+    keep-stopwords: true                 # Keep stopwords to see their impact
+    log-stopword-debugging: true         # Enable stopword debug logging
+
+# Enable DEBUG logging for scoring components
+logging:
+  level:
+    io.moov.watchman.search: DEBUG
+    io.moov.watchman.similarity: DEBUG
+    io.moov.watchman.trace: DEBUG
+    io.moov.watchman.config.SimilarityConfigLogger: INFO

@@ -12,7 +12,25 @@ This allows you to:
 - **A/B test** different scoring configurations
 - **Profile-based configs** for different environments (dev, staging, production)
 
-## Configuration Properties
+## Configuration Hierarchy
+
+Watchman-Java provides **two levels** of configuration for different tuning needs:
+
+1. **Level 2: Factor Weights (`watchman.scoring`)** - High-level business logic
+   - Controls which factors (name, address, IDs) contribute to the final score
+   - Adjusts relative importance of each factor
+   - Enable/disable specific matching factors
+
+2. **Level 3: Algorithm Tuning (`watchman.similarity`)** - Low-level algorithm parameters
+   - Controls Jaro-Winkler algorithm behavior
+   - Adjusts penalties and thresholds
+   - Fine-tunes phonetic filtering and normalization
+
+Most users should only need **Level 2** (ScoringConfig). Use **Level 3** (SimilarityConfig) for advanced tuning or research purposes.
+
+---
+
+## Level 2: Factor Weights (ScoringConfig)
 
 All properties are under the `watchman.scoring` prefix:
 
@@ -52,6 +70,126 @@ watchman:
 - Factor score = 0.0
 - Factor weight = 0.0 (doesn't affect total weight)
 - Trace shows "disabled by configuration"
+
+---
+
+## Level 3: Algorithm Tuning (SimilarityConfig)
+
+All properties are under the `watchman.similarity` prefix:
+
+### Jaro-Winkler Parameters
+
+```yaml
+watchman:
+  similarity:
+    jaro-winkler-boost-threshold: 0.7   # Only apply prefix boost if base Jaro score >= threshold
+    jaro-winkler-prefix-size: 4         # Max prefix length for Winkler boost (characters)
+```
+
+**What these control:**
+- **Boost threshold:** Higher values (e.g., 0.8) make prefix boost more selective
+- **Prefix size:** Longer prefix (e.g., 5-6) gives more weight to matching beginnings
+
+**Go parity:** These map to `JARO_WINKLER_BOOST_THRESHOLD` and `JARO_WINKLER_PREFIX_SIZE` env vars.
+
+### Penalty Weights
+
+```yaml
+watchman:
+  similarity:
+    length-difference-cutoff-factor: 0.9        # Apply penalty if length ratio < this value
+    length-difference-penalty-weight: 0.3       # Penalty weight for length differences
+    different-letter-penalty-weight: 0.9        # Penalty for mismatched first character
+    unmatched-index-token-weight: 0.15          # Penalty for unmatched tokens
+    exact-match-favoritism: 0.0                 # Boost for exact matches (0.0 = disabled)
+```
+
+**What these control:**
+- **Length cutoff:** Lower values (e.g., 0.85) tolerate bigger length differences
+- **Length penalty:** Lower values (e.g., 0.2) make length differences less important
+- **Letter penalty:** Lower values (e.g., 0.95) are more forgiving of first-char mismatches
+- **Token penalty:** Lower values (e.g., 0.10) tolerate more unmatched words
+- **Exact match favoritism:** Positive values (e.g., 0.05) boost exact matches
+
+**Go parity:** These map to `LENGTH_DIFFERENCE_*`, `DIFFERENT_LETTER_PENALTY_WEIGHT`, etc.
+
+### Feature Flags
+
+```yaml
+watchman:
+  similarity:
+    phonetic-filtering-disabled: false  # If true, skip Soundex pre-filter
+    keep-stopwords: false               # If true, don't remove stopwords during matching
+    log-stopword-debugging: false       # If true, log stopword removal details
+```
+
+**What these control:**
+- **Phonetic filtering:** Disabling improves recall but increases CPU usage
+- **Keep stopwords:** Enabling makes "The Bank" different from "Bank" (more strict)
+- **Stopword debugging:** Enables detailed logging (performance impact)
+
+**Go parity:** These map to `DISABLE_PHONETIC_FILTERING`, `KEEP_STOPWORDS`, `LOG_STOPWORD_DEBUGGING`.
+
+### When to Tune These
+
+⚠️ **Warning:** Changing these parameters can significantly impact match quality. Only adjust if:
+
+1. **You have labeled test data** to validate changes
+2. **You understand Jaro-Winkler algorithm** internals
+3. **You're conducting research** or performance optimization
+4. **Go team provided specific values** for parity
+
+For most use cases, adjust **ScoringConfig weights** instead.
+
+### Example: Making Matching More Lenient
+
+```yaml
+watchman:
+  similarity:
+    jaro-winkler-boost-threshold: 0.6        # Lower threshold = more boosting
+    length-difference-penalty-weight: 0.2    # Lighter penalty
+    different-letter-penalty-weight: 0.95    # More forgiving
+```
+
+### Example: Making Matching More Strict
+
+```yaml
+watchman:
+  similarity:
+    jaro-winkler-boost-threshold: 0.8        # Higher threshold = less boosting
+    length-difference-penalty-weight: 0.4    # Heavier penalty
+    different-letter-penalty-weight: 0.8     # Less forgiving
+```
+
+### Observability
+
+Configuration values are logged at startup:
+
+```
+=== Similarity Algorithm Configuration ===
+Jaro-Winkler Parameters:
+  boost-threshold: 0.7
+  prefix-size: 4
+Penalty Weights:
+  length-difference-cutoff: 0.9
+  length-difference-penalty: 0.3
+==========================================
+```
+
+Configuration is also included in scoring traces:
+
+```json
+{
+  "metadata": {
+    "similarity.boost-threshold": 0.7,
+    "similarity.prefix-size": 4,
+    "similarity.length-penalty": 0.3,
+    "similarity.phonetic-disabled": false
+  }
+}
+```
+
+---
 
 ## Profiles
 
@@ -129,6 +267,74 @@ watchman:
 - Automatically adjusts weights for missing factor
 - Full audit trail via tracing
 
+### Lenient Profile (`application-lenient.yml`)
+
+**Use case:** Broader matching with fewer false negatives
+
+```yaml
+watchman:
+  search:
+    min-match: 0.80  # Lower threshold
+  similarity:
+    jaro-winkler-boost-threshold: 0.6
+    length-difference-penalty-weight: 0.2
+    different-letter-penalty-weight: 0.95
+```
+
+**Activate:** `java -jar watchman.jar --spring.profiles.active=lenient`
+
+**Benefits:**
+- Catches more potential matches
+- Better recall for exploratory searches
+- Useful for initial screening
+
+### Strict Similarity Profile (`application-strict-similarity.yml`)
+
+**Use case:** Precision-focused matching with fewer false positives
+
+```yaml
+watchman:
+  search:
+    min-match: 0.95  # High threshold
+  similarity:
+    jaro-winkler-boost-threshold: 0.8
+    length-difference-penalty-weight: 0.4
+    different-letter-penalty-weight: 0.8
+```
+
+**Activate:** `java -jar watchman.jar --spring.profiles.active=strict-similarity`
+
+**Benefits:**
+- Reduces false positives
+- Higher confidence matches
+- Ideal for compliance-critical applications
+
+### Debug Similarity Profile (`application-debug-similarity.yml`)
+
+**Use case:** Troubleshooting and algorithm research
+
+```yaml
+watchman:
+  search:
+    min-match: 0.70  # Very low to see all candidates
+  similarity:
+    phonetic-filtering-disabled: true
+    keep-stopwords: true
+    log-stopword-debugging: true
+logging:
+  level:
+    io.moov.watchman.similarity: DEBUG
+```
+
+**Activate:** `java -jar watchman.jar --spring.profiles.active=debug-similarity`
+
+**Benefits:**
+- Full visibility into matching process
+- Understand why scores are what they are
+- Test algorithm changes
+
+⚠️ **Warning:** Do NOT use in production - significant performance overhead!
+
 ## Examples
 
 ### Environment Variables
@@ -136,11 +342,14 @@ watchman:
 Override specific values without changing files:
 
 ```bash
-# Disable address matching
+# ScoringConfig (Level 2)
 export WATCHMAN_SCORING_ADDRESS_ENABLED=false
-
-# Increase name weight
 export WATCHMAN_SCORING_NAME_WEIGHT=50.0
+
+# SimilarityConfig (Level 3)
+export WATCHMAN_SIMILARITY_JARO_WINKLER_BOOST_THRESHOLD=0.8
+export WATCHMAN_SIMILARITY_LENGTH_DIFFERENCE_PENALTY_WEIGHT=0.25
+export WATCHMAN_SIMILARITY_PHONETIC_FILTERING_DISABLED=true
 
 java -jar watchman.jar
 ```
@@ -354,4 +563,6 @@ For configuration questions:
 
 - [Trace README](../src/main/java/io/moov/watchman/trace/README.md) - Scoring explainability
 - [Scoring Tests](../src/test/java/io/moov/watchman/search/ScoringConfigurableWeightsTest.java) - Expected behavior
-- [Config Class](../src/main/java/io/moov/watchman/config/ScoringConfig.java) - All properties
+- [ScoringConfig Class](../src/main/java/io/moov/watchman/config/ScoringConfig.java) - Level 2 properties
+- [SimilarityConfig Class](../src/main/java/io/moov/watchman/config/SimilarityConfig.java) - Level 3 properties
+- [SimilarityConfig Tests](../src/test/java/io/moov/watchman/config/SimilarityConfigTest.java) - Algorithm tuning tests
