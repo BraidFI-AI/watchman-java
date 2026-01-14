@@ -77,6 +77,19 @@
             <version>${tika.version}</version>
         </dependency>
 
+        <!-- YAML Parser for scenarios -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+
+        <!-- JavaFaker for generating test data -->
+        <dependency>
+            <groupId>net.datafaker</groupId>
+            <artifactId>datafaker</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+
         <!-- Caching -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
