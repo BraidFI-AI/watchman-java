@@ -13,5 +13,13 @@ Rules of engagement:
 - Prefer minimal, incremental changes over large refactors.
 - Flag any proposal that would violate stated context or decisions.
 
+Test Driven Development requirement:
+- Follow strict red, green, refactor phases.
+  - **Red**: Propose failing tests that precisely define the desired behavior.
+  - **Green**: Propose the smallest possible implementation to make tests pass.
+  - **Refactor**: Improve structure and clarity without changing behavior.
+- Do not skip phases or merge them.
+- Do not propose implementation before tests are defined.
+
 Session goal:
 [One sentence describing what we are doing right now.]
