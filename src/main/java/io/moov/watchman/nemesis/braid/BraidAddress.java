@@ -12,7 +12,7 @@ public record BraidAddress(
         String city,
         String state,
         String zipCode,
-        String country
+        String countryCode
 ) {
     public static Builder builder() {
         return new Builder();
@@ -24,7 +24,7 @@ public record BraidAddress(
         private String city;
         private String state;
         private String zipCode;
-        private String country = "US";
+        private String countryCode = "US";
 
         public Builder street(String street) {
             this.street = street;
@@ -51,13 +51,13 @@ public record BraidAddress(
             return this;
         }
 
-        public Builder country(String country) {
-            this.country = country;
+        public Builder countryCode(String countryCode) {
+            this.countryCode = countryCode;
             return this;
         }
 
         public BraidAddress build() {
-            return new BraidAddress(street, street2, city, state, zipCode, country);
+            return new BraidAddress(street, street2, city, state, zipCode, countryCode);
         }
     }
 }

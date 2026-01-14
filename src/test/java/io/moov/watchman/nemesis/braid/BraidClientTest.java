@@ -69,7 +69,7 @@ class BraidClientTest {
         // Given: Valid business customer request
         CreateBusinessRequest request = CreateBusinessRequest.builder()
                 .name("TALIBAN ORGANIZATION")
-                .idNumber("12-3456789")
+                .idNumber("123456789")
                 .businessIdType("EIN")
                 .email("business@example.com")
                 .mobilePhone("555-555-5555")
