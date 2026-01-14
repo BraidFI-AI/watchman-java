@@ -30,7 +30,7 @@ public record SearchResponse(
      */
     public static SearchResponse from(List<SearchResult> results, String requestId, boolean includeDebug, ScoringTrace trace) {
         List<SearchHit> hits = results.stream()
-            .map(r -> SearchHit.from(r, includeDebug))
+            .map(r -> SearchHit.from(r, trace != null))
             .toList();
         
         // Generate reportUrl if trace is present
