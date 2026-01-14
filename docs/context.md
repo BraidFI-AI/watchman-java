@@ -61,6 +61,33 @@
 
 ---
 
+## Session: January 13, 2026 (Evening - TraceSummary for Operators)
+
+### What We Decided
+- Created TraceSummary.java to analyze trace data and provide operator-friendly insights
+- Added JSON summary endpoint: GET /api/reports/{sessionId}/summary
+- Documented across 5 files: README.md, scoretrace.md, api_spec.md, scripts.md, trace_integration.md
+- Created test-summary-endpoint.sh for end-to-end validation
+- Updated Postman collection with Score Reports folder
+
+### What Is Now True
+- Two complementary trace endpoints exist:
+  - `/api/reports/{sessionId}` - HTML report for human review (compliance, debugging)
+  - `/api/reports/{sessionId}/summary` - JSON summary for automation (dashboards, operators)
+- TraceSummary analyzes 9 scoring phases: NAME_COMPARISON, ALT_NAME_COMPARISON, ADDRESS_COMPARISON, GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON, DATE_COMPARISON, AGGREGATION, NORMALIZATION
+- ScoreBreakdown has 8 fields: nameScore, altNamesScore, addressScore, governmentIdScore, cryptoAddressScore, contactScore, dateScore, totalWeightedScore
+- Summary response includes: totalEntitiesScored, phaseContributions, phaseTimings, slowestPhase, insights[]
+- TraceSummaryService exists in production (was already implemented)
+- Test script validates full flow: search with trace → fetch summary → validate JSON → check HTML report
+- Postman collection includes 3 requests: search with trace, get HTML report, get JSON summary
+
+### What Is Still Unknown
+- Whether operators prefer web UI dashboard over JSON API for insights
+- Optimal TTL for trace storage (currently 24 hours in-memory)
+- If Redis-backed trace storage is needed for production scale
+
+---
+
 ## Session: January 12, 2026
 
 ### What We Decided

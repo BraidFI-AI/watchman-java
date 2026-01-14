@@ -95,3 +95,57 @@
 **Tradeoff**: Requires OpenAI/Anthropic API key and adds ~$33/month in AI costs for daily runs with fix generation. Without AI key, pipeline runs in analysis-only mode.
 
 ---
+
+### 2026-01-13: Separate Summary Endpoint for Non-Technical Operators
+
+**Context**: Existing scoretrace returns massive JSON with every event, making it difficult for non-technical operators to understand "why this customer matched" or measure trace run effectiveness.
+
+**Decision**: Create dedicated `/api/reports/{sessionId}/summary` endpoint that returns condensed JSON with phase contributions, timings, and plain-English insights.
+
+**Rationale**:
+- Dual audience requirement: developers need full trace, operators need summaries
+- HTML reports are visual but not programmatically accessible for dashboards
+- Summary provides actionable insights without overwhelming detail
+- Enables automated monitoring and compliance dashboards
+
+**Alternatives Considered**:
+1. ❌ Modify HTML report to include summary section - not machine-readable
+2. ❌ Add optional parameter to trace endpoint - would complicate existing response structure
+3. ✅ Separate endpoint - clean separation of concerns, backward compatible
+
+**Impact**: Operators can now integrate trace insights into dashboards and monitoring without parsing full event streams.
+
+---
+
+### 2026-01-13: TraceSummary as Analysis Layer
+
+**Context**: TraceSummaryService and ReportSummary models already existed in codebase for HTML rendering.
+
+**Decision**: Created TraceSummary.java as separate analysis layer that operates on ScoringTrace data, rather than modifying existing TraceSummaryService.
+
+**Rationale**:
+- TraceSummaryService focused on HTML report generation
+- TraceSummary focused on statistical analysis and insight generation
+- Separation of concerns: rendering vs analysis
+- TDD approach: defined behavior through tests first
+
+**Tradeoff**: Two similar-sounding classes exist (TraceSummary vs TraceSummaryService), but they serve distinct purposes and don't duplicate functionality.
+
+---
+
+### 2026-01-13: Fixed ScoreBreakdown Method Names
+
+**Context**: Test compilation revealed method name discrepancies in ScoreBreakdown model.
+
+**Decision**: Corrected method names to match actual implementation:
+- `govIdScore()` → `governmentIdScore()`
+- `cryptoScore()` → `cryptoAddressScore()`
+
+**Rationale**: 
+- Maintains consistency with field naming conventions
+- Reflects full terminology (government ID, cryptocurrency address)
+- Prevents future confusion about available methods
+
+**Impact**: Fixed compilation errors in TraceSummary.java and TraceSummaryService.java.
+
+---
