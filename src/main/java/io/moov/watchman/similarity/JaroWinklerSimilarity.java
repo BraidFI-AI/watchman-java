@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.trace.ScoringContext;
 
 import java.util.ArrayList;
@@ -18,27 +19,17 @@ import java.util.Set;
  * - Length difference penalties
  * - Best-pair token matching for multi-word names
  * - Unmatched token penalties
+ * 
+ * All algorithm parameters are now configurable via SimilarityConfig.
  */
 public class JaroWinklerSimilarity implements SimilarityService {
 
     private final TextNormalizer normalizer;
     private final PhoneticFilter phoneticFilter;
+    private final SimilarityConfig config;
     
-    // Jaro-Winkler parameters
+    // Jaro-Winkler fixed parameters (not configurable)
     private static final double WINKLER_PREFIX_WEIGHT = 0.1;
-    private static final int WINKLER_PREFIX_LENGTH = 4;
-    
-    // Custom penalty weights (from Go implementation)
-    // Go: lengthDifferencePenaltyWeight = 0.3 (default)
-    // Updated Jan 9, 2026 - Phase 2: Match Go's stricter length penalty
-    private static final double LENGTH_DIFFERENCE_PENALTY_WEIGHT = 0.30;
-    private static final double UNMATCHED_INDEX_TOKEN_PENALTY_WEIGHT = 0.15;
-    
-    // customJaroWinkler penalties (Phase 2 Task 3)
-    // Go: differentLetterPenaltyWeight = 0.9 (default)
-    // Go: lengthDifferenceCutoffFactor = 0.9 (default)
-    private static final double DIFFERENT_LETTER_PENALTY_WEIGHT = 0.9;
-    private static final double LENGTH_DIFFERENCE_CUTOFF_FACTOR = 0.9;
     
     // Stopwords to ignore when calculating penalties
     private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
@@ -47,13 +38,34 @@ public class JaroWinklerSimilarity implements SimilarityService {
         "the", "to", "was", "were", "will", "with"
     ));
 
+    /**
+     * Default constructor - creates config with default values.
+     * Used for backward compatibility.
+     */
     public JaroWinklerSimilarity() {
-        this(new TextNormalizer(), new PhoneticFilter(true));
+        this(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
     }
 
+    /**
+     * Constructor for testing - allows injecting normalizer and filter.
+     * Creates config with default values.
+     */
     public JaroWinklerSimilarity(TextNormalizer normalizer, PhoneticFilter phoneticFilter) {
+        this(normalizer, phoneticFilter, new SimilarityConfig());
+    }
+
+    /**
+     * Full constructor with configuration injection.
+     * This is the recommended constructor for production use via Spring DI.
+     *
+     * @param normalizer Text normalizer
+     * @param phoneticFilter Phonetic filter for pre-filtering
+     * @param config Similarity configuration with all tunable parameters
+     */
+    public JaroWinklerSimilarity(TextNormalizer normalizer, PhoneticFilter phoneticFilter, SimilarityConfig config) {
         this.normalizer = normalizer;
         this.phoneticFilter = phoneticFilter;
+        this.config = config;
     }
 
     @Override
@@ -75,8 +87,8 @@ public class JaroWinklerSimilarity implements SimilarityService {
             return 1.0;
         }
         
-        // Phonetic pre-filter
-        if (phoneticFilter.isEnabled() && phoneticFilter.shouldFilter(norm1, norm2)) {
+        // Phonetic pre-filter (can be disabled via config)
+        if (!config.isPhoneticFilteringDisabled() && phoneticFilter.isEnabled() && phoneticFilter.shouldFilter(norm1, norm2)) {
             return 0.0;
         }
         
@@ -256,17 +268,17 @@ public class JaroWinklerSimilarity implements SimilarityService {
         // Apply Winkler prefix boost
         score = applyWinklerBoost(score, s1, s2);
         
-        // Apply length difference penalty if ratio < cutoff (0.9)
+        // Apply length difference penalty if ratio < cutoff (configurable)
         double lengthMetric = lengthDifferenceFactor(s1, s2);
-        if (lengthMetric < LENGTH_DIFFERENCE_CUTOFF_FACTOR) {
+        if (lengthMetric < config.getLengthDifferenceCutoffFactor()) {
             // scalingFactor(metric, weight) = 1.0 - (1.0 - metric) * weight
-            double scalingFactor = 1.0 - (1.0 - lengthMetric) * LENGTH_DIFFERENCE_PENALTY_WEIGHT;
+            double scalingFactor = 1.0 - (1.0 - lengthMetric) * config.getLengthDifferencePenaltyWeight();
             score = score * scalingFactor;
         }
         
         // Apply different first character penalty
         if (s1.charAt(0) != s2.charAt(0)) {
-            score = score * DIFFERENT_LETTER_PENALTY_WEIGHT;
+            score = score * config.getDifferentLetterPenaltyWeight();
         }
         
         return score;
@@ -293,9 +305,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
      * Boosts score for strings that share a common prefix.
      */
     private double applyWinklerBoost(double jaroScore, String s1, String s2) {
-        // Find common prefix length (max 4 characters)
+        // Find common prefix length (configurable)
         int prefixLen = 0;
-        int maxPrefix = Math.min(Math.min(s1.length(), s2.length()), WINKLER_PREFIX_LENGTH);
+        int maxPrefix = Math.min(Math.min(s1.length(), s2.length()), config.getJaroWinklerPrefixSize());
         
         for (int i = 0; i < maxPrefix; i++) {
             if (s1.charAt(i) == s2.charAt(i)) {
@@ -393,7 +405,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
         }
         
         double lengthRatio = (double) Math.min(len1, len2) / Math.max(len1, len2);
-        double penalty = (1.0 - lengthRatio) * LENGTH_DIFFERENCE_PENALTY_WEIGHT;
+        double penalty = (1.0 - lengthRatio) * config.getLengthDifferencePenaltyWeight();
         
         return score - penalty;
     }
@@ -415,7 +427,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
             return score;
         }
         
-        double penalty = (unmatched / (double) Math.max(count1, count2)) * UNMATCHED_INDEX_TOKEN_PENALTY_WEIGHT;
+        double penalty = (unmatched / (double) Math.max(count1, count2)) * config.getUnmatchedIndexTokenWeight();
         
         return score - penalty;
     }
