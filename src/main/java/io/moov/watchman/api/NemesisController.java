@@ -54,15 +54,16 @@ public class NemesisController {
     @PostMapping("/trigger")
     public ResponseEntity<TriggerResponse> trigger(@RequestBody(required = false) TriggerRequest request) {
         if (request == null) {
-            request = new TriggerRequest(100, false, true);
+            request = new TriggerRequest(100, false, true, true, false, false);  // Default: Java-only, async
         }
 
         String jobId = generateJobId();
         NemesisJob job = new NemesisJob(jobId, request);
         jobs.put(jobId, job);
 
-        log.info("Nemesis job created: {} (queries={}, includeOfacApi={})", 
-            jobId, request.queries(), request.includeOfacApi());
+        log.info("Nemesis job created: {} (queries={}, java={}, go={}, braid={}, ofac={})", 
+            jobId, request.queries(), request.javaEnabled(), request.goEnabled(), 
+            request.braidEnabled(), request.includeOfacApi());
 
         // Execute async
         if (request.async()) {
@@ -288,11 +289,18 @@ public class NemesisController {
     public record TriggerRequest(
         int queries,
         boolean includeOfacApi,
-        boolean async
+        boolean async,
+        boolean javaEnabled,
+        boolean goEnabled,
+        boolean braidEnabled
     ) {
         public TriggerRequest {
             if (queries <= 0 || queries > 1000) {
                 throw new IllegalArgumentException("queries must be between 1 and 1000");
+            }
+            // Validate at least one comparison target is enabled
+            if (!javaEnabled && !goEnabled && !braidEnabled) {
+                throw new IllegalArgumentException("At least one comparison target must be enabled (javaEnabled, goEnabled, or braidEnabled)");
             }
         }
     }
