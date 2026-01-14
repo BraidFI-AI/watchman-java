@@ -745,6 +745,128 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Score Reports",
+      "description": "## Score Reports & Trace Analysis\n\nHuman-readable reports and summaries for scoring traces. Designed for compliance officers, developers, and operators to understand match decisions.\n\n### Endpoints\n\n- **GET /api/reports/{sessionId}** - HTML report with visual breakdown\n- **GET /api/reports/{sessionId}/summary** - JSON summary with key insights\n\n### Use Cases\n\n✅ **Compliance Review**: Share HTML reports explaining why an entity matched\n✅ **Developer Debugging**: Use JSON summary to understand scoring behavior\n✅ **Performance Analysis**: Identify slow phases in scoring pipeline\n✅ **Score Tuning**: Understand which factors contribute most to matches\n\n### Workflow\n\n1. Search with `trace=true` to capture scoring details\n2. Extract `sessionId` from response\n3. View HTML report for human-readable explanation\n4. Or fetch JSON summary for programmatic analysis\n\n### Best Practices\n\n- Reports expire after 24 hours (in-memory storage)\n- Use HTML reports for customer/compliance explanations\n- Use JSON summaries for automated analysis or dashboards\n- Check `totalEntitiesScored` to understand trace scope",
+      "item": [
+        {
+          "name": "Get HTML Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/:sessionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                ":sessionId"
+              ],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": "{{traceSessionId}}",
+                  "description": "Session ID from trace response"
+                }
+              ]
+            },
+            "description": "Get a human-readable HTML report with visual score breakdown, plain English explanations, and processing timeline. Suitable for sharing with non-technical stakeholders."
+          },
+          "response": [
+            {
+              "name": "HTML Report",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/html"
+                }
+              ],
+              "body": "<!DOCTYPE html>\\n<html>\\n  <body>\\n    <h1>Score Trace Report</h1>\\n    <section class=\\\"score-breakdown\\\">\\n      <h2>Score Breakdown</h2>\\n      <div>Name Match: 95%</div>\\n    </section>\\n  </body>\\n</html>"
+            }
+          ]
+        },
+        {
+          "name": "Get JSON Summary (NEW)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/:sessionId/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                ":sessionId",
+                "summary"
+              ],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": "{{traceSessionId}}",
+                  "description": "Session ID from trace response"
+                }
+              ]
+            },
+            "description": "Get a JSON summary with aggregated statistics, phase contributions, and key insights. Shows the anatomy of composite scores - which of the 9 comparison phases contributed and how much. Designed for both developers and operators."
+          },
+          "response": [
+            {
+              "name": "Summary Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"sessionId\": \"abc-123\",\n  \"totalEntitiesScored\": 2,\n  \"averageScore\": 0.87,\n  \"highestScore\": 0.92,\n  \"lowestScore\": 0.82,\n  \"totalDurationMs\": 45,\n  \"phaseContributions\": {\n    \"NAME_COMPARISON\": 0.95,\n    \"ALT_NAME_COMPARISON\": 0.88,\n    \"ADDRESS_COMPARISON\": 0.0,\n    \"GOV_ID_COMPARISON\": 0.0,\n    \"CRYPTO_COMPARISON\": 0.0,\n    \"CONTACT_COMPARISON\": 0.0,\n    \"DATE_COMPARISON\": 0.0\n  },\n  \"phaseTimings\": {\n    \"NAME_COMPARISON\": 20,\n    \"ALT_NAME_COMPARISON\": 15,\n    \"AGGREGATION\": 5\n  },\n  \"slowestPhase\": \"NAME_COMPARISON\",\n  \"topMatches\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search with Trace (to get sessionId)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v2/search?name=Nicolas Maduro&limit=1&trace=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Nicolas Maduro"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "trace",
+                  "value": "true",
+                  "description": "Enable scoring trace"
+                }
+              ]
+            },
+            "description": "Example: Search with trace enabled to get a sessionId for report/summary requests. The response includes both trace data and a reportUrl."
+          },
+          "response": [
+            {
+              "name": "Search with Trace",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"12345\",\n      \"name\": \"MADURO MOROS, Nicolas\",\n      \"score\": 0.92\n    }\n  ],\n  \"trace\": {\n    \"sessionId\": \"abc-123-def-456\",\n    \"durationMs\": 45,\n    \"events\": [...],\n    \"breakdown\": {...}\n  },\n  \"reportUrl\": \"/api/reports/abc-123-def-456\"\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
