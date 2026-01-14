@@ -1,9 +1,12 @@
 # Braid Integration Migration Plan
 
-**Date:** January 11, 2026  
-**Status:** ✅ Option 1 Implemented & Tested  
+**Date:** January 14, 2026  
+**Status:** ✅ Option 1 Implemented & Deployed to AWS ECS for Testing  
 **Traffic Volume:** Millions of OFAC screens per week  
-**Migration Strategy:** Four options with **internal network deployment recommended**
+**Migration Strategy:** Four options with **internal network deployment as end goal**
+
+**Current Test Deployment:** AWS ECS - http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com  
+**End Goal:** Deploy internally within Braid's infrastructure (Option 4)
 
 ---
 
@@ -55,18 +58,19 @@ watchman.send.minMatch=true
 
 ## Four-Option Architecture
 
-### Option 1: Java Compatibility Layer ✅ IMPLEMENTED
+### Option 1: Java Compatibility Layer ✅ IMPLEMENTED & DEPLOYED
 **What:** V1 API endpoints matching Go's format  
-**Status:** Implemented with 21 passing tests (13 unit + 8 integration)  
+**Status:** Production ready on AWS ECS with 21 passing tests (13 unit + 8 integration)  
 **When:** Phase 1 - First 0-20% traffic  
 **Risk:** Low - No Braid changes needed  
-**Network:** External (Fly.dev) or Internal (Braid network)
+**Deployment:** AWS ECS Fargate (1 vCPU, 2GB RAM) behind Application Load Balancer  
+**Network:** External (AWS ALB) or Internal (Braid network)
 
 ### Option 2: Braid Dual-Client (Recommended for 20-80% Traffic)
 **What:** Braid supports both Go and Java formats via configuration  
 **When:** Phase 2 - Parallel validation  
 **Risk:** Medium - Requires Braid deployment  
-**Network:** External (Fly.dev) or Internal (Braid network)
+**Network:** External (AWS ECS) or Internal (Braid network)
 
 ### Option 3: API Gateway (Recommended for 80-100% Traffic)
 **What:** Nginx/Kong transforms requests/responses  
@@ -263,9 +267,9 @@ GET /ping
 
 #### Configuration Change (Braid side)
 ```properties
-# Change this ONE line to point to Java
-watchman.server=watchman-java.fly.dev
-watchman.port=443
+# Point to AWS ECS test deployment
+watchman.server=watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
+watchman.port=80
 
 # Everything else stays the same
 watchman.send.minMatch=true
@@ -304,12 +308,12 @@ watchman.send.minMatch=true
 
 **Manual Testing:**
 ```bash
-# Test v1 compatibility
-curl "https://watchman-java.fly.dev/search?q=Nicolas%20Maduro&minMatch=0.85"
+# Test AWS ECS deployment
+curl "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/search?q=Nicolas%20Maduro&minMatch=0.85"
 
-# Verify response format matches Go
+# Compare Java (ECS) vs Go (Fly.io)
 diff <(curl -s "https://watchman-go.fly.dev/search?q=Nicolas%20Maduro&minMatch=0.85") \
-     <(curl -s "https://watchman-java.fly.dev/search?q=Nicolas%20Maduro&minMatch=0.85")
+     <(curl -s "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/search?q=Nicolas%20Maduro&minMatch=0.85")
 ```
 
 ---
@@ -578,7 +582,7 @@ watchman.server=watchman-go-hostname
 watchman.port=8080
 
 # Java Watchman (new)
-watchman.v2.server=watchman-java.fly.dev
+watchman.v2.server=watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
 watchman.v2.port=443
 
 # Traffic control
@@ -645,7 +649,7 @@ upstream watchman_go {
 }
 
 upstream watchman_java {
-    server watchman-java.fly.dev:443;
+    server watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com:80;
 }
 
 # Split configuration - route by percentage
@@ -896,7 +900,7 @@ Internal DNS:
 - ✅ **Autoscaling** based on Braid traffic
 - ✅ **Blue-green deployments** trivial
 - ✅ **Instant rollback** via Kubernetes
-- ✅ **Cost savings** (no Fly.dev hosting)
+- ✅ **Cost savings** (no external hosting fees)
 
 #### Kubernetes Deployment
 
@@ -1271,9 +1275,9 @@ kubectl rollout status deployment/watchman-java -n braid
 
 | Deployment | Monthly Cost | Notes |
 |------------|--------------|-------|
-| **Fly.dev (External)** | ~$500-1000 | 3 VMs, egress fees, SSL |
-| **Internal K8s** | ~$50-100 | Shared cluster resources |
-| **Savings** | **~$450-900/mo** | 80-90% cost reduction |
+| **AWS ECS (External Test)** | ~$55 | 1 vCPU, 2GB RAM, ALB |
+| **Internal K8s (End Goal)** | ~$50-100 | Shared cluster resources |
+| **Savings** | **Minimal difference** | Internal slightly cheaper, 10-20x faster |
 
 #### Pros
 - ✅ **10-20x faster** (sub-3ms latency)
@@ -1313,7 +1317,7 @@ NC='\033[0m'
 
 # Configuration
 GO_URL="${GO_URL:-https://watchman-go.fly.dev}"
-JAVA_URL="${JAVA_URL:-https://watchman-java.fly.dev}"
+JAVA_URL="${JAVA_URL:-http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com}"
 GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
 
 # Test queries
@@ -1634,20 +1638,21 @@ echo ""
 
 ---
 
-### **Alternative: External Hosting (Fly.dev)**
+### **Phase 1: Validation on AWS ECS (Current)**
 
-If keeping Watchman Java external (not recommended due to latency and cost):
-**Goal:** Prove Java works with Braid  
+**Status:** IN PROGRESS - Java deployed to AWS ECS for testing  
+**Goal:** Prove Java works with Braid integration  
 **Approach:** Option 1 (Java Compatibility Layer)  
-**Traffic:** 0% → 1% → 5%
+**Traffic:** 0% (testing phase)
 
 **Steps:**
-1. Deploy Java compatibility endpoint
-2. Point Braid staging to Java
-3. Run test-braid-integration.sh
-4. Fix any issues
-5. Deploy to production at 1%
-6. Monitor until stable
+1. ✅ Deploy Java compatibility endpoint to ECS
+2. ✅ Configure AWS ALB for stable endpoint
+3. 🔄 Point Braid staging to ECS endpoint
+4. 🔄 Run test-braid-integration.sh
+5. ⏳ Fix any issues
+6. ⏳ Validate Taliban analysis findings with Braid team
+7. ⏳ Decision: Move to internal network (Option 4) vs continue external
 
 ### Phase 2: Confidence Building
 **Goal:** Validate at scale  
