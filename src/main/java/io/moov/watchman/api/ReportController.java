@@ -1,6 +1,8 @@
 package io.moov.watchman.api;
 
 import io.moov.watchman.report.ReportRenderer;
+import io.moov.watchman.report.TraceSummaryService;
+import io.moov.watchman.report.model.ReportSummary;
 import io.moov.watchman.trace.ScoringTrace;
 import io.moov.watchman.trace.TraceRepository;
 import org.slf4j.Logger;
@@ -27,10 +29,12 @@ public class ReportController {
     
     private final TraceRepository traceRepository;
     private final ReportRenderer reportRenderer;
+    private final TraceSummaryService summaryService;
     
-    public ReportController(TraceRepository traceRepository, ReportRenderer reportRenderer) {
+    public ReportController(TraceRepository traceRepository, ReportRenderer reportRenderer, TraceSummaryService summaryService) {
         this.traceRepository = traceRepository;
         this.reportRenderer = reportRenderer;
+        this.summaryService = summaryService;
     }
     
     /**
@@ -69,5 +73,33 @@ public class ReportController {
         return ResponseEntity.ok()
             .contentType(MediaType.TEXT_HTML)
             .body(html);
+    }
+    
+    /**
+     * Get a JSON summary of a scoring trace for programmatic access.
+     * 
+     * GET /api/reports/{sessionId}/summary
+     * 
+     * @param sessionId the trace session ID
+     * @return JSON summary or 404 if not found
+     */
+    @GetMapping(value = "/{sessionId}/summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ReportSummary> getSummary(@PathVariable String sessionId) {
+        logger.info("Summary request: sessionId={}", sessionId);
+        
+        // Retrieve trace from repository
+        Optional<ScoringTrace> traceOpt = traceRepository.findBySessionId(sessionId);
+        
+        if (traceOpt.isEmpty()) {
+            logger.warn("Trace not found for summary: sessionId={}", sessionId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        
+        ScoringTrace trace = traceOpt.get();
+        ReportSummary summary = summaryService.generateSummary(trace);
+        
+        logger.info("Summary generated: sessionId={}, entities={}", sessionId, summary.totalEntitiesScored());
+        
+        return ResponseEntity.ok(summary);
     }
 }

@@ -1,6 +1,7 @@
 package io.moov.watchman.report;
 
 import io.moov.watchman.model.ScoreBreakdown;
+import io.moov.watchman.report.model.ReportSummary;
 import io.moov.watchman.trace.Phase;
 import io.moov.watchman.trace.ScoringEvent;
 import io.moov.watchman.trace.ScoringTrace;
@@ -25,6 +26,12 @@ public class ReportRenderer {
     private static final DateTimeFormatter FORMATTER = 
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")
             .withZone(ZoneId.systemDefault());
+    
+    private final TraceSummaryService summaryService;
+    
+    public ReportRenderer(TraceSummaryService summaryService) {
+        this.summaryService = summaryService;
+    }
     
     /**
      * Render a scoring trace as HTML.
@@ -59,6 +66,10 @@ public class ReportRenderer {
         html.append("      <p><strong>Generated:</strong> ").append(FORMATTER.format(Instant.now())).append("</p>\n");
         html.append("    </div>\n");
         
+        // Executive Summary (NEW - appears first)
+        ReportSummary summary = summaryService.generateSummary(trace);
+        html.append(renderExecutiveSummary(summary));
+        
         // Score Breakdown
         if (trace.breakdown() != null) {
             html.append(renderScoreBreakdown(trace.breakdown()));
@@ -76,6 +87,91 @@ public class ReportRenderer {
         html.append("</body>\n");
         html.append("</html>\n");
         
+        return html.toString();
+    }
+    
+    private String renderExecutiveSummary(ReportSummary summary) {
+        StringBuilder html = new StringBuilder();
+        html.append("    <section class=\"summary\">\n");
+        html.append("      <h2>📊 Executive Summary</h2>\n");
+        html.append("      <div class=\"summary-grid\">\n");
+        
+        // Overall Statistics
+        html.append("        <div class=\"summary-card\">\n");
+        html.append("          <div class=\"card-title\">Entities Scored</div>\n");
+        html.append("          <div class=\"card-value\">").append(summary.totalEntitiesScored()).append("</div>\n");
+        html.append("          <div class=\"card-subtitle\">Total candidates evaluated</div>\n");
+        html.append("        </div>\n");
+        
+        html.append("        <div class=\"summary-card\">\n");
+        html.append("          <div class=\"card-title\">Average Score</div>\n");
+        html.append("          <div class=\"card-value ").append(getScoreClass(summary.averageScore()))
+            .append("\">").append(String.format("%.1f%%", summary.averageScore() * 100)).append("</div>\n");
+        html.append("          <div class=\"card-subtitle\">Mean match confidence</div>\n");
+        html.append("        </div>\n");
+        
+        html.append("        <div class=\"summary-card\">\n");
+        html.append("          <div class=\"card-title\">Best Match</div>\n");
+        html.append("          <div class=\"card-value score-high\">")
+            .append(String.format("%.1f%%", summary.highestScore() * 100)).append("</div>\n");
+        html.append("          <div class=\"card-subtitle\">Highest scoring entity</div>\n");
+        html.append("        </div>\n");
+        
+        html.append("        <div class=\"summary-card\">\n");
+        html.append("          <div class=\"card-title\">Processing Time</div>\n");
+        html.append("          <div class=\"card-value\">").append(summary.totalDurationMs()).append(" ms</div>\n");
+        html.append("          <div class=\"card-subtitle\">Total execution time</div>\n");
+        html.append("        </div>\n");
+        
+        html.append("      </div>\n");
+        
+        // Score Anatomy - Phase Contributions
+        if (summary.phaseContributions() != null && !summary.phaseContributions().isEmpty()) {
+            html.append("      <div class=\"score-anatomy\">\n");
+            html.append("        <h3>🔬 Score Anatomy - What Contributed to Matches</h3>\n");
+            html.append("        <p class=\"subtitle\">Understanding the 9 scoring components and their impact</p>\n");
+            html.append("        <div class=\"contribution-list\">\n");
+            
+            summary.phaseContributions().entrySet().stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .forEach(entry -> {
+                    Phase phase = entry.getKey();
+                    double contribution = entry.getValue();
+                    html.append("          <div class=\"contribution-item\">\n");
+                    html.append("            <div class=\"contribution-header\">\n");
+                    html.append("              <span class=\"phase-name\">")
+                        .append(formatPhaseName(phase)).append("</span>\n");
+                    html.append("              <span class=\"contribution-value ").append(getScoreClass(contribution))
+                        .append("\">").append(String.format("%.0f%%", contribution * 100)).append("</span>\n");
+                    html.append("            </div>\n");
+                    html.append("            <div class=\"contribution-bar\">\n");
+                    html.append("              <div class=\"contribution-fill ").append(getScoreClass(contribution))
+                        .append("\" style=\"width: ").append(contribution * 100).append("%\"></div>\n");
+                    html.append("            </div>\n");
+                    html.append("            <div class=\"phase-explanation\">")
+                        .append(explainPhase(phase)).append("</div>\n");
+                    html.append("          </div>\n");
+                });
+            
+            html.append("        </div>\n");
+            html.append("      </div>\n");
+        }
+        
+        // Performance Insights
+        if (summary.phaseTimings() != null && !summary.phaseTimings().isEmpty()) {
+            html.append("      <div class=\"performance-insights\">\n");
+            html.append("        <h3>⚡ Performance Insights</h3>\n");
+            
+            if (summary.slowestPhase() != null) {
+                html.append("        <p class=\"insight\"><strong>Slowest Phase:</strong> ")
+                    .append(formatPhaseName(summary.slowestPhase()))
+                    .append(" (").append(summary.phaseTimings().get(summary.slowestPhase())).append(" ms)</p>\n");
+            }
+            
+            html.append("      </div>\n");
+        }
+        
+        html.append("    </section>\n");
         return html.toString();
     }
     
@@ -213,6 +309,23 @@ public class ReportRenderer {
         if (score >= 0.7) return "🟡 MEDIUM RISK - Strong match, requires manual review";
         if (score >= 0.5) return "🟡 MEDIUM RISK - Moderate match, further investigation recommended";
         return "🟢 LOW RISK - Weak match, likely a false positive";
+    }
+    
+    private String explainPhase(Phase phase) {
+        return switch (phase) {
+            case NORMALIZATION -> "Standardize text (remove accents, lowercase, punctuation) for consistent comparison";
+            case TOKENIZATION -> "Break names into words and generate combinations for matching";
+            case PHONETIC_FILTER -> "Use sound-alike matching (Soundex) to catch spelling variations";
+            case NAME_COMPARISON -> "Compare primary names using similarity algorithm (Jaro-Winkler)";
+            case ALT_NAME_COMPARISON -> "Check against known aliases and alternate spellings";
+            case GOV_ID_COMPARISON -> "Match government IDs (passport, tax ID) for exact identification";
+            case CRYPTO_COMPARISON -> "Compare cryptocurrency wallet addresses";
+            case CONTACT_COMPARISON -> "Match email addresses, phone numbers, and fax numbers";
+            case ADDRESS_COMPARISON -> "Compare physical addresses and locations";
+            case DATE_COMPARISON -> "Compare birth dates, death dates, and other temporal data";
+            case AGGREGATION -> "Combine all component scores into final weighted score";
+            case FILTERING -> "Apply minimum match threshold to filter out low-confidence results";
+        };
     }
     
     private String getCss() {
@@ -361,6 +474,108 @@ public class ReportRenderer {
             }
             .metadata td.value {
               color: #555;
+            }
+            .summary {
+              margin: 30px 0;
+              padding: 25px;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              border-radius: 10px;
+            }
+            .summary h2, .summary h3 {
+              color: white;
+              border: none;
+              margin-top: 20px;
+            }
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 20px;
+              margin: 20px 0;
+            }
+            .summary-card {
+              background: rgba(255, 255, 255, 0.15);
+              backdrop-filter: blur(10px);
+              padding: 20px;
+              border-radius: 8px;
+              text-align: center;
+              border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .card-title {
+              font-size: 14px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              opacity: 0.9;
+              margin-bottom: 10px;
+            }
+            .card-value {
+              font-size: 36px;
+              font-weight: bold;
+              margin: 10px 0;
+            }
+            .card-subtitle {
+              font-size: 12px;
+              opacity: 0.8;
+            }
+            .score-anatomy {
+              background: rgba(255, 255, 255, 0.1);
+              padding: 20px;
+              border-radius: 8px;
+              margin: 20px 0;
+            }
+            .contribution-list {
+              margin-top: 15px;
+            }
+            .contribution-item {
+              margin: 15px 0;
+              padding: 15px;
+              background: rgba(255, 255, 255, 0.1);
+              border-radius: 6px;
+            }
+            .contribution-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 8px;
+            }
+            .phase-name {
+              font-weight: 600;
+              font-size: 16px;
+            }
+            .contribution-value {
+              font-size: 24px;
+              font-weight: bold;
+            }
+            .contribution-bar {
+              height: 20px;
+              background: rgba(255, 255, 255, 0.2);
+              border-radius: 10px;
+              overflow: hidden;
+              margin: 10px 0;
+            }
+            .contribution-fill {
+              height: 100%;
+              background: rgba(255, 255, 255, 0.6);
+              border-radius: 10px;
+            }
+            .contribution-fill.high {
+              background: linear-gradient(90deg, #ffffff, #f0f0f0);
+            }
+            .phase-explanation {
+              font-size: 13px;
+              opacity: 0.9;
+              margin-top: 8px;
+              line-height: 1.5;
+            }
+            .performance-insights {
+              background: rgba(255, 255, 255, 0.1);
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+            }
+            .insight {
+              margin: 10px 0;
+              font-size: 15px;
             }
             """;
     }

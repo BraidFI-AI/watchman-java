@@ -1,6 +1,7 @@
 package io.moov.watchman.api;
 
 import io.moov.watchman.report.ReportRenderer;
+import io.moov.watchman.report.TraceSummaryService;
 import io.moov.watchman.trace.ScoringTrace;
 import io.moov.watchman.trace.TraceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,11 +36,14 @@ class ReportControllerTest {
     @Mock
     private ReportRenderer reportRenderer;
 
+    @Mock
+    private TraceSummaryService summaryService;
+
     private ReportController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new ReportController(traceRepository, reportRenderer);
+        controller = new ReportController(traceRepository, reportRenderer, summaryService);
     }
 
     @Nested
