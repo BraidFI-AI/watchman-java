@@ -61,6 +61,40 @@
 
 ---
 
+## Session: January 13, 2026 (Evening - ScoreConfig Phase 1 Integration)
+
+### What We Decided
+- Fixed critical bug: SimilarityConfig existed but was never integrated into JaroWinklerSimilarity
+- Rejected A2's PR (claude/trace-similarity-scoring-Cqcc8) due to compilation errors and scope creep
+- Split A2's work into focused phases: Phase 1 (bug fix), Phase 2 (ScoringConfig feature), Phase 3 (runtime overrides)
+- Implemented Phase 1 only using strict TDD (RED → GREEN → REFACTOR)
+- Phase 2 (ScoringConfig) and Phase 3 (POST /v2/search) deferred to future sessions
+
+### What Is Now True
+- **SimilarityConfig is fully functional** - all 10 configuration parameters now work
+- JaroWinklerSimilarity accepts 3-arg constructor with SimilarityConfig injection
+- All hardcoded constants replaced with config.get() calls:
+  * lengthDifferencePenaltyWeight (default 0.3)
+  * lengthDifferenceCutoffFactor (default 0.9)
+  * differentLetterPenaltyWeight (default 0.9)
+  * unmatchedIndexTokenWeight (default 0.15)
+  * jaroWinklerPrefixSize (default 4)
+  * jaroWinklerBoostThreshold (default 0.7)
+  * phoneticFilteringDisabled (default false)
+- Backward compatibility maintained: default and 2-arg constructors still work
+- 7 comprehensive integration tests verify config functionality
+- All existing tests pass: 28 JaroWinkler + 12 SimilarityConfig + 7 integration = 47 tests
+- Configuration via environment variables or YAML now actually affects scoring behavior
+- scoreconfig.md updated with integration status
+
+### What Is Still Unknown
+- When to implement Phase 2 (ScoringConfig for factor-level controls)
+- Whether to implement Phase 3 (runtime config overrides via POST /v2/search)
+- If we need profile-based configs (strict.yml, lenient.yml, compliance.yml)
+- How to expose config metadata in ScoreTrace output
+
+---
+
 ## Session: January 13, 2026 (Evening - TraceSummary for Operators)
 
 ### What We Decided

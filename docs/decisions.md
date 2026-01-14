@@ -167,3 +167,52 @@
 **Related Files**: All markdown files in `/docs` and `README.md`
 
 ---
+
+### 2026-01-13: Rejected A2 PR and Rebuilt SimilarityConfig Integration from Scratch
+
+**Context**: Agent A2 submitted PR `claude/trace-similarity-scoring-Cqcc8` with 36 file changes attempting to fix SimilarityConfig integration, add ScoringConfig, and add runtime config override API.
+
+**Decision**: Rejected PR due to compilation errors and scope creep. Rebuilt Phase 1 (SimilarityConfig integration) from scratch using strict TDD.
+
+**Rationale**: 
+- PR mixed bug fix (SimilarityConfig not integrated) with new features (ScoringConfig, POST /v2/search)
+- Compilation errors in Entity.java and EntityScorerImpl.java
+- Violated "minimal, incremental changes" principle
+- No evidence of TDD workflow (tests not written first)
+
+**Impact**: Phase 1 completed cleanly in 3 files with 47 passing tests. Phase 2 and 3 deferred to separate sessions.
+
+---
+
+### 2026-01-13: Split ScoreConfig Work into 3 Phases
+
+**Decision**: Split A2's monolithic PR into 3 sequential phases:
+- **Phase 1**: SimilarityConfig integration (bug fix) - COMPLETED
+- **Phase 2**: ScoringConfig for factor-level controls - DEFERRED
+- **Phase 3**: Runtime config overrides via POST /v2/search - DEFERRED
+
+**Rationale**:
+- Phase 1 fixes critical bug where existing config was non-functional
+- Phase 2 adds complementary business-level controls (matches ScoreTrace observability pattern)
+- Phase 3 is power-user tooling, not foundational (80/20 rule: Phases 1&2 = 80% value)
+
+**Tradeoff**: Slower delivery of full feature set, but each phase is production-ready and testable independently.
+
+---
+
+### 2026-01-13: ScoreConfig Productization Strategy
+
+**Decision**: Productize ScoreConfig to match ScoreTrace's observe/control relationship:
+- **ScoreTrace** = OBSERVE scoring behavior (already complete)
+- **SimilarityConfig** = CONTROL algorithm parameters (Phase 1 complete)
+- **ScoringConfig** = CONTROL business factors (Phase 2 planned)
+
+**Rationale**: 
+- ScoreTrace provides visibility ("Why did this score 0.72?")
+- ScoreConfig provides tunability ("Make it more strict")
+- Two-level control: algorithm (SimilarityConfig) + business logic (ScoringConfig)
+- Mirrors real-world needs: compliance teams tune factors, data scientists tune algorithms
+
+**Impact**: Complete observe/control story for OFAC screening matching engine.
+
+---

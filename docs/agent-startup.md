@@ -22,4 +22,4 @@ Test Driven Development requirement:
 - Do not propose implementation before tests are defined.
 
 Session goal:
-Phase 1 TDD: Integrate SimilarityConfig into JaroWinklerSimilarity to fix non-functional configuration bug.
+[One sentence describing what we are doing right now.]
