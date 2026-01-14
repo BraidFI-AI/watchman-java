@@ -1,6 +1,6 @@
 # Nemesis 1.0 - User Guide
 
-> **Note**: Production deployment has moved to AWS ECS. See [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md) for current infrastructure setup. Legacy Fly.io references in this doc are for historical context.
+> **Note**: Production deployment runs on AWS ECS with Application Load Balancer. See [aws_deployment.md](aws_deployment.md) for infrastructure details.
 
 ## Overview
 
@@ -13,10 +13,22 @@ Nemesis automatically:
 - ✅ Tests queries against Java and Go implementations
 - ✅ Compares against OFAC-API (commercial service at ofac-api.com) for 3-way comparison
 - ✅ Detects divergences (different results, scores, or ordering)
-- ✅ Tracks coverage to ensure all OFAC SDN entities are tested (~12,500+)
+- ✅ Tracks coverage to ensure all OFAC SDN entities are tested (~2,100+)
 - ✅ Uses AI to identify patterns and recommend fixes
-- ✅ Runs repair pipeline to auto-generate code fixes and PRs
-- ✅ Creates GitHub issues EVERY run with report summary and PR links for human review
+- ✅ Runs repair pipeline to auto-generate code fixes (when OpenAI key configured)
+- ✅ Creates GitHub issues EVERY run with report summary and analysis
+
+## Endpoints
+
+**Production (AWS ECS)**:
+```
+http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/nemesis/trigger
+```
+
+**Local Development**:
+```
+http://localhost:8084/v2/nemesis/trigger
+```
 
 ## Comparison Modes
 
@@ -267,12 +279,12 @@ Built-in detection for common false positives:
 
 ## Configuration
 
-Environment variables (set locally or in deployment):
+Environment variables (set in ECS task definition or locally):
 
 ### Required
 ```bash
 # API endpoints for comparison testing
-WATCHMAN_JAVA_API_URL=http://54.209.239.50:8080
+WATCHMAN_JAVA_API_URL=http://localhost:8080  # Use localhost in ECS, or actual endpoint for external
 WATCHMAN_GO_API_URL=https://watchman-go.fly.dev
 COMPARE_IMPLEMENTATIONS=true
 ```
@@ -285,9 +297,12 @@ EXTERNAL_PROVIDER=ofac-api  # OFAC-API commercial service (paid subscription req
 OFAC_API_KEY=your-api-key-here  # Obtain from ofac-api.com subscription
 ```
 
-### Optional - AI Analysis
+### Optional - AI-Powered Repair Pipeline
 ```bash
-# AI provider (openai, anthropic, or omit for rule-based only)
+# Enable automated fix generation (requires AI provider configuration above)
+REPAIR_PIPELINE_ENABLED=true
+
+# AI provider must be configured (openai or anthropic)
 AI_PROVIDER=openai
 OPENAI_API_KEY=sk-proj-...
 AI_MODEL=gpt-4-turbo
@@ -300,8 +315,8 @@ AI_MODEL=claude-sonnet-4-20250514
 
 ### Required - GitHub Integration
 ```bash
-GITHUB_TOKEN=ghp_...  # Required for PR creation and issue tracking
-GITHUB_REPO=moov-io/watchman-java
+GITHUB_TOKEN=ghp_...  # Required for issue creation and PR generation
+GITHUB_REPO=BraidFI-AI/watchman-java
 ```
 
 ### Optional - Tuning
@@ -315,25 +330,25 @@ COVERAGE_TARGET=90
 
 ## Deployment
 
-### Automatic (Production)
+### Production (AWS ECS)
 
-Nemesis runs daily at 8 AM UTC via cron:
+Nemesis is accessible via REST API on the production ECS deployment. The service runs 24/7 and can be triggered on-demand or scheduled via external automation (e.g., GitHub Actions cron, Lambda scheduled events).
 
-```cron
-0 8 * * * cd /app && PYTHONPATH=/app/scripts python3 scripts/nemesis/run_nemesis.py
+**Production Endpoint:**
+```
+http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
 ```
 
-View logs:
+**Trigger via API:**
 ```bash
-fly ssh console -a watchman-java
-tail -f /data/logs/nemesis.log
+curl -X POST http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 100, "includeOfacApi": false, "async": true}'
 ```
 
-### Manual Execution - On-Demand Trigger
+### Local Development
 
-Use the trigger script for on-demand testing with custom parameters:
-
-#### Default Usage (Java vs Go parity testing)
+Run directly with Python for testing:
 ```bash
 ./scripts/trigger-nemesis.sh --queries 100
 ```

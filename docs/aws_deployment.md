@@ -10,9 +10,16 @@ Watchman-Java runs on AWS ECS Fargate for scalable, production OFAC screening. T
 ## Current Production Setup
 
 **Environment**: `watchman-java-cluster` (us-east-1)  
-**Compute**: 1 vCPU, 2GB RAM, 1.5GB JVM heap  
-**Networking**: Public IP (temporary - will migrate to internal ALB)  
-**Cost**: ~$32/month for always-on service
+**Task Definition**: watchman-java:9  
+**Compute**: 1 vCPU, 2GB RAM, 1GB JVM heap  
+**Architecture**: linux/amd64 (x86_64)  
+**Load Balancer**: Application Load Balancer (watchman-java-alb)  
+**Endpoint**: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com  
+**Target Group**: watchman-java-tg (health check: /health)  
+**Security Group**: sg-0a886013346c8f9f9 (ports 80, 8080 open to 0.0.0.0/0)  
+**Cost**: ~$55/month for always-on service ($37 compute + $18 ALB)
+
+> **Note**: The ALB provides a stable DNS endpoint that doesn't change with deployments. ECS tasks register automatically with the target group.
 
 ## Performance Benchmarks
 
@@ -333,17 +340,31 @@ aws ecs update-service \
 
 To increase CPU/Memory, update `.aws/task-definition.json` and push to GitHub.
 
-## Cost Estimate
+## Cost Breakdown
 
-**Fargate Pricing (us-east-1)**:
+**Current Production Setup (us-east-1)**:
 - 1 vCPU: $0.04048/hour
-- 2GB Memory: $0.004445/hour
-- **Total**: ~$0.045/hour = ~$32/month (if running 24/7)
+- 2GB Memory: $0.00889/hour  
+- **Fargate Total**: ~$0.05/hour = ~$37/month (24/7)
+- **ALB**: ~$0.025/hour = ~$18/month
+- **Grand Total**: ~$55/month
 
-Reduce costs by:
-- Using Fargate Spot (70% cheaper)
-- Auto-scaling down during low usage
-- Stopping development instances when not needed
+**Cost Reduction Options**:
+- **On-demand only**: Stop service when not in use (~$5/month for testing)
+- **Business hours only**: Run 9am-6pm weekdays (~$25/month compute + $18 ALB)
+- **Fargate Spot**: 70% cheaper compute (not recommended for production API)
+- **Smaller tasks**: 0.5 vCPU / 1 GB for light testing (~$18/month + $18 ALB)
+
+**Start/Stop Commands**:
+```bash
+# Stop service (costs $0/hour)
+aws ecs update-service --cluster watchman-java-cluster \
+  --service watchman-java-service --desired-count 0
+
+# Start service (costs $0.05/hour while running)
+aws ecs update-service --cluster watchman-java-cluster \
+  --service watchman-java-service --desired-count 1
+```
 
 ## Troubleshooting
 

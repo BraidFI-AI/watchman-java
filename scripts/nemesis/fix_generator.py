@@ -12,8 +12,19 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
-import anthropic
-import openai
+
+# Import AI providers only if needed
+try:
+    import anthropic
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
+
+try:
+    import openai
+    HAS_OPENAI = True
+except ImportError:
+    HAS_OPENAI = False
 
 
 class FixGenerator:
@@ -34,17 +45,21 @@ class FixGenerator:
         
         # Initialize AI client
         if ai_provider == "anthropic":
+            if not HAS_ANTHROPIC:
+                raise ValueError("anthropic package not installed. Install with: pip install anthropic")
             api_key = os.getenv('ANTHROPIC_API_KEY') or os.getenv('CLAUDE_API_KEY')
             if not api_key:
                 raise ValueError("ANTHROPIC_API_KEY or CLAUDE_API_KEY required")
             self.client = anthropic.Anthropic(api_key=api_key)
             self.model = "claude-sonnet-4-20250514"
         elif ai_provider == "openai":
+            if not HAS_OPENAI:
+                raise ValueError("openai package not installed. Install with: pip install openai")
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
                 raise ValueError("OPENAI_API_KEY required")
             self.client = openai.OpenAI(api_key=api_key)
-            self.model = "gpt-4-turbo-preview"
+            self.model = os.getenv('AI_MODEL', 'gpt-4-turbo-preview')
         else:
             raise ValueError(f"Unknown AI provider: {ai_provider}")
     
@@ -368,8 +383,8 @@ FILE: src/test/java/io/moov/watchman/<TestFile>Test.java
 ```
 
 ### Parity Achievement
-- Before: Java={java_score}, Go={go_score}, Difference={diff}
-- After:  Java={go_score}, Go={go_score}, ✓ Parity achieved
+- Before: Java={{java_score}}, Go={{go_score}}, Difference={{diff}}
+- After:  Java={{go_score}}, Go={{go_score}}, ✓ Parity achieved
 
 ---
 
@@ -381,10 +396,10 @@ FILE: src/test/java/io/moov/watchman/<TestFile>Test.java
 <What does OFAC-API do differently based on scores and trace data?>
 
 ### Observations
-- OFAC-API Score: {ofac_score}
-- Go Score: {go_score}
-- Java Score (after parity): {go_score}
-- Divergence: OFAC-API is {higher/lower} by {difference}
+- OFAC-API Score: {{ofac_score}}
+- Go Score: {{go_score}}
+- Java Score (after parity): {{go_score}}
+- Divergence: OFAC-API is {{higher/lower}} by {{difference}}
 
 ### Trace Analysis
 <Use trace data to hypothesize WHY OFAC-API scored differently>

@@ -171,6 +171,50 @@ public class NemesisController {
             env.put("QUERIES_PER_RUN", String.valueOf(job.request.queries()));
             env.put("COMPARE_IMPLEMENTATIONS", "true"); // Always compare Go
             env.put("COMPARE_EXTERNAL", String.valueOf(job.request.includeOfacApi()));
+            
+            // Set API URLs (use environment or default to localhost for local dev)
+            String javaApiUrl = System.getenv("WATCHMAN_JAVA_API_URL");
+            if (javaApiUrl == null || javaApiUrl.isEmpty()) {
+                javaApiUrl = "http://localhost:8084";  // Default to local instance
+            }
+            env.put("WATCHMAN_JAVA_API_URL", javaApiUrl);
+            
+            String goApiUrl = System.getenv("WATCHMAN_GO_API_URL");
+            if (goApiUrl == null || goApiUrl.isEmpty()) {
+                goApiUrl = "https://watchman-go.fly.dev";  // Default to production Go instance
+            }
+            env.put("WATCHMAN_GO_API_URL", goApiUrl);
+            
+            // Pass repair pipeline configuration
+            String repairEnabled = System.getenv("REPAIR_PIPELINE_ENABLED");
+            if (repairEnabled != null && !repairEnabled.isEmpty()) {
+                env.put("REPAIR_PIPELINE_ENABLED", repairEnabled);
+            }
+            
+            String aiProvider = System.getenv("AI_PROVIDER");
+            if (aiProvider != null && !aiProvider.isEmpty()) {
+                env.put("AI_PROVIDER", aiProvider);
+            }
+            
+            String aiModel = System.getenv("AI_MODEL");
+            if (aiModel != null && !aiModel.isEmpty()) {
+                env.put("AI_MODEL", aiModel);
+            }
+            
+            String openaiKey = System.getenv("OPENAI_API_KEY");
+            if (openaiKey != null && !openaiKey.isEmpty()) {
+                env.put("OPENAI_API_KEY", openaiKey);
+            }
+            
+            String anthropicKey = System.getenv("ANTHROPIC_API_KEY");
+            if (anthropicKey != null && !anthropicKey.isEmpty()) {
+                env.put("ANTHROPIC_API_KEY", anthropicKey);
+            }
+            
+            String githubToken = System.getenv("GITHUB_TOKEN");
+            if (githubToken != null && !githubToken.isEmpty()) {
+                env.put("GITHUB_TOKEN", githubToken);
+            }
 
             if (job.request.includeOfacApi()) {
                 String ofacApiKey = System.getenv("OFAC_API_KEY");

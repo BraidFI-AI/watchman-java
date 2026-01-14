@@ -79,6 +79,16 @@ curl "http://localhost:8084/search?q=Nicolas%20Maduro&limit=5"
 
 **Trigger Parity Test (Async):**
 ```bash
+# Production (AWS ECS)
+curl -X POST http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 100, "includeOfacApi": false, "async": true}'
+
+# Local
+curl -X POST http://localhost:8084/v2/nemesis/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"queries": 10, "includeOfacApi": false, "async": true}'
+```bash
 curl -X POST http://localhost:8084/v2/nemesis/trigger \
   -H "Content-Type: application/json" \
   -d '{"queries": 10, "async": true}'
@@ -107,6 +117,27 @@ Data is automatically refreshed daily (configurable). You can also trigger a man
 
 ```bash
 curl -X POST http://localhost:8084/v2/download
+```
+
+---
+
+## Deployment
+
+### Production (AWS ECS)
+
+The service runs on AWS ECS Fargate with Application Load Balancer:
+
+- **Endpoint**: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
+- **Compute**: 1 vCPU, 2GB RAM
+- **Cost**: ~$55/month (24/7 availability)
+- **Architecture**: linux/amd64
+
+See [docs/aws_deployment.md](docs/aws_deployment.md) for complete deployment guide.
+
+### Local Development
+
+```bash
+./mvnw spring-boot:run
 ```
 
 ---

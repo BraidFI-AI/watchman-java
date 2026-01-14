@@ -465,7 +465,13 @@ def main():
     
     # === STEP 8: Run Repair Pipeline (if divergences found and enabled) ===
     
-    if len(all_divergences) > 0 and os.environ.get('REPAIR_PIPELINE_ENABLED', 'false').lower() == 'true':
+    # Debug: Check environment variables
+    repair_enabled_value = os.environ.get('REPAIR_PIPELINE_ENABLED', 'false')
+    print(f"\nDEBUG: REPAIR_PIPELINE_ENABLED={repair_enabled_value}")
+    print(f"DEBUG: AI_PROVIDER={os.environ.get('AI_PROVIDER', 'not set')}")
+    print(f"DEBUG: OPENAI_API_KEY={'set' if os.environ.get('OPENAI_API_KEY') else 'not set'}")
+    
+    if len(all_divergences) > 0 and repair_enabled_value.lower() == 'true':
         print(f"\n{'='*80}")
         print("STEP 8: Running Repair Pipeline")
         print('='*80)
