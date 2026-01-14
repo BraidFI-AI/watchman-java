@@ -114,6 +114,50 @@ JAVA_URL=http://54.209.239.50:8080 \\
 - Performance benchmarks
 - Summary with recommendations
 
+---
+
+### test-summary-endpoint.sh
+**Purpose:** End-to-end test for TraceSummary JSON API endpoint  
+**Status:** ✅ Active - Validates operator-friendly summary functionality  
+**DX Focus:** Regression testing for summary endpoint
+
+**What it does:**
+- Health check verification
+- Search with trace enabled (`?trace=true`)
+- Fetch JSON summary from `/api/reports/{sessionId}/summary`
+- Validate summary structure (phaseContributions, insights, timings)
+- Test HTML report still works alongside summary
+- Display summary statistics and insights
+
+**When to use:**
+- After deploying summary endpoint changes
+- Regression testing before releases
+- Validating AWS ECS deployments
+- Confirming trace infrastructure is working end-to-end
+
+**Integration points:**
+- ReportController.java (`/api/reports/{sessionId}/summary`)
+- TraceSummaryService.java (summary generation logic)
+- InMemoryTraceRepository.java (trace storage)
+
+**Usage:**
+```bash
+./scripts/test-summary-endpoint.sh
+
+# Output shows:
+# 1️⃣ Health check... ✓ Service is healthy
+# 2️⃣ Searching for 'Nicolas Maduro'... ✓ Search completed
+#    Session ID: b197229e-f7a3-...
+# 3️⃣ Testing summary endpoint... ✓ Summary endpoint working!
+#    📊 Summary Response: {phaseContributions, insights, ...}
+# 4️⃣ Testing HTML report... ✓ HTML report working (42KB)
+```
+
+**Prerequisites:**
+- jq installed (`brew install jq`)
+- Deployed Watchman instance (AWS ECS or local)
+- Service must be healthy and responsive
+
 **Prerequisites:**
 - curl
 - jq installed

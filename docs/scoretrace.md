@@ -161,6 +161,54 @@ Processing Details:
 Total Processing Time: 23ms
 ```
 
+### JSON Summary API (NEW)
+
+For non-technical operators and programmatic integration, the summary endpoint provides a condensed, actionable view of scoring analysis:
+
+```bash
+# Get JSON summary instead of full HTML
+curl "http://localhost:8084/api/reports/{sessionId}/summary"
+```
+
+**Response:**
+```json
+{
+  "sessionId": "b197229e-f7a3-4a78-84c1-51ca44740209",
+  "totalEntitiesScored": 42,
+  "phaseContributions": {
+    "NAME_COMPARISON": 15,
+    "ADDRESS_COMPARISON": 8,
+    "GOV_ID_COMPARISON": 3,
+    "DATE_COMPARISON": 5,
+    "AGGREGATION": 42
+  },
+  "phaseTimings": {
+    "NAME_COMPARISON": 45.2,
+    "NORMALIZATION": 12.1,
+    "ADDRESS_COMPARISON": 23.5
+  },
+  "slowestPhase": "NAME_COMPARISON",
+  "insights": [
+    "Primary matching driver: NAME_COMPARISON (15 contributions)",
+    "Performance bottleneck: NAME_COMPARISON phase (45ms avg)",
+    "Most common match type: Exact name matches"
+  ]
+}
+```
+
+**Use Cases:**
+- **Compliance Dashboards:** Show phase breakdown statistics
+- **Automated Monitoring:** Detect performance degradation
+- **Operator Reports:** Explain "why this customer matched" in plain English
+- **API Integration:** Programmatic access to trace insights
+
+**Comparison: HTML vs JSON**
+
+| Format | Best For | Content |
+|--------|----------|----------|
+| **HTML** (`/api/reports/{sessionId}`) | Human review, compliance audits, debugging | Full visual report with charts, timeline, detailed breakdown |
+| **JSON Summary** (`/api/reports/{sessionId}/summary`) | Dashboards, automation, operators | Condensed insights, phase stats, actionable guidance |
+
 ### Batch Support
 
 When using batch screening with `trace=true`, **each item in the batch gets its own report URL**:

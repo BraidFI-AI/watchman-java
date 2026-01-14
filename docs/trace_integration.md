@@ -157,6 +157,40 @@ When `trace=true`, responses now include:
 - Reports expire after 24 hours
 - Future: Redis-backed storage for production
 
+### Summary Endpoint vs HTML Report
+
+Two complementary endpoints for different audiences:
+
+**HTML Report** (`/api/reports/{sessionId}`):
+- Human-readable visual format with charts and timelines
+- Full event timeline and detailed scoring breakdown
+- Best for: compliance officers, customer support, debugging sessions
+
+**JSON Summary** (`/api/reports/{sessionId}/summary`):
+- Machine-readable structured data
+- Condensed insights with phase analysis and statistics
+- Best for: dashboards, monitoring, automated analysis, non-technical operators
+
+**Example Usage:**
+
+```bash
+# Get visual HTML report for human review
+curl "$BASE_URL/api/reports/$SESSION_ID" > report.html
+open report.html
+
+# Get JSON summary for programmatic use
+curl "$BASE_URL/api/reports/$SESSION_ID/summary" | jq '.'
+
+# Example JSON response:
+# {
+#   "totalEntitiesScored": 42,
+#   "phaseContributions": {"NAME_COMPARISON": 15, ...},
+#   "phaseTimings": {"NAME_COMPARISON": 45.2, ...},
+#   "slowestPhase": "NAME_COMPARISON",
+#   "insights": ["Primary matching driver: NAME_COMPARISON", ...]
+# }
+```
+
 ### 6. Nemesis Integration with Reports
 
 **File:** `scripts/nemesis/run_nemesis.py` (Recommended Update)

@@ -57,6 +57,7 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | `GET` | `/health` | Health check with entity counts |
 | `GET` | `/v2/listinfo` | Get loaded list information |
 | `GET` | `/api/reports/{sessionId}` | Get human-readable HTML score report |
+| `GET` | `/api/reports/{sessionId}/summary` | Get JSON summary with phase contributions and operator insights |
 
 #### Nemesis Parity Testing API
 

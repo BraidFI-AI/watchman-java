@@ -423,6 +423,84 @@ curl "http://54.209.239.50:8080/api/reports/b197229e-f7a3-4a78-84c1-51ca44740209
 
 ---
 
+#### `GET /api/reports/{sessionId}/summary`
+
+**Purpose:** Get a JSON summary of scoring analysis with phase contributions and operator-friendly insights.
+
+**Path Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sessionId` | string | Yes | Trace session ID from search response |
+
+**Response:**
+
+```json
+{
+  "sessionId": "b197229e-f7a3-4a78-84c1-51ca44740209",
+  "totalEntitiesScored": 42,
+  "phaseContributions": {
+    "NAME_COMPARISON": 15,
+    "ADDRESS_COMPARISON": 8,
+    "GOV_ID_COMPARISON": 3,
+    "DATE_COMPARISON": 5,
+    "AGGREGATION": 42
+  },
+  "phaseTimings": {
+    "NAME_COMPARISON": 45.2,
+    "NORMALIZATION": 12.1,
+    "ADDRESS_COMPARISON": 23.5
+  },
+  "slowestPhase": "NAME_COMPARISON",
+  "insights": [
+    "Primary matching driver: NAME_COMPARISON (15 contributions)",
+    "Performance bottleneck: NAME_COMPARISON phase (45ms avg)",
+    "Most common match type: Exact name matches"
+  ]
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sessionId` | string | Trace session identifier |
+| `totalEntitiesScored` | integer | Number of entities processed in this session |
+| `phaseContributions` | object | Count of how many times each phase contributed to scoring |
+| `phaseTimings` | object | Average execution time (ms) for each phase |
+| `slowestPhase` | string | Phase with highest average execution time |
+| `insights` | array | Human-readable insights for operators |
+
+**Status Codes:**
+- `200 OK` - Summary generated successfully
+- `404 Not Found` - Session ID not found or expired
+
+**Example Usage:**
+
+```bash
+# Step 1: Search with trace enabled
+RESPONSE=$(curl "http://54.209.239.50:8080/v2/search?name=Nicolas%20Maduro&trace=true")
+SESSION_ID=$(echo "$RESPONSE" | jq -r '.trace.sessionId')
+
+# Step 2: Get JSON summary
+curl "http://54.209.239.50:8080/api/reports/$SESSION_ID/summary" | jq '.'
+```
+
+**Use Cases:**
+- **Compliance Dashboards** - Show phase breakdown statistics
+- **Automated Monitoring** - Detect performance degradation
+- **Operator Reports** - Explain match reasons in plain English
+- **API Integration** - Programmatic access to trace insights
+
+**Comparison: HTML Report vs JSON Summary**
+
+| Format | Best For | Content |
+|--------|----------|---------|
+| HTML (`/api/reports/{sessionId}`) | Human review, compliance audits, debugging | Full visual report with charts, timeline, detailed breakdown |
+| JSON Summary (`/api/reports/{sessionId}/summary`) | Dashboards, automation, operators | Condensed insights, phase stats, actionable guidance |
+
+---
+
 #### `POST /v2/search/batch/async`
 
 Submit a batch for asynchronous processing (for very large batches).
