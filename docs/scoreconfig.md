@@ -3,11 +3,13 @@
 **Product Name:** ScoreConfig  
 **Technical Implementation:** `SimilarityConfig.java`  
 **Category:** Configuration Management  
-**Status:** Production (January 11, 2026)
+**Status:** ✅ **Production (January 13, 2026)** - Fully integrated and functional
 
 ## Overview
 
 **ScoreConfig** is Watchman Java's centralized configuration system for controlling OFAC sanctions screening matching behavior. It provides type-safe, IDE-supported parameter tuning for all similarity scoring algorithms, eliminating the scattered environment variable approach used in the Go implementation.
+
+**January 13, 2026 Update:** Fixed critical integration bug - SimilarityConfig is now properly injected into JaroWinklerSimilarity and all parameters are functional.
 
 ScoreConfig pairs with [ScoreTrace](scoretrace.md) to provide a complete observability and tuning solution:
 - **ScoreConfig** (this document) - Configure scoring parameters
