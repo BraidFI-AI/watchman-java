@@ -293,6 +293,181 @@
               "body": "{\n  \"entities\": [\n    {\n      \"id\": \"12345\",\n      \"name\": \"JOHN DOE\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"12345\",\n      \"score\": 0.95,\n      \"altNames\": [\n        \"JOHNNY DOE\",\n        \"DOE, JOHN\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": {\n        \"primaryNameScore\": 0.95,\n        \"altNameScore\": 0.88,\n        \"addressScore\": 0.0,\n        \"dobScore\": 0.0,\n        \"idScore\": 0.0,\n        \"totalWeightedScore\": 0.95,\n        \"components\": [\n          {\n            \"field\": \"primaryName\",\n            \"queryValue\": \"John Doe\",\n            \"candidateValue\": \"JOHN DOE\",\n            \"rawScore\": 0.95,\n            \"weight\": 1.0,\n            \"weightedScore\": 0.95\n          },\n          {\n            \"field\": \"altName\",\n            \"queryValue\": \"John Doe\",\n            \"candidateValue\": \"JOHNNY DOE\",\n            \"rawScore\": 0.88,\n            \"weight\": 0.9,\n            \"weightedScore\": 0.792\n          }\n        ]\n      }\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-123\",\n  \"debug\": {\n    \"traceId\": \"trace-abc-123\",\n    \"events\": [\n      {\n        \"timestamp\": \"2026-01-11T00:00:00Z\",\n        \"phase\": \"NORMALIZATION\",\n        \"message\": \"Normalized query name: John Doe -> john doe\"\n      },\n      {\n        \"timestamp\": \"2026-01-11T00:00:01Z\",\n        \"phase\": \"CANDIDATE_SELECTION\",\n        \"message\": \"Found 50 candidates\"\n      },\n      {\n        \"timestamp\": \"2026-01-11T00:00:02Z\",\n        \"phase\": \"SCORING\",\n        \"message\": \"Scored 50 candidates\"\n      }\n    ]\n  }\n}"
             }
           ]
+        },
+        {
+          "name": "POST - Minimal Query (Default Config)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"name\": \"Juan Garcia\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ]
+            },
+            "description": "## POST Search - Minimal Request\n\nBasic POST search with only a name query. Uses all default configurations.\n\n### When to Use POST vs GET\n\n**Use POST** when:\n- 🔧 Testing custom config overrides (similarity, scoring, search params)\n- 🧪 Model validation and \"what-if\" scenarios\n- 📊 Admin/testing interface for tuning parameters\n- 🔍 Always get trace data (enabled by default for POST)\n\n**Use GET** for:\n- ✅ Production screening with standard config\n- ✅ Simple name queries\n- ✅ RESTful read operations\n\n### Request Body\n\n```json\n{\n  \"query\": {\n    \"name\": \"Juan Garcia\",           // Required\n    \"addresses\": [\"123 Main St\"],   // Optional\n    \"govIds\": [\"ABC123\"],           // Optional\n    \"dateOfBirth\": \"1990-01-15\",    // Optional\n    \"source\": \"OFAC_SDN\",           // Optional filter\n    \"type\": \"PERSON\"                // Optional filter\n  },\n  \"config\": {                        // Optional overrides\n    \"similarity\": { ... },\n    \"scoring\": { ... },\n    \"search\": { ... }\n  },\n  \"trace\": true                      // Optional, defaults to true\n}\n```\n\n### Default Behavior\n\n- Uses default SimilarityConfig (from application config)\n- Uses default ScoringConfig (from application config)\n- Uses default search params (minMatch=0.88, limit=10)\n- Trace is enabled by default (unlike GET)\n- Config metadata included in trace for visibility\n\n### Trace Output\n\nPOST responses include:\n- Score breakdowns for all matches\n- Applied config values in metadata\n- Normalization and scoring events\n- Perfect for debugging and tuning"
+          },
+          "response": [
+            {
+              "name": "Success with Defaults",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"56789\",\n      \"name\": \"JUAN GARCIA RODRIGUEZ\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"56789\",\n      \"score\": 0.91,\n      \"altNames\": [\"GARCIA, JUAN\"],\n      \"programs\": [\"SDGT\"],\n      \"breakdown\": {\n        \"primaryNameScore\": 0.91,\n        \"altNameScore\": 0.88,\n        \"totalWeightedScore\": 0.91,\n        \"components\": [\n          {\n            \"field\": \"primaryName\",\n            \"queryValue\": \"Juan Garcia\",\n            \"candidateValue\": \"JUAN GARCIA RODRIGUEZ\",\n            \"rawScore\": 0.91,\n            \"weight\": 1.0,\n            \"weightedScore\": 0.91\n          }\n        ]\n      }\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-456\",\n  \"debug\": {\n    \"traceId\": \"trace-def-456\",\n    \"metadata\": {\n      \"config.similarity.boost-threshold\": 0.7,\n      \"config.similarity.prefix-size\": 4,\n      \"config.similarity.phonetic-disabled\": false,\n      \"config.scoring.name-weight\": 100.0,\n      \"config.scoring.address-weight\": 80.0,\n      \"config.scoring.address-enabled\": true,\n      \"config.search.min-match\": 0.88,\n      \"config.search.limit\": 10\n    },\n    \"events\": [\n      {\n        \"timestamp\": \"2026-01-14T00:00:00Z\",\n        \"phase\": \"NORMALIZATION\",\n        \"message\": \"Normalized query name: Juan Garcia -> juan garcia\"\n      },\n      {\n        \"timestamp\": \"2026-01-14T00:00:01Z\",\n        \"phase\": \"SCORING\",\n        \"message\": \"Scored 50 candidates\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST - Override Similarity Config",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"name\": \"Mohammad Ahmed\"\n  },\n  \"config\": {\n    \"similarity\": {\n      \"jaroWinklerBoostThreshold\": 0.8,\n      \"jaroWinklerPrefixSize\": 5,\n      \"phoneticFilteringDisabled\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ]
+            },
+            "description": "## POST Search - Similarity Config Override\n\nTest different similarity algorithm parameters to tune fuzzy matching behavior.\n\n### Similarity Parameters\n\n**jaroWinklerBoostThreshold** (default: 0.7)\n- Range: 0.0-1.0\n- Higher = boost only very similar strings\n- Lower = boost more aggressively\n- Example: 0.8 means boost prefix matches scoring 80%+\n\n**jaroWinklerPrefixSize** (default: 4)\n- Range: 1-10\n- Number of prefix characters to favor\n- Higher = longer prefix matches get bigger boost\n- Example: 5 favors \"Mohammad\" vs \"Moham\"\n\n**phoneticFilteringDisabled** (default: false)\n- true = disable phonetic matching (Soundex/Metaphone)\n- false = use phonetic matching for name variations\n- Example: Disable to test pure string matching\n\n**lengthDifferenceCutoffFactor** (default: 3.0)\n- Reject candidates with length ratio > factor\n- Example: 2.0 rejects \"Jo\" vs \"Jonathan\" (ratio 5.5)\n\n**lengthDifferencePenaltyWeight** (default: 0.15)\n- Penalty for length mismatch (0.0-1.0)\n- Higher = penalize length differences more\n\n**differentLetterPenaltyWeight** (default: 0.1)\n- Penalty for different letters (0.0-1.0)\n- Higher = penalize character differences more\n\n**unmatchedIndexTokenWeight** (default: 1.0)\n- Weight for unmatched tokens in index name\n- Lower = reduce penalty for extra words in candidate\n\n**exactMatchFavoritism** (default: 0.05)\n- Bonus for exact token matches (0.0-1.0)\n- Higher = favor exact word matches more\n\n**keepStopwords** (default: false)\n- true = keep stopwords like \"the\", \"and\", \"of\"\n- false = remove stopwords during normalization\n\n**logStopwordDebugging** (default: false)\n- true = log stopword removal in trace\n- false = no stopword debug logging\n\n### Use Cases\n\n- **Testing phonetic impact**: Disable phonetic filtering\n- **Tuning prefix sensitivity**: Adjust boost threshold/size\n- **Length mismatch tolerance**: Modify cutoff/penalty\n- **Exact match preference**: Increase favoritism weight"
+          },
+          "response": [
+            {
+              "name": "Success with Custom Similarity",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"78901\",\n      \"name\": \"MOHAMMED AHMAD\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"78901\",\n      \"score\": 0.89,\n      \"altNames\": [\"MUHAMMAD AHMED\"],\n      \"programs\": [\"SDGT\"],\n      \"breakdown\": {\n        \"primaryNameScore\": 0.89,\n        \"altNameScore\": 0.92,\n        \"totalWeightedScore\": 0.92,\n        \"components\": []\n      }\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-789\",\n  \"debug\": {\n    \"traceId\": \"trace-ghi-789\",\n    \"metadata\": {\n      \"config.similarity.boost-threshold\": 0.8,\n      \"config.similarity.prefix-size\": 5,\n      \"config.similarity.phonetic-disabled\": true,\n      \"config.scoring.name-weight\": 100.0,\n      \"config.search.min-match\": 0.88,\n      \"config.search.limit\": 10\n    },\n    \"events\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST - Override Scoring Config",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"name\": \"Jane Smith\",\n    \"addresses\": [\"123 Main Street, New York, NY\"]\n  },\n  \"config\": {\n    \"scoring\": {\n      \"nameWeight\": 50.0,\n      \"addressWeight\": 120.0,\n      \"addressEnabled\": true,\n      \"dateEnabled\": false\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ]
+            },
+            "description": "## POST Search - Scoring Config Override\n\nAdjust component weights and enable/disable scoring features to test different scoring strategies.\n\n### Scoring Weights\n\n**nameWeight** (default: 100.0)\n- Weight for primary name match\n- Higher = prioritize name matching more\n- Example: 50.0 reduces name importance\n\n**addressWeight** (default: 80.0)\n- Weight for address match\n- Higher = prioritize address matching more\n- Example: 120.0 makes address more important than default\n\n**criticalIdWeight** (default: 200.0)\n- Weight for critical IDs (passport, SSN, etc.)\n- Very high by default (strong signal)\n\n**supportingInfoWeight** (default: 60.0)\n- Weight for supporting info (contact, crypto addresses)\n\n### Feature Toggles\n\n**nameEnabled** (default: true)\n- Include primary name in scoring\n\n**altNamesEnabled** (default: true)\n- Include alternate names in scoring\n\n**governmentIdEnabled** (default: true)\n- Include government IDs in scoring\n\n**cryptoEnabled** (default: true)\n- Include crypto addresses in scoring\n\n**contactEnabled** (default: true)\n- Include contact info in scoring\n\n**addressEnabled** (default: true)\n- Include addresses in scoring\n- Example: false to test name-only scoring\n\n**dateEnabled** (default: true)\n- Include date of birth in scoring\n- Example: false to ignore DOB mismatches\n\n### Use Cases\n\n- **Address-focused screening**: Increase addressWeight, decrease nameWeight\n- **Name-only validation**: Disable all other features\n- **DOB testing**: Toggle dateEnabled to see impact\n- **Component isolation**: Enable one feature at a time for debugging"
+          },
+          "response": [
+            {
+              "name": "Success with Custom Scoring",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"11223\",\n      \"name\": \"JANE SMITH\",\n      \"type\": \"PERSON\",\n      \"source\": \"EU_CSL\",\n      \"sourceId\": \"11223\",\n      \"score\": 0.94,\n      \"addresses\": [\"123 MAIN ST, NEW YORK\"],\n      \"altNames\": [],\n      \"programs\": [],\n      \"breakdown\": {\n        \"primaryNameScore\": 0.98,\n        \"addressScore\": 0.92,\n        \"totalWeightedScore\": 0.94,\n        \"components\": [\n          {\n            \"field\": \"primaryName\",\n            \"queryValue\": \"Jane Smith\",\n            \"candidateValue\": \"JANE SMITH\",\n            \"rawScore\": 0.98,\n            \"weight\": 50.0,\n            \"weightedScore\": 49.0\n          },\n          {\n            \"field\": \"address\",\n            \"queryValue\": \"123 Main Street, New York, NY\",\n            \"candidateValue\": \"123 MAIN ST, NEW YORK\",\n            \"rawScore\": 0.92,\n            \"weight\": 120.0,\n            \"weightedScore\": 110.4\n          }\n        ]\n      }\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-abc\",\n  \"debug\": {\n    \"traceId\": \"trace-jkl-abc\",\n    \"metadata\": {\n      \"config.similarity.boost-threshold\": 0.7,\n      \"config.scoring.name-weight\": 50.0,\n      \"config.scoring.address-weight\": 120.0,\n      \"config.scoring.address-enabled\": true,\n      \"config.search.min-match\": 0.88,\n      \"config.search.limit\": 10\n    },\n    \"events\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST - Override Search Config",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"name\": \"Ahmed\"\n  },\n  \"config\": {\n    \"search\": {\n      \"minMatch\": 0.70,\n      \"limit\": 50\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ]
+            },
+            "description": "## POST Search - Search Config Override\n\nAdjust search thresholds and result limits for testing.\n\n### Search Parameters\n\n**minMatch** (default: 0.88)\n- Range: 0.0-1.0\n- Minimum score threshold to include in results\n- Lower = more results (more false positives)\n- Higher = fewer results (might miss matches)\n- Example: 0.70 for fuzzy exploration\n\n**limit** (default: 10)\n- Range: 1-100\n- Maximum number of results to return\n- Higher = more candidates but slower\n- Example: 50 for comprehensive testing\n\n### Use Cases\n\n- **Recall testing**: Lower minMatch to 0.70 and increase limit to 50\n- **Precision testing**: Raise minMatch to 0.95 for high-confidence only\n- **Performance testing**: Vary limit to measure response time impact\n- **Coverage testing**: Low threshold + high limit to find edge cases"
+          },
+          "response": [
+            {
+              "name": "Success with Custom Search Params",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"99887\",\n      \"name\": \"AHMED MOHAMMED ALI\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"score\": 0.78,\n      \"altNames\": [\"AHMAD ALI\"],\n      \"programs\": [\"SDGT\"],\n      \"breakdown\": {}\n    },\n    {\n      \"id\": \"99888\",\n      \"name\": \"ALI AHMED\",\n      \"type\": \"PERSON\",\n      \"source\": \"EU_CSL\",\n      \"score\": 0.72,\n      \"altNames\": [],\n      \"programs\": [],\n      \"breakdown\": {}\n    }\n  ],\n  \"totalResults\": 2,\n  \"requestID\": \"req-def\",\n  \"debug\": {\n    \"traceId\": \"trace-mno-def\",\n    \"metadata\": {\n      \"config.similarity.boost-threshold\": 0.7,\n      \"config.scoring.name-weight\": 100.0,\n      \"config.search.min-match\": 0.70,\n      \"config.search.limit\": 50\n    },\n    \"events\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST - Full Config Override",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"name\": \"John Doe\",\n    \"addresses\": [\"123 Main St\"],\n    \"source\": \"OFAC_SDN\",\n    \"type\": \"PERSON\"\n  },\n  \"config\": {\n    \"similarity\": {\n      \"jaroWinklerBoostThreshold\": 0.75,\n      \"jaroWinklerPrefixSize\": 5,\n      \"phoneticFilteringDisabled\": false,\n      \"lengthDifferencePenaltyWeight\": 0.20,\n      \"exactMatchFavoritism\": 0.10\n    },\n    \"scoring\": {\n      \"nameWeight\": 80.0,\n      \"addressWeight\": 100.0,\n      \"addressEnabled\": true,\n      \"dateEnabled\": true,\n      \"governmentIdEnabled\": true\n    },\n    \"search\": {\n      \"minMatch\": 0.85,\n      \"limit\": 25\n    }\n  },\n  \"trace\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v2/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v2",
+                "search"
+              ]
+            },
+            "description": "## POST Search - Full Config Override\n\nComprehensive example showing all three config sections and query parameters.\n\n### Complete Request Structure\n\n```json\n{\n  \"query\": {\n    \"name\": \"...\",              // Required: Entity name\n    \"addresses\": [...],         // Optional: Address list\n    \"govIds\": [...],            // Optional: Government IDs\n    \"dateOfBirth\": \"...\",       // Optional: DOB (YYYY-MM-DD)\n    \"source\": \"OFAC_SDN\",       // Optional: Filter by source\n    \"type\": \"PERSON\"            // Optional: Filter by type\n  },\n  \"config\": {\n    \"similarity\": {             // Optional: String matching params\n      \"jaroWinklerBoostThreshold\": 0.75,\n      \"jaroWinklerPrefixSize\": 5,\n      \"phoneticFilteringDisabled\": false,\n      \"lengthDifferenceCutoffFactor\": 3.0,\n      \"lengthDifferencePenaltyWeight\": 0.20,\n      \"differentLetterPenaltyWeight\": 0.10,\n      \"unmatchedIndexTokenWeight\": 1.0,\n      \"exactMatchFavoritism\": 0.10,\n      \"keepStopwords\": false,\n      \"logStopwordDebugging\": false\n    },\n    \"scoring\": {                // Optional: Component weights\n      \"nameWeight\": 80.0,\n      \"addressWeight\": 100.0,\n      \"criticalIdWeight\": 200.0,\n      \"supportingInfoWeight\": 60.0,\n      \"nameEnabled\": true,\n      \"altNamesEnabled\": true,\n      \"governmentIdEnabled\": true,\n      \"cryptoEnabled\": true,\n      \"contactEnabled\": true,\n      \"addressEnabled\": true,\n      \"dateEnabled\": true\n    },\n    \"search\": {                 // Optional: Search params\n      \"minMatch\": 0.85,\n      \"limit\": 25\n    }\n  },\n  \"trace\": true                 // Optional: Enable trace (default: true)\n}\n```\n\n### Partial Overrides\n\n**You only need to specify fields you want to override!**\n\n- Omit entire sections (similarity, scoring, search) to use defaults\n- Omit individual fields within sections to use default for that field\n- null values are treated as \"use default\"\n\n**Example - Override just one parameter:**\n```json\n{\n  \"query\": {\"name\": \"Test\"},\n  \"config\": {\n    \"search\": {\"minMatch\": 0.95}\n  }\n}\n```\n\n### Admin/Testing Workflow\n\n1. **Baseline**: Run with defaults (no config)\n2. **Tune Similarity**: Adjust Jaro-Winkler params\n3. **Tune Scoring**: Modify weights and toggles\n4. **Set Threshold**: Adjust minMatch and limit\n5. **Compare**: Review trace metadata to see applied values\n6. **Iterate**: Repeat until desired behavior achieved\n\n### Response\n\nAll config values are included in `debug.metadata` for verification:\n- `config.similarity.*` - Applied similarity params\n- `config.scoring.*` - Applied scoring weights/toggles\n- `config.search.*` - Applied search params"
+          },
+          "response": [
+            {
+              "name": "Success with Full Config",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"12345\",\n      \"name\": \"JOHN DOE\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"12345\",\n      \"score\": 0.96,\n      \"addresses\": [\"123 MAIN STREET\"],\n      \"altNames\": [\"JOHNNY DOE\"],\n      \"programs\": [\"SDGT\"],\n      \"breakdown\": {\n        \"primaryNameScore\": 0.98,\n        \"addressScore\": 0.95,\n        \"totalWeightedScore\": 0.96,\n        \"components\": [\n          {\n            \"field\": \"primaryName\",\n            \"queryValue\": \"John Doe\",\n            \"candidateValue\": \"JOHN DOE\",\n            \"rawScore\": 0.98,\n            \"weight\": 80.0,\n            \"weightedScore\": 78.4\n          },\n          {\n            \"field\": \"address\",\n            \"queryValue\": \"123 Main St\",\n            \"candidateValue\": \"123 MAIN STREET\",\n            \"rawScore\": 0.95,\n            \"weight\": 100.0,\n            \"weightedScore\": 95.0\n          }\n        ]\n      }\n    }\n  ],\n  \"totalResults\": 1,\n  \"requestID\": \"req-ghi\",\n  \"debug\": {\n    \"traceId\": \"trace-pqr-ghi\",\n    \"metadata\": {\n      \"config.similarity.boost-threshold\": 0.75,\n      \"config.similarity.prefix-size\": 5,\n      \"config.similarity.length-penalty\": 0.20,\n      \"config.similarity.phonetic-disabled\": false,\n      \"config.scoring.name-weight\": 80.0,\n      \"config.scoring.address-weight\": 100.0,\n      \"config.scoring.address-enabled\": true,\n      \"config.scoring.critical-id-weight\": 200.0,\n      \"config.search.min-match\": 0.85,\n      \"config.search.limit\": 25\n    },\n    \"events\": [\n      {\n        \"timestamp\": \"2026-01-14T00:00:00Z\",\n        \"phase\": \"NORMALIZATION\",\n        \"message\": \"Normalized query name: John Doe -> john doe\"\n      },\n      {\n        \"timestamp\": \"2026-01-14T00:00:01Z\",\n        \"phase\": \"CANDIDATE_SELECTION\",\n        \"message\": \"Filtered to OFAC_SDN, type=PERSON: 8500 candidates\"\n      },\n      {\n        \"timestamp\": \"2026-01-14T00:00:02Z\",\n        \"phase\": \"SCORING\",\n        \"message\": \"Scored 8500 candidates with custom config\"\n      }\n    ]\n  }\n}"
+            }
+          ]
         }
       ]
     },
