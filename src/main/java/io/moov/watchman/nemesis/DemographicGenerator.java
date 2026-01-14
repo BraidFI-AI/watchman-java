@@ -92,19 +92,32 @@ public class DemographicGenerator {
     }
 
     /**
-     * Generate routing number (9 digits).
-     * Note: Does not validate checksum, just generates valid-looking format.
+     * Generate routing number (9 digits) with valid ABA check digit.
+     * Uses ABA routing number algorithm: 3*(d1+d4+d7) + 7*(d2+d5+d8) + (d3+d6+d9) mod 10 = 0
      */
     public String generateRoutingNumber() {
         // First 2 digits: Federal Reserve routing symbol (01-12)
-        int fedReserve = 1 + random.nextInt(12);  // 01-12
+        int d1 = 0;
+        int d2 = 1 + random.nextInt(2);  // 1 or 2 (results in 01-12)
+        if (d2 == 2) {
+            d1 = 1;
+            d2 = random.nextInt(3);  // 10, 11, or 12
+        }
 
-        // Next 6 digits: ABA institution identifier
-        int institution = random.nextInt(1000000);
+        // Next 6 digits: ABA institution identifier (random)
+        int d3 = random.nextInt(10);
+        int d4 = random.nextInt(10);
+        int d5 = random.nextInt(10);
+        int d6 = random.nextInt(10);
+        int d7 = random.nextInt(10);
+        int d8 = random.nextInt(10);
 
-        // Last digit: checksum (not validated, just random)
-        int checksum = random.nextInt(10);
+        // Calculate check digit using ABA formula
+        // Formula: 3*(d1+d4+d7) + 7*(d2+d5+d8) + (d3+d6+d9) ≡ 0 (mod 10)
+        // Solving for d9: d9 = (10 - ((3*(d1+d4+d7) + 7*(d2+d5+d8) + d3+d6) mod 10)) mod 10
+        int sum = 3 * (d1 + d4 + d7) + 7 * (d2 + d5 + d8) + d3 + d6;
+        int d9 = (10 - (sum % 10)) % 10;
 
-        return String.format("%02d%06d%d", fedReserve, institution, checksum);
+        return String.format("%d%d%d%d%d%d%d%d%d", d1, d2, d3, d4, d5, d6, d7, d8, d9);
     }
 }

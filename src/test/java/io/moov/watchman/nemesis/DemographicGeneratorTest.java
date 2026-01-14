@@ -87,6 +87,38 @@ class DemographicGeneratorTest {
     }
 
     @Test
+    void shouldGenerateValidABARoutingNumber() {
+        // Given
+        DemographicGenerator generator = new DemographicGenerator();
+
+        // When: Generate multiple routing numbers
+        for (int i = 0; i < 100; i++) {
+            String routing = generator.generateRoutingNumber();
+
+            // Then: Each should pass ABA check digit validation
+            assertTrue(isValidABARoutingNumber(routing),
+                    "Routing number " + routing + " failed ABA check digit validation");
+        }
+    }
+
+    /**
+     * Validates ABA routing number using check digit algorithm.
+     * Formula: 3*(d1+d4+d7) + 7*(d2+d5+d8) + (d3+d6+d9) mod 10 = 0
+     */
+    private boolean isValidABARoutingNumber(String routing) {
+        if (routing == null || routing.length() != 9 || !routing.matches("\\d{9}")) {
+            return false;
+        }
+
+        int[] digits = routing.chars().map(c -> c - '0').toArray();
+        int checksum = 3 * (digits[0] + digits[3] + digits[6])
+                + 7 * (digits[1] + digits[4] + digits[7])
+                + (digits[2] + digits[5] + digits[8]);
+
+        return checksum % 10 == 0;
+    }
+
+    @Test
     void shouldGenerateReproducibleDataWithSeed() {
         // Given: same seed
         DemographicGenerator gen1 = new DemographicGenerator(12345L);
