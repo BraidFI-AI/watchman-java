@@ -112,7 +112,7 @@ class TraceSummaryServiceTest {
             new ScoringEvent(Instant.now(), Phase.AGGREGATION, "Aggregate", 
                 Map.of("durationMs", 2, "success", true))
         );
-        ScoringTrace trace = new ScoringTrace("test", events, null, Duration.ofMillis(47));
+        ScoringTrace trace = new ScoringTrace("test", events, Map.of(), Duration.ofMillis(47));
 
         // When: Generate summary
         ReportSummary summary = service.generateSummary(trace);
@@ -135,7 +135,7 @@ class TraceSummaryServiceTest {
             new ScoringEvent(Instant.now(), Phase.AGGREGATION, "Aggregate", 
                 Map.of("durationMs", 2, "success", true))
         );
-        ScoringTrace trace = new ScoringTrace("test", events, null, Duration.ofMillis(112));
+        ScoringTrace trace = new ScoringTrace("test", events, Map.of(), Duration.ofMillis(112));
 
         // When: Generate summary
         ReportSummary summary = service.generateSummary(trace);
@@ -196,7 +196,7 @@ class TraceSummaryServiceTest {
     // Helper methods
     private ScoringTrace createTraceWithEntities(int count) {
         List<ScoringEvent> events = createEventsForEntities(count);
-        return new ScoringTrace("test", events, null, Duration.ofMillis(100));
+        return new ScoringTrace("test", events, Map.of(), Duration.ofMillis(100));
     }
 
     private List<ScoringEvent> createEventsForEntities(int count) {
@@ -216,12 +216,12 @@ class TraceSummaryServiceTest {
     private ScoringTrace createTraceWithVariedScores() {
         // Simulate trace with high, medium, and low scores
         List<ScoringEvent> events = createEventsForEntities(3);
-        return new ScoringTrace("test", events, null, Duration.ofMillis(100));
+        return new ScoringTrace("test", events, Map.of(), Duration.ofMillis(100));
     }
 
     private ScoringTrace createTraceWithMultipleScores() {
         // Simulate trace with 5+ entities
         List<ScoringEvent> events = createEventsForEntities(5);
-        return new ScoringTrace("test", events, null, Duration.ofMillis(200));
+        return new ScoringTrace("test", events, Map.of(), Duration.ofMillis(200));
     }
 }

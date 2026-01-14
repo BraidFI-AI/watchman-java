@@ -23,10 +23,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ReportRendererSummaryTest {
 
     private ReportRenderer renderer;
+    private TraceSummaryService summaryService;
 
     @BeforeEach
     void setUp() {
-        renderer = new ReportRenderer();
+        summaryService = new TraceSummaryService();
+        renderer = new ReportRenderer(summaryService);
     }
 
     @Test
@@ -124,7 +126,7 @@ class ReportRendererSummaryTest {
             new ScoringEvent(Instant.now(), Phase.ADDRESS_COMPARISON, "Compare addresses", 
                 Map.of("durationMs", 5, "success", true))
         );
-        ScoringTrace trace = new ScoringTrace("test", events, null, Duration.ofMillis(55));
+        ScoringTrace trace = new ScoringTrace("test", events, Map.of(), Duration.ofMillis(55));
 
         // When: Render HTML
         String html = renderer.renderHtml(trace);
