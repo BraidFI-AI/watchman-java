@@ -106,7 +106,7 @@ CreateIndividualRequest putin = CreateIndividualRequest.builder()
     .build();
 
 BraidCustomerResponse putinResponse = client.createIndividualCustomer(putin);
-// API Result: Status=BLOCKED, OFAC ID=18845251 ✅
+// API Result: Status=BLOCKED, Braid Customer ID=18845251 ✅
 // Dashboard Verification: Customer appears with RED flag, blocked from transactions
 // Expected: Putin is a high-profile SDN, should be blocked ✓
 
@@ -120,7 +120,7 @@ CreateBusinessRequest taliban = CreateBusinessRequest.builder()
     .build();
 
 BraidCustomerResponse talibanResponse = client.createBusinessCustomer(taliban);
-// API Result: Status=ACTIVE, OFAC ID=18845252 ⚠️
+// API Result: Status=ACTIVE, Braid Customer ID=18845252 ⚠️
 // Dashboard Verification: Customer appears with GREEN status, allowed transactions
 // Expected: Taliban is SDN 6636, should be blocked ✗
 ```
@@ -348,9 +348,9 @@ When query = "taliban organization" (19 chars) but index = "taliban" (7 chars):
 ## Why Java is Correct
 
 1. **OFAC-API Agreement:** The commercial gold standard finds this match
-2. **Semantic Intent:** "Taliban Organization" clearly refers to the Taliban entity
+2. **Semantic Intent:** "Taliban Organization" clearly refers to the Taliban entity (SDN 6636)
 3. **Compliance Risk:** Missing this match is a regulatory failure
-4. **Real-World Validation:** Braid's production screening assigned OFAC ID 18845252, confirming a match exists
+4. **Real-World Impact:** Braid's Go-based screening allowed Taliban Organization customer (ID 18845252) to be created with ACTIVE status instead of blocking it
 
 ## Recommendation
 
