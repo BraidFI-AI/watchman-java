@@ -292,7 +292,7 @@ Enable detailed scoring breakdowns by adding `trace=true` to any search request.
 
 #### When to Use
 - **Development:** Understand why entities matched or didn't match
-- **Tuning:** Optimize scoring parameters (see [ScoreConfig](SCORECONFIG.md))
+- **Tuning:** Optimize scoring parameters (see [ScoreConfig](scoreconfig.md))
 - **Debugging:** Investigate unexpected match scores
 - **Compliance:** Document scoring methodology for audits
 
@@ -356,7 +356,7 @@ When `trace=true` is included, the response adds a `trace` object:
 - **Debug Mode:** `trace=true` adds ~5-10ms per query
 - **Best Practice:** Enable only for investigation, not production traffic
 
-**See also:** [ScoreTrace Documentation](SCORETRACE.md)
+**See also:** [ScoreTrace Documentation](scoretrace.md)
 
 ---
 

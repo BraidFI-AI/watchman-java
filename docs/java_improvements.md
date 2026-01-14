@@ -131,7 +131,7 @@ Java:   Call /batch once with 1000 items = 1 HTTP request
 
 **Status:** ✅ Complete Java-exclusive feature  
 **Location:** `io.moov.watchman.scoring.trace.*`  
-**Documentation:** [SCORETRACE.md](SCORETRACE.md)
+**Documentation:** [scoretrace.md](scoretrace.md)
 
 **What It Does:**
 - Captures detailed execution traces of entity scoring operations
@@ -697,4 +697,4 @@ double avgScore = scores.stream()
 
 **Last Updated:** January 10, 2026  
 **Maintained By:** Watchman Java Team  
-**Related Documents:** [FEATURE_PARITY_GAPS.md](FEATURE_PARITY_GAPS.md), [SCORETRACE.md](SCORETRACE.md)
+**Related Documents:** [feature_parity_gaps.md](feature_parity_gaps.md), [scoretrace.md](scoretrace.md)

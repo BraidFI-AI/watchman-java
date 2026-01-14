@@ -18,7 +18,7 @@ This document tracks **feature parity** between the Go and Java implementationsâ
 - Configuration and data models
 
 **What's NOT Tracked Here:**
-- **Java-only enhancements** like [Scoring Trace Infrastructure](SCORING_TRACING.md) (observability/debugging tool with no Go equivalent)
+- **Java-only enhancements** like [Scoring Trace Infrastructure](scoretrace.md) (observability/debugging tool with no Go equivalent)
 - Performance optimizations beyond Go's implementation
 - Java-specific architecture patterns
 

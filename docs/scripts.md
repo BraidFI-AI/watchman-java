@@ -4,7 +4,7 @@
 **Audience:** Engineers working with Watchman Java  
 **Last Updated:** January 11, 2026
 
-> **Note**: Production deployment has moved to AWS ECS. See [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md). Update BASE_URL environment variables to point to your AWS ALB endpoint.
+> **Note**: Production deployment has moved to AWS ECS. See [aws_deployment.md](aws_deployment.md). Update BASE_URL environment variables to point to your AWS ALB endpoint.
 
 ---
 

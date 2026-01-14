@@ -9,7 +9,7 @@
 
 **ScoreConfig** is Watchman Java's centralized configuration system for controlling OFAC sanctions screening matching behavior. It provides type-safe, IDE-supported parameter tuning for all similarity scoring algorithms, eliminating the scattered environment variable approach used in the Go implementation.
 
-ScoreConfig pairs with [ScoreTrace](SCORETRACE.md) to provide a complete observability and tuning solution:
+ScoreConfig pairs with [ScoreTrace](scoretrace.md) to provide a complete observability and tuning solution:
 - **ScoreConfig** (this document) - Configure scoring parameters
 - **ScoreTrace** - Observe the impact of configuration changes
 
@@ -587,16 +587,16 @@ ScoreConfig + Repair Pipeline = Automated Tuning:
 
 - **Source Code:** [SimilarityConfig.java](../src/main/java/io/moov/watchman/config/SimilarityConfig.java)
 - **Tests:** [SimilarityConfigTest.java](../src/test/java/io/moov/watchman/config/SimilarityConfigTest.java)
-- **ScoreTrace Documentation:** [SCORETRACE.md](SCORETRACE.md)
-- **Nemesis Integration:** [NEMESIS.md](NEMESIS.md)
-- **Feature Parity:** [FEATURE_PARITY_GAPS.md](FEATURE_PARITY_GAPS.md)
+- **ScoreTrace Documentation:** [scoretrace.md](scoretrace.md)
+- **Nemesis Integration:** [nemesis.md](nemesis.md)
+- **Feature Parity:** [feature_parity_gaps.md](feature_parity_gaps.md)
 
 ## Related Documentation
 
-- [ScoreTrace](SCORETRACE.md) - Scoring observability and debugging
-- [Java Improvements](JAVA_IMPROVEMENTS.md) - Why Java's configuration is superior
-- [Nemesis](NEMESIS.md) - Automated testing and divergence detection
-- [Feature Parity](FEATURE_PARITY_GAPS.md) - Configuration parameter coverage
+- [ScoreTrace](scoretrace.md) - Scoring observability and debugging
+- [Java Improvements](java_improvements.md) - Why Java's configuration is superior
+- [Nemesis](nemesis.md) - Automated testing and divergence detection
+- [Feature Parity](feature_parity_gaps.md) - Configuration parameter coverage
 
 ---
 

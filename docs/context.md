@@ -88,6 +88,23 @@
 
 ---
 
+## Session: January 13, 2026 (Link Audit)
+
+### What We Decided
+- Fixed all inter-document links to use correct lowercase filenames
+- Standardized documentation references across all markdown files
+
+### What Is Now True
+- All 18 documentation files follow lowercase_with_underscores naming convention
+- All inter-document links in README.md and docs/*.md are working correctly
+- Fixed 20+ broken links across 6 files (java_improvements.md, scoreconfig.md, api_spec.md, scripts.md, feature_parity_gaps.md, README.md)
+- Documentation is internally consistent and navigable
+
+### What Is Still Unknown
+- N/A (maintenance task completed)
+
+---
+
 ## Session: January 12, 2026
 
 ### What We Decided

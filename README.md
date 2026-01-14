@@ -425,7 +425,7 @@ src/
 
 ## Test Coverage
 
-See [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md) for detailed test documentation including:
+See [docs/test_coverage.md](docs/test_coverage.md) for detailed test documentation including:
 - Test counts by area
 - Test case descriptions
 - Coverage of Go test cases
@@ -472,7 +472,7 @@ Generate fixes → Create PR → Human approval → Auto-deploy
 
 **Status:** Fully operational with human approval gate for all PRs.
 
-See [docs/NEMESIS.md](docs/NEMESIS.md) for complete documentation.
+See [docs/nemesis.md](docs/nemesis.md) for complete documentation.
 
 ---
 
@@ -480,13 +480,13 @@ See [docs/NEMESIS.md](docs/NEMESIS.md) for complete documentation.
 
 | Document | Description |
 |----------|-------------|
-| [API_SPEC.md](docs/API_SPEC.md) | Complete API reference with examples (includes Nemesis endpoints) |
-| [NEMESIS.md](docs/NEMESIS.md) | Nemesis autonomous testing & repair system |
-| [AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md) | AWS deployment guide (ECS + Batch) |
-| [TEST_COVERAGE.md](docs/TEST_COVERAGE.md) | Detailed test documentation |
-| [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error handling & logging guide |
-| [GO_JAVA_COMPARISON_PROCEDURE.md](docs/GO_JAVA_COMPARISON_PROCEDURE.md) | Parity testing methodology |
-| [FEATURE_PARITY_GAPS.md](docs/FEATURE_PARITY_GAPS.md) | Known differences between Go and Java |
+| [api_spec.md](docs/api_spec.md) | Complete API reference with examples (includes Nemesis endpoints) |
+| [nemesis.md](docs/nemesis.md) | Nemesis autonomous testing & repair system |
+| [aws_deployment.md](docs/aws_deployment.md) | AWS deployment guide (ECS + Batch) |
+| [test_coverage.md](docs/test_coverage.md) | Detailed test documentation |
+| [error_handling.md](docs/error_handling.md) | Error handling & logging guide |
+| [go_java_comparison_procedure.md](docs/go_java_comparison_procedure.md) | Parity testing methodology |
+| [feature_parity_gaps.md](docs/feature_parity_gaps.md) | Known differences between Go and Java |
 
 ## License
 

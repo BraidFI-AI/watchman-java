@@ -149,3 +149,21 @@
 **Impact**: Fixed compilation errors in TraceSummary.java and TraceSummaryService.java.
 
 ---
+
+### 2026-01-13: Documentation Filename Convention
+
+**Context**: Audit revealed 20+ broken inter-document links caused by case mismatch. Some links used uppercase (SCORETRACE.md, NEMESIS.md) while actual files were lowercase (scoretrace.md, nemesis.md).
+
+**Decision**: All documentation files use lowercase filenames with underscores separating words (e.g., `feature_parity_gaps.md`, not `FEATURE_PARITY_GAPS.md` or `FeatureParityGaps.md`).
+
+**Rationale**:
+- Prevents broken links on case-sensitive filesystems (Linux, macOS with case-sensitive APFS)
+- Consistent with Unix/web conventions
+- Easier to type and reference in terminal commands
+- Matches existing file structure in `/docs` directory
+
+**Impact**: Fixed all broken links across README.md and 5 documentation files. All inter-document navigation now works correctly.
+
+**Related Files**: All markdown files in `/docs` and `README.md`
+
+---
