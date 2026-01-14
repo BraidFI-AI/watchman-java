@@ -127,54 +127,99 @@ Java:   Call /batch once with 1000 items = 1 HTTP request
 
 ## OBSERVABILITY & DEBUGGING
 
-### 2. ScoreTrace Infrastructure ✨ NEW FEATURE
+### 2. ScoreTrace Infrastructure with Reporting ✨ NEW FEATURE
 
-**Status:** ✅ Complete Java-exclusive feature  
-**Location:** `io.moov.watchman.scoring.trace.*`  
-**Documentation:** [scoretrace.md](scoretrace.md)
+**Status:** ✅ Complete Java-exclusive feature with operator-friendly reporting  
+**Location:** `io.moov.watchman.trace.*`, `io.moov.watchman.report.*`  
+**Documentation:** [scoretrace.md](scoretrace.md), [api_spec.md](api_spec.md)
 
 **What It Does:**
-- Captures detailed execution traces of entity scoring operations
+- Captures detailed execution traces of entity scoring operations with 9 distinct phases
 - Records every scoring decision with component-level granularity
 - Provides insights into why entities matched or didn't match
-- Essential for debugging, auditing, and compliance reporting
+- **NEW:** Operator-friendly HTML and JSON summary reports
+- **NEW:** breakdown field populated in search results when trace=true
+- Essential for debugging, auditing, compliance reporting, and non-technical operators
+
+**Three-Tier Reporting System:**
+
+1. **Detailed Trace** (`trace` object in response)
+   - Full event timeline across 9 phases (NAME_COMPARISON, ALT_NAME_COMPARISON, ADDRESS_COMPARISON, GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON, DATE_COMPARISON, AGGREGATION, NORMALIZATION)
+   - Per-event timing and metadata
+   - Complete audit trail for compliance
+
+2. **Breakdown Field** (in each entity result)
+   ```json
+   {
+     "entities": [{
+       "name": "SMITH, John",
+       "score": 0.87,
+       "breakdown": {
+         "nameScore": 0.95,
+         "altNamesScore": 0.82,
+         "addressScore": 0.0,
+         "governmentIdScore": 0.0,
+         "cryptoAddressScore": 0.0,
+         "contactScore": 0.0,
+         "dateScore": 0.80,
+         "totalWeightedScore": 0.87
+       }
+     }]
+   }
+   ```
+
+3. **Report Endpoints** (NEW - using sessionId)
+   - **HTML Report:** `GET /api/reports/{sessionId}` - Visual charts, plain English explanations
+   - **JSON Summary:** `GET /api/reports/{sessionId}/summary` - Stats, phase contributions, operator insights
 
 **Components:**
-- `ScoringTrace` - Immutable trace record capturing all scoring details
-- `ScoringTraceBuilder` - Fluent builder for constructing traces
-- `TracingEntityScorer` - Decorator that wraps any EntityScorer to add tracing
-- `ComponentScore` - Individual scoring component (name, address, dates, etc.)
-- Integration with all scoring algorithms (name, address, date, ID, etc.)
+- `ScoringTrace` - Immutable trace record with sessionId, events, metadata, breakdown
+- `ScoringContext` - Interface for enabled/disabled tracing (zero overhead when off)
+- `EnabledScoringContext` - Active trace collector with phase tracking
+- `DisabledScoringContext` - No-op singleton for production (JIT-optimized)
+- `TraceSummary` - Analyzer for generating operator-friendly insights
+- `TraceSummaryService` - Service for HTML/JSON report generation
+- `ReportController` - REST endpoints for report access
+- `InMemoryTraceRepository` - 24-hour trace storage (future: Redis)
 
-**Example Output:**
-```
-Entity Match Trace
-─────────────────
-Query Entity: John Smith (Person)
-Indexed Entity: SMITH, John (SDN)
-Final Score: 0.87
-
-Component Breakdown:
-├─ Name Score: 0.95 (40% weight) → 0.38
-│  ├─ Primary Match: "john smith" vs "smith john"
-│  ├─ Algorithm: BestPairsJaroWinkler
-│  └─ Details: 2/2 terms matched, no unmatched penalty
-├─ Date Score: 0.80 (15% weight) → 0.12
-│  └─ Birth dates within tolerance
-└─ Total: 0.87 (high confidence)
+**Example JSON Summary Output:**
+```json
+{
+  "sessionId": "abc-123-def-456",
+  "totalEntitiesScored": 42,
+  "phaseContributions": {
+    "NAME_COMPARISON": 15,
+    "ADDRESS_COMPARISON": 8,
+    "DATE_COMPARISON": 5,
+    "AGGREGATION": 42
+  },
+  "phaseTimings": {
+    "NAME_COMPARISON": 45.2,
+    "NORMALIZATION": 12.1
+  },
+  "slowestPhase": "NAME_COMPARISON",
+  "insights": [
+    "Primary matching driver: NAME_COMPARISON (15 contributions)",
+    "Performance bottleneck: NAME_COMPARISON phase (45ms avg)"
+  ]
+}
 ```
 
 **Why Java-Exclusive:**
-- Go implementation lacks structured tracing
+- Go implementation lacks structured tracing entirely
 - Java's immutable records ideal for audit trails
 - Enterprise compliance requirements (SOC2, GDPR)
 - Debugging complex scoring scenarios
+- **NEW:** Operator-friendly summaries for non-technical staff
+- **NEW:** Dual audience support (developers + compliance officers)
 
 **Impact:**
-- **Compliance:** Audit trails for regulatory requirements
-- **Debugging:** Understand scoring decisions in production
-- **Tuning:** Identify which components need adjustment
-- **Transparency:** Explain match decisions to end users
+- **Compliance:** Complete audit trails with HTML reports for regulators
+- **Debugging:** Understand scoring decisions in production with detailed traces
+- **Tuning:** Identify which of 9 phases need adjustment via statistics
+- **Transparency:** Explain match decisions to customers with visual reports
+- **Operations:** Non-technical staff can understand "why this customer matched"
+- **Performance:** Identify bottlenecks (slowest phase analysis)
 
 ---
 
@@ -658,7 +703,7 @@ double avgScore = scores.stream()
 
 | Category | Java Improvements | Impact |
 |----------|------------------|---------|
-| **Observability** | ✨ ScoreTrace Infrastructure | High - Enterprise compliance |
+| **Observability** | ✨ ScoreTrace with HTML/JSON Reporting | High - Enterprise compliance & operations |
 | **Type Safety** | 🏗️ Records, Enums, Interfaces | High - Fewer runtime errors |
 | **Testing** | 🔧 1,132 tests (11x Go) | High - Better quality assurance |
 | **Documentation** | 🔧 7 technical docs, full Javadoc | Medium - Better maintainability |
