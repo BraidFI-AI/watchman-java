@@ -1,0 +1,96 @@
+# Nemesis Test Scenarios
+# Static, reproducible test cases for validating Java Watchman
+# against Braid (Go), direct Go API, and OFAC-API
+
+scenarios:
+  # High-Risk Exact Matches
+  - id: putin-001
+    name: Vladimir Putin
+    altNames:
+      - Vladimir Vladimirovich Putin
+      - Putin
+    addresses:
+      - Moscow, Russia
+      - Kremlin
+    type: INDIVIDUAL
+    category: high-risk-exact
+    expectedMatch: true
+    notes: Russian President - should always match OFAC SDN list
+
+  - id: elchapo-001
+    name: Joaquin Guzman Loera
+    altNames:
+      - El Chapo
+      - Joaquin Guzman
+    addresses:
+      - Sinaloa, Mexico
+    type: INDIVIDUAL
+    category: high-risk-exact
+    expectedMatch: true
+    notes: Drug trafficker - known SDN entity
+
+  # Fuzzy Matches - Transliteration
+  - id: fuzzy-arabic-001
+    name: Muhammad Ali Hassan
+    type: INDIVIDUAL
+    category: fuzzy-arabic
+    expectedMatch: null
+    notes: Common Arabic name with transliteration variations (Muhammad/Mohamed/Mohammed)
+
+  - id: fuzzy-chinese-001
+    name: Li Wei
+    type: INDIVIDUAL
+    category: fuzzy-chinese
+    expectedMatch: null
+    notes: Very common Chinese name - tests false positive handling
+
+  # False Positive Tests
+  - id: common-name-001
+    name: John Smith
+    addresses:
+      - New York, USA
+    type: INDIVIDUAL
+    category: common-name
+    expectedMatch: false
+    notes: Most common US name - should NOT match without strong evidence
+
+  - id: common-name-002
+    name: Maria Garcia
+    addresses:
+      - Miami, Florida
+    type: INDIVIDUAL
+    category: common-name
+    expectedMatch: false
+    notes: Common Hispanic name - should require additional evidence
+
+  # Edge Cases
+  - id: edge-special-chars-001
+    name: José María O'Brien-González
+    type: INDIVIDUAL
+    category: edge-case
+    expectedMatch: null
+    notes: Tests handling of accents, apostrophes, hyphens
+
+  - id: edge-short-name-001
+    name: Li
+    type: INDIVIDUAL
+    category: edge-case
+    expectedMatch: null
+    notes: Very short name - tests minimum length handling
+
+  # Entity (Company) Tests
+  - id: entity-001
+    name: Bank of Evil Ltd
+    addresses:
+      - Cayman Islands
+    type: ENTITY
+    category: entity-test
+    expectedMatch: null
+    notes: Corporate entity test case
+
+  - id: entity-002
+    name: ABC Corporation
+    type: ENTITY
+    category: entity-test
+    expectedMatch: false
+    notes: Generic company name - should not match
