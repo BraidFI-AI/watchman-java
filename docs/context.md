@@ -205,6 +205,9 @@
 - Java scores Taliban at 0.913 (correct), Go scores at 0.538 (below threshold - missed)
 - OFAC-API scores Taliban at 100 (validates Java is correct)
 - Root cause: Go's character-length weighting penalizes multi-word queries
+- Braid migration plan updated to reflect AWS ECS as current deployment (Fly.io deprecated)
+- Terminology clarified: 18845251/18845252 are Braid's internal customer IDs, not OFAC identifiers
+- Taliban SDN ID is 6636 (actual OFAC identifier)
 
 ### What Is Still Unknown
 - Whether to file bug report on moov-io/watchman for Go's scoring algorithm

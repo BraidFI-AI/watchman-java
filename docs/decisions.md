@@ -306,3 +306,27 @@
 **Tradeoff**: Requires Braid sandbox credentials, limited to test environment, but provides real-world validation that pure API testing cannot.
 
 ---
+
+### 2026-01-14: AWS ECS as Primary Test Deployment
+
+**Context**: Need stable external endpoint for Braid integration testing. Initially deployed to Fly.io, but moved to AWS ECS for better control and cost optimization.
+
+**Decision**: Use AWS ECS Fargate with Application Load Balancer as primary test deployment for Braid integration validation.
+
+**Rationale**:
+- Stable DNS endpoint via ALB (watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com)
+- Lower cost: $55/month (1 vCPU, 2GB RAM + ALB)
+- Better integration with existing AWS infrastructure
+- Fly.io deprecated - no longer maintained
+
+**Deployment Details**:
+- ECS Task: 1 vCPU, 2GB RAM, 1GB JVM heap
+- ALB for stable endpoint across deployments
+- Health checks on /health every 30 seconds
+- GitHub Actions CI/CD pipeline
+
+**End Goal**: After validation on ECS, deploy internally within Braid's infrastructure (Option 4) for 10-20x latency improvement and production use.
+
+**Tradeoff**: External deployment adds network latency vs internal, but provides independent test environment before committing to internal infrastructure changes.
+
+---
