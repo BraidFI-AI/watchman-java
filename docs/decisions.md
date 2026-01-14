@@ -249,3 +249,60 @@
 **Impact**: Complete observe/control story for OFAC screening matching engine.
 
 ---
+
+### 2026-01-14: OFAC-API as Validation Ground Truth
+
+**Context**: When Java and Go Watchman produce different results, need authoritative reference to determine which is correct.
+
+**Decision**: Use OFAC-API (commercial provider, api.ofac-api.com) as the ground truth for validation, not Go Watchman.
+
+**Rationale**:
+- Go is open-source implementation that may contain bugs (Taliban case proves this)
+- OFAC-API is commercial provider with no affiliation to Moov - independent authority
+- "Feature parity with Go" could replicate Go's bugs in Java
+- Real compliance goal is accuracy, not matching another implementation
+
+**Impact**: Strategic shift from "achieve feature parity with Go" to "achieve accuracy against commercial gold standard". Java validated as correct when it disagrees with Go.
+
+**Related Files**:
+- `docs/taliban_analysis.md` (documents first discovered divergence)
+- OFAC-API key stored in AWS Secrets Manager and Fly.io secrets
+
+---
+
+### 2026-01-14: Taliban Analysis as Stakeholder Proof Document
+
+**Context**: Discovered Go Watchman misses "Taliban Organization" while Java correctly identifies it. Need mathematical certainty before presenting to Braid engineering team.
+
+**Decision**: Create comprehensive analysis document (docs/taliban_analysis.md) with:
+- Complete methodology from Braid API testing to algorithm analysis
+- Mathematical proof showing exact calculations for both Java and Go
+- Line-by-line source code references for both implementations
+- Real-world implications (compliance gap, regulatory risk)
+
+**Rationale**:
+- User requirement: "Can't go to Braid team unless have mathematical certainty...down to the actual lines of code"
+- Stakeholders need rigorous proof, not just API test results
+- Document serves as template for future divergence analysis
+
+**Impact**: Ready for Braid engineering team presentation with complete evidence chain: real-world failure → API validation → algorithm analysis → mathematical proof.
+
+---
+
+### 2026-01-14: Real-World Validation via Braid Sandbox API
+
+**Context**: Need to validate OFAC screening in real-world context, not just isolated API comparisons.
+
+**Decision**: Integrate Nemesis with Braid's Customer/Counterparty creation sandbox API to create actual customers and observe blocking behavior.
+
+**Rationale**:
+- Raises stakes: Not just comparing scores, testing if sanctioned entities can slip through
+- Braid uses Go Watchman in production - provides proxy test of their screening
+- Dashboard inspection confirms actual system behavior (blocked vs active status)
+- Putin blocked ✅, Taliban not blocked ❌ - smoking gun evidence
+
+**Implementation**: Created BraidClient integration in Phase 4 with HTTP Basic Auth to sandbox endpoint.
+
+**Tradeoff**: Requires Braid sandbox credentials, limited to test environment, but provides real-world validation that pure API testing cannot.
+
+---

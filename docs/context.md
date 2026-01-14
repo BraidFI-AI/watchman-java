@@ -185,3 +185,31 @@
 - Do we want to keep deploying to both Fly.io and ECS, or choose one platform?
 
 ---
+
+## Session: January 14, 2026 (Evening - Taliban Analysis & OFAC-API Ground Truth)
+
+### What We Decided
+- Enhanced Taliban analysis document with complete methodology and stakeholder presentation narrative
+- Established OFAC-API as the authoritative ground truth for validation (not Go Watchman)
+- Documented complete testing journey from feature parity goal to mathematical proof
+- Created comprehensive analysis showing Go's scoring bug causes false negatives
+
+### What Is Now True
+- **OFAC-API is the commercial gold standard** for validating both Java and Go implementations (api.ofac-api.com/v4)
+- Go Watchman is a reference point but NOT ground truth (no longer the validation target)
+- Braid sandbox API integration validates real-world screening (https://api.sandbox.braid.zone)
+- Taliban Organization case documented in docs/taliban_analysis.md with mathematical proof
+- AWS ECS endpoint validated: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/search
+- ScoreTrace feature documented as debugging tool for understanding Java's scoring breakdown
+- Putin (individual) correctly blocked by Braid, Taliban Organization (business) incorrectly allowed
+- Java scores Taliban at 0.913 (correct), Go scores at 0.538 (below threshold - missed)
+- OFAC-API scores Taliban at 100 (validates Java is correct)
+- Root cause: Go's character-length weighting penalizes multi-word queries
+
+### What Is Still Unknown
+- Whether to file bug report on moov-io/watchman for Go's scoring algorithm
+- Impact assessment: How many other entities does Go miss that Java/OFAC-API find?
+- When to proceed with Phase 5-6 of Nemesis (full comparison matrix against OFAC-API)
+- Braid team's decision on using Java vs continuing with Go
+
+---
