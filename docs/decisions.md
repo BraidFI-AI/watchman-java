@@ -117,6 +117,39 @@
 
 ---
 
+### 2026-01-13: AWS Batch for High-Volume Nightly Processing
+
+**Context**: Braid runs nightly OFAC screens for 250-300k customers using Go Watchman. Process takes 6-8 hours (sequential), sometimes runs into operating hours (past 8am EST), impacting real-time payment operations.
+
+**Decision**: Implement dual-path architecture:
+- **Real-Time Path**: Keep existing ECS Fargate (always-on) for transaction/onboarding screens (<200ms latency)
+- **Batch Path**: New AWS Batch with Fargate Spot for nightly bulk processing (~40 minutes)
+
+**Rationale**:
+- Go implementation processes sequentially (~11 names/sec), causing 6-8 hour runtime
+- Java batch API already exists (/v2/search/batch) with parallel processing
+- AWS Batch scales to 30+ concurrent jobs (126 names/sec = 10x speedup)
+- Fargate Spot reduces cost by 70% ($23/month vs $80/month for on-demand)
+- Minimal Braid code changes: single BatchScreeningClient service
+- Results written to S3 for audit, alerts sent via webhook per-match
+
+**Architecture**:
+- Split 300k names into 30 chunks (10k each)
+- Each AWS Batch job processes 1 chunk using existing /v2/search/batch endpoint
+- Jobs run in parallel, complete in ~40 minutes total
+- Supports both push (Braid calls API) and pull (EventBridge schedule) workflows
+
+**Open Questions** (blocking implementation):
+1. Push vs pull model preference?
+2. Does Braid Alert API webhook already exist?
+3. Input data format (CSV columns, JSON schema)?
+4. Historical retention requirements for S3 results?
+5. Network configuration (same VPC as Braid)?
+
+**Next Steps**: Await answers to open questions, then proceed with TDD phases (RED → GREEN → REFACTOR).
+
+---
+
 ### 2026-01-13: TraceSummary as Analysis Layer
 
 **Context**: TraceSummaryService and ReportSummary models already existed in codebase for HTML rendering.

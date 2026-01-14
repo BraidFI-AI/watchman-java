@@ -139,6 +139,33 @@
 
 ---
 
+## Session: January 13, 2026 (AWS Batch Design)
+
+### What We Decided
+- Designed dual-path architecture: ECS (real-time) + AWS Batch (nightly bulk)
+- Target: Complete 250-300k nightly screens in <1 hour (vs current 6-8 hours)
+- Support both push (Braid-initiated) and pull (scheduled) workflows
+- Results stored in S3, alerts sent via webhook API (TBD)
+- Use Fargate Spot for 70% cost savings (~$23/month for nightly runs)
+
+### What Is Now True
+- Architecture documented in docs/aws_batch_design.md
+- Current bottleneck: Go sequential processing at ~11 names/sec
+- Proposed throughput: 30 parallel jobs × 4.2 names/sec = 126 names/sec (10x improvement)
+- Braid integration: Minimal code changes needed (new BatchScreeningClient service)
+- Existing batch API (/v2/search/batch) will be leveraged by AWS Batch workers
+- Same Docker image used for both ECS and Batch (different entrypoints)
+
+### What Is Still Unknown
+- **Push vs Pull**: Which model does Braid prefer for initiating nightly batch?
+- **Alert API**: Does Braid have existing webhook endpoint or need to build one?
+- **Input Format**: CSV vs JSON, column structure for customer export
+- **Database Access**: Should Watchman query Braid DB directly or use S3 files?
+- **Historical Retention**: How long to keep S3 results (compliance requirements)?
+- **Network Config**: Run Batch in same VPC as Braid or separate?
+
+---
+
 ## Session: January 12, 2026
 
 ### What We Decided
