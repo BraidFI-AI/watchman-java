@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * Request to create a business customer in Braid.
- * Required fields: name, idNumber, businessIdType, address, productId
+ * Per OpenAPI spec BusinessRequest:
+ * Required: name, businessIdType, idNumber, address, productId
+ * Optional: mobilePhone, email, dba, businessEntityType, formationDate, incorporationState, website, ach, achCompanyId, submittedBy, mcc, naics, achCompanyName, externalId
+ * CRITICAL: idNumber must be digits only (no dashes!) - API validates this
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record CreateBusinessRequest(

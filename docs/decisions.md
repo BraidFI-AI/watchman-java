@@ -330,3 +330,59 @@
 **Tradeoff**: External deployment adds network latency vs internal, but provides independent test environment before committing to internal infrastructure changes.
 
 ---
+
+### 2026-01-14: Systematic Testing Across All 4 Systems
+
+**Context**: After discovering Taliban Organization false negative, needed to find more Go Watchman issues systematically.
+
+**Decision**: Test ALL 4 systems (Java Watchman, Go Watchman, OFAC-API, Braid Sandbox) for each test case, not just API comparisons.
+
+**Rationale**: 
+- Braid customer creation provides real-world validation (not just scoring comparisons)
+- Testing Braid directly reveals actual blocking behavior vs theoretical API scores
+- Raises stakes: not just "Go scores lower" but "sanctioned entities can create accounts"
+- Provides smoking gun evidence for Braid engineering team
+
+**Implementation**: Manual curl testing with 3-wave strategy (exact → suffixes → fuzzy), creating actual business customers in Braid sandbox for each variation.
+
+**Result**: Identified 7 false negatives across 15 test cases, proving Go Watchman's 47% false negative rate on realistic name variations.
+
+---
+
+### 2026-01-14: Lock Braid Client to OpenAPI Spec
+
+**Context**: Braid API requests failing with 422 errors due to field name mismatches and missing required fields.
+
+**Decision**: Update all Braid client classes to exactly match OpenAPI spec 1.8, add spec validation comments, and enforce field requirements.
+
+**Changes**:
+- `BraidAddress`: Changed `street/street2/zipCode` → `line1/line2/postalCode`
+- Added validation comments documenting OpenAPI required fields
+- Documented `idNumber` must be digits-only for business customers (API validates this)
+- Confirmed `countryCode` is required in address (not optional)
+
+**Tradeoff**: Required updating test code that used old field names, but ensures future compatibility with Braid API changes.
+
+**Outcome**: All Braid customer creation tests now succeed with proper OpenAPI-compliant requests.
+
+---
+
+### 2026-01-14: Evidence Document for Braid Engineering Team
+
+**Context**: Systematic testing revealed 7 false negatives across 15 variations of 5 major sanctioned entities.
+
+**Decision**: Create comprehensive evidence document (`docs/divergence_evidence.md`) with all test results, API responses, Braid customer IDs, and scoring comparisons.
+
+**Structure**: 
+- Wave 1: Exact SDN matches (baseline)
+- Wave 2: Close variations with suffixes (where Go fails)
+- Wave 3: Fuzzy matches with descriptors (stress testing)
+- Overall summary with system performance comparison table
+- Critical vulnerabilities section
+- Recommendation for immediate action
+
+**Rationale**: Braid engineering needs complete proof with actual customer IDs showing sanctioned entities were allowed to create accounts. Document provides mathematical evidence and real-world validation for migration decision.
+
+**Impact**: 47% false negative rate on realistic name variations demonstrates unacceptable compliance risk for production use.
+
+---

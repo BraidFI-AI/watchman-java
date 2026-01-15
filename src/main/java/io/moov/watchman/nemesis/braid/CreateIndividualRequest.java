@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * Request to create an individual customer in Braid.
- * Required fields: firstName, lastName, idNumber, address, productId
+ * Per OpenAPI spec IndividualRequest:
+ * Required: firstName, lastName, idNumber, address, productId
+ * Optional: middleName, email, mobilePhone, dateOfBirth, idType, ach, subType, customerToken, achCompanyId, externalId
+ * Note: idNumber can include dashes (e.g., "123-45-6789")
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record CreateIndividualRequest(

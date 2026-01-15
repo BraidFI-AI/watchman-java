@@ -216,3 +216,36 @@
 - Braid team's decision on using Java vs continuing with Go
 
 ---
+
+## Session: January 14, 2026 (Evening - Systematic 4-System Divergence Testing)
+
+### What We Decided
+- Conducted systematic 3-wave testing across ALL 4 systems (Java, Go, OFAC-API, Braid Sandbox)
+- Wave 1: Exact SDN names (baseline), Wave 2: Close variations with suffixes (expected Go failures), Wave 3: Fuzzy matches with descriptors (stress testing)
+- Fixed Braid client classes to match OpenAPI 1.8 spec exactly (BraidAddress field names, validation requirements)
+- Created comprehensive evidence document (docs/divergence_evidence.md) with all test results and Braid customer IDs
+
+### What Is Now True
+- **Systematic Testing Results**: 15 sanctioned entity variations tested, 7 false negatives identified (47% false negative rate)
+- Wave 1 (exact SDN names): 5/5 blocked by Braid ✅
+- Wave 2 (name + suffix): Only 2/5 blocked - Taliban Organization, AL-QAIDA Network, Islamic State Group all ACTIVE ❌
+- Wave 3 (fuzzy descriptors): Only 1/5 blocked - 4 additional variations slipped through ❌
+- **Go Watchman suffix matching bug confirmed**: Adding ORGANIZATION/NETWORK/GROUP causes matching against wrong entities with similar suffixes instead of core sanctioned name
+- Example: "TALIBAN ORGANIZATION" → matched "TEHRAN PRISONS ORGANIZATION" (54% score)
+- Example: "AL-QAIDA NETWORK" → matched "MUHAMMAD JAMAL NETWORK" (51% score)
+- Example: "ISLAMIC STATE GROUP" → matched "ISLAMIC JIHAD GROUP" (54% score)
+- **System Performance**: Java 60% success, Go 40% success, OFAC-API 60% success, Braid (Go-based) 53% success
+- Braid client OpenAPI compliance: `BraidAddress` uses `line1/line2/postalCode` (not `street/street2/zipCode`)
+- `idNumber` must be digits-only for business customers (API validates this)
+- `countryCode` is required in address (not optional)
+- All Braid client classes now have OpenAPI spec validation comments documenting required fields
+- Evidence document includes actual Braid customer IDs proving sanctioned entities were allowed to create accounts
+- Real-world customer IDs: Taliban Organization (8040213 ACTIVE), AL-QAIDA Network (8040199 ACTIVE), Islamic State Group (8040214 ACTIVE)
+
+### What Is Still Unknown
+- Whether Braid engineering will prioritize migration to Java Watchman based on evidence
+- If Go Watchman maintainers will accept bug fix for character-length weighting
+- Timeline for Braid to implement OFAC-API as primary screening engine
+- Compliance risk assessment from Braid's legal/risk team
+
+---

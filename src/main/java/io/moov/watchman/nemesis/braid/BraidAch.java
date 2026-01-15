@@ -4,13 +4,16 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * ACH payment details for Braid API.
+ * Maps to Ach schema in OpenAPI spec.
+ * Required: routingNumber, accountNumber, bankAccountType
+ * Optional: bankName, rdfiNumberQualifier, address, gatewayRoutingNumber
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BraidAch(
-        String routingNumber,
-        String accountNumber,
-        String bankName,
-        String bankAccountType  // CHECKING or SAVINGS
+        String routingNumber,      // Required
+        String accountNumber,      // Required
+        String bankName,           // Optional
+        String bankAccountType     // Required: CHECKING or SAVINGS
 ) {
     public static Builder builder() {
         return new Builder();

@@ -4,14 +4,17 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * Address for Braid API requests.
+ * Maps to AddressRequest in OpenAPI spec.
+ * Fields: type, line1, line2, city, state, postalCode, countryCode
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BraidAddress(
-        String street,
-        String street2,
-        String city,
+        String type,          // MAILING, RESIDENCE, BUSINESS, OTHER
+        String line1,         // Max 40 chars
+        String line2,         // Max 40 chars  
+        String city,          // Max 40 chars
         String state,
-        String zipCode,
+        String postalCode,    // Max 10 chars
         String countryCode
 ) {
     public static Builder builder() {
@@ -19,20 +22,26 @@ public record BraidAddress(
     }
 
     public static class Builder {
-        private String street;
-        private String street2;
+        private String type;
+        private String line1;
+        private String line2;
         private String city;
         private String state;
-        private String zipCode;
+        private String postalCode;
         private String countryCode = "US";
 
-        public Builder street(String street) {
-            this.street = street;
+        public Builder type(String type) {
+            this.type = type;
             return this;
         }
 
-        public Builder street2(String street2) {
-            this.street2 = street2;
+        public Builder line1(String line1) {
+            this.line1 = line1;
+            return this;
+        }
+
+        public Builder line2(String line2) {
+            this.line2 = line2;
             return this;
         }
 
@@ -46,8 +55,8 @@ public record BraidAddress(
             return this;
         }
 
-        public Builder zipCode(String zipCode) {
-            this.zipCode = zipCode;
+        public Builder postalCode(String postalCode) {
+            this.postalCode = postalCode;
             return this;
         }
 
@@ -57,7 +66,7 @@ public record BraidAddress(
         }
 
         public BraidAddress build() {
-            return new BraidAddress(street, street2, city, state, zipCode, countryCode);
+            return new BraidAddress(type, line1, line2, city, state, postalCode, countryCode);
         }
     }
 }
