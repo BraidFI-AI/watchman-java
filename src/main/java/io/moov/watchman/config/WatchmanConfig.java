@@ -25,8 +25,12 @@ public class WatchmanConfig {
     }
 
     @Bean
-    public SimilarityService similarityService() {
-        return new JaroWinklerSimilarity();
+    public SimilarityService similarityService(SimilarityConfig config) {
+        return new JaroWinklerSimilarity(
+            new TextNormalizer(),
+            new io.moov.watchman.similarity.PhoneticFilter(true),
+            config
+        );
     }
 
     @Bean
