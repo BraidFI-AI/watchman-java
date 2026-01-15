@@ -36,10 +36,11 @@ class BraidClientTest {
                 .email("test@example.com")
                 .mobilePhone("555-555-5555")
                 .address(BraidAddress.builder()
-                        .street("123 Kremlin St")
+                        .line1("123 Kremlin St")
                         .city("Moscow")
                         .state("CA")
-                        .zipCode("90210")
+                        .postalCode("90210")
+                        .countryCode("US")
                         .build())
                 .ach(BraidAch.builder()
                         .routingNumber("021000021")
@@ -74,10 +75,11 @@ class BraidClientTest {
                 .email("business@example.com")
                 .mobilePhone("555-555-5555")
                 .address(BraidAddress.builder()
-                        .street("456 Terror Ave")
+                        .line1("456 Terror Ave")
                         .city("Kabul")
                         .state("CA")
-                        .zipCode("90210")
+                        .postalCode("90210")
+                        .countryCode("US")
                         .build())
                 .ach(BraidAch.builder()
                         .routingNumber("021000021")
@@ -103,24 +105,22 @@ class BraidClientTest {
 
     @Test
     void shouldHandleApiErrors() {
-        // Given: Invalid request (missing required field)
-        CreateIndividualRequest invalidRequest = CreateIndividualRequest.builder()
-                .firstName("Test")
-                .lastName("User")
-                .idNumber("123-45-6789")
-                .address(BraidAddress.builder()
-                        .street("123 Test St")
-                        .city("Test City")
-                        .state("CA")
-                        .zipCode("12345")
-                        .build())
-                // Missing productId - should fail validation
-                .productId(null)
-                .build();
-
-        // When/Then: Should throw exception
+        // When/Then: Should throw when missing required productId at build time
         assertThrows(IllegalArgumentException.class, () -> {
-            invalidRequest.toString(); // Force validation
+            CreateIndividualRequest.builder()
+                    .firstName("Test")
+                    .lastName("User")
+                    .idNumber("123-45-6789")
+                    .address(BraidAddress.builder()
+                            .line1("123 Test St")
+                            .city("Test City")
+                            .state("CA")
+                            .postalCode("12345")
+                            .countryCode("US")
+                            .build())
+                    // Missing productId - should fail validation
+                    .productId(null)
+                    .build();
         });
     }
 
