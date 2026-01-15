@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.normalize.PhoneNormalizer;
 import io.moov.watchman.scorer.AddressNormalizer;
@@ -172,7 +173,7 @@ public class Phase17ZoneTwoQualityTest {
             ).normalize();
             
             // Score should be high because "THE" is removed from both
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should match well (> 0.9) since "PABLO ESCOBAR" matches "PABLO ESCOBAR"
@@ -460,7 +461,7 @@ public class Phase17ZoneTwoQualityTest {
             ).normalize();
             
             // Score should be high because apostrophe normalized out
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should match well since "JOHNS COMPANY" matches "JOHNS COMPANY"
@@ -852,7 +853,7 @@ public class Phase17ZoneTwoQualityTest {
             assertEquals(queryNorm.line1(), queryNorm.line1().toLowerCase());
             
             // Score addresses - should match well
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should have good address component score

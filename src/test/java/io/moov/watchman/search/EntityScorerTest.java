@@ -1,7 +1,10 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.TextNormalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,7 +38,7 @@ class EntityScorerTest {
 
     @BeforeEach
     void setUp() {
-        scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+        scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
     }
 
     @Nested

@@ -200,7 +200,7 @@ class SimilarityConfigIntegrationTest {
         @DisplayName("Default constructor should use default config values")
         void defaultConstructorShouldWork() {
             // GIVEN: JaroWinklerSimilarity with default constructor
-            JaroWinklerSimilarity service = new JaroWinklerSimilarity();
+            JaroWinklerSimilarity service = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
             
             // WHEN: Using the service to compare strings
             double score = service.jaroWinkler("John Smith", "John Smith");
@@ -214,10 +214,11 @@ class SimilarityConfigIntegrationTest {
         @Test
         @DisplayName("Two-arg constructor should use default config values")
         void twoArgConstructorShouldWork() {
-            // GIVEN: JaroWinklerSimilarity with normalizer/filter constructor
+            // GIVEN: JaroWinklerSimilarity with normalizer/filter constructor and explicit config
             JaroWinklerSimilarity service = new JaroWinklerSimilarity(
                 new TextNormalizer(),
-                new PhoneticFilter(true)
+                new PhoneticFilter(true),
+                new SimilarityConfig()
             );
             
             // WHEN: Using the service

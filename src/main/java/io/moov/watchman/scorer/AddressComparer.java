@@ -1,7 +1,10 @@
 package io.moov.watchman.scorer;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.PreparedAddress;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.TextNormalizer;
 
 import java.util.List;
 
@@ -32,7 +35,12 @@ public class AddressComparer {
     // High confidence threshold for early exit (from Go)
     private static final double HIGH_CONFIDENCE_THRESHOLD = 0.92;
     
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+    // TODO: Inject config via constructor when these utilities become Spring-managed beans
+    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity(
+        new TextNormalizer(),
+        new PhoneticFilter(true),
+        new SimilarityConfig()
+    );
     
     /**
      * Compares two prepared addresses using weighted field comparison.

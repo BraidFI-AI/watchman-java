@@ -1,5 +1,6 @@
 package io.moov.watchman.trace;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.search.EntityScorer;
 import io.moov.watchman.search.EntityScorerImpl;
@@ -200,7 +201,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("EntityScorer accepts ScoringContext parameter")
         void entityScorerAcceptsContext() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId
@@ -216,7 +217,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Backward compatibility: old API still works")
         void backwardCompatibilityMaintained() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId
@@ -231,7 +232,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Tracing captures lifecycle phases")
         void tracingCapturesLifecyclePhases() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId to trigger full scoring
@@ -264,7 +265,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Tracing includes score breakdown")
         void tracingIncludesBreakdown() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId
@@ -287,7 +288,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("SimilarityService accepts ScoringContext")
         void similarityServiceAcceptsContext() {
-            SimilarityService service = new JaroWinklerSimilarity();
+            SimilarityService service = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
             ScoringContext ctx = ScoringContext.disabled();
             
             assertDoesNotThrow(() -> {
@@ -299,7 +300,7 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("SimilarityService backward compatibility")
         void similarityServiceBackwardCompatibility() {
-            SimilarityService service = new JaroWinklerSimilarity();
+            SimilarityService service = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
             
             // Old API without context must still work
             assertDoesNotThrow(() -> {
@@ -317,7 +318,7 @@ class TracingMergeValidationTest {
         @Disabled("Performance benchmarks are too flaky for CI - use JMH for real benchmarking")
         @DisplayName("Disabled context has minimal overhead")
         void disabledContextMinimalOverhead() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             
             Person queryPerson = new Person("John Smith", List.of(), null, LocalDate.of(1980, 1, 1), null, null,
                     List.of(), List.of());

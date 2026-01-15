@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.PreparedFields;
 
@@ -19,7 +20,12 @@ public class NameScorer {
     /**
      * Shared JaroWinkler instance for name comparisons.
      */
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+    // TODO: Inject config via constructor when these utilities become Spring-managed beans
+    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity(
+        new TextNormalizer(),
+        new PhoneticFilter(true),
+        new SimilarityConfig()
+    );
     
     /**
      * Threshold for early exit optimization.

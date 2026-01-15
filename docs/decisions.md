@@ -423,3 +423,24 @@
 **Impact**: Documentation maintains technical credibility without promotional framing.
 
 ---
+
+### 2026-01-15: Remove Fallback Constructors from JaroWinklerSimilarity
+
+**Decision**: Removed no-arg and 2-arg constructors from JaroWinklerSimilarity. Only the 3-arg constructor `JaroWinklerSimilarity(TextNormalizer, PhoneticFilter, SimilarityConfig)` remains, with null check throwing IllegalArgumentException.
+
+**Rationale**: User required strictest enforcement: "remove any opportunity for fall back to hard coded values. ScoreConfig must be set or it fails." Fail-fast behavior at application startup preferred over silent runtime defaults.
+
+**Implementation**: 
+- Updated 7 production files: AddressComparer, AffiliationComparer, NameScorer, SupportingInfoComparer, JaroWinklerWithFavoritism, TitleMatcher, DebugScoring
+- Updated 19 test files to use 3-arg constructor with explicit new SimilarityConfig()
+- Created RequiredConfigTest (5 tests) to enforce policy via reflection
+- All static utility classes marked with TODO comments for future Spring DI refactoring
+
+**Impact**: 
+- Config injection now mandatory - impossible to create JaroWinklerSimilarity without config
+- Application fails at startup (not runtime) if config misconfigured
+- Test suite: 1,206 tests (1,196 passing + 5 new + 8 pre-existing failures)
+
+**Tradeoff**: Static utility classes cannot participate in Spring DI without architectural refactoring. They instantiate new SimilarityConfig() locally. Accepted as known technical debt with inline documentation for future work.
+
+---

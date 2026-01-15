@@ -1,9 +1,12 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.index.EntityIndex;
 import io.moov.watchman.index.InMemoryEntityIndex;
 import io.moov.watchman.model.*;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.TextNormalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,7 +29,7 @@ class SearchServiceTest {
     @BeforeEach
     void setUp() {
         entityIndex = new InMemoryEntityIndex();
-        EntityScorer entityScorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+        EntityScorer entityScorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
         searchService = new SearchServiceImpl(entityIndex, entityScorer);
         
         // Add test data

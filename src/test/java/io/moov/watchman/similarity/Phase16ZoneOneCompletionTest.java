@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.search.ContactFieldAdapter;
 import io.moov.watchman.search.ContactFieldMatch;
@@ -823,7 +824,7 @@ class Phase16ZoneOneCompletionTest {
             StringWriter writer = new StringWriter();
             double debugScore = DebugScoring.debugSimilarity(writer, query, index);
             
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity());
+            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double normalScore = scorer.scoreWithBreakdown(query, index, ScoringContext.disabled())
                     .totalWeightedScore();
             

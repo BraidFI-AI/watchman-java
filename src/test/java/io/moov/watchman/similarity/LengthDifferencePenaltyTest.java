@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,7 @@ class LengthDifferencePenaltyTest {
     void setUp() {
         TextNormalizer normalizer = new TextNormalizer();
         PhoneticFilter phoneticFilter = new PhoneticFilter();
-        similarity = new JaroWinklerSimilarity(normalizer, phoneticFilter);
+        similarity = new JaroWinklerSimilarity(normalizer, phoneticFilter, new SimilarityConfig());
     }
 
     @Test

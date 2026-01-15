@@ -1,7 +1,9 @@
 package io.moov.watchman.config;
 
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
 import io.moov.watchman.similarity.SimilarityService;
+import io.moov.watchman.similarity.TextNormalizer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,7 +85,7 @@ class WatchmanConfigIntegrationTest {
         double score1 = jw.jaroWinkler("John", "Jonathan");
         
         // Now test with a fresh instance using default config (0.3 penalty)
-        JaroWinklerSimilarity jwDefault = new JaroWinklerSimilarity();
+        JaroWinklerSimilarity jwDefault = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
         double score2 = jwDefault.jaroWinkler("John", "Jonathan");
         
         // The scores should be DIFFERENT if config is being used

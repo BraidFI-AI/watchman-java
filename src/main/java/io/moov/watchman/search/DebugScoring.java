@@ -1,8 +1,11 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.TextNormalizer;
 import io.moov.watchman.trace.ScoringContext;
 
 import java.io.IOException;
@@ -50,7 +53,12 @@ public class DebugScoring {
      */
     public static double debugSimilarity(Writer w, Entity query, Entity index) {
         // Get detailed score breakdown using EntityScorerImpl
-        EntityScorer scorer = new EntityScorerImpl(new io.moov.watchman.similarity.JaroWinklerSimilarity());
+        // TODO: Inject config via constructor when these utilities become Spring-managed beans
+        EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(
+            new TextNormalizer(),
+            new PhoneticFilter(true),
+            new SimilarityConfig()
+        ));
         ScoreBreakdown breakdown = scorer.scoreWithBreakdown(query, index, ScoringContext.disabled());
         
         debug(w, "=== Debug Similarity ===\n");

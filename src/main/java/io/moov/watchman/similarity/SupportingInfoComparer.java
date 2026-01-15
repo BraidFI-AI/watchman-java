@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.HistoricalInfo;
 import io.moov.watchman.model.SanctionsInfo;
@@ -14,7 +15,12 @@ import java.util.List;
  */
 public class SupportingInfoComparer {
 
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+    // TODO: Inject config via constructor when these utilities become Spring-managed beans
+    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity(
+        new TextNormalizer(),
+        new PhoneticFilter(true),
+        new SimilarityConfig()
+    );
 
     /**
      * Aggregates supporting information comparison (sanctions + historical).

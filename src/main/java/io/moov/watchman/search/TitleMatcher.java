@@ -1,5 +1,9 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.config.SimilarityConfig;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.TextNormalizer;
+
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -110,8 +114,13 @@ public class TitleMatcher {
     private static final double ABBREVIATION_THRESHOLD = 0.92; // Early exit threshold
     
     // JaroWinkler instance for similarity calculations
+    // TODO: Inject config via constructor when these utilities become Spring-managed beans
     private static final io.moov.watchman.similarity.JaroWinklerSimilarity jaroWinkler = 
-            new io.moov.watchman.similarity.JaroWinklerSimilarity();
+            new io.moov.watchman.similarity.JaroWinklerSimilarity(
+                new TextNormalizer(),
+                new PhoneticFilter(true),
+                new SimilarityConfig()
+            );
 
     /**
      * Calculate similarity score between two normalized titles using Jaro-Winkler

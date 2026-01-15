@@ -1,6 +1,9 @@
 package io.moov.watchman.scoring;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.TextNormalizer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,7 +28,12 @@ import java.util.List;
 public class JaroWinklerWithFavoritism {
 
     private static final int ADJACENT_SIMILARITY_POSITIONS = 3;
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+    // TODO: Inject config via constructor when these utilities become Spring-managed beans
+    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity(
+        new TextNormalizer(),
+        new PhoneticFilter(true),
+        new SimilarityConfig()
+    );
 
     /**
      * Calculates Jaro-Winkler similarity with exact match favoritism.

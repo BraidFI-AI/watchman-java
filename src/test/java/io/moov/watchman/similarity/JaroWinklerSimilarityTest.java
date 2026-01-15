@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,7 +24,7 @@ class JaroWinklerSimilarityTest {
 
     @BeforeEach
     void setUp() {
-        similarityService = new JaroWinklerSimilarity();
+        similarityService = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
     }
 
     @Nested

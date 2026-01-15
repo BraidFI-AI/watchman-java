@@ -1,9 +1,12 @@
 package io.moov.watchman.scorer;
 
+import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.Affiliation;
 import io.moov.watchman.search.AffiliationMatcher;
 import io.moov.watchman.search.ScorePiece;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.TextNormalizer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,7 +24,12 @@ public class AffiliationComparer {
     private static final double AFFILIATION_NAME_THRESHOLD = 0.85;
     private static final double EXACT_MATCH_THRESHOLD = 0.95;
 
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
+    // TODO: Inject config via constructor when these utilities become Spring-managed beans
+    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity(
+        new TextNormalizer(),
+        new PhoneticFilter(true),
+        new SimilarityConfig()
+    );
 
     /**
      * Compares query and index affiliation lists.

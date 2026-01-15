@@ -39,30 +39,21 @@ public class JaroWinklerSimilarity implements SimilarityService {
     ));
 
     /**
-     * Default constructor - creates config with default values.
-     * Used for backward compatibility.
-     */
-    public JaroWinklerSimilarity() {
-        this(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
-    }
-
-    /**
-     * Constructor for testing - allows injecting normalizer and filter.
-     * Creates config with default values.
-     */
-    public JaroWinklerSimilarity(TextNormalizer normalizer, PhoneticFilter phoneticFilter) {
-        this(normalizer, phoneticFilter, new SimilarityConfig());
-    }
-
-    /**
-     * Full constructor with configuration injection.
-     * This is the recommended constructor for production use via Spring DI.
+     * Constructor with configuration injection - REQUIRED.
+     * Config must be explicitly provided - no fallback to hardcoded defaults.
+     * 
+     * This enforces fail-fast behavior: if config is misconfigured,
+     * the application fails at startup rather than silently using defaults.
      *
      * @param normalizer Text normalizer
      * @param phoneticFilter Phonetic filter for pre-filtering
-     * @param config Similarity configuration with all tunable parameters
+     * @param config Similarity configuration with all tunable parameters (REQUIRED)
+     * @throws IllegalArgumentException if config is null
      */
     public JaroWinklerSimilarity(TextNormalizer normalizer, PhoneticFilter phoneticFilter, SimilarityConfig config) {
+        if (config == null) {
+            throw new IllegalArgumentException("SimilarityConfig is required - no fallback to hardcoded defaults");
+        }
         this.normalizer = normalizer;
         this.phoneticFilter = phoneticFilter;
         this.config = config;

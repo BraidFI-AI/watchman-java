@@ -1,5 +1,6 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,7 @@ public class BestPairCombinationJaroWinklerTest {
 
     @BeforeEach
     void setUp() {
-        similarity = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true));
+        similarity = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
     }
 
     @Nested

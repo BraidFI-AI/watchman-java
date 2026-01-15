@@ -271,3 +271,25 @@
 - Optimal word count ceiling for reference docs (currently ~1,300 words)
 
 ---
+
+## Session: January 15, 2026 (Configuration Enforcement)
+
+### What We Decided
+- Removed no-arg and 2-arg constructors from JaroWinklerSimilarity to prevent silent fallback to hardcoded defaults
+- Enforced strict config injection: only 3-arg constructor remains with null check throwing IllegalArgumentException
+- Fixed 7 production files and 19 test files to use explicit SimilarityConfig
+- Created RequiredConfigTest to enforce no-fallback policy via reflection
+
+### What Is Now True
+- JaroWinklerSimilarity requires explicit SimilarityConfig injection - no silent defaults
+- Constructor throws IllegalArgumentException if config is null (fail-fast at startup)
+- Static utility classes (AddressComparer, AffiliationComparer, NameScorer, SupportingInfoComparer, JaroWinklerWithFavoritism, TitleMatcher, DebugScoring) instantiate SimilarityConfig locally with TODO comments
+- RequiredConfigTest validates: no no-arg constructor exists, Spring has one config bean, WatchmanConfig injects correctly, creating without config fails
+- All 1,206 tests compile and run (8 pre-existing failures unrelated to this work)
+- Test suite: 1,196 passing + 5 new RequiredConfigTest tests + 8 pre-existing failures = 1,206 total
+
+### What Is Still Unknown
+- When to refactor static utility classes to participate in Spring dependency injection
+- Whether to add config validation annotations (JSR-303) for parameter bounds checking
+
+---
