@@ -20,6 +20,9 @@
 - RequiredConfigTest validates: no no-arg constructor exists, Spring has one config bean, WatchmanConfig injects correctly, creating without config fails
 - All 1,206 tests compile and run (8 pre-existing failures unrelated to this work)
 - Test suite: 1,196 passing + 5 new RequiredConfigTest tests + 8 pre-existing failures = 1,206 total
+- **Production deployment verified**: ECS task definition revision 44, deployed 2026-01-15 11:01 AM PST
+- **Scoring verified working**: Taliban=1.0 (exact), Maduro fuzzy matching operational, 18,535 entities loaded
+- **Config enforcement confirmed**: Application started successfully proving mandatory injection working (no startup failures)
 
 ### What Is Still Unknown
 - When to refactor static utility classes to participate in Spring dependency injection
