@@ -249,3 +249,25 @@
 - Compliance risk assessment from Braid's legal/risk team
 
 ---
+
+## Session: January 14, 2026 (Evening - Documentation Refactoring)
+
+### What We Decided
+- Refactored 15 docs to change note format (max 350 words): nemesis.md, scoreconfig.md, scoretrace.md, trace_integration.md, test_coverage.md, error_handling.md, api_reference_generation.md, go_java_comparison_procedure.md, aws_deployment.md, braid_migration_plan.md, java_improvements.md, agent-close.md
+- Exempted reference docs from word limit: api_spec.md (1,373 words) and scripts.md (1,325 words) remain comprehensive with full examples
+- Removed salesy language from taliban_analysis.md (innovation, gold standard, strategic shift → factual descriptions)
+- Deleted divergence_evidence.md per user request
+
+### What Is Now True
+- All feature/operational docs use change note format: Summary, Scope, Design notes, How to validate, Assumptions and open questions
+- api_spec.md contains full request/response examples, parameter tables, error formats (developer reference)
+- scripts.md contains complete script catalog with usage examples, parameters, output samples (developer reference)
+- taliban_analysis.md uses factual technical language (no promotional framing)
+- Documentation follows "engineers reviewing code" audience (not executives/customers)
+- agent-startup.md session goal updated to reflect documentation refactoring work
+
+### What Is Still Unknown
+- Whether additional docs need reference format treatment (currently only api_spec.md and scripts.md)
+- Optimal word count ceiling for reference docs (currently ~1,300 words)
+
+---

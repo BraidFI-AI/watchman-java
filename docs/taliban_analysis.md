@@ -8,14 +8,14 @@
 
 Initially, the goal was to ensure Java Watchman matched Go Watchman's behavior across all test cases—the assumption being that Go, as the more mature codebase, represented the "correct" implementation. However, after building the foundation (Phases 1-3: static scenarios, configurable targets, Faker integration), we questioned whether replicating Go's behavior might also replicate potential bugs.
 
-**The ScoreTrace Innovation:**  
-To debug scoring differences, we implemented **ScoreTrace**—a detailed breakdown of how Java Watchman calculates similarity scores. Using `?trace=true`, we could see exactly which components (name, address, altNames, etc.) contributed to the final score and why certain matches scored higher than others. This transparency would prove critical in understanding the Taliban case.
+**ScoreTrace Implementation:**  
+To debug scoring differences, we implemented ScoreTrace—a detailed breakdown of how Java Watchman calculates similarity scores. Using `?trace=true`, the system captures which components (name, address, altNames, etc.) contributed to the final score. This capability was necessary for analyzing the Taliban case.
 
-**The Real-World Validation Approach:**  
-Rather than just comparing Java to Go in isolation, we decided to integrate with **Braid's Customer/Counterparty creation API**—a real-world fintech platform using Go Watchman for production OFAC screening. If a customer passes screening in Braid, they can transact. If they're blocked, they cannot. This raised the stakes: we weren't just comparing scores, we were testing whether sanctioned entities could slip through the cracks.
+**Validation Approach:**  
+We integrated with Braid's Customer/Counterparty creation API—a fintech platform using Go Watchman for production OFAC screening. Customer screening status determines transaction capability: passed screening allows transactions, blocked screening prevents them. This tests whether sanctioned entities pass through the screening system.
 
-**The Ground Truth Problem:**  
-When Java and Go produced different results, which one is correct? We needed an independent authority. Enter **OFAC-API**—a **commercial OFAC screening provider** (api.ofac-api.com) with no affiliation to Moov. This became our **new ground truth**: if Java and Go disagree, OFAC-API's scoring would determine which implementation is correct. This marked a strategic shift from "achieve feature parity with Go" to "achieve accuracy against commercial gold standard."
+**Reference Standard Selection:**  
+When Java and Go produced different results, an independent reference was required. OFAC-API (api.ofac-api.com) is a commercial OFAC screening provider with no affiliation to Moov. OFAC-API serves as the reference standard: when Java and Go disagree, OFAC-API's scoring determines correctness. Testing objective changed from "achieve feature parity with Go" to "achieve accuracy against commercial reference."
 
 ### Test Architecture
 
@@ -39,15 +39,15 @@ When Java and Go produced different results, which one is correct? We needed an 
 - Behavior: Creates customers, screens via internal Go Watchman, returns BLOCKED or ACTIVE status
 - Authentication: Product ID 5662271, sandbox credentials
 
-**OFAC-API (Commercial Gold Standard):**
+**OFAC-API (Commercial Reference):**
 - Endpoint: `api.ofac-api.com/v4`
-- Provider: **Commercial OFAC screening service** (not affiliated with Moov)
-- Purpose: **Independent ground truth** for validating both Java and Go implementations
+- Provider: Commercial OFAC screening service (not affiliated with Moov)
+- Purpose: Independent reference for validating both Java and Go implementations
 - Role: When Java and Go disagree, OFAC-API determines which is correct
-- **Strategic Shift**: Replaced Go as the reference standard for Nemesis validation
+- Status: Replaced Go as the reference standard for Nemesis validation
 - API Key: Stored in AWS Secrets Manager and Fly.io secrets for production deployments
 
-### The Discovery
+### Test Results
 
 During Phase 4 (Braid API integration), we created two test customers:
 
@@ -64,17 +64,17 @@ Putin being blocked proved Braid's screening works. But Taliban—also on the SD
 | **Java Watchman** | "TALIBAN ORGANIZATION" | ✅ FOUND | 0.913 (91.3%) |
 | **Go Watchman** | "TALIBAN ORGANIZATION" | ❌ NOT FOUND | Not in top 10 |
 
-### The Implication
+### Impact
 
-This is a **critical compliance gap**: If a customer signs up as "Taliban Organization," Go Watchman will not flag them, allowing a sanctioned entity to create accounts and transact. The algorithm difference isn't academic—it has real-world regulatory and risk consequences.
+If a customer signs up as "Taliban Organization," Go Watchman will not flag them, allowing a sanctioned entity to create accounts and transact. The algorithm difference has regulatory and compliance consequences.
 
-This document provides mathematical proof of why Go missed Taliban while Java correctly identified it, enabling Braid's engineering team to understand the root cause and assess whether this affects other entities.
+This document provides mathematical analysis of why Go missed Taliban while Java identified it, enabling assessment of whether this affects other entities.
 
 ## Test Methodology
 
 ### 1. Initial Discovery via Braid API Integration
 
-We integrated Java Watchman's Nemesis testing tool with Braid's Customer/Counterparty creation sandbox API to validate real-world OFAC screening. These were **actual API calls creating real customers** in Braid's sandbox environment, not theoretical tests.
+We integrated Java Watchman's Nemesis testing tool with Braid's Customer/Counterparty creation sandbox API to test OFAC screening. These were API calls creating customers in Braid's sandbox environment.
 
 **Braid Sandbox Configuration:**
 - API Endpoint: `https://api.sandbox.braid.zone`
@@ -139,7 +139,7 @@ After creating both customers via API, we inspected the Braid dashboard:
    - OFAC Screening: No match found
    - System Behavior: **Can create transactions** - incorrectly allowed ❌
 
-**The Smoking Gun:** Putin was correctly blocked by Braid's Go Watchman, proving the screening system works. But Taliban Organization—also on the SDN list—was NOT blocked. This contrast triggered our investigation into why Go Watchman missed Taliban while catching Putin.
+**Observation:** Putin was blocked by Braid's Go Watchman. Taliban Organization—also on the SDN list—was not blocked. This result triggered investigation into why Go Watchman missed Taliban while catching Putin.
 
 ### 2. Direct API Testing
 
@@ -178,7 +178,7 @@ curl "https://watchman-go.fly.dev/v2/search?name=TALIBAN+ORGANIZATION"
 # Top match: "TEHRAN PRISONS ORGANIZATION" (score 0.538)
 ```
 
-**OFAC-API (Commercial Gold Standard):**
+**OFAC-API (Commercial Reference):**
 ```bash
 curl -X POST "https://api.ofac-api.com/v4/screen" \
   -H "Content-Type: application/json" \
@@ -326,11 +326,11 @@ Armed with the 0.913 score, we analyzed the source code to reverse-engineer the 
 
 **Final Score: 0.538** ❌ (below threshold 0.85)
 
-### OFAC-API (Commercial Gold Standard)
+### OFAC-API (Commercial Reference)
 
-**Result:** Score 100 - Perfect match
+**Result:** Score 100
 
-The commercial provider correctly identifies "TALIBAN" entity as a strong match for "TALIBAN ORGANIZATION".
+The commercial provider identifies "TALIBAN" entity as a match for "TALIBAN ORGANIZATION".
 
 ## Root Cause
 
@@ -345,19 +345,19 @@ When query = "taliban organization" (19 chars) but index = "taliban" (7 chars):
 - Full string: 0.78 (good partial match)
 - Blend: 60% token + 40% full = 91.3%
 
-## Why Java is Correct
+## Analysis
 
-1. **OFAC-API Agreement:** The commercial gold standard finds this match
-2. **Semantic Intent:** "Taliban Organization" clearly refers to the Taliban entity (SDN 6636)
-3. **Compliance Risk:** Missing this match is a regulatory failure
-4. **Real-World Impact:** Braid's Go-based screening allowed Taliban Organization customer (ID 18845252) to be created with ACTIVE status instead of blocking it
+1. **OFAC-API Agreement:** The commercial reference finds this match
+2. **Semantic Match:** "Taliban Organization" refers to the Taliban entity (SDN 6636)
+3. **Compliance Risk:** Missing this match creates regulatory risk
+4. **Observed Impact:** Braid's Go-based screening allowed Taliban Organization customer (ID 18845252) to be created with ACTIVE status
 
 ## Recommendation
 
-**Do NOT "fix" Java to match Go's behavior.** Go's algorithm has a bug that causes false negatives. Java's algorithm correctly identifies the match and aligns with commercial OFAC-API results.
+Do not modify Java to match Go's behavior. Go's algorithm produces false negatives. Java's algorithm identifies the match and aligns with commercial OFAC-API results.
 
 **Action Items:**
-1. Use OFAC-API as the gold standard for validation (not Go)
+1. Use OFAC-API as the reference standard for validation (not Go)
 2. Consider filing a bug report on Go's scoring algorithm
 3. Continue using Java's scoring for Braid integration
 4. Run Nemesis systematically to identify other divergences

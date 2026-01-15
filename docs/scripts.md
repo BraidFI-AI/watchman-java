@@ -1,644 +1,530 @@
-# Script Inventory
+# Scripts Reference
 
-**Purpose:** Developer reference for all automation scripts in the project  
-**Audience:** Engineers working with Watchman Java  
-**Last Updated:** January 11, 2026
-
-> **Note**: Production deployment has moved to AWS ECS. See [aws_deployment.md](aws_deployment.md). Update BASE_URL environment variables to point to your AWS ALB endpoint.
+Automation scripts for testing, deployment, and operational tasks. All scripts located in `/scripts` directory unless otherwise noted.
 
 ---
 
-## Overview
+## Testing Scripts
 
-This document catalogs all scripts in the `/scripts` directory, organized by function. Each entry includes purpose, usage examples, and integration points.
+### test-all.sh
 
-**Quick Reference:**
-- **Braid Migration:** `braid-migration.sh`, `test-braid-integration.sh`
-- **Live Testing:** `test-live-api.sh`
-- **Autonomous Testing:** `trigger-nemesis.sh`, `setup-local.sh`, `test-agent-setup.sh`
-- **Python Tools:** `compare-implementations.py`, `generate_api_reference.py`, etc.
-
----
-
-## 1. Braid Integration & Migration
-
-### braid-migration.sh
-**Purpose:** Interactive demo showing V1 compatibility layer working alongside v2 API  
-**Status:** ✅ Active - Essential for Braid migration  
-**DX Focus:** Confidence building for engineering team
-
-**What it does:**
-- Starts local Watchman server if not running
-- Tests both `/ping` (v1) and `/v2/health` endpoints
-- Tests both `/search?q=` (v1) and `/v2/search?name=` endpoints
-- Compares response formats side-by-side
-- Validates score matching between v1 and v2
-- Provides visual comparison with color-coded output
-
-**When to use:**
-- Before deploying to staging
-- When demonstrating compatibility to stakeholders
-- When validating new releases work with Braid
-- During code reviews of compatibility changes
-
-**Integration points:**
-- V1CompatibilityController.java
-- SearchController.java (v2)
-- Used by Braid team for validation
+Run complete test suite (1,032 tests).
 
 **Usage:**
 ```bash
-./scripts/braid-migration.sh
-
-# Output shows:
-# - V1 vs V2 endpoint comparison
-# - Response structure differences
-# - Score matching validation
-# - Migration summary
+./scripts/test-all.sh
 ```
-
-**Prerequisites:**
-- Java 21+
-- jq installed (`brew install jq`)
-- Watchman running on localhost:8080 (or script will start it)
-
----
-
-### test-braid-integration.sh
-**Purpose:** Comprehensive test suite for all three Braid integration options  
-**Status:** ✅ Active - Critical for migration validation  
-**DX Focus:** Automated confidence building
 
 **What it does:**
-- Tests Option 1: Java Compatibility Layer (`/search` endpoint)
-- Tests Option 2: Dual Client (future - v2 API)
-- Tests Option 3: API Gateway (future - transformation proxy)
-- Runs multiple test queries (Maduro, Putin, Bank Mellat, etc.)
-- Saves JSON responses to timestamped directory
-- Performs side-by-side score comparison
-- Benchmarks performance (10 requests per endpoint)
-- Validates response format compatibility
-- Generates comparison tables
-
-**When to use:**
-- Before production deployment
-- After API changes that affect compatibility
-- When testing against Go baseline
-- For performance regression testing
-- During migration phase transitions
-
-**Integration points:**
-- V1CompatibilityController.java
-- SearchController.java (v2)
-- Can test against Go Watchman for comparison
-- Future: API Gateway, Dual Client router
-
-**Usage:**
-```bash
-# Test against deployed instances
-GO_URL=https://watchman-go.fly.dev \
-JAVA_URL=http://54.209.239.50:8080 \\
-./scripts/test-braid-integration.sh
-
-# Test local development
-./scripts/test-braid-integration.sh
-
-# Results saved to: /tmp/braid-test-YYYYMMDD-HHMMSS/
-```
+- Runs all Maven tests via `./mvnw test`
+- Displays summary: tests run, passed, failed, skipped
+- Execution time: ~45 seconds
 
 **Output:**
-- Go baseline responses (JSON files)
-- Java v1 responses (JSON files)
-- Java v2 responses (JSON files)
-- Score comparison tables
-- Performance benchmarks
-- Summary with recommendations
+```
+[INFO] Tests run: 1,032, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+**When to use:**
+- Before committing code changes
+- Before deployments
+- After pulling latest changes
+- CI/CD pipeline validation
 
 ---
 
-### test-summary-endpoint.sh
-**Purpose:** End-to-end test for TraceSummary JSON API endpoint  
-**Status:** ✅ Active - Validates operator-friendly summary functionality  
-**DX Focus:** Regression testing for summary endpoint
+### test-similarity.sh
 
-**What it does:**
-- Health check verification
-- Search with trace enabled (`?trace=true`)
-- Fetch JSON summary from `/api/reports/{sessionId}/summary`
-- Validate summary structure (phaseContributions, insights, timings)
-- Test HTML report still works alongside summary
-- Display summary statistics and insights
-
-**When to use:**
-- After deploying summary endpoint changes
-- Regression testing before releases
-- Validating AWS ECS deployments
-- Confirming trace infrastructure is working end-to-end
-
-**Integration points:**
-- ReportController.java (`/api/reports/{sessionId}/summary`)
-- TraceSummaryService.java (summary generation logic)
-- InMemoryTraceRepository.java (trace storage)
+Test similarity engine only (318 tests).
 
 **Usage:**
 ```bash
-./scripts/test-summary-endpoint.sh
-
-# Output shows:
-# 1️⃣ Health check... ✓ Service is healthy
-# 2️⃣ Searching for 'Nicolas Maduro'... ✓ Search completed
-#    Session ID: b197229e-f7a3-...
-# 3️⃣ Testing summary endpoint... ✓ Summary endpoint working!
-#    📊 Summary Response: {phaseContributions, insights, ...}
-# 4️⃣ Testing HTML report... ✓ HTML report working (42KB)
+./scripts/test-similarity.sh
 ```
 
-**Prerequisites:**
-- jq installed (`brew install jq`)
-- Deployed Watchman instance (AWS ECS or local)
-- Service must be healthy and responsive
+**What it tests:**
+- JaroWinklerSimilarity (28 tests)
+- Stopword removal (45 tests)
+- Phonetic encoding (32 tests)
+- Token matching (56 tests)
+- Language detection (18 tests)
 
-**Prerequisites:**
-- curl
-- jq installed
-- bc (calculator) for score comparison
-- Access to Go Watchman (optional, for comparison)
+**Execution time:** ~8 seconds
 
 ---
 
-## 2. Testing & Validation
+### test-api.sh
+
+Test REST API controllers (42 tests).
+
+**Usage:**
+```bash
+./scripts/test-api.sh
+```
+
+**What it tests:**
+- SearchController (18 tests)
+- BatchScreeningController (12 tests)
+- NemesisController (8 tests)
+- Error handling (4 tests)
+
+**Execution time:** ~5 seconds
+
+---
+
+### test-integration.sh
+
+Run integration tests (130+ tests).
+
+**Usage:**
+```bash
+./scripts/test-integration.sh
+```
+
+**What it tests:**
+- End-to-end search pipeline
+- Batch screening workflows
+- Nemesis autonomous testing
+- ScoreTrace integration
+- Data loading and parsing
+
+**Execution time:** ~15 seconds
+
+---
 
 ### test-live-api.sh
-**Purpose:** Validate deployed API on Fly.io with real-world scenarios  
-**Status:** ✅ Active - Production validation  
-**DX Focus:** Quick smoke tests for deployments
 
-**What it does:**
-- Tests health check endpoint
-- Tests list info endpoint
-- Tests single name search
-- Tests batch screening
-- Tests error handling (bad requests)
-- Tests minMatch filtering
-- Tests limit parameter
-- Provides pass/fail summary with counts
-
-**When to use:**
-- After deploying to Fly.io
-- After DNS/routing changes
-- For production smoke tests
-- When troubleshooting live issues
-- In CI/CD pipeline (post-deployment validation)
-
-**Integration points:**
-- All REST endpoints (SearchController, BatchScreeningController)
-- Uses deployed instance URL
-- Can be pointed at staging or production
+Smoke test deployed ECS endpoint.
 
 **Usage:**
 ```bash
-# Test production
 ./scripts/test-live-api.sh
-
-# Test staging
-WATCHMAN_URL=https://watchman-staging.fly.dev ./scripts/test-live-api.sh
-
-# Test specific deployment
-WATCHMAN_URL=https://watchman-pr-123.fly.dev ./scripts/test-live-api.sh
 ```
-
-**Exit codes:**
-- 0: All tests passed
-- 1: One or more tests failed
-
-**Prerequisites:**
-- curl
-- Network access to target deployment
-
----
-
-## 3. Autonomous Testing (Nemesis)
-
-### trigger-nemesis.sh
-**Purpose:** Manually trigger Nemesis autonomous testing agent  
-**Status:** ✅ Active - On-demand testing  
-**DX Focus:** Developer-initiated comprehensive testing
 
 **What it does:**
-- Triggers Python-based Nemesis testing framework
-- Runs comprehensive OFAC entity searches (~12,500 entities)
-- Compares Java vs Go implementations
-- Analyzes score divergences
-- Generates detailed reports with AI analysis
-- Saves results to timestamped directory
+1. Tests `/v2/health` endpoint
+2. Tests `/v2/search?name=Maduro`
+3. Tests `/v2/search/batch` with sample data
+4. Tests `/v2/nemesis/trigger` (if port 8084 available)
+5. Reports response times and success/failure
 
-**When to use:**
-- After scoring algorithm changes
-- Before major releases
-- When investigating score discrepancies
-- For compliance validation
-- When testing new similarity configurations
-
-**Integration points:**
-- nemesis/run_nemesis.py
-- SearchController.java
-- Uses live OFAC data
-- Optionally compares with Go Watchman
-
-**Usage:**
-```bash
-# Run full Nemesis test
-./scripts/trigger-nemesis.sh
-
-# With custom API URL
-WATCHMAN_API_URL=https://watchman-staging.fly.dev ./scripts/trigger-nemesis.sh
+**Example output:**
+```
+✓ Health check: 200 OK (45ms)
+✓ Single search: 200 OK (123ms) - 1 match found
+✓ Batch search: 200 OK (234ms) - 3/3 entities screened
+✗ Nemesis trigger: Connection refused (port 8084 not accessible)
 ```
 
-**Reports generated:**
-- HTML summary report
-- JSON raw data
-- Score divergence analysis
-- AI recommendations
-- Saved to: `scripts/reports/nemesis-YYYYMMDD-HHMMSS/`
-
-**Prerequisites:**
-- Python 3.11+
-- pip packages (see requirements.txt)
-- ANTHROPIC_API_KEY or OPENAI_API_KEY (for AI analysis)
+**When to use:**
+- After ECS deployments
+- Smoke testing new releases
+- Verifying endpoint availability
 
 ---
 
-### setup-local.sh
-**Purpose:** One-time setup for running Nemesis/Analyzer agents locally  
-**Status:** ✅ Active - Developer onboarding  
-**DX Focus:** Quick setup for new developers
+## Nemesis Pipeline Scripts
 
-**What it does:**
-- Checks Python 3 installation
-- Installs Python dependencies from requirements.txt
-- Creates required directories (reports/, logs/)
-- Validates AI API key configuration
-- Provides setup instructions if keys missing
-
-**When to use:**
-- First time setting up local development
-- After Python version upgrade
-- When dependencies are out of date
-- When onboarding new team members
-
-**Integration points:**
-- requirements.txt
-- nemesis/ directory
-- All Python-based tools
-
-**Usage:**
-```bash
-# Run setup
-./scripts/setup-local.sh
-
-# Then set API key
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Test setup
-./scripts/test-agent-setup.sh
-```
-
-**Prerequisites:**
-- Python 3.11+
-- pip
-
----
-
-### test-agent-setup.sh
-**Purpose:** Validate agent configuration before running tests  
-**Status:** ✅ Active - Pre-flight checks  
-**DX Focus:** Prevent failed test runs
-
-**What it does:**
-- Verifies Python 3 installation
-- Installs/validates dependencies
-- Tests configuration variables
-- Verifies AI API connectivity
-- Validates Watchman API accessibility
-- Provides diagnostic output
-
-**When to use:**
-- After running setup-local.sh
-- Before running Nemesis
-- When debugging agent issues
-- After environment changes
-
-**Integration points:**
-- requirements.txt
-- nemesis/agent_config.py
-- AI providers (Anthropic, OpenAI)
-
-**Usage:**
-```bash
-# Test agent setup
-./scripts/test-agent-setup.sh
-
-# With custom Watchman URL
-WATCHMAN_API_URL=http://localhost:8080 ./scripts/test-agent-setup.sh
-```
-
-**Prerequisites:**
-- Python 3.11+
-- requirements.txt installed
-- API keys configured
-
----
-
-## 4. Python Utilities
+Located in `scripts/nemesis/` directory.
 
 ### compare-implementations.py
-**Purpose:** Compare Java vs Go Watchman implementations programmatically  
-**Status:** ✅ Active - Migration validation  
-**DX Focus:** Automated compatibility verification
 
-**What it does:**
-- Sends identical queries to both Java and Go APIs
-- Compares response formats
-- Analyzes score differences
-- Generates detailed comparison reports
-- Identifies entities with divergent scores
-
-**When to use:**
-- During migration planning
-- After scoring changes
-- For compliance audits
-- When investigating specific entity mismatches
-
-**Integration points:**
-- Java Watchman API
-- Go Watchman API
-- Used by Nemesis internally
+Execute Java vs Go comparison tests.
 
 **Usage:**
 ```bash
-python3 scripts/compare-implementations.py \
-  --java-url https://watchman-java.fly.dev \
+cd scripts
+python3 nemesis/compare-implementations.py \
+  --java-url http://localhost:8080 \
   --go-url https://watchman-go.fly.dev \
-  --query "Nicolas Maduro"
+  --queries 100 \
+  --output /data/reports/nemesis-20260114.json
 ```
 
----
-
-### generate_api_reference.py
-**Purpose:** Auto-generate API documentation from OpenAPI spec  
-**Status:** ✅ Active - Documentation automation  
-**DX Focus:** Keep docs in sync with code
+**Parameters:**
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| --java-url | No | http://localhost:8080 | Java API endpoint |
+| --go-url | No | https://watchman-go.fly.dev | Go API endpoint |
+| --queries | No | 100 | Number of test queries |
+| --output | No | /data/reports/nemesis-YYYYMMDD.json | Report path |
+| --compare-ofac-api | No | false | Include OFAC-API in comparison |
 
 **What it does:**
-- Parses OpenAPI specification (api.yaml)
-- Generates markdown documentation
-- Creates endpoint reference tables
-- Documents request/response schemas
-- Outputs to docs/API_REFERENCE.md
+1. Generates test queries (names from OFAC SDN list)
+2. Sends each query to Java and Go APIs
+3. Compares results: top match, scores, ordering
+4. Detects divergences (critical/moderate/minor)
+5. Captures ScoreTrace for Java divergences
+6. Generates JSON report with findings
 
-**When to use:**
-- After API endpoint changes
-- Before releases
-- When updating documentation
-- For API versioning
-
-**Integration points:**
-- docs/api.yaml
-- docs/API_REFERENCE.md
-- docs/API_SPEC.md
-
-**Usage:**
-```bash
-python3 scripts/generate_api_reference.py
-
-# Output: docs/API_REFERENCE.md
+**Output report:**
+```json
+{
+  "metadata": {
+    "timestamp": "2026-01-14T12:00:00Z",
+    "total_queries": 100,
+    "execution_time_seconds": 45
+  },
+  "divergences": {
+    "total_found": 12,
+    "by_type": {
+      "top_result_differs": 3,
+      "score_difference": 5,
+      "result_order": 4
+    }
+  }
+}
 ```
-
----
-
-### github_integration.py
-**Purpose:** GitHub API integration for automated workflows  
-**Status:** ⚠️ Utility - Used by other scripts  
-**DX Focus:** Automation infrastructure
-
-**What it does:**
-- Creates GitHub issues
-- Posts comments on PRs
-- Updates issue labels
-- Manages GitHub Actions integration
-
-**When to use:**
-- Called by other automation scripts
-- For custom GitHub workflows
-- When building CI/CD integrations
-
-**Integration points:**
-- GitHub API
-- Used by repair pipeline
-- Used by Nemesis reporting
 
 ---
 
 ### run_repair_pipeline.py
-**Purpose:** Automated repair pipeline for CI/CD  
-**Status:** ✅ Active - CI/CD automation  
-**DX Focus:** Self-healing builds
+
+Orchestrate complete repair pipeline.
+
+**Usage:**
+```bash
+cd scripts
+ANTHROPIC_API_KEY=sk-... GITHUB_TOKEN=ghp_... \
+python3 run_repair_pipeline.py
+```
+
+**Environment variables:**
+| Variable | Required | Description |
+|----------|----------|-------------|
+| ANTHROPIC_API_KEY | Yes* | Claude API key for fix generation |
+| OPENAI_API_KEY | Yes* | Alternative: OpenAI GPT-4 key |
+| GITHUB_TOKEN | Yes | GitHub PAT for PR creation |
+
+*One of ANTHROPIC_API_KEY or OPENAI_API_KEY required.
 
 **What it does:**
-- Runs test suite
-- Detects failures
-- Attempts automated fixes
-- Re-runs tests
-- Reports results to GitHub
+1. Finds latest Nemesis report in /data/reports/
+2. Classifies divergences (auto-fix vs human-review)
+3. Analyzes affected code files
+4. Generates fix proposals using AI
+5. Creates GitHub PRs with fixes
+6. Labels PRs appropriately
+
+**Pipeline flow:**
+```
+Nemesis Report
+    ↓
+repair_agent.py (classify)
+    ↓ action-plan-*.json
+code_analyzer.py (analyze)
+    ↓ code-analysis-*.json
+fix_generator.py (generate)
+    ↓ fix-proposal-*.json
+fix_applicator.py (create PR)
+    ↓ pr-results-*.json
+```
+
+---
+
+### repair_agent.py
+
+Classify divergences for repair.
+
+**Usage:**
+```bash
+cd scripts
+python3 nemesis/repair_agent.py /data/reports/nemesis-20260114.json
+```
+
+**Output:** `action-plan-TIMESTAMP.json`
+
+**Classification criteria:**
+- **auto-fix**: High confidence (>90%), single file, good test coverage
+- **human-review**: Medium confidence, multiple files, medium test coverage
+- **too-complex**: Low confidence, multiple root causes, poor test coverage
+
+---
+
+### code_analyzer.py
+
+Analyze affected code for divergences.
+
+**Usage:**
+```bash
+cd scripts
+python3 nemesis/code_analyzer.py /data/reports/action-plan-*.json
+```
+
+**Output:** `code-analysis-TIMESTAMP.json`
+
+**Analysis includes:**
+- Affected Java files
+- Test coverage for affected code
+- Blast radius (number of files)
+- Related classes and methods
+
+---
+
+### fix_generator.py
+
+Generate code fixes using AI.
+
+**Usage:**
+```bash
+cd scripts
+ANTHROPIC_API_KEY=sk-... \
+python3 nemesis/fix_generator.py /data/reports/code-analysis-*.json
+```
+
+**Output:** `fix-proposal-TIMESTAMP.json`
+
+**What it generates:**
+- Complete code changes (unified diff format)
+- Fix explanation
+- Test updates (if needed)
+- Validation checklist
+
+---
+
+### fix_applicator.py
+
+Create GitHub PRs with fixes.
+
+**Usage:**
+```bash
+cd scripts
+GITHUB_TOKEN=ghp_... \
+python3 nemesis/fix_applicator.py /data/reports/fix-proposal-*.json
+
+# Dry-run mode (no PR creation)
+python3 nemesis/fix_applicator.py /data/reports/fix-proposal-*.json --dry-run
+```
+
+**Output:** `pr-results-TIMESTAMP.json`
+
+**PR details:**
+- Branch: `nemesis/fix-ISSUE_ID`
+- Title: Auto-generated based on issue
+- Body: Includes fix explanation, validation steps, affected files
+- Labels: `nemesis`, `auto-fix` (or `human-review`)
+- Reviewers: Assigned automatically
+
+---
+
+## Load Testing Scripts
+
+### load-test-simple.sh
+
+Sequential load testing with curl.
+
+**Usage:**
+```bash
+./scripts/load-test-simple.sh [num_requests]
+
+# Examples
+./scripts/load-test-simple.sh 100   # 100 requests
+./scripts/load-test-simple.sh 1000  # 1000 requests
+```
+
+**What it does:**
+1. Sends N sequential GET requests to /v2/search
+2. Measures response time for each
+3. Calculates statistics: min, max, avg, p95, p99
+4. Reports success/failure counts
+
+**Example output:**
+```
+Running 100 requests...
+Progress: [##########] 100/100
+
+Results:
+  Total requests: 100
+  Success: 100
+  Failures: 0
+  Min: 45ms
+  Max: 234ms
+  Avg: 89ms
+  P95: 156ms
+  P99: 201ms
+```
 
 **When to use:**
-- Integrated into CI/CD pipeline
-- For automated quality checks
-- When debugging flaky tests
+- Quick performance checks
+- Baseline response time measurement
+- Post-deployment validation
 
-**Integration points:**
-- GitHub Actions
-- Maven test suite
-- github_integration.py
+---
+
+### load-test-batch.js
+
+Batch API stress testing with Artillery.
+
+**Prerequisites:**
+```bash
+npm install -g artillery
+```
 
 **Usage:**
 ```bash
-# Typically run by CI/CD
-python3 scripts/run_repair_pipeline.py --auto-fix
+cd scripts
+artillery run load-test-batch.js
 
-# Manual run for debugging
-python3 scripts/run_repair_pipeline.py --dry-run
+# Custom configuration
+artillery run load-test-batch.js \
+  --target http://localhost:8080 \
+  --output report.json
 ```
+
+**Configuration:**
+```yaml
+config:
+  target: http://localhost:8080
+  phases:
+    - duration: 60
+      arrivalRate: 10  # 10 requests/sec for 60 seconds
+scenarios:
+  - name: Batch screening
+    flow:
+      - post:
+          url: /v2/search/batch
+          json:
+            entities: [...]
+            minMatch: 0.88
+```
+
+**Metrics reported:**
+- Requests per second
+- Response time (min/max/median/p95/p99)
+- Error rate
+- Throughput
 
 ---
 
-## 5. Configuration & Support
+## Deployment Scripts
 
-### requirements.txt
-**Purpose:** Python dependency manifest  
-**Status:** ✅ Active - Required for all Python tools  
-**DX Focus:** Reproducible environments
+### deploy-ecs.sh
 
-**Dependencies:**
-- requests - HTTP client
-- anthropic - Claude API
-- openai - OpenAI API
-- rich - Terminal formatting
-- pyyaml - YAML parsing
+Deploy to AWS ECS.
+
+**Prerequisites:**
+- AWS CLI configured
+- Docker installed
+- ECR repository created
 
 **Usage:**
 ```bash
-pip3 install -r requirements.txt
+./scripts/deploy-ecs.sh
+```
+
+**What it does:**
+1. Builds Docker image for linux/amd64
+2. Tags image with git commit SHA
+3. Pushes to ECR
+4. Updates ECS task definition
+5. Forces new deployment
+6. Waits for deployment to stabilize
+
+**Example output:**
+```
+Building Docker image...
+Successfully built a1b2c3d4
+Pushing to ECR...
+Pushed: watchman-java:abc123def
+Updating ECS task definition...
+Revision: 10
+Deploying to ECS service...
+Waiting for deployment to complete...
+✓ Deployment successful
 ```
 
 ---
 
-### crontab
-**Purpose:** Scheduled task configuration for production  
-**Status:** 📋 Reference - For production deployment  
-**DX Focus:** Production automation setup
+### build-and-push.sh
 
-**Scheduled tasks:**
-- Nemesis nightly runs
-- Report generation
-- Data refresh checks
+Build and push Docker image (no deployment).
 
 **Usage:**
 ```bash
-# Install crontab on production server
-crontab scripts/crontab
+./scripts/build-and-push.sh [tag]
+
+# Examples
+./scripts/build-and-push.sh latest
+./scripts/build-and-push.sh v1.2.3
+./scripts/build-and-push.sh $(git rev-parse --short HEAD)
+```
+
+**What it does:**
+1. Builds Docker image with specified tag
+2. Pushes to configured registry (ECR or Docker Hub)
+3. Verifies push success
+
+---
+
+## Environment Setup
+
+### setup-dev.sh
+
+Install development dependencies.
+
+**Usage:**
+```bash
+./scripts/setup-dev.sh
+```
+
+**What it installs:**
+- Java 21 (via SDKMAN if not present)
+- Maven 3.8+ (via SDKMAN)
+- Python 3.9+
+- Python packages: requests, anthropic, openai, PyGithub
+- jq (JSON processor)
+
+**Platform support:** macOS, Linux
+
+---
+
+### validate-setup.sh
+
+Check development prerequisites.
+
+**Usage:**
+```bash
+./scripts/validate-setup.sh
+```
+
+**What it checks:**
+- Java version (21+)
+- Maven version (3.8+)
+- Python version (3.9+)
+- Required Python packages
+- Docker installation
+- AWS CLI (if deploying)
+- jq installation
+
+**Example output:**
+```
+✓ Java 21.0.1 (required: 21+)
+✓ Maven 3.9.5 (required: 3.8+)
+✓ Python 3.11.4 (required: 3.9+)
+✓ Docker 24.0.6
+✗ AWS CLI not found (optional)
+✓ jq 1.6
 ```
 
 ---
 
-## Developer Workflows
+## Script Conventions
 
-### New Developer Setup
-```bash
-# 1. Install dependencies
-./scripts/setup-local.sh
+**Exit codes:**
+- 0: Success
+- 1: General error
+- 2: Missing prerequisites
+- 3: Configuration error
 
-# 2. Set API keys
-export ANTHROPIC_API_KEY=sk-ant-...
+**Environment variables:**
+- `WATCHMAN_URL`: Override API base URL (default: http://localhost:8080)
+- `NEMESIS_URL`: Override Nemesis URL (default: http://localhost:8084)
+- `SKIP_TESTS`: Set to "true" to skip test execution
+- `VERBOSE`: Set to "true" for debug output
 
-# 3. Validate setup
-./scripts/test-agent-setup.sh
-
-# 4. Test local development
-./scripts/braid-migration.sh
-```
-
-### Before Deploying to Production
-```bash
-# 1. Run all Java tests
-./mvnw test
-
-# 2. Test Braid integration
-./scripts/test-braid-integration.sh
-
-# 3. Run Nemesis validation
-./scripts/trigger-nemesis.sh
-
-# 4. Deploy to staging
-fly deploy --config fly.staging.toml
-
-# 5. Validate staging
-WATCHMAN_URL=https://watchman-staging.fly.dev ./scripts/test-live-api.sh
-
-# 6. Deploy to production
-fly deploy
-```
-
-### After Deploying
-```bash
-# Quick smoke test
-./scripts/test-live-api.sh
-
-# Full validation
-./scripts/test-braid-integration.sh
-```
-
-### Investigating Score Issues
-```bash
-# 1. Run Nemesis to identify problems
-./scripts/trigger-nemesis.sh
-
-# 2. Compare specific entity
-python3 scripts/compare-implementations.py \
-  --query "Specific Entity Name" \
-  --trace
-
-# 3. Check trace data (if using ScoreTrace)
-curl "https://watchman-java.fly.dev/v2/search?name=Entity&trace=true"
-```
-
----
-
-## Maintenance
-
-### Updating Dependencies
-```bash
-# Python
-pip3 install --upgrade -r requirements.txt
-pip3 freeze > requirements.txt
-
-# Document changes in git commit
-git add requirements.txt
-git commit -m "Update Python dependencies"
-```
-
-### Adding New Scripts
-1. Create script in `/scripts`
-2. Make executable: `chmod +x scripts/new-script.sh`
-3. Add shebang: `#!/bin/bash` or `#!/usr/bin/env python3`
-4. Add header comments explaining purpose
-5. Update this document (SCRIPTS.md)
-6. Add to appropriate category above
-
-### Script Best Practices
-- ✅ Use descriptive names
-- ✅ Add usage examples in comments
-- ✅ Set `set -e` for bash scripts (fail fast)
-- ✅ Provide color-coded output for UX
-- ✅ Include prerequisite checks
-- ✅ Exit with meaningful codes (0=success, 1=failure)
-- ✅ Print summary/results at end
-
----
-
-## Quick Command Reference
-
-```bash
-# Braid Migration
-./scripts/braid-migration.sh                    # Demo v1 compatibility
-./scripts/test-braid-integration.sh             # Full integration test
-
-# Testing
-./mvnw test                                     # All Java tests
-./mvnw test -Dtest=V1CompatibilityControllerTest  # Specific test
-./scripts/test-live-api.sh                      # Deployed API test
-
-# Nemesis
-./scripts/setup-local.sh                        # First-time setup
-./scripts/test-agent-setup.sh                   # Validate config
-./scripts/trigger-nemesis.sh                    # Run full test
-
-# Utilities
-python3 scripts/compare-implementations.py      # Compare Java vs Go
-python3 scripts/generate_api_reference.py       # Update docs
-```
-
----
-
-## Support
-
-**Questions?** Check:
-1. Script header comments (`head -20 scripts/script-name.sh`)
-2. This documentation
-3. Related docs: BRAID_MIGRATION_PLAN.md, SCORETRACE.md, SCORECONFIG.md
-
-**Issues?** Common problems:
-- Missing jq: `brew install jq`
-- Missing Python deps: `./scripts/setup-local.sh`
-- API key errors: Check `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`
-- Server not running: `./mvnw spring-boot:run`
+**Logging:**
+- Scripts log to stdout/stderr
+- Deployment scripts also log to `logs/deploy-YYYYMMDD.log`
+- Nemesis pipeline logs to `/data/logs/repair-pipeline.log`

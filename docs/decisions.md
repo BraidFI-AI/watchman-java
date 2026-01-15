@@ -386,3 +386,40 @@
 **Impact**: 47% false negative rate on realistic name variations demonstrates unacceptable compliance risk for production use.
 
 ---
+
+### 2026-01-14: Documentation Format - Change Notes vs Reference Material
+
+**Decision**: Use change note format (max 350 words) for feature/operational docs, but exempt reference documentation from word limits.
+
+**Rationale**: 
+- Change notes work well for features, processes, operational guides (focus on "what changed, how to verify")
+- API specs and script catalogs are permanent reference material developers keep open while coding
+- Reference docs need: full request/response examples, complete parameter tables, copy/paste ready commands
+- Condensing api_spec.md to 371 words removed essential examples developers need
+
+**Implementation**: 
+- Change notes: nemesis.md, scoreconfig.md, scoretrace.md, error_handling.md, etc. (15 docs)
+- Reference docs: api_spec.md (1,373 words), scripts.md (1,325 words)
+
+**Tradeoff**: Reference docs are longer but serve different purpose (lookup vs change communication).
+
+---
+
+### 2026-01-14: Factual Documentation Standard
+
+**Decision**: Remove innovation/sales language from technical documentation. Use factual descriptions only.
+
+**Rationale**:
+- Audience is engineers reviewing code, not executives or customers
+- Terms like "innovation", "gold standard", "strategic shift", "smoking gun" are promotional, not technical
+- Engineering docs should enable falsifiable claims tied to files/symbols/tests
+
+**Implementation**: Cleaned up taliban_analysis.md:
+- "The ScoreTrace Innovation" → "ScoreTrace Implementation"
+- "The Ground Truth Problem" → "Reference Standard Selection"
+- "gold standard" → "commercial reference"
+- Removed emphatic language ("clearly", "correctly", "critical")
+
+**Impact**: Documentation maintains technical credibility without promotional framing.
+
+---
