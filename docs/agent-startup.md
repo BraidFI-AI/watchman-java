@@ -36,4 +36,4 @@ Documentation rules (default unless explicitly asked otherwise):
 - Do not mix audiences. Write for code reviewers and maintainers only.
 
 Session goal:
-Refactored all docs/ to change note format (max 350 words, falsifiable claims, how to validate focus).
+[One sentence describing what we are doing right now.]
