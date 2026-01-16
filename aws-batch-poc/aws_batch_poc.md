@@ -45,6 +45,21 @@ Bulk screening system using file-in-file-out pattern (S3 input → S3 output). S
 - Auto-task calculation: Split large files into parallel jobs (300k → 30 jobs of 10k each)
 - Parallel chunk processing: Process multiple 1k chunks simultaneously within single job
 
+## Integration Example
+
+**See [docs/braid_integration_example.md](../docs/braid_integration_example.md) for production-ready integration code.**
+
+Complete Spring service showing:
+- Customer export from Braid DB → NDJSON
+- S3 upload/download workflow
+- Job submission and polling
+- Watchman match → Braid OFACResult transformation
+- Alert creation via existing Braid infrastructure
+- Scheduled nightly execution (1am EST)
+- Zero changes to real-time payment flow (MoovService, NachaService)
+
+**Copy-paste ready** with 1 TODO (database query implementation).
+
 ## Input Format (NDJSON)
 Newline-delimited JSON - one customer record per line, no commas between lines:
 
