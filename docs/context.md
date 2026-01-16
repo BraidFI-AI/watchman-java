@@ -46,6 +46,23 @@
 - Observability preferences: additional logging, metrics, dashboards
 - Error notification preferences: email, Slack, PagerDuty, etc.
 
+### Testing Status
+- BulkJobService validated locally: Spring Boot app on laptop reading from S3 (s3://watchman-input/), processing 100k records in 39m48s, writing results to S3 (s3://watchman-results/)
+- AWS Batch infrastructure deployed (compute environment, job queue, job definition) but not execution-tested
+- WatchmanBulkScreeningService not tested end-to-end (database → NDJSON → S3 workflow untested)
+
+### Container Images
+- GO Watchman: 100095454503.dkr.ecr.us-east-1.amazonaws.com/watchman-go:latest (built from moov-io/watchman repo)
+- Java Watchman: 100095454503.dkr.ecr.us-east-1.amazonaws.com/watchman-java:latest
+- Current container runs Spring Boot as web server (not batch processor)
+
+### Braid Integration
+- WatchmanBulkScreeningService replicates CustomerService.runScheduledOfacCheck() exactly
+- Same database queries: findIdsByTypeAndStatus(type, CustomerStatuses.ACTIVE, pageable)
+- Same pagination: 2500 records per page (OFAC_PAGE_SIZE constant)
+- Same processing order: INDIVIDUAL customers first, then BUSINESS
+- Drop-in replacement: one-line change in ScheduledEventsController
+
 ---
 
 ## Session: January 16, 2026 (AWS Batch POC Complete)
