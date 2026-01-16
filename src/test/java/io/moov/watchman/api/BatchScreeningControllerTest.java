@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -34,11 +35,14 @@ class BatchScreeningControllerTest {
     @Mock
     private BatchScreeningService batchService;
 
+    @Mock
+    private BatchRequestValidator validator;
+
     private BatchScreeningController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new BatchScreeningController(batchService);
+        controller = new BatchScreeningController(batchService, validator);
     }
 
     @Nested
@@ -302,9 +306,14 @@ class BatchScreeningControllerTest {
                 List.of(), null, null, null
             );
 
-            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+            doThrow(new IllegalArgumentException("Batch request must contain at least one item"))
+                .when(validator).validate(request);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+                controller.batchSearch(request);
+            });
+
+            assertThat(exception.getMessage()).contains("at least one item");
         }
 
         @Test
@@ -312,9 +321,14 @@ class BatchScreeningControllerTest {
         void returns400ForNullItems() {
             BatchSearchRequestDTO request = new BatchSearchRequestDTO(null, null, null, null);
 
-            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+            doThrow(new IllegalArgumentException("Batch request must contain at least one item"))
+                .when(validator).validate(request);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+                controller.batchSearch(request);
+            });
+
+            assertThat(exception.getMessage()).contains("at least one item");
         }
 
         @Test
@@ -326,9 +340,14 @@ class BatchScreeningControllerTest {
 
             BatchSearchRequestDTO request = new BatchSearchRequestDTO(items, null, null, null);
 
-            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+            doThrow(new IllegalArgumentException("Batch size exceeds maximum limit"))
+                .when(validator).validate(request);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+                controller.batchSearch(request);
+            });
+
+            assertThat(exception.getMessage()).contains("maximum limit");
         }
     }
 

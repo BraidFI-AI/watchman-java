@@ -22,12 +22,14 @@ public class BatchScreeningController {
     private static final Logger log = LoggerFactory.getLogger(BatchScreeningController.class);
     private static final double DEFAULT_MIN_MATCH = 0.88;
     private static final int DEFAULT_LIMIT = 10;
-    private static final int MAX_BATCH_SIZE = 1000;
 
     private final BatchScreeningService batchScreeningService;
+    private final BatchRequestValidator validator;
 
-    public BatchScreeningController(BatchScreeningService batchScreeningService) {
+    public BatchScreeningController(BatchScreeningService batchScreeningService, 
+                                    BatchRequestValidator validator) {
         this.batchScreeningService = batchScreeningService;
+        this.validator = validator;
     }
 
     /**
@@ -42,12 +44,7 @@ public class BatchScreeningController {
             request.items() != null ? request.items().size() : 0);
 
         // Validate request
-        if (request.items() == null || request.items().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (request.items().size() > MAX_BATCH_SIZE) {
-            return ResponseEntity.badRequest().build();
-        }
+        validator.validate(request);
 
         BatchScreeningRequest batchRequest = toBatchRequest(request);
 
@@ -93,7 +90,7 @@ public class BatchScreeningController {
     @GetMapping("/batch/config")
     public ResponseEntity<BatchConfigDTO> getBatchConfig() {
         return ResponseEntity.ok(new BatchConfigDTO(
-            batchScreeningService.getMaxBatchSize(),
+            validator.getMaxBatchSize(),
             DEFAULT_MIN_MATCH,
             DEFAULT_LIMIT
         ));

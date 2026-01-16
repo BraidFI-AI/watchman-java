@@ -7,12 +7,9 @@ import io.moov.watchman.trace.ScoringTrace;
 import io.moov.watchman.trace.TraceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 /**
  * REST controller for serving human-readable scoring reports.
@@ -54,16 +51,8 @@ public class ReportController {
         logger.info("Report request: sessionId={}, format={}", sessionId, format);
         
         // Retrieve trace from repository
-        Optional<ScoringTrace> traceOpt = traceRepository.findBySessionId(sessionId);
-        
-        if (traceOpt.isEmpty()) {
-            logger.warn("Trace not found: sessionId={}", sessionId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body("<html><body><h1>404 - Report Not Found</h1>" +
-                      "<p>No trace data found for session: " + sessionId + "</p></body></html>");
-        }
-        
-        ScoringTrace trace = traceOpt.get();
+        ScoringTrace trace = traceRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new EntityNotFoundException("Report", sessionId));
         
         // Render as HTML (only format supported in Phase 1)
         String html = reportRenderer.renderHtml(trace);
@@ -88,14 +77,8 @@ public class ReportController {
         logger.info("Summary request: sessionId={}", sessionId);
         
         // Retrieve trace from repository
-        Optional<ScoringTrace> traceOpt = traceRepository.findBySessionId(sessionId);
-        
-        if (traceOpt.isEmpty()) {
-            logger.warn("Trace not found for summary: sessionId={}", sessionId);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        
-        ScoringTrace trace = traceOpt.get();
+        ScoringTrace trace = traceRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new EntityNotFoundException("Report", sessionId));
         ReportSummary summary = summaryService.generateSummary(trace);
         
         logger.info("Summary generated: sessionId={}, entities={}", sessionId, summary.totalEntitiesScored());

@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 /**
@@ -70,17 +71,18 @@ class ReportControllerTest {
         }
 
         @Test
-        @DisplayName("Should return 404 for non-existent session ID")
-        void shouldReturn404ForNonExistentSessionId() {
+        @DisplayName("Should throw EntityNotFoundException for non-existent session ID")
+        void shouldThrowExceptionForNonExistentSessionId() {
             // Given
             String sessionId = "non-existent";
             when(traceRepository.findBySessionId(sessionId)).thenReturn(Optional.empty());
 
-            // When
-            ResponseEntity<String> response = controller.getReport(sessionId, "html");
+            // When/Then
+            EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> {
+                controller.getReport(sessionId, "html");
+            });
 
-            // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(exception.getMessage()).contains("non-existent");
         }
 
         @Test

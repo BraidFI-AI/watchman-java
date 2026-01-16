@@ -131,6 +131,20 @@ public class GlobalExceptionHandler {
                         request.getRequestURI(), getRequestId()));
     }
 
+    @ExceptionHandler(java.sql.SQLException.class)
+    public ResponseEntity<ErrorResponse> handleSqlException(
+            java.sql.SQLException ex, HttpServletRequest request) {
+        logger.error("Database error: {}", ex.getMessage());
+        String messageLower = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        String message = messageLower.contains("timeout") || messageLower.contains("timed out")
+            ? "Database operation timed out"
+            : "Database service temporarily unavailable";
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErrorResponse.serviceUnavailable(message, 
+                        request.getRequestURI(), getRequestId()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
