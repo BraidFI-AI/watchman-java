@@ -6,10 +6,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.ropechain.api.data.Customer;
 import io.ropechain.api.data.ofac.OFACResult;
 import io.ropechain.api.enums.AlertEnums;
+import io.ropechain.api.enums.CustomerEnums;
 import io.ropechain.api.enums.OFACEnums;
+import io.ropechain.api.repository.CustomerRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -32,29 +37,35 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Example Braid integration for Watchman Java bulk screening.
+ * Braid bulk screening service - replaces sequential JMS queue approach with S3 workflow.
  * 
- * Complete S3 workflow for 300k customers:
- * 1. Export customers from DB to NDJSON
- * 2. Upload to S3 (watchman-input bucket)
- * 3. Submit bulk job with s3InputPath
- * 4. Poll for completion (max 2 hours)
- * 5. Download matches.json from S3
- * 6. Transform to OFACResult objects
- * 7. Create alerts via existing alertCreationService
+ * OLD: CustomerService.runScheduledOfacCheck()
+ * - Queues 300k+ customer IDs to JMS queue
+ * - Processes ONE at a time (concurrency=1)
+ * - Makes 300k+ sequential HTTP calls to Watchman GO
+ * - Takes HOURS or DAYS to complete
  * 
- * NO changes needed to existing real-time OFAC checks (NachaService, etc).
- * This is a completely separate nightly workflow running on isolated infrastructure.
+ * NEW: WatchmanBulkScreeningService (this class)
+ * - Same pagination pattern (2500 per page)
+ * - Export all customers to NDJSON → S3
+ * - Single bulk job submission to Watchman Java
+ * - Processes 300k customers in ~40 minutes
+ * 
+ * MIGRATION: Replace CustomerService.runScheduledOfacCheck() call in ScheduledEventsController
+ * with WatchmanBulkScreeningService.runScheduledOfacCheck()
  */
 @Service
 @Slf4j
 public class WatchmanBulkScreeningService {
+
+    private static final int OFAC_PAGE_SIZE = 2500; // Match Braid's pagination
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final S3Client s3Client;
     private final AlertCreationService alertCreationService;
     private final CustomerService customerService;
+    private final CustomerRepository customerRepository;
     private final OFACService ofacService;
     
     private final String watchmanUrl;
@@ -68,6 +79,7 @@ public class WatchmanBulkScreeningService {
             S3Client s3Client,
             AlertCreationService alertCreationService,
             CustomerService customerService,
+            CustomerRepository customerRepository,
             OFACService ofacService,
             @Value("${watchman.url:http://localhost:8084}") String watchmanUrl,
             @Value("${watchman.s3.input-bucket:watchman-input}") String inputBucket,
@@ -78,27 +90,35 @@ public class WatchmanBulkScreeningService {
         this.s3Client = s3Client;
         this.alertCreationService = alertCreationService;
         this.customerService = customerService;
+        this.customerRepository = customerRepository;
         this.ofacService = ofacService;
         this.watchmanUrl = watchmanUrl;
         this.inputBucket = inputBucket;
         this.resultsBucket = resultsBucket;
     }
-
-    /**
-     * Nightly batch screening - runs at 1am EST.
-     * Complete S3 workflow for 300k customers.
+eplaces CustomerService.runScheduledOfacCheck()
+     * Triggered via ScheduledEventsController OFAC_CUSTOMER event type.
+     * 
+     * Processes INDIVIDUAL and BUSINESS customers using same pagination as old approach,
+     * but exports to S3 for bulk processing instead of sequential JMS queue.
      */
-    @Scheduled(cron = "0 1 * * *", zone = "America/New_York")
-    public void runNightlyBatch() {
-        log.info("Starting nightly OFAC batch screening via Watchman Java");
+    public void runScheduledOfacCheck() {
+        log.info("Starting nightly OFAC batch screening via Watchman Java (bulk S3 workflow)");
         
         try {
-            // Step 1: Get active customers from database
-            List<Customer> customers = getActiveCustomers();
-            if (customers.isEmpty()) {
+            // Process same way as old CustomerService: INDIVIDUAL then BUSINESS
+            List<Customer> allCustomers = new ArrayList<>();
+            
+            allCustomers.addAll(getActiveCustomersByType(CustomerEnums.CustomerTypes.INDIVIDUAL));
+            allCustomers.addAll(getActiveCustomersByType(CustomerEnums.CustomerTypes.BUSINESS));
+            
+            if (allCustomers.isEmpty()) {
                 log.info("No customers to screen");
                 return;
             }
+            
+            log.info("Total customers queued for bulk screening: {}", allCustomers.size());
+            performNightlyScreening(allC
             
             performNightlyScreening(customers);
             
@@ -373,14 +393,40 @@ public class WatchmanBulkScreeningService {
         result.setMatchScore(match.get("matchScore").asDouble());
         result.setEntityId(match.get("entityId").asText());
         result.setSource(match.get("source").asText());
+        by type - mirrors CustomerService.queueForOfacByType() pagination.
+     * Only fetches IDs first (like original code) then hydrates in pages to avoid huge SQL payloads.
+     */
+    private List<Customer> getActiveCustomersByType(CustomerEnums.CustomerTypes type) {
+        List<Customer> allCustomers = new ArrayList<>();
+        int totalFetched = 0;
+        int pageNumber = 0;
+        Page<Integer> customerIdPage;
+        Pageable pageable = PageRequest.of(pageNumber, OFAC_PAGE_SIZE);
         
-        // Add Braid-specific fields
-        result.setCustomerId(customer.getId());
-        result.setStatus(OFACEnums.Status.REVIEW); // Requires human review
+        do {
+            // Same query as CustomerService.queueForOfacByType()
+            // Only fetch IDs to avoid huge SQL payloads (see BRAID-3613)
+            customerIdPage = customerRepository.findIdsByTypeAndStatus(
+                type,
+                CustomerEnums.CustomerStatuses.ACTIVE,
+                pageable
+            );
+            
+            // Hydrate full customer objects for this page
+            List<Customer> pageCustomers = customerRepository.findAllById(customerIdPage.getContent());
+            allCustomers.addAll(pageCustomers);
+            totalFetched += pageCustomers.size();
+            
+            pageNumber++;
+            pageable = PageRequest.of(pageNumber, OFAC_PAGE_SIZE);
+            
+            log.info("Fetched {} {} customers for bulk screening (page {})", 
+                pageCustomers.size(), type, pageNumber);
+            
+        } while (customerIdPage.hasNext());
         
-        return result;
-    }
-
+        log.info("Total fetched {} {} customers for bulk screening", totalFetched, type);
+        return allCustomers
     /**
      * Get active customers from Braid database.
      * TODO: Implement actual DB query.
