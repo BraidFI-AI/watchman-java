@@ -33,3 +33,7 @@ watchman:
     jaro-winkler:
       boost-threshold: 0.7
       prefix-size: 4
+  bulk:
+    input-bucket: ${WATCHMAN_BULK_INPUT_BUCKET:watchman-input}
+    results-bucket: ${WATCHMAN_BULK_RESULTS_BUCKET:watchman-results}
+    executor-threads: 5

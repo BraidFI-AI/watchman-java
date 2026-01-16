@@ -5,6 +5,91 @@
 
 ---
 
+## Session: January 16, 2026 (AWS Batch POC Complete)
+
+### What We Decided
+- Implemented file-in-file-out pattern with S3 input (NDJSON) → S3 output (JSON)
+- Sequential processing baseline: single job processes 100 chunks of 1k items each
+- Used "sandbox" naming for AWS resources (not "prod") for infrastructure safety
+- Result files split into two: matches.json (array of matches) + summary.json (statistics)
+- POC scope limited to in-memory job state; database persistence required for production
+
+### What Is Now True
+- **AWS Batch POC folder**: aws-batch-poc/ contains all deliverableimplemented and tested)
+- **API contracts finalized**: `BulkJobRequestDTO`, `BulkJobResponseDTO`, `BulkJobStatusDTO` with `resultPath` field
+- **36 passing tests**: 8 controller + 11 service + 7 NDJSON + 5 S3Reader + 5 S3ResultWriter tests
+- **S3 buckets**: watchman-input (NDJSON files), watchman-results (JSON output with 30-day lifecycle)
+- **Batch compute**: sandbox-watchman-batch (Fargate, 0-16 vCPUs, Spot instances, ENABLED)
+- **Job queue**: sandbox-watchman-queue (priority 1, ENABLED)
+- **Job definition**: sandbox-watchman-bulk-screening:1 (2 vCPU, 4GB memory)
+- **IAM roles**: 3 roles with S3, Secrets Manager, CloudWatch Logs permissions
+- **Cost model**: ~$6/month for daily 300k screening (~$0.11 per 100k run)
+- **Throughput**: ~42 items/second sustained (2,500 items/minute)
+- **Input format**: NDJSON (newline-delimited JSON, one object per line)
+- **Output format**: Standard JSON arrays (not NDJSON) for downstream consumption
+- **Sequential processing**: Single task processes all items in 1k chunks (baseline)
+- **Test artifacts**: 100k-baseline-results.json, sample-input.ndjson, sample-output.json
+- **Documentation**: README.md (quick start), aws_batch_poc.md (complete implementation)
+- **Deployment script**: deploy-batch-infrastructure.sh automates Terraform deployment with validation
+- **Test data generator**: generate-100k-test-data.sh creates NDJSON files with configurable size
+- **High match count**: 6,198 matches from 100k records (common names like "David Smith" trigger OFAC false positives)
+
+### What Is Still Unknown
+- Whether to implement auto-task calculation (split 300k file → 30 parallel jobs of 10k each)
+- Database choice for production: Redis vs DynamoDB for multi-instance job coordination
+- Webhook callback requirements: Does Braid need POST notifications when jobs complete?
+- Parallel chunk processing strategy: Process multiple 1k chunks simultaneously within single job
+- Load testing with full 300k dataset to validate estimated 2-hour duration
+- Retry logic approach: Exponential backoff, max attempts, failure thresholds
+- CloudWatch metrics and alarm thresholds for production monitoring
+
+---
+
+## Session: January 16, 2026 (AWS Batch POC Implementation - Earlier)
+
+### What We Decided
+- Implemented AWS Batch POC with in-memory job orchestration (production will use AWS Batch + Redis/DynamoDB)
+- Push model: Braid submits bulk job via `POST /v2/batch/bulk-job`, polls status via `GET /v2/batch/bulk-job/{jobId}`
+- Automatic chunking: splits large batches into 1000-item chunks, reuses existing `BatchScreeningService`
+- Minimal Braid changes: single `WatchmanBulkScreeningService` with `@Scheduled` cron job at 1am EST
+- Zero changes to existing real-time endpoints (`/v2/search`, `/v2/search/batch`)
+
+### What Is Now True
+- **File-in-file-out baseline**: S3 input files → S3 output files (production-ready batch pattern)
+- **API contracts finalized**: `BulkJobRequestDTO`, `BulkJobResponseDTO`, `BulkJobStatusDTO` with `resultPath` field
+- **36 passing tests**: 8 controller + 11 service + 7 NDJSON + 5 S3Reader + 5 S3ResultWriter tests (TDD complete)
+- **AWS S3 SDK integrated**: Added `software.amazon.awssdk:s3:2.24.0` dependency with automatic IAM authentication
+- **S3ResultWriter service**: [S3ResultWriter.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/bulk/S3ResultWriter.java) writes results to `s3://watchman-results/{jobId}/matches.json`
+- **Result files**: Matches written to S3, summary written separately, paths returned in status API
+- **S3Reader service**: [S3Reader.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/bulk/S3Reader.java) reads NDJSON from S3 using AWS SDK with error handling
+- **S3 processing complete**: `processS3BulkJob()` reads from S3, processes in 1000-item chunks, writes results to S3
+- **NDJSON streaming**: [NdjsonReader.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/bulk/NdjsonReader.java) parses S3 files line-by-line (memory-efficient for large files)
+- **Dual input modes**: HTTP JSON arrays (`items[]`) OR S3 NDJSON files (`s3InputPath`) - validated at construction time
+- **Controller**: [BulkBatchController.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/api/BulkBatchController.java) at `/v2/batch/bulk-job` returns 202 Accepted with `resultPath` in status
+- **Service**: [BulkJobService.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/bulk/BulkJobService.java) orchestrates async processing with 5-thread executor
+- **Job states**: SUBMITTED → RUNNING → COMPLETED/FAILED with progress tracking and error messages
+- **Chunking**: Splits jobs into 1000-item batches, processes sequentially within async worker
+- **Match collection**: Written to S3 as JSON array (not kept in memory)
+- **Time estimation**: Calculates remaining time based on items/second throughput
+- **Polling optional**: Status API includes matches array for small jobs, S3 path for large jobs
+- **Braid example**: [WatchmanBulkScreeningService.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/braid-integration/WatchmanBulkScreeningService.java) shows nightly cron job integration
+- **Demo script**: [demo-bulk-batch.sh](file:///Users/randysannicolas/Documents/GitHub/watchman-java/scripts/demo-bulk-batch.sh) demonstrates end-to-end workflow with 1000 customers
+- **Local testing validated**: 1000 items processed in ~14 seconds, found 6 matches including sanctioned entities
+- **Documentation**: [aws_batch_poc.md](file:///Users/randysannicolas/Documents/GitHub/watchman-java/docs/aws_batch_poc.md) captures design decisions and NDJSON rationale
+
+### What Is Still Unknown
+- **AWS region configuration**: Currently hardcoded to US_EAST_1, should be configurable via env var
+- AWS Batch infrastructure deployment approach (CloudFormation vs Terraform)
+- State persistence mechanism (Redis vs DynamoDB vs RDS) for multi-instance coordination
+- Webhook callback endpoint existence in Braid
+- Retry strategy for failed chunks
+- CloudWatch metrics and alarm thresholds
+- Load testing strategy for 300k customer dataset
+- Cutover plan: parallel testing duration and rollback criteria
+- Security: VPC endpoints, private subnets, IAM role chaining
+
+---
+
 ## Session: January 15, 2026 (Production-Ready Error Handling)
 
 ### What We Decided

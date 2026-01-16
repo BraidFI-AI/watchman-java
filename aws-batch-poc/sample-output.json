@@ -1,0 +1,23 @@
+[
+  {
+    "customerId": "cust_001000",
+    "name": "Nicolas Maduro",
+    "entityId": "21200",
+    "matchScore": 1.0,
+    "source": "US_OFAC"
+  },
+  {
+    "customerId": "cust_002000",
+    "name": "Vladimir Putin",
+    "entityId": "6786",
+    "matchScore": 1.0,
+    "source": "US_OFAC"
+  },
+  {
+    "customerId": "cust_003000",
+    "name": "El Chapo",
+    "entityId": "22164",
+    "matchScore": 0.91,
+    "source": "US_OFAC"
+  }
+]

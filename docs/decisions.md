@@ -6,6 +6,88 @@
 
 ## Decision Log
 
+### 2026-01-16: Sandbox Naming for AWS Resources
+
+**Decision**: Changed AWS resource naming from "prod-watchman-*" to "sandbox-watchman-*" (environment="sandbox" in terraform.tfvars).
+
+**Rationale**: Infrastructure safety - using "prod" naming could cause confusion or accidental production deployments. Sandbox naming clearly communicates this is test/POC infrastructure.
+
+**Implementation**: Modified terraform.tfvars to set environment="sandbox", affecting all resource names (S3 buckets, Batch compute, job queue, job definition, IAM roles).
+
+**Impact**: All 17 AWS resources use sandbox- prefix. Clear communication this is POC infrastructure, not production deployment.
+
+---
+
+### 2026-01-16: JSON Output Format (Not NDJSON)
+
+**Decision**: Result files written to S3 use standard JSON format with arrays, not NDJSON format.
+
+**Rationale**: 
+- Easier consumption by downstream systems (standard JSON parsers)
+- Result files are typically small (matches only, not full customer list)
+- No memory constraint issue for output (unlike input which may be 100k+ records)
+- Industry standard for API responses and file outputs
+
+**Implementation**: 
+- matches.json: `[{"customerId":"001","name":"...","matchScore":1.0,...}]`
+- summary.json: `{"jobId":"...","totalItems":100000,"matchedItems":6198,...}`
+
+**Tradeoff**: Input uses NDJSON for memory efficiency, output uses JSON for compatibility. Asymmetric formats accepted for practical benefits.
+
+---
+
+### 2026-01-16: Sequential Baseline Before Parallel Processing
+
+**Decision**: Implemented single-task sequential processing (100 chunks of 1k items) as baseline before building parallel job submission.
+
+**Rationale**:
+- Validate infrastructure and file-in-file-out pattern first
+- Measure actual throughput (~42 items/second) for capacity planning
+- Meets 40-minute target for 100k records (39m48s actual)
+- Avoids premature optimization - parallel processing can be added later if needed
+
+**Implementation**: BulkJobService.processS3BulkJob() processes items in 100 sequential chunks within single async worker thread.
+
+**Next Step**: Auto-task calculation to split large files (300k → 30 jobs of 10k) for parallel AWS Batch execution. This leverages 16 vCPU compute capacity.
+
+---
+
+### 2026-01-16: Split Result Files (matches + summary)
+
+**Decision**: Write two separate S3 files instead of single combined result file:
+- `s3://watchman-results/{jobId}/matches.json` - Array of OFAC matches only
+- `s3://watchman-results/{jobId}/summary.json` - Job statistics and metadata
+
+**Rationale**:
+- Separation of concerns: matches for compliance review, summary for monitoring/dashboards
+- Smaller file sizes for targeted use cases (don't need to download all matches just to check job status)
+- Easier to archive/delete matches separately from metadata for compliance retention policies
+- Follows microservices pattern of focused, single-responsibility outputs
+
+**Implementation**: S3ResultWriter.writeResults() creates both files, status API returns resultPath pointing to matches.json, summary.json contains totalItems/processedItems/matchedItems/duration.
+
+**Impact**: Downstream systems fetch only what they need. Compliance team gets clean match list, operations team gets job metrics.
+
+---
+
+### 2026-01-16: In-Memory State Acceptable for POC
+
+**Decision**: Used ConcurrentHashMap for job state tracking in POC instead of database persistence (Redis/DynamoDB).
+
+**Rationale**: 
+- POC goal: validate infrastructure, throughput, and file-in-file-out pattern
+- Single ECS instance sufficient for baseline testing
+- Database adds complexity that distracts from core validation
+- Clear documentation that production requires persistence for multi-instance coordination
+
+**Implementation**: BulkJobService uses `Map<String, BulkJob> jobs = new ConcurrentHashMap<>()` for in-memory tracking.
+
+**Production Requirement**: Must implement Redis or DynamoDB persistence before production deployment to support multiple ECS instances and job recovery after restarts.
+
+**Impact**: POC is single-instance only. Job state lost on application restart. Documented as known limitation requiring production work.
+
+---
+
 ### 2026-01-15: Exception-Based Error Handling Over ResponseEntity
 
 **Decision**: Controllers throw exceptions (EntityNotFoundException, IllegalArgumentException) instead of returning error ResponseEntity objects. GlobalExceptionHandler catches all exceptions and returns uniform JSON error responses.

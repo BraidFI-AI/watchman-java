@@ -25,6 +25,7 @@
         <logback-contrib.version>0.1.5</logback-contrib.version>
         <tika.version>2.9.1</tika.version>
         <jmh.version>1.37</jmh.version>
+        <aws.sdk.version>2.24.0</aws.sdk.version>
     </properties>
 
     <dependencies>
@@ -94,6 +95,13 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
+        </dependency>
+
+        <!-- AWS SDK for S3 -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${aws.sdk.version}</version>
         </dependency>
 
         <!-- Structured JSON Logging -->

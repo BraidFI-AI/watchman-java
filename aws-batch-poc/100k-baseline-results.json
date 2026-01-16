@@ -1,0 +1,10 @@
+{
+  "jobId": "job-3417e0aa",
+  "status": "COMPLETED",
+  "totalItems": 100000,
+  "processedItems": 100000,
+  "matchedItems": 6198,
+  "submittedAt": "2026-01-16T18:50:07.837539Z",
+  "completedAt": "2026-01-16T19:29:55.623781Z",
+  "resultPath": "s3://watchman-results/job-3417e0aa/matches.json"
+}
