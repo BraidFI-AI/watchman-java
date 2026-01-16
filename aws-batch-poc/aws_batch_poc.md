@@ -54,9 +54,8 @@ Drop-in replacement for CustomerService.runScheduledOfacCheck():
 - Replicates exact pagination pattern (2500 per page)
 - Uses findIdsByTypeAndStatus() query (matches BRAID-3613 approach)
 - Processes INDIVIDUAL then BUSINESS types (same order)
-- Replaces JMS queue (concurrency=1) with S3 bulk workflow
-- OLD: 300k sequential HTTP calls to Watchman GO (hours/days)
-- NEW: Single S3 bulk job to Watchman Java (~40 minutes)
+- S3 bulk workflow: upload once, submit job, download results
+- Performance: 100k customers in ~40 minutes, 300k estimated ~2 hours
 
 **Migration:** Change one line in ScheduledEventsController
 ```java
@@ -238,7 +237,7 @@ aws s3 cp s3://watchman-results/job-3417e0aa/summary.json .
 **Input:** s3://watchman-input/test-data-100000.ndjson (9MB, 100,000 records)  
 **Duration:** 39 minutes 48 seconds  
 **Throughput:** ~42 items/second sustained  
-**Matches:** 6,198 found (common names like "David Smith" match OFAC entities)  
+**Matches:** 6,198 found (bash array test data with repetitive names)  
 **Output:** s3://watchman-results/job-3417e0aa/matches.json  
 
 ## Demo script
