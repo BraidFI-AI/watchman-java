@@ -20,7 +20,8 @@ Bulk screening system using file-in-file-out pattern (S3 input → S3 output). S
 
 **📊 Performance Validated:**
 - 100k records processed in 39 minutes 48 seconds (baseline single-task)
-- 6,198 matches found from 100k records
+- Bash arrays test: 6,198 matches (94% false positives from repetitive names)
+- DataFaker test: ~1,000 matches (realistic diverse names, 84% FP reduction)
 - Sequential processing: 100 chunks of 1k items each
 - Throughput: ~42 items/second sustained
 - Estimated 300k: ~120 minutes (2 hours) single-task baseline
@@ -45,20 +46,25 @@ Bulk screening system using file-in-file-out pattern (S3 input → S3 output). S
 - Auto-task calculation: Split large files into parallel jobs (300k → 30 jobs of 10k each)
 - Parallel chunk processing: Process multiple 1k chunks simultaneously within single job
 
-## Integration Example
+## Braid Integration
 
-**See [docs/braid_integration_example.md](../docs/braid_integration_example.md) for integration example code.**
+**See [braid-integration/WatchmanBulkScreeningService.java](../braid-integration/WatchmanBulkScreeningService.java)**
 
-Spring service example showing:
-- Customer export from Braid DB → NDJSON
-- S3 upload/download workflow
-- Job submission and polling
-- Watchman match → Braid OFACResult transformation
-- Alert creation via existing Braid infrastructure
-- Scheduled nightly execution (1am EST)
-- Zero changes to real-time payment flow (MoovService, NachaService)
+Drop-in replacement for CustomerService.runScheduledOfacCheck():
+- Replicates exact pagination pattern (2500 per page)
+- Uses findIdsByTypeAndStatus() query (matches BRAID-3613 approach)
+- Processes INDIVIDUAL then BUSINESS types (same order)
+- Replaces JMS queue (concurrency=1) with S3 bulk workflow
+- OLD: 300k sequential HTTP calls to Watchman GO (hours/days)
+- NEW: Single S3 bulk job to Watchman Java (~40 minutes)
 
-**Copy-paste ready** with 1 TODO (database query implementation).
+**Migration:** Change one line in ScheduledEventsController
+```java
+// customerService.runScheduledOfacCheck();
+watchmanBulkScreeningService.runScheduledOfacCheck();
+```
+
+**See [docs/aws_batch_deployment_options.md](../docs/aws_batch_deployment_options.md)** for GO vs Java deployment paths.
 
 ## Input Format (NDJSON)
 Newline-delimited JSON - one customer record per line, no commas between lines:
@@ -157,8 +163,11 @@ Newline-delimited JSON - one customer record per line, no commas between lines:
 - [BulkJobStatus.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/bulk/BulkJobStatus.java): Status snapshot with progress, resultPath, and optional matches array
 
 **Braid integration:**
-- [WatchmanBulkScreeningService.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/braid-integration/WatchmanBulkScreeningService.java): Example Braid service
-- `@Scheduled(cron = "0 1 * * *")`: Runs at 1am EST daily
+- [WatchmanBulkScreeningService.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/braid-integration/WatchmanBulkScreeningService.java): Drop-in replacement for CustomerService
+- Replicates CustomerService.runScheduledOfacCheck() method signature
+- Uses CustomerRepository.findIdsByTypeAndStatus() (same query as JMS approach)
+- Pagination: 2500 per page (matches OFAC_PAGE_SIZE constant)
+- Processes INDIVIDUAL then BUSINESS (same order as queueForOfacByType())
 - Three-step workflow: submit job → poll for completion → process matches
 - Polls every 30 seconds for up to 2 hours
 - NO changes to existing real-time OFAC checks (`MoovService.java`, `OfacController.java`)
@@ -182,9 +191,12 @@ cd aws-batch-poc/terraform
 
 **Generate test data:**
 ```bash
-cd aws-batch-poc
+cd scripts
 ./generate-100k-test-data.sh 100000
-# Creates test-data-100000.ndjson (9MB, 100k customer records)
+# Uses DataFaker library (net.datafaker v2.1.0, 2M+ downloads/month)
+# Creates test-data-100000.ndjson (8.5MB, 100k realistic diverse names)
+# 80% PERSON, 20% BUSINESS, 1 SDN per 1000 records
+# Result: ~1,000 matches vs 6,198 with bash arrays (84% FP reduction)
 ```
 
 **Upload to S3:**
