@@ -1,7 +1,7 @@
-# Error Handling - Production-Ready Exception Management
+# Error Handling - Exception Management
 
 ## Summary
-Global exception handling with consistent JSON error responses, proper HTTP status codes, request correlation, and database timeout handling. Validated across 13 test scenarios including edge cases and production failures.
+Global exception handling with consistent JSON error responses, proper HTTP status codes, request correlation, and database timeout handling. Validated across 13 test scenarios including edge cases and failures.
 
 ## Scope
 - [GlobalExceptionHandler.java](../src/main/java/io/moov/watchman/api/GlobalExceptionHandler.java) - 10 exception mappings
@@ -13,7 +13,7 @@ Global exception handling with consistent JSON error responses, proper HTTP stat
 - Out of scope: i18n error messages, custom error codes
 
 ## Design notes
-**Production-ready exception mappings:**
+**Exception mappings:**
 - IllegalArgumentException → 400 (bad input, validation failures)
 - MissingServletRequestParameterException → 400 (missing param)
 - MethodArgumentTypeMismatchException → 400 (wrong type)

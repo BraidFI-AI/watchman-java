@@ -1,4 +1,4 @@
-# Braid Integration - Production-Ready Example
+# Braid Integration - Example Code
 
 ## Quick Start
 

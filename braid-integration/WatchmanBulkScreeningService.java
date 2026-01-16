@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Production-ready Braid integration for Watchman Java bulk screening.
+ * Example Braid integration for Watchman Java bulk screening.
  * 
  * Complete S3 workflow for 300k customers:
  * 1. Export customers from DB to NDJSON

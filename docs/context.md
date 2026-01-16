@@ -8,7 +8,7 @@
 ## Session: January 16, 2026 (Braid Integration Example)
 
 ### What We Decided
-- Create production-ready integration code showing complete S3 workflow (not just infrastructure POC)
+- Create integration example code showing complete S3 workflow (not just infrastructure POC)
 - Separate service for bulk screening (WatchmanBulkScreeningService) vs existing real-time (MoovService)
 - Hybrid migration strategy: Use Java Watchman for bulk first, real-time later after proven stable
 - Copy-paste ready implementation with minimal TODOs (1: database query)
@@ -98,7 +98,7 @@
 - Zero changes to existing real-time endpoints (`/v2/search`, `/v2/search/batch`)
 
 ### What Is Now True
-- **File-in-file-out baseline**: S3 input files → S3 output files (production-ready batch pattern)
+- **File-in-file-out baseline**: S3 input files → S3 output files (batch processing pattern)
 - **API contracts finalized**: `BulkJobRequestDTO`, `BulkJobResponseDTO`, `BulkJobStatusDTO` with `resultPath` field
 - **36 passing tests**: 8 controller + 11 service + 7 NDJSON + 5 S3Reader + 5 S3ResultWriter tests (TDD complete)
 - **AWS S3 SDK integrated**: Added `software.amazon.awssdk:s3:2.24.0` dependency with automatic IAM authentication
@@ -133,10 +133,10 @@
 
 ---
 
-## Session: January 15, 2026 (Production-Ready Error Handling)
+## Session: January 15, 2026 (Error Handling Implementation)
 
 ### What We Decided
-- Implemented production-ready error handling using strict TDD (RED → GREEN → REFACTOR)
+- Implemented comprehensive error handling using strict TDD (RED → GREEN → REFACTOR)
 - ReportController throws EntityNotFoundException instead of returning HTML 404
 - BatchScreeningController throws IllegalArgumentException with descriptive messages
 - Created BatchRequestValidator to centralize batch validation logic (max 1000 items)

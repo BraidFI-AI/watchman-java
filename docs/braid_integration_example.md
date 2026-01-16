@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains **proof-of-concept integration code** showing how to integrate Watchman Java bulk screening with the Braid payment system. This is production-ready architecture and implementation patterns that can be copied directly into the Braid codebase.
+This directory contains **proof-of-concept integration code** showing how to integrate Watchman Java bulk screening with the Braid payment system. These are example architecture and implementation patterns that can be adapted for the Braid codebase.
 
 ## Status: POC Integration Code
 
@@ -16,7 +16,7 @@ This directory contains **proof-of-concept integration code** showing how to int
 ### 1. WatchmanBulkScreeningService.java
 **Location**: `braid-integration/WatchmanBulkScreeningService.java`
 
-Production-ready Spring service implementing complete S3 workflow:
+Spring service implementing complete S3 workflow:
 ```
 1. Export customers from Braid DB → NDJSON
 2. Upload NDJSON to S3 (watchman-input bucket)
@@ -68,7 +68,7 @@ private List<Customer> getActiveCustomers() {
 }
 ```
 
-That's it! Everything else is production-ready.
+That's the only TODO needed.
 
 ### 3. Configure Application Properties
 ```yaml

@@ -47,9 +47,9 @@ Bulk screening system using file-in-file-out pattern (S3 input → S3 output). S
 
 ## Integration Example
 
-**See [docs/braid_integration_example.md](../docs/braid_integration_example.md) for production-ready integration code.**
+**See [docs/braid_integration_example.md](../docs/braid_integration_example.md) for integration example code.**
 
-Complete Spring service showing:
+Spring service example showing:
 - Customer export from Braid DB → NDJSON
 - S3 upload/download workflow
 - Job submission and polling
