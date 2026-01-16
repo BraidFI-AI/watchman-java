@@ -5,6 +5,33 @@
 
 ---
 
+## Session: January 15, 2026 (Production-Ready Error Handling)
+
+### What We Decided
+- Implemented production-ready error handling using strict TDD (RED → GREEN → REFACTOR)
+- ReportController throws EntityNotFoundException instead of returning HTML 404
+- BatchScreeningController throws IllegalArgumentException with descriptive messages
+- Created BatchRequestValidator to centralize batch validation logic (max 1000 items)
+- Added SQLException handler that detects timeout errors → 503
+
+### What Is Now True
+- GlobalExceptionHandler handles 10 exception types with consistent JSON responses
+- All error responses return 6 fields: error, message, status, path, requestId, timestamp
+- SQLException with "timeout" or "timed out" in message → 503 "Database operation timed out"
+- BatchRequestValidator validates batch size and required fields, throws IllegalArgumentException
+- Request ID correlation works end-to-end: X-Request-ID header → MDC → logs → response header → error body
+- 30 error handling tests pass: 8 original + 5 production + 12 batch + 5 report
+- **Production deployment verified**: ECS commit 235e24b, deployed 2026-01-15 6:45 PM PST
+- **Error handling validated in production**: Empty batch → 400 with message, report not found → 404 JSON, request ID propagation confirmed, valid requests unaffected
+- ReportController endpoint produces HTML only - requesting with Accept: application/json returns 406 (expected behavior)
+
+### What Is Still Unknown
+- Whether to add i18n error messages for international deployments
+- If structured error codes (e.g., WATCHMAN-ERR-001) are needed for client error handling
+- Whether to add Retry-After header for 503 responses
+
+---
+
 ## Session: January 15, 2026 (Configuration Enforcement)
 
 ### What We Decided

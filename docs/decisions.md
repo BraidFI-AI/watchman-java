@@ -6,6 +6,77 @@
 
 ## Decision Log
 
+### 2026-01-15: Exception-Based Error Handling Over ResponseEntity
+
+**Decision**: Controllers throw exceptions (EntityNotFoundException, IllegalArgumentException) instead of returning error ResponseEntity objects. GlobalExceptionHandler catches all exceptions and returns uniform JSON error responses.
+
+**Rationale**: 
+- Consistent with Spring best practices and @ControllerAdvice pattern
+- Simplifies controller logic - no need to construct error responses in multiple places
+- Ensures all errors follow same JSON structure with request correlation
+- Centralizes error handling logic in one place (GlobalExceptionHandler)
+
+**Implementation**: 
+- ReportController: `Optional.orElseThrow(() -> new EntityNotFoundException(...))`
+- BatchScreeningController: `throw new IllegalArgumentException("Batch request must...")`
+- GlobalExceptionHandler: 10 exception handlers → ErrorResponse DTO
+
+**Impact**: All API endpoints return consistent error format. Controllers focus on business logic, not error formatting.
+
+---
+
+### 2026-01-15: Extract Batch Validation into Validator Class
+
+**Decision**: Created BatchRequestValidator as separate Spring component instead of inline validation in BatchScreeningController.
+
+**Rationale**:
+- Single Responsibility Principle - controller handles HTTP, validator handles validation
+- Reusable validation logic across multiple controllers if needed
+- Easier to test validation rules independently
+- Centralizes batch size limit (MAX_BATCH_SIZE = 1000) in one place
+
+**Implementation**: 
+- BatchRequestValidator @Component with validate(request) method
+- Injected into BatchScreeningController constructor
+- Throws IllegalArgumentException with descriptive messages
+- Updated BatchScreeningControllerTest to mock validator
+
+**Tradeoff**: Added one more class and dependency injection, but improved maintainability and testability.
+
+---
+
+### 2026-01-15: SQLException Timeout Detection by Message Content
+
+**Decision**: SQLException handler checks if error message contains "timeout" or "timed out" (case-insensitive) to distinguish timeout errors from other database errors.
+
+**Rationale**:
+- No standard SQL state code for timeouts across all databases (PostgreSQL, MySQL, H2, etc.)
+- JDBC drivers report timeouts differently (some use "08001", others use different codes)
+- Message inspection is pragmatic solution that works across database vendors
+- Provides user-friendly "Database operation timed out" message instead of technical details
+
+**Implementation**: 
+```java
+String messageLower = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+String message = messageLower.contains("timeout") || messageLower.contains("timed out")
+    ? "Database operation timed out"
+    : "Database service temporarily unavailable";
+```
+
+**Tradeoff**: Relies on message content (not ideal) but works reliably in practice. More robust than SQL state code checks.
+
+---
+
+### 2026-01-15: No Rate Limiting Implementation
+
+**Decision**: Did not implement 429 Too Many Requests exception handling or rate limiting middleware.
+
+**Rationale**: Watchman Java is internal service deployed on same network as consuming applications. No rate limiting requirements for internal services. Rate limiting would be implemented at API gateway level if needed.
+
+**Impact**: Simplified error handling implementation. If rate limiting needed in future, can add RateLimitExceededException + handler + middleware.
+
+---
+
 ### 2026-01-15: Remove Fallback Constructors from JaroWinklerSimilarity
 
 **Decision**: Removed no-arg and 2-arg constructors from JaroWinklerSimilarity. Only the 3-arg constructor `JaroWinklerSimilarity(TextNormalizer, PhoneticFilter, SimilarityConfig)` remains, with null check throwing IllegalArgumentException.
