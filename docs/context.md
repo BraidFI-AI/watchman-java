@@ -5,6 +5,49 @@
 
 ---
 
+## Session: January 16, 2026 (Braid Integration Example)
+
+### What We Decided
+- Create production-ready integration code showing complete S3 workflow (not just infrastructure POC)
+- Separate service for bulk screening (WatchmanBulkScreeningService) vs existing real-time (MoovService)
+- Hybrid migration strategy: Use Java Watchman for bulk first, real-time later after proven stable
+- Copy-paste ready implementation with minimal TODOs (1: database query)
+- Full TDD approach: Tests written first (RED), then implementation (GREEN)
+
+### What Is Now True
+- **Integration service**: WatchmanBulkScreeningService.java complete with S3 workflow
+  * Customer export from Braid DB → NDJSON transformation
+  * S3 upload/download (watchman-input, watchman-results buckets)
+  * Job submission with s3InputPath (not HTTP items array)
+  * Polling with 30s intervals (max 2 hours)
+  * Match transformation: Watchman JSON → Braid OFACResult
+  * Alert creation via existing alertCreationService
+  * Scheduled nightly at 1am EST via @Scheduled annotation
+- **Test suite**: WatchmanBulkScreeningServiceTest.java with 7 test scenarios
+  * Export, upload, submit, poll, download, transform, alert creation
+  * Mocked dependencies (S3Client, RestTemplate, services)
+  * End-to-end workflow integration test
+- **Documentation**: Three guides created
+  * braid_integration_example.md: Complete implementation guide
+  * braid-integration/README.md: Quick start (3 steps: copy, 1 TODO, test)
+  * Updated aws_batch_poc.md with integration reference
+- **Architecture validated**: Zero changes to existing real-time payments
+  * NachaService → MoovService → Go Watchman (unchanged)
+  * WatchmanBulkScreeningService → Java Watchman AWS Batch (new, separate)
+  * Different infrastructure (ECS vs AWS Batch)
+  * Different triggers (payment events vs nightly schedule)
+- **Performance projection**: 300k customers in ~2 hours ($35/month cost)
+- **Git commit**: a285b9c pushed to main branch
+
+### What Is Still Unknown
+- Whether Braid team prefers different scheduling time (currently 1am EST)
+- Actual database query implementation for active customers
+- Whether Braid needs additional alert fields beyond current OFACResult mapping
+- Observability preferences: additional logging, metrics, dashboards
+- Error notification preferences: email, Slack, PagerDuty, etc.
+
+---
+
 ## Session: January 16, 2026 (AWS Batch POC Complete)
 
 ### What We Decided
