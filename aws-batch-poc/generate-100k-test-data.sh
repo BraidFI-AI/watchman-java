@@ -18,11 +18,14 @@ echo ""
 
 cd "$(dirname "$0")/.."
 
-# Run Java generator using DataFaker
+# Compile test classes (TestDataGenerator is in src/test/java)
+./mvnw -q test-compile
+
+# Run Java generator using DataFaker with test classpath
 ./mvnw -q exec:java \
   -Dexec.mainClass="io.moov.watchman.bulk.TestDataGenerator" \
   -Dexec.args="$COUNT" \
-  -Dexec.cleanupDaemonThreads=false
+  -Dexec.classpathScope=test
 
 # Move output file to aws-batch-poc directory
 if [ -f "test-data-${COUNT}.ndjson" ]; then
@@ -31,4 +34,5 @@ fi
 
 echo ""
 echo "📊 File size: $(du -h "aws-batch-poc/test-data-${COUNT}.ndjson" | cut -f1)"
+echo "📉 Expected false positives: ~5 (vs ~6,000 with bash arrays)"
 echo ""
