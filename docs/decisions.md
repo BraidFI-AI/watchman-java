@@ -506,6 +506,38 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
+### 2026-01-16: AWS Batch POC Local Processing Only
+
+**Decision**: Initial POC (commit 8fe46a9) implemented S3-based bulk processing pattern without AWS Batch invocation.
+
+**Context**: The "AWS Batch POC" successfully processes 100k records in 39m48s but runs entirely on local API server (ExecutorService). AWS Batch infrastructure deployed via Terraform but application code has no BatchWorker, AwsBatchJobSubmitter, or mode switching logic.
+
+**Rationale**: Validates S3 input/output pattern and screening logic before adding AWS Batch complexity. Infrastructure-as-code proven working (17 resources deployed). Next step: implement actual Batch invocation.
+
+---
+
+### 2026-01-16: AWS Batch Integration Attempt Failed - Reverted
+
+**Decision**: Reverted uncommitted changes attempting to add AWS Batch integration (AwsBatchJobSubmitter, BatchWorker, mode switching in BulkJobService).
+
+**Context**: Added dual-mode support (local vs aws-batch) with configuration property `watchman.bulk.mode`. Changes caused 500 errors on API health checks, broke job submission entirely. Even 100-record tests failed after changes.
+
+**Rationale**: Regression too severe, breaking previously working local processing. Reverted to clean commit 8fe46a9 baseline. AWS Batch integration needs to be implemented incrementally without breaking local mode.
+
+---
+
+### 2026-01-16: Observability Gap in Batch Containers
+
+**Decision**: Identified missing logback batch profile causes log suppression in Fargate containers.
+
+**Context**: CloudWatch shows only ~34 Spring Boot startup events. No application logs from BatchWorker, chunk processing, or S3 operations visible. Warning: "Appender named [CONSOLE] not referenced."
+
+**Impact**: Cannot debug container execution, diagnose hangs, or verify processing progress. Makes troubleshooting AWS Batch issues extremely difficult.
+
+**Next Step**: Add batch springProfile to logback-spring.xml before implementing AWS Batch integration.
+
+---
+
 ### 2026-01-12: Session Workflow Improvement
 
 **Context**: Need better continuity across work sessions to track decisions and context.

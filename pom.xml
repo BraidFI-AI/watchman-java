@@ -104,6 +104,13 @@
             <version>${aws.sdk.version}</version>
         </dependency>
 
+        <!-- AWS SDK for Batch -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>batch</artifactId>
+            <version>${aws.sdk.version}</version>
+        </dependency>
+
         <!-- Structured JSON Logging -->
         <dependency>
             <groupId>ch.qos.logback.contrib</groupId>

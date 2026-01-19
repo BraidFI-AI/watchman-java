@@ -170,10 +170,15 @@ resource "aws_iam_role_policy" "batch_job_secrets_policy" {
       {
         Effect = "Allow"
         Action = [
-          "secretsmanager:GetSecretValue"
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
         ]
         Resource = [
-          "arn:aws:secretsmanager:${var.aws_region}:*:secret:watchman-java/*"
+          "${aws_s3_bucket.watchman_input.arn}/*",
+          "${aws_s3_bucket.watchman_results.arn}/*",
+          aws_s3_bucket.watchman_input.arn,
+          aws_s3_bucket.watchman_results.arn
         ]
       }
     ]
@@ -335,17 +340,6 @@ resource "aws_batch_job_definition" "watchman_bulk_screening" {
       }
     ]
     
-    secrets = [
-      {
-        name      = "GITHUB_TOKEN"
-        valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:watchman-java/github-token"
-      },
-      {
-        name      = "OFAC_API_KEY"
-        valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:watchman-java/ofac-api-key"
-      }
-    ]
-    
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -353,6 +347,10 @@ resource "aws_batch_job_definition" "watchman_bulk_screening" {
         "awslogs-region"        = var.aws_region
         "awslogs-stream-prefix" = "job"
       }
+    }
+    
+    networkConfiguration = {
+      assignPublicIp = "ENABLED"
     }
     
     fargatePlatformConfiguration = {

@@ -95,7 +95,7 @@
 **Braid Sandbox:**
 ✅ BLOCKED - Customer ID 8040212
 
-**Analysis:** **MAJOR DIVERGENCE** - Go scored only 69% while Java/OFAC at 99-100%. This is a 31% scoring gap, significantly worse than the typical 19% gap seen in other tests. Potential false negative risk for Go Watchman.
+**Analysis:** **MAJOR DIVERGENCE** - Go scored only 69% while Java/OFAC at 99-100%. This is a 31% scoring gap, significantly worse than the typical 19% gap. Both Go and Java show scoring inconsistencies compared to commercial OFAC-API.
 
 ---
 
@@ -200,7 +200,7 @@
 **Braid Sandbox:**
 ❌ ACTIVE - Customer ID 8040214 - **FALSE NEGATIVE**
 
-**Analysis:** **THIRD FALSE NEGATIVE - BOTH WATCHMAN IMPLEMENTATIONS FAILED** - Go matched Islamic Jihad Group (54%), Java matched Gama'a Al-Islamiyya (96%). Only OFAC matched correctly (99%). This is a catastrophic failure for both implementations when the suffix changes the entity identity.
+**Analysis:** **THIRD FALSE NEGATIVE - BOTH WATCHMAN IMPLEMENTATIONS FAILED** - Go matched Islamic Jihad Group (54%), Java matched Gama'a Al-Islamiyya (96%). Only OFAC matched correctly (99%). Both implementations fail when suffixes change entity identity.
 
 ---
 
@@ -211,7 +211,7 @@
 - Taliban Organization, AL-QAIDA Network, Islamic State Group all slipped through
 - Go Watchman failed on all 5 variations (matched wrong entities or scored too low)
 - Java Watchman failed on 2 out of 5 (HEZBOLLAH ORGANIZATION, ISLAMIC STATE GROUP)
-- Only OFAC-API + Braid internal logic provided some protection
+- Both implementations show significant gaps compared to commercial OFAC-API
 
 **Root Cause Pattern:**
 - Adding suffixes (ORGANIZATION, NETWORK, MOVEMENT, GROUP) causes character-length weighting to favor wrong entities
@@ -220,7 +220,7 @@
 - Example: "ISLAMIC STATE GROUP" → matched "ISLAMIC JIHAD GROUP" (shared "ISLAMIC...GROUP")
 
 **Critical Risk:**
-Braid is currently using Go Watchman which has demonstrated false negatives on common naming variations. Real-world sanctioned entities often use these exact suffixes in legal documents, contracts, and business names.
+Braid is currently using Go Watchman which has demonstrated false negatives on common naming variations. Java Watchman also fails on 2 out of 5 suffix variations. Real-world sanctioned entities often use these exact suffixes in legal documents, contracts, and business names.
 
 ---
 
@@ -328,13 +328,13 @@ Braid is currently using Go Watchman which has demonstrated false negatives on c
 1. Adding geographic descriptors (AFGHANISTAN, IRAQ, LEBANESE, PALESTINIAN) degrades matching
 2. Adding qualifiers (GOVERNMENT, MILITANTS, TERRORIST) further reduces scores
 3. Go Watchman scores drop below 51% on fuzzy matches - insufficient for blocking
-4. Java Watchman also fails but slightly better on alternate spellings (Hizballah)
+4. Java Watchman also fails on most fuzzy tests (only 1/5 success)
 5. OFAC-API's fuzzy matching outperforms both Watchman implementations
 
 **Acceptable vs Catastrophic:**
 - Wave 3 failures are arguably acceptable - heavily descriptive names are edge cases
 - HOWEVER: "LEBANESE HEZBOLLAH GROUP" and "IRAQ ISLAMIC STATE MILITANTS" are realistic real-world variations that should trigger screening
-- Go's consistent low scoring (51%) on correct entities is the critical failure point
+- Both Go (51%) and Java (null/no match) fail on these cases - neither implementation is sufficient for production compliance
 
 ---
 
@@ -359,24 +359,29 @@ Braid is currently using Go Watchman which has demonstrated false negatives on c
 
 ### Critical Vulnerabilities Identified
 
-1. **Go Watchman Character-Length Weighting Flaw**
+1. **Go Watchman Character-Length Weighting Issue**
    - Adding suffixes causes matching against wrong entities with similar suffixes
    - Example: "TALIBAN ORGANIZATION" → matched "TEHRAN PRISONS ORGANIZATION"
    - Affects 100% of Wave 2 tests
 
-2. **Insufficient Scoring on Fuzzy Matches**
-   - Go consistently scores 50-54% on correct entities with descriptive prefixes
-   - Below typical 70-80% blocking thresholds
-   - Example: Found "ISLAMIC STATE OF IRAQ AND THE LEVANT" but only 51% confidence
+2. **Java Watchman Suffix Handling Issues**
+   - Fails on 40% of suffix variations (HEZBOLLAH ORGANIZATION, ISLAMIC STATE GROUP)
+   - Better than Go but still insufficient for production compliance
+   - Both implementations show fundamental algorithm limitations
 
-3. **Real-World Exposure**
+3. **Insufficient Scoring on Fuzzy Matches (Both Implementations)**
+   - Go consistently scores 50-54% on correct entities with descriptive prefixes
+   - Java returns null/no match on same test cases
+   - Example: "IRAQ ISLAMIC STATE MILITANTS" - Go 51%, Java null
+
+4. **Real-World Exposure**
    - Sanctioned entities commonly use suffixes: "LLC", "ORGANIZATION", "NETWORK", "GROUP"
    - Legal documents include descriptors: "LEBANESE", "IRAQ", "PALESTINIAN"
-   - **Braid's Go Watchman would miss 7 out of 15 realistic variations**
+   - **Both implementations would miss 7+ out of 15 realistic variations**
 
-### Recommendation
+### Findings
 
-**IMMEDIATE ACTION REQUIRED:** Braid should migrate to Java Watchman or implement OFAC-API as primary screening engine. Go Watchman's false negative rate on common name variations (47%) presents unacceptable compliance risk.
+Go Watchman's false negative rate on common name variations (47%) presents compliance risk. Java Watchman performs better at 60% success rate but still fails on 40% of test cases. Both implementations struggle with suffix variations and fuzzy descriptors compared to commercial OFAC-API.
 
 ---
 
@@ -439,7 +444,7 @@ curl -s "https://watchman-go.fly.dev/search?name=AL-QAIDA%20NETWORK&limit=1" | j
 - Backwards compatible (tuning existing algorithm)
 - Reverses 70%+ of identified false negatives
 
-**NOTE:** This is a **mitigation**, not a complete fix. Long-term solution still requires Java Watchman migration for full parity with commercial OFAC-API performance.
+**NOTE:** This is a **mitigation for Go Watchman's specific issues**, not a complete fix. Both implementations have fundamental limitations. Commercial OFAC-API still outperforms both open-source implementations. Organizations requiring strict compliance should evaluate commercial solutions or implement multi-provider verification strategies.
 
 ---
 

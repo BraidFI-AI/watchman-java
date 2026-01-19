@@ -51,6 +51,14 @@
 - AWS Batch infrastructure deployed (compute environment, job queue, job definition) but not execution-tested
 - WatchmanBulkScreeningService not tested end-to-end (database → NDJSON → S3 workflow untested)
 
+### AWS Batch POC Current State (as of 2026-01-16)
+
+The POC at commit 8fe46a9 demonstrates S3-based bulk processing (NDJSON → screening → JSON results) but does NOT invoke AWS Batch. Processing happens locally on the API server using ExecutorService with 5 threads. The 100k baseline test (39m48s, 6,198 matches) ran entirely on localhost:8084, not in AWS Fargate containers.
+
+AWS Batch infrastructure (Terraform, ECR, job definitions, compute environment) is deployed and validated but not integrated with application code. No BatchWorker or AWS Batch SDK submission logic exists in the working baseline.
+
+Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch. Application-level logs are suppressed due to missing logback batch profile configuration.
+
 ### Container Images
 - GO Watchman: 100095454503.dkr.ecr.us-east-1.amazonaws.com/watchman-go:latest (built from moov-io/watchman repo)
 - Java Watchman: 100095454503.dkr.ecr.us-east-1.amazonaws.com/watchman-java:latest

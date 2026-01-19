@@ -19,6 +19,7 @@ Java-specific improvements categorized as: new features (not in Go), enhancement
 
 **Enhancements over Go:**
 - Government ID normalization: detects SSN vs TIN vs passport
+- Language detection: Apache Tika (70+ languages) with script-based detection
 - Error handling: GlobalExceptionHandler with consistent ErrorResponse format
 - Test coverage: 1,032 tests (63 classes) vs Go's ~200 tests
 - Configuration: Spring @ConfigurationProperties vs scattered env vars
