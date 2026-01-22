@@ -37,3 +37,7 @@ watchman:
     input-bucket: ${WATCHMAN_BULK_INPUT_BUCKET:watchman-input}
     results-bucket: ${WATCHMAN_BULK_RESULTS_BUCKET:watchman-results}
     executor-threads: 5
+  aws:
+    batch:
+      job-queue-arn: ${AWS_BATCH_JOB_QUEUE_ARN:arn:aws:batch:us-east-1:100095454503:job-queue/sandbox-watchman-queue}
+      job-definition-arn: ${AWS_BATCH_JOB_DEFINITION_ARN:arn:aws:batch:us-east-1:100095454503:job-definition/sandbox-watchman-bulk-screening:3}

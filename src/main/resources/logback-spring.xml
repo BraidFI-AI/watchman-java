@@ -49,4 +49,18 @@
         <logger name="org.hibernate" level="WARN"/>
         <logger name="com.zaxxer.hikari" level="WARN"/>
     </springProfile>
+
+    <!-- Batch profile - JSON structured logs for AWS Batch -->
+    <springProfile name="batch">
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+        
+        <logger name="io.moov.watchman" level="INFO"/>
+        
+        <!-- Reduce noise from frameworks -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="com.zaxxer.hikari" level="WARN"/>
+    </springProfile>
 </configuration>

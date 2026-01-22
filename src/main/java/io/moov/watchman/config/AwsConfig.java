@@ -1,5 +1,7 @@
 package io.moov.watchman.config;
 
+import io.moov.watchman.bulk.AwsBatchJobSubmitter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.regions.Region;
@@ -29,5 +31,13 @@ public class AwsConfig {
         return BatchClient.builder()
             .region(Region.US_EAST_1)
             .build();
+    }
+
+    @Bean
+    public AwsBatchJobSubmitter awsBatchJobSubmitter(
+            BatchClient batchClient,
+            @Value("${watchman.aws.batch.job-queue-arn}") String jobQueueArn,
+            @Value("${watchman.aws.batch.job-definition-arn}") String jobDefinitionArn) {
+        return new AwsBatchJobSubmitter(batchClient, jobQueueArn, jobDefinitionArn);
     }
 }

@@ -1,5 +1,6 @@
 package io.moov.watchman.config;
 
+import io.moov.watchman.bulk.AwsBatchJobSubmitter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,5 +36,14 @@ class AwsConfigTest {
         
         BatchClient batchClient = context.getBean(BatchClient.class);
         assertThat(batchClient).isNotNull();
+    }
+
+    @Test
+    void shouldHaveAwsBatchJobSubmitterBean() {
+        // Assert
+        assertThat(context.containsBean("awsBatchJobSubmitter")).isTrue();
+        
+        AwsBatchJobSubmitter submitter = context.getBean(AwsBatchJobSubmitter.class);
+        assertThat(submitter).isNotNull();
     }
 }

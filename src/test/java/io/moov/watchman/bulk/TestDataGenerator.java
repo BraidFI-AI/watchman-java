@@ -23,18 +23,54 @@ public class TestDataGenerator {
     private static final Faker faker = new Faker(Locale.US);
     private static final Random random = new Random();
     
-    // Real OFAC sanctioned entities (injected every N records for positive matches)
-    private static final List<String> SANCTIONED_NAMES = List.of(
+    // Real OFAC sanctioned entities with fuzzy variations for scoring tests
+    private static final List<String> EXACT_MATCHES = List.of(
         "Nicolas Maduro",
         "Vladimir Putin",
         "Osama Bin Laden",
-        "Joaquin Guzman Loera", // El Chapo
-        "Pablo Escobar",
-        "Kim Jong Un",
-        "Saddam Hussein",
-        "Muammar Gaddafi",
-        "Bashar al-Assad",
-        "Ali Khamenei"
+        "Joaquin Guzman Loera",
+        "Bashar al-Assad"
+    );
+    
+    private static final List<String> FUZZY_VARIATIONS = List.of(
+        // Spelling variations
+        "Osama Bin Ladin",
+        "Usama Bin Laden",
+        "Usama Bin Ladin",
+        
+        // Missing middle names
+        "Nicolas Maduro",
+        "Nicolas Maduro Moros",
+        
+        // Accent variations
+        "Nicolás Maduro",
+        
+        // Word order variations
+        "Maduro Nicolas",
+        "Putin Vladimir",
+        
+        // Common typos
+        "Osama Ben Laden",
+        "Vladmir Putin",
+        "Nicola Maduro",
+        
+        // Partial names
+        "O. Bin Laden",
+        "V. Putin",
+        "N. Maduro",
+        
+        // With middle initials
+        "Osama M. Bin Laden",
+        "Vladimir V. Putin",
+        
+        // Transliteration variants
+        "Assad Bashar",
+        "Guzman Joaquin",
+        
+        // Common misspellings
+        "Osamma Bin Laden",
+        "Vladamir Putin",
+        "Gusman Joaquin"
     );
     
     public static void main(String[] args) {
@@ -48,9 +84,13 @@ public class TestDataGenerator {
             for (int i = 1; i <= count; i++) {
                 String name;
                 
-                // Every 1000th record: inject known sanctioned entity
-                if (i % 1000 == 0) {
-                    name = SANCTIONED_NAMES.get(random.nextInt(SANCTIONED_NAMES.size()));
+                // Inject test names for scoring validation
+                if (i % 500 == 0) {
+                    // Every 500th: exact match
+                    name = EXACT_MATCHES.get(random.nextInt(EXACT_MATCHES.size()));
+                } else if (i % 250 == 0) {
+                    // Every 250th: fuzzy variation (tests similarity scoring)
+                    name = FUZZY_VARIATIONS.get(random.nextInt(FUZZY_VARIATIONS.size()));
                 } else {
                     // Generate realistic diverse name using DataFaker
                     name = faker.name().fullName();
@@ -77,8 +117,11 @@ public class TestDataGenerator {
             }
             
             System.out.println("✅ Generated " + count + " records in " + outputFile);
-            System.out.println("🎯 Expected matches: ~" + (count / 1000) + " sanctioned entities");
-            System.out.println("📊 Diversity: DataFaker generates unique names (no repetition like bash arrays)");
+            int exactMatches = count / 500;
+            int fuzzyMatches = count / 250;
+            System.out.println("🎯 Expected exact matches: ~" + exactMatches);
+            System.out.println("🔍 Expected fuzzy matches: ~" + fuzzyMatches + " (tests similarity scoring)");
+            System.out.println("📊 Diversity: DataFaker generates unique names (no repetition)");
             System.out.println("");
             System.out.println("Next steps:");
             System.out.println("  1. Upload to S3:");

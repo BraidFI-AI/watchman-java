@@ -1,0 +1,6 @@
+# Configuration for batch mode (AWS Batch workers)
+# This profile disables the web server and scheduled tasks
+
+spring:
+  main:
+    web-application-type: none  # Disable web server in batch mode

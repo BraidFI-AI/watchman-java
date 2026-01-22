@@ -13,6 +13,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -24,6 +27,7 @@ class BulkJobServiceTest {
     private BatchScreeningService batchScreeningService;
     private S3Reader s3Reader;
     private S3ResultWriter s3ResultWriter;
+    private AwsBatchJobSubmitter awsBatchJobSubmitter;
     private BulkJobService bulkJobService;
 
     @BeforeEach
@@ -31,7 +35,8 @@ class BulkJobServiceTest {
         batchScreeningService = mock(BatchScreeningService.class);
         s3Reader = mock(S3Reader.class);
         s3ResultWriter = mock(S3ResultWriter.class);
-        bulkJobService = new BulkJobService(batchScreeningService, s3Reader, s3ResultWriter);
+        awsBatchJobSubmitter = mock(AwsBatchJobSubmitter.class);
+        bulkJobService = new BulkJobService(batchScreeningService, s3Reader, s3ResultWriter, awsBatchJobSubmitter);
     }
 
     @Test
@@ -200,23 +205,11 @@ class BulkJobServiceTest {
     }
 
     @Test
-    void testSubmitJob_WithS3Path_ReadsFromS3() throws Exception {
+    void testSubmitJob_WithS3Path_SubmitsToAwsBatch() throws Exception {
         // Arrange
         String s3Path = "s3://watchman-bulk-jobs/customers-20260116.ndjson";
-        
-        List<BatchSearchRequestDTO.SearchItem> mockItems = List.of(
-            new BatchSearchRequestDTO.SearchItem("c001", "John Doe", "INDIVIDUAL", null),
-            new BatchSearchRequestDTO.SearchItem("c002", "Jane Smith", "INDIVIDUAL", null)
-        );
-        
-        when(s3Reader.readFromS3(s3Path)).thenReturn(mockItems);
-        when(batchScreeningService.screen(any()))
-            .thenReturn(new BatchScreeningResponse("test-batch", List.of(), 2, 0, 0, 10L, 
-                java.time.Instant.now(), java.time.Duration.ofMillis(10)));
-        when(s3ResultWriter.writeResults(any(), any()))
-            .thenReturn("s3://watchman-results/job-test/matches.json");
-        when(s3ResultWriter.writeSummary(any(), anyInt(), anyInt(), anyInt()))
-            .thenReturn("s3://watchman-results/job-test/summary.json");
+        when(awsBatchJobSubmitter.submitJob(anyString(), anyString(), anyDouble()))
+            .thenReturn("aws-batch-job-123");
 
         // Act
         BulkJob job = bulkJobService.submitJobFromS3("test-s3-job", s3Path, 0.88, 10);
@@ -224,21 +217,18 @@ class BulkJobServiceTest {
         // Assert
         assertThat(job).isNotNull();
         assertThat(job.getJobId()).startsWith("job-");
-        assertThat(job.getStatus()).isIn("SUBMITTED", "RUNNING");
+        assertThat(job.getStatus()).isEqualTo("SUBMITTED");
         
-        // Wait for async processing
-        TimeUnit.SECONDS.sleep(2);
+        // Wait briefly to ensure no local processing
+        TimeUnit.MILLISECONDS.sleep(200);
         
-        BulkJobStatus finalStatus = bulkJobService.getJobStatus(job.getJobId());
-        assertThat(finalStatus.status()).isEqualTo("COMPLETED");
-        assertThat(finalStatus.totalItems()).isEqualTo(2);
-        assertThat(finalStatus.processedItems()).isEqualTo(2);
-        assertThat(finalStatus.resultPath()).isNotNull();
-        assertThat(finalStatus.resultPath()).startsWith("s3://watchman-results/");
+        BulkJobStatus status = bulkJobService.getJobStatus(job.getJobId());
+        assertThat(status.status()).isEqualTo("SUBMITTED");
         
-        verify(s3Reader).readFromS3(s3Path);
-        verify(s3ResultWriter).writeResults(any(), any());
-        verify(s3ResultWriter).writeSummary(any(), anyInt(), anyInt(), anyInt());
+        // Verify AWS Batch submission, not local processing
+        verify(awsBatchJobSubmitter).submitJob(eq(job.getJobId()), eq(s3Path), eq(0.88));
+        verify(s3Reader, never()).readFromS3(anyString());
+        verify(s3ResultWriter, never()).writeResults(any(), any());
     }
 
     @Test
@@ -256,23 +246,67 @@ class BulkJobServiceTest {
     }
 
     @Test
-    void testSubmitJob_WithS3FileNotFound_FailsJob() throws Exception {
+    void testSubmitJob_WithS3FileNotFound_StillSubmitsToAwsBatch() throws Exception {
         // Arrange
         String s3Path = "s3://watchman-bulk-jobs/nonexistent.ndjson";
-        
-        when(s3Reader.readFromS3(s3Path))
-            .thenThrow(new RuntimeException("S3 file not found: " + s3Path));
+        when(awsBatchJobSubmitter.submitJob(anyString(), anyString(), anyDouble()))
+            .thenReturn("aws-batch-job-789");
 
         // Act
         BulkJob job = bulkJobService.submitJobFromS3("test-job", s3Path, 0.88, 10);
 
-        // Wait for processing
-        TimeUnit.SECONDS.sleep(2);
+        // Wait briefly
+        TimeUnit.MILLISECONDS.sleep(200);
+
+        // Assert - job is submitted to AWS Batch regardless of file existence
+        // AWS Batch will handle the failure when the container tries to read the file
+        BulkJobStatus status = bulkJobService.getJobStatus(job.getJobId());
+        assertThat(status.status()).isEqualTo("SUBMITTED");
+        
+        // Verify AWS Batch was called, not local S3Reader
+        verify(awsBatchJobSubmitter).submitJob(eq(job.getJobId()), eq(s3Path), eq(0.88));
+        verify(s3Reader, never()).readFromS3(anyString());
+    }
+
+    @Test
+    void testSubmitJobFromS3_SubmitsToAwsBatch() {
+        // Arrange
+        String s3Path = "s3://watchman-input/test-100.ndjson";
+        String awsBatchJobId = "aws-batch-job-123";
+        when(awsBatchJobSubmitter.submitJob(anyString(), anyString(), anyDouble())).thenReturn(awsBatchJobId);
+
+        // Act
+        BulkJob job = bulkJobService.submitJobFromS3("test-job", s3Path, 0.88, 10);
 
         // Assert
-        BulkJobStatus finalStatus = bulkJobService.getJobStatus(job.getJobId());
-        assertThat(finalStatus.status()).isEqualTo("FAILED");
-        assertThat(finalStatus.errorMessage()).isNotNull();
-        assertThat(finalStatus.errorMessage()).containsIgnoringCase("not found");
+        assertThat(job).isNotNull();
+        assertThat(job.getJobId()).startsWith("job-");
+        assertThat(job.getStatus()).isEqualTo("SUBMITTED");
+        
+        // Verify AWS Batch job was submitted with correct parameters
+        verify(awsBatchJobSubmitter).submitJob(
+            eq(job.getJobId()),
+            eq(s3Path),
+            eq(0.88)
+        );
+    }
+
+    @Test
+    void testSubmitJobFromS3_DoesNotProcessLocally() throws InterruptedException {
+        // Arrange
+        String s3Path = "s3://watchman-input/test-100.ndjson";
+        String awsBatchJobId = "aws-batch-job-456";
+        when(awsBatchJobSubmitter.submitJob(anyString(), anyString(), anyDouble())).thenReturn(awsBatchJobId);
+
+        // Act
+        BulkJob job = bulkJobService.submitJobFromS3("test-job", s3Path, 0.88, 10);
+        
+        // Wait briefly to ensure no async processing happens
+        TimeUnit.MILLISECONDS.sleep(200);
+
+        // Assert - should NOT call local services
+        verify(s3Reader, never()).readFromS3(anyString());
+        verify(batchScreeningService, never()).screen(any(BatchScreeningRequest.class));
+        verify(s3ResultWriter, never()).writeResults(anyString(), any());
     }
 }

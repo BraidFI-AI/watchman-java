@@ -41,8 +41,7 @@ src/test/resources/ofac/*.csv
 # Nemesis runtime artifacts
 scripts/__pycache__/
 scripts/.pytest_cache/
-scripts/reports/
 scripts/state/
 
-# Planning documents (work in progress)
-planning/
+# Archived POC and experimental work
+archive/

@@ -67,12 +67,12 @@ ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseContainerSupport -XX:MaxRAMPercentage=7
 
 # Create startup script that supports both web server and batch worker modes
 RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo '# Check if running in batch mode' >> /app/start.sh && \
-    echo 'if [ "$BATCH_MODE" = "true" ]; then' >> /app/start.sh && \
-    echo '  echo "Starting in BATCH_MODE - Running BatchWorker"' >> /app/start.sh && \
-    echo '  exec su-exec appuser java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-production} -jar /app/app.jar' >> /app/start.sh && \
+    echo '# Check if running in batch mode (MODE=batch)' >> /app/start.sh && \
+    echo 'if [ "$MODE" = "batch" ]; then' >> /app/start.sh && \
+    echo '  echo "Starting in BATCH mode - jobId=$JOB_ID s3InputPath=$S3_INPUT_PATH"' >> /app/start.sh && \
+    echo '  exec su-exec appuser java $JAVA_OPTS -Dspring.profiles.active=batch -jar /app/app.jar' >> /app/start.sh && \
     echo 'else' >> /app/start.sh && \
-    echo '  echo "Starting in WEB_SERVER mode"' >> /app/start.sh && \
+    echo '  echo "Starting in WEB mode"' >> /app/start.sh && \
     echo '  # Copy crontab to /etc/crontabs/ for appuser' >> /app/start.sh && \
     echo '  mkdir -p /etc/crontabs' >> /app/start.sh && \
     echo '  cp /app/scripts/crontab /etc/crontabs/appuser' >> /app/start.sh && \

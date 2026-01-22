@@ -24,14 +24,17 @@ public class BulkJobService {
     private final BatchScreeningService batchScreeningService;
     private final S3Reader s3Reader;
     private final S3ResultWriter s3ResultWriter;
+    private final AwsBatchJobSubmitter awsBatchJobSubmitter;
     private final Map<String, BulkJob> jobs = new ConcurrentHashMap<>();
     private final Map<String, List<BulkJobStatus.MatchResult>> jobMatches = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newFixedThreadPool(5);
 
-    public BulkJobService(BatchScreeningService batchScreeningService, S3Reader s3Reader, S3ResultWriter s3ResultWriter) {
+    public BulkJobService(BatchScreeningService batchScreeningService, S3Reader s3Reader, 
+                         S3ResultWriter s3ResultWriter, AwsBatchJobSubmitter awsBatchJobSubmitter) {
         this.batchScreeningService = batchScreeningService;
         this.s3Reader = s3Reader;
         this.s3ResultWriter = s3ResultWriter;
+        this.awsBatchJobSubmitter = awsBatchJobSubmitter;
     }
 
     /**
@@ -56,6 +59,7 @@ public class BulkJobService {
 
     /**
      * Submit a new bulk job from S3 NDJSON file.
+     * Delegates processing to AWS Batch instead of local execution.
      */
     public BulkJob submitJobFromS3(String jobName, String s3Path, double minMatch, int limit) {
         // Validate S3 path format
@@ -65,18 +69,19 @@ public class BulkJobService {
 
         String jobId = "job-" + UUID.randomUUID().toString().substring(0, 8);
         
-        // Create job with placeholder - we'll get actual count after reading S3
+        // Create job with placeholder - we'll get actual count from AWS Batch
         BulkJob job = new BulkJob(jobId, jobName, List.of(), minMatch, limit);
         job.setStatus("SUBMITTED");
         
         jobs.put(jobId, job);
         jobMatches.put(jobId, new CopyOnWriteArrayList<>());
         
-        log.info("Submitted S3 bulk job: jobId={}, jobName={}, s3Path={}", 
+        log.info("Submitting S3 bulk job to AWS Batch: jobId={}, jobName={}, s3Path={}", 
             jobId, jobName, s3Path);
         
-        // Start async processing from S3
-        executor.submit(() -> processS3BulkJob(job, s3Path));
+        // Submit to AWS Batch (not local processing)
+        String awsBatchJobId = awsBatchJobSubmitter.submitJob(jobId, s3Path, minMatch);
+        log.info("AWS Batch job submitted: jobId={}, awsBatchJobId={}", jobId, awsBatchJobId);
         
         return job;
     }
