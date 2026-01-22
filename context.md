@@ -476,3 +476,57 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - Do we want to keep deploying to both Fly.io and ECS, or choose one platform?
 
 ---
+
+## Session: January 21, 2026 (Archive and Simplify)
+
+### What We Decided
+- Archive POC and experimental work instead of deleting (preserves option to restore)
+- Create archive/ directory with subdirectories: aws-batch-poc/, nemesis-scripts/, braid-planning/, test-artifacts/
+- Exclude archive/ from git via .gitignore (local preservation only)
+- Simplify Dockerfile to web server mode only (remove Nemesis automation)
+
+### What Is Now True
+- **Archive**: 6,517 files (2.8GB) moved to archive/ subdirectories locally
+- **Git**: Removed from version control (commit 9538377) but preserved locally
+- **Evidence docs kept active**: go_java_comparison_procedure.md, divergence_evidence.md, taliban_analysis.md, watchman_go_deployment.md, feature_parity_gaps.md remain in docs/
+- **Dockerfile**: Simplified - removed Nemesis scripts copy, cron setup, batch worker mode scaffolding
+- **GitHub Actions**: ECS deployment working after Dockerfile fix (commit a2d6b2b)
+- **Project focus**: Baseline Braid integration functionality only
+
+### What Was Archived
+- aws-batch-poc/ - POC code, terraform, test results (100 chunk directories)
+- nemesis-scripts/ - Automated Go/Java parity testing (scripts/nemesis/, compare-implementations.py, etc)
+- braid-planning/ - Integration examples and migration plans
+- test-artifacts/ - Large test data (8.6MB NDJSON), Python venv (95MB, 6300 files), reports
+
+### What Is Still Unknown
+- Whether archived materials will be needed in future (preserved locally for potential restoration)
+
+---
+
+## Session: January 21, 2026 (Archive and Simplify)
+
+### What We Decided
+- Archive POC and experimental work instead of deleting (preserves option to restore)
+- Create archive/ directory with subdirectories: aws-batch-poc/, nemesis-scripts/, braid-planning/, test-artifacts/
+- Exclude archive/ from git via .gitignore (local preservation only)
+- Simplify Dockerfile to web server mode only (remove Nemesis automation)
+
+### What Is Now True
+- **Archive**: 6,517 files (2.8GB) moved to archive/ subdirectories locally
+- **Git**: Removed from version control (commit 9538377) but preserved locally
+- **Evidence docs kept active**: go_java_comparison_procedure.md, divergence_evidence.md, taliban_analysis.md, watchman_go_deployment.md, feature_parity_gaps.md remain in docs/
+- **Dockerfile**: Simplified - removed Nemesis scripts copy, cron setup, batch worker mode scaffolding
+- **GitHub Actions**: ECS deployment working after Dockerfile fix (commit a2d6b2b)
+- **Project focus**: Baseline Braid integration functionality only
+
+### What Was Archived
+- aws-batch-poc/ - POC code, terraform, test results (100 chunk directories)
+- nemesis-scripts/ - Automated Go/Java parity testing (scripts/nemesis/, compare-implementations.py, etc)
+- braid-planning/ - Integration examples and migration plans
+- test-artifacts/ - Large test data (8.6MB NDJSON), Python venv (95MB, 6300 files), reports
+
+### What Is Still Unknown
+- Whether archived materials will be needed in future (preserved locally for potential restoration)
+
+---

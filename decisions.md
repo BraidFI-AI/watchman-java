@@ -819,3 +819,53 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 - IAM policy attached to role: `ecsTaskExecutionRole`
 
 ---
+
+### 2026-01-21: Archive Instead of Delete Experimental Work
+
+**Decision**: Move POC and experimental work to local archive/ directory instead of deleting. Exclude archive/ from git via .gitignore.
+
+**Context**: Stripping down project for Braid integration focus. Decided general direction excludes AWS Batch. Java superiority established, no longer seeking Go parity.
+
+**Rationale**: 
+- Preserves 6+ months of work locally in case requirements change
+- Removes clutter from active codebase and git repository
+- Can restore specific files if needed without git history archaeology
+- User quote: "who knows, they may change their mind later"
+
+**Implementation**:
+- Created archive/ with 4 subdirectories: aws-batch-poc/, nemesis-scripts/, braid-planning/, test-artifacts/
+- Moved 6,517 files (2.8GB) to archive/
+- Added archive/ to .gitignore
+- Created archive/README.md cataloging contents
+- Deleted files from git (commit 9538377)
+
+**Evidence docs preserved in active repo**: go_java_comparison_procedure.md, divergence_evidence.md, taliban_analysis.md, watchman_go_deployment.md, feature_parity_gaps.md remain in docs/ for reference.
+
+**Impact**: Repository focused on baseline functionality. AWS Batch POC, Nemesis automation, and Braid planning docs removed from version control but recoverable locally.
+
+---
+
+### 2026-01-21: Simplify Dockerfile for Baseline Deployment
+
+**Decision**: Remove Nemesis automation and batch worker mode scaffolding from Dockerfile. Web server mode only.
+
+**Context**: GitHub Actions ECS deployment failing after archival. Dockerfile referenced archived scripts/nemesis/ directory causing build failure.
+
+**Rationale**:
+- Nemesis archived - no longer part of active system
+- Batch worker mode (MODE=batch) unused after AWS Batch POC excluded
+- Cron setup for Nemesis automation no longer needed
+- Simplifies container to core OFAC screening API only
+
+**Changes**:
+- Removed: COPY scripts/nemesis/, COPY scripts/crontab
+- Removed: crond installation and setup
+- Removed: /data/reports and /data/state directories
+- Removed: crontab copy to /etc/crontabs/ in startup script
+
+**Impact**: Dockerfile build succeeds. Container runs web server only (ECS deployment working, commit a2d6b2b).
+
+**Tradeoff**: Cannot run Nemesis automation from deployed containers. Accepted as Nemesis archived and no longer maintained.
+
+---
+
