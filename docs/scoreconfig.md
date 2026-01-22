@@ -70,8 +70,47 @@ curl "http://localhost:8080/v2/search?name=Maduro&trace=true"
 # Verify trace JSON includes applied config values
 ```
 
-## Assumptions and open questions
-- Assumes Spring Boot auto-configuration loads SimilarityConfig on startup
-- Fixed bug: JaroWinklerSimilarity had no-arg constructor calling super() instead of super(config)
-- Unknown: Should we expose GET /admin/config/similarity endpoint for runtime inspection?
-- Unknown: Need profile-based configs (strict.yml, lenient.yml)?
+---
+
+## WeightConfig - Business-Level Scoring Controls
+
+**Key class:** src/main/java/io/moov/watchman/config/WeightConfig.java
+
+**13 parameters for scoring weights and phase toggles:**
+
+**Weights (4 parameters):**
+- nameWeight (0.4) - Weight for name comparison scores
+- addressWeight (0.3) - Weight for address comparison scores  
+- criticalIdWeight (0.2) - Weight for government ID matching
+- supportingInfoWeight (0.1) - Weight for additional data (crypto, contact, dates)
+
+**Thresholds (2 parameters):**
+- minimumScore (0.7) - Minimum score to return match
+- exactMatchThreshold (0.95) - Score considered exact match
+
+**Phase Toggles (7 parameters - enable/disable comparison phases):**
+- nameComparisonEnabled (true)
+- altNameComparisonEnabled (true)
+- addressComparisonEnabled (true)
+- govIdComparisonEnabled (true)
+- cryptoComparisonEnabled (true)
+- contactComparisonEnabled (true)
+- dateComparisonEnabled (true)
+
+**Configuration prefix:** watchman.weights.*
+
+**Constructor injection:**
+```java
+// EntityScorerImpl requires WeightConfig injection - no fallback constructor
+EntityScorerImpl scorer = new EntityScorerImpl(similarityService, weightConfig);
+```
+
+**Configuration sources (priority order):**
+1. Command-line: --watchman.weights.name-weight=0.5
+2. Environment: WATCHMAN_WEIGHTS_NAME_WEIGHT=0.5
+3. YAML: application.yml
+4. No defaults in code - application.yml is single source of truth
+
+**Total configuration surface:** 23 parameters (10 SimilarityConfig + 13 WeightConfig)
+
+**Note:** Spring Boot auto-configuration loads both config beans on startup from application.yml. All parameters must be explicitly defined in application.yml (no hardcoded defaults).

@@ -199,6 +199,80 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
+### 2026-01-17: WeightConfig Implementation (Phase 2)
+
+**Decision**: Implemented WeightConfig as separate @ConfigurationProperties bean with 13 parameters for business-level scoring controls.
+
+**Rationale**: 
+- SimilarityConfig handles algorithm parameters (Jaro-Winkler internals)
+- WeightConfig handles business parameters (weights, thresholds, phase toggles)
+- Two-level separation provides clear operator vs engineer responsibility
+- Phase toggles allow disabling expensive comparisons (address geocoding, date parsing)
+
+**Implementation**:
+- WeightConfig.java with prefix watchman.weights.*
+- 4 weights: nameWeight, addressWeight, criticalIdWeight, supportingInfoWeight
+- 2 thresholds: minimumScore, exactMatchThreshold  
+- 7 phase toggles: nameComparisonEnabled, altNameComparisonEnabled, addressComparisonEnabled, govIdComparisonEnabled, cryptoComparisonEnabled, contactComparisonEnabled, dateComparisonEnabled
+- Injected into EntityScorerImpl constructor (required, no fallback)
+
+**Impact**: Operators can tune scoring behavior without code changes. 23 total parameters (10 similarity + 13 weights) centralized in application.yml.
+
+---
+
+### 2026-01-17: Test Organization by Naming Convention
+
+**Decision**: Renamed @SpringBootTest tests to *IntegrationTest.java, configured Maven Surefire to exclude them, Failsafe to include them.
+
+**Rationale**:
+- Fast feedback loop: `mvn test` runs 1,138 unit tests in <2 min
+- Full validation: `mvn verify` adds 231 integration tests (2-3 min with OFAC downloads)
+- Industry standard: Maven convention separates by naming pattern
+- Visual clarity: *IntegrationTest.java suffix signals Spring Boot context loading
+
+**Implementation**:
+- Renamed 12 test files: EntityScorerTest → EntityScorerIntegrationTest, etc.
+- Surefire excludes: **/*IntegrationTest.java
+- Failsafe includes: **/*IntegrationTest.java
+- Created TEST_ORGANIZATION.md documenting approach
+
+**Impact**: Developers get fast unit test feedback, CI runs full suite. No test functionality changed - only organization.
+
+---
+
+### 2026-01-17: Remove EntityScorerImpl Fallback Constructor
+
+**Decision**: Removed no-parameter and WeightConfig-only constructors from EntityScorerImpl. Only full constructor remains: EntityScorerImpl(SimilarityService, WeightConfig).
+
+**Rationale**: User required strictest enforcement: "remove any opportunity for fall back to hard coded values." Fallback constructors violated "application.yml is ScoreConfig surface" principle.
+
+**Implementation**:
+- Removed: EntityScorerImpl()
+- Removed: EntityScorerImpl(WeightConfig)
+- Kept: EntityScorerImpl(SimilarityService, WeightConfig) with null checks
+- Updated 13 test files to use @SpringBootTest with @Autowired injection
+- WatchmanConfig bean injects both dependencies
+
+**Impact**: Application fails at startup (not runtime) if configuration invalid. Impossible to create EntityScorerImpl without proper configuration injection.
+
+---
+
+### 2026-01-17: Enforce Zero Hardcoded Defaults in Configuration
+
+**Decision**: Removed all hardcoded default values from WeightConfig and SimilarityConfig. Application.yml is the single source of truth for all 23 configuration parameters.
+
+**Rationale**: User requirement: "No hardcoded values - application.yml is ScoreConfig surface." Hardcoded defaults create hidden configuration that operators cannot see or control.
+
+**Implementation**:
+- SimilarityConfig: Removed 10 hardcoded defaults
+- WeightConfig: Created with 0 hardcoded defaults
+- All 23 parameters must be explicitly set in application.yml
+- Spring Boot fails at startup if required config missing
+
+**Impact**: Configuration is explicit and visible. No silent fallback behavior. Operators have complete control over all parameters.
+
+---
+
 ### 2026-01-14: Documentation Format - Change Notes vs Reference Material
 
 **Decision**: Use change note format (max 350 words) for feature/operational docs, but exempt reference documentation from word limits.
@@ -359,7 +433,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 **Decision**: Productize ScoreConfig to match ScoreTrace's observe/control relationship:
 - **ScoreTrace** = OBSERVE scoring behavior (already complete)
 - **SimilarityConfig** = CONTROL algorithm parameters (Phase 1 complete)
-- **ScoringConfig** = CONTROL business factors (Phase 2 planned)
+- **WeightConfig** = CONTROL business factors (Phase 2 completed 2026-01-17)
 
 **Rationale**: 
 - ScoreTrace provides visibility ("Why did this score 0.72?")
@@ -375,7 +449,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Split A2's monolithic PR into 3 sequential phases:
 - **Phase 1**: SimilarityConfig integration (bug fix) - COMPLETED
-- **Phase 2**: ScoringConfig for factor-level controls - DEFERRED
+- **Phase 2**: WeightConfig for factor-level controls - COMPLETED (2026-01-17)
 - **Phase 3**: Runtime config overrides via POST /v2/search - DEFERRED
 
 **Rationale**:
@@ -399,7 +473,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 - Violated "minimal, incremental changes" principle
 - No evidence of TDD workflow (tests not written first)
 
-**Impact**: Phase 1 completed cleanly in 3 files with 47 passing tests. Phase 2 and 3 deferred to separate sessions.
+**Impact**: Phase 1 completed cleanly in 3 files with 47 passing tests. Phase 2 completed 2026-01-17. Phase 3 deferred.
 
 ---
 
@@ -726,7 +800,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 - Violated "minimal, incremental changes" principle
 - No evidence of TDD workflow (tests not written first)
 
-**Impact**: Phase 1 completed cleanly in 3 files with 47 passing tests. Phase 2 and 3 deferred to separate sessions.
+**Impact**: Phase 1 completed cleanly in 3 files with 47 passing tests. Phase 2 completed 2026-01-17. Phase 3 deferred.
 
 ---
 

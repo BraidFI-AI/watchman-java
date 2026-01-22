@@ -91,9 +91,8 @@ curl -H "Accept: application/json" "http://localhost:8084/api/reports/invalid-se
 # Expect: 30 tests pass (8 original + 5 production + 12 batch + 5 report)
 ```
 
-## Assumptions and open questions
-- Assumes SLF4J/Logback for logging infrastructure
-- Request ID max length: 64 characters (truncated if longer)
-- Unknown: Need internationalized error messages (i18n)?
-- Unknown: Should we add structured error codes (e.g., WATCHMAN-ERR-001)?
-- Unknown: Need retry-after header for 503 responses?
+## Implementation Details
+
+**Logging:** Uses SLF4J/Logback for log output
+
+**Request ID:** Maximum 64 characters (truncated if longer)

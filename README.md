@@ -38,7 +38,7 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 # Run the application
 ./mvnw spring-boot:run
 
-# Run all tests (330+ tests)
+# Run all tests (1,369 tests: 1,138 unit + 231 integration)
 ./mvnw test
 ```
 

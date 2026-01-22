@@ -70,8 +70,8 @@ with open('/app/API-REFERENCE.md') as f: print(len(f.read()))
 # Verify: Outputs character count (>10000)
 ```
 
-## Assumptions and open questions
-- Assumes javap available in Docker build image (eclipse-temurin:21-jdk-alpine includes it)
-- Regenerates on every build (no caching)
-- Unknown: Should we version API-REFERENCE.md in git for local development?
-- Unknown: Need separate API ref for test classes?
+## Implementation Details
+
+**Build integration:** Regenerates API reference on every Docker build (no caching)
+
+**Requirements:** javap must be available in build image (included in eclipse-temurin:21-jdk-alpine)

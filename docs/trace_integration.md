@@ -80,8 +80,10 @@ ls /data/reports/traces/
 # Verify: sessionId-*.json files created when trace=true
 ```
 
-## Assumptions and open questions
-- Assumes Nemesis runs with enough memory for trace storage (in-memory, 24hr TTL)
-- Traces only captured for Java (Go doesn't support tracing yet)
-- Unknown: Should we batch trace requests or query immediately after divergence detection?
-- Unknown: Performance impact of enabling trace for all Nemesis queries (currently only on divergences)
+## Implementation Details
+
+**Trace storage:** In-memory with 24-hour TTL
+
+**Scope:** Traces captured for Java API only (Go does not support tracing)
+
+**Nemesis behavior:** Traces captured only on divergence detection, not for all queries

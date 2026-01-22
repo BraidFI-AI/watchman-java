@@ -1,12 +1,12 @@
 # Test Coverage
 
 ## Summary
-1,032 tests across 63 test classes covering similarity engine, parsers, search, API, batch processing, tracing, and integration. Zero failures. Tests organized by functional area with helper scripts.
+1,369 tests (1,138 unit tests + 231 integration tests) across test classes covering similarity engine, parsers, search, API, batch processing, tracing, and integration. Tests organized by naming convention: *Test.java for unit tests (Maven Surefire), *IntegrationTest.java for integration tests (Maven Failsafe).
 
 ## Scope
-- Unit tests: 900+ (algorithm, parsing, normalization)
-- Integration tests: 130+ (end-to-end flows)
-- Test scripts: scripts/test-*.sh for each area
+- Unit tests: 1,138 tests (*Test.java) - algorithm, parsing, normalization, isolated component behavior
+- Integration tests: 231 tests (*IntegrationTest.java) - @SpringBootTest with full context, end-to-end flows
+- Test execution: `mvn test` runs unit tests only (<2 min), `mvn verify` runs all tests (2-3 min with OFAC downloads)
 - Out of scope: UI tests (no UI), load tests (separate suite)
 
 ## Design notes
@@ -17,23 +17,21 @@
 - Parsers: OFAC, CSL, EU, UK (58 tests)
 - Tracing: ScoringContextTest (15 tests), trace infrastructure (32 total)
 
-**Test scripts:** scripts/test-all.sh, test-similarity.sh, test-api.sh, test-integration.sh, test-live-api.sh
+**Test organization:** Maven Surefire runs *Test.java (unit tests), Failsafe runs *IntegrationTest.java (integration tests)
 
 ## How to validate
-**Test 1:** Run full suite
+**Test 1:** Run unit tests only (fast feedback)
 ```bash
-./mvnw clean test
-# Verify: 1,032 tests pass, 0 failures
-# Verify: ~45 seconds execution time
+./mvnw test
+# Verify: 1,138 unit tests pass
+# Verify: <2 minutes execution time
 ```
 
-**Test 2:** Run by area
+**Test 2:** Run full test suite (unit + integration)
 ```bash
-./scripts/test-similarity.sh
-# Verify: 318 tests pass (similarity engine)
-
-./scripts/test-api.sh
-# Verify: 42 tests pass (API controllers)
+./mvnw verify
+# Verify: 1,369 total tests pass (1,138 unit + 231 integration)
+# Verify: 2-3 minutes execution time (includes OFAC data downloads)
 ```
 
 **Test 3:** Verify Go parity tests
@@ -57,8 +55,6 @@
 # Tests: /v2/search, /v2/search/batch, /v2/nemesis/trigger
 ```
 
-## Assumptions and open questions
-- Assumes test data in test-data/ directory (OFAC SDN, CSL lists)
-- Test execution time: ~45 seconds for full suite
-- Unknown: Need coverage % target? (currently no jacoco/cobertura config)
-- Unknown: Should we add performance regression tests?
+## Test Data
+
+Test data stored in test-data/ directory includes OFAC SDN and CSL lists for integration testing.

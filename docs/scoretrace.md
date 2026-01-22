@@ -66,7 +66,7 @@ curl "http://localhost:8080/api/reports/abc-123/summary"
 curl "http://localhost:8080/v2/search?name=Nicolas%20Maduro&trace=true"
 # Verify: Response contains reportUrl
 # Verify: trace.breakdown.nameScore present
-# Verify: trace.events[] contains 9 phases
+# Verify: trace.events[] contains 12 lifecycle phases
 ```
 
 **Test 3:** HTML report generation
@@ -90,9 +90,13 @@ curl -X POST http://localhost:8084/v2/nemesis/trigger
 # Verify: Traces saved to /data/reports/traces/
 ```
 
-## Assumptions and open questions
-- Assumes in-memory trace storage sufficient (24hr TTL)
-- TraceSummaryService extracts insights from 9 phases
-- Unknown: Need Redis-backed storage for production scale?
-- Unknown: Should traces be persisted to S3 for compliance retention?
-- Unknown: Optimal TTL for trace storage?
+## Implementation Details
+
+**Trace storage:** In-memory with 24-hour TTL
+
+**Phase system:** TraceSummaryService extracts insights from 12 lifecycle phases:
+- NORMALIZATION, TOKENIZATION, PHONETIC_FILTER
+- NAME_COMPARISON, ALT_NAME_COMPARISON, GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON, ADDRESS_COMPARISON, DATE_COMPARISON
+- AGGREGATION, FILTERING
+
+**Note:** 7 comparison phases (NAME through DATE) are configurable via WeightConfig enable/disable toggles.

@@ -210,6 +210,36 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 
 ---
 
+## Session: January 17, 2026 (ScoreConfig Phase 2 - WeightConfig Implementation)
+
+### What We Decided
+- Implemented WeightConfig with 13 parameters (4 weights, 2 thresholds, 7 phase toggles)
+- Enforced "application.yml is ScoreConfig surface" - removed ALL hardcoded defaults from both config beans
+- Removed EntityScorerImpl fallback constructor - WeightConfig injection now required (fail-fast at startup)
+- Separated tests by naming convention: *Test.java (unit, Surefire) vs *IntegrationTest.java (integration, Failsafe)
+- Configured Maven for fast feedback: `mvn test` (<2 min) vs `mvn verify` (2-3 min with OFAC downloads)
+
+### What Is Now True
+- **WeightConfig.java**: 13 parameters loaded from watchman.weights.* in application.yml
+- **SimilarityConfig.java**: 10 parameters loaded from watchman.similarity.* (hardcoded defaults removed)
+- **Total configuration**: 23 parameters centralized in application.yml (single source of truth)
+- **Phase system clarified**: 12 total lifecycle phases (Phase enum), 7 configurable comparison phases
+- **EntityScorerImpl**: Requires WeightConfig injection via constructor - no fallback constructor exists
+- **Test organization**: 1,138 unit tests (*Test.java, <2 min) + 231 integration tests (*IntegrationTest.java, 2-3 min)
+- **12 test files renamed**: EntityScorerTest → EntityScorerIntegrationTest, SearchServiceTest → SearchServiceIntegrationTest, SearchControllerTest → SearchControllerIntegrationTest, V1CompatibilityControllerTest → V1CompatibilityControllerIntegrationTest, GlobalExceptionHandlerTest → GlobalExceptionHandlerIntegrationTest, GlobalExceptionHandlerProductionTest → GlobalExceptionHandlerProductionIntegrationTest, TracingMergeValidationTest → TracingMergeValidationIntegrationTest, Phase16ZoneOneCompletionTest → Phase16ZoneOneCompletionIntegrationTest, Phase17ZoneTwoQualityTest → Phase17ZoneTwoQualityIntegrationTest, AwsConfigTest → AwsConfigIntegrationTest, SimilarityConfigTest → SimilarityConfigIntegrationTest, RequiredConfigTest → RequiredConfigIntegrationTest
+- **ScoreConfigIntegrationTest**: 5 tests validate YAML loading for both SimilarityConfig and WeightConfig beans
+- **TEST_ORGANIZATION.md**: Documents test separation approach, Maven Surefire/Failsafe configuration, execution commands
+- **Git commit**: "Separate unit and integration tests by naming convention" pushed to main
+- **Phase parameters**: nameWeight=0.4, addressWeight=0.3, criticalIdWeight=0.2, supportingInfoWeight=0.1, minimumScore=0.7, exactMatchThreshold=0.95, all 7 phase toggles enabled by default
+
+### What Is Still Unknown
+- Whether phase configuration should be runtime-changeable via admin API (Phase 3 work)
+- If we need profile-specific configs (strict.yml, lenient.yml) for different environments
+- Optimal approach for A/B testing different weight configurations in production
+- Whether to add JSR-303 validation annotations for parameter bounds (e.g., weights sum to 1.0)
+
+---
+
 ## Session: January 14, 2026 (Evening - Documentation Refactoring)
 
 ### What We Decided

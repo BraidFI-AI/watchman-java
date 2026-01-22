@@ -71,8 +71,8 @@ export WATCHMAN_SIMILARITY_JARO_WINKLER_BOOST_THRESHOLD=0.8
 // Benefit: Immutable, no boilerplate, pattern matching ready
 ```
 
-## Assumptions and open questions
-- Assumes Java 21+ for records, sealed types, pattern matching
-- Assumes Spring Boot 3.x for dependency injection
-- Unknown: Should we add more Java-exclusive features or focus on parity?
-- Unknown: Performance comparison: Java vs Go for same workload?
+## Requirements
+
+**Java version:** Java 21+ (required for records, sealed types, pattern matching)
+
+**Framework:** Spring Boot 3.x (dependency injection, auto-configuration)
