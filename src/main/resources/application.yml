@@ -29,10 +29,32 @@ watchman:
     default-limit: 10
     max-limit: 100
     min-match: 0.88
-  scoring:
-    jaro-winkler:
-      boost-threshold: 0.7
-      prefix-size: 4
+  # ScoreConfig: Centralized scoring configuration
+  similarity:
+    jaro-winkler-boost-threshold: 0.7
+    jaro-winkler-prefix-size: 4
+    length-difference-penalty-weight: 0.3
+    length-difference-cutoff-factor: 0.9
+    different-letter-penalty-weight: 0.9
+    exact-match-favoritism: 0.0
+    unmatched-index-token-weight: 0.15
+    phonetic-filtering-disabled: false
+    keep-stopwords: false
+    log-stopword-debugging: false
+  weights:
+    name-weight: 35.0
+    address-weight: 25.0
+    critical-id-weight: 50.0
+    supporting-info-weight: 15.0
+    minimum-score: 0.0
+    exact-match-threshold: 0.99
+    name-comparison-enabled: true
+    alt-name-comparison-enabled: true
+    address-comparison-enabled: true
+    gov-id-comparison-enabled: true
+    crypto-comparison-enabled: true
+    contact-comparison-enabled: true
+    date-comparison-enabled: true
   bulk:
     input-bucket: ${WATCHMAN_BULK_INPUT_BUCKET:watchman-input}
     results-bucket: ${WATCHMAN_BULK_RESULTS_BUCKET:watchman-results}

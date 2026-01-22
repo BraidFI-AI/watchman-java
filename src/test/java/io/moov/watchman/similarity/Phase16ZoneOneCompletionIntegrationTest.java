@@ -1,17 +1,17 @@
 package io.moov.watchman.similarity;
 
-import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.search.ContactFieldAdapter;
 import io.moov.watchman.search.ContactFieldMatch;
 import io.moov.watchman.search.DebugScoring;
 import io.moov.watchman.search.EntityScorer;
-import io.moov.watchman.search.EntityScorerImpl;
 import io.moov.watchman.search.ScorePiece;
 import io.moov.watchman.trace.ScoringContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.StringWriter;
 import java.io.Writer;
@@ -33,9 +33,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * Target: Zone 1 completion 63/69 (91%) → 69/69 (100%)
  * Overall: 93/177 (53%) → 99/177 (56%)
  * Tests: 918 → 938 (+20 tests)
+ * Uses @SpringBootTest to load configuration from application.yml.
  */
+@SpringBootTest
 @DisplayName("Phase 16: Zone 1 Completion (Scoring Functions)")
-class Phase16ZoneOneCompletionTest {
+class Phase16ZoneOneCompletionIntegrationTest {
+
+    @Autowired
+    private EntityScorer scorer;
+    
+    @Autowired
+    private io.moov.watchman.config.WeightConfig weightConfig;
 
     @Nested
     @DisplayName("compareEntityTitlesFuzzy Tests")
@@ -668,7 +676,7 @@ class Phase16ZoneOneCompletionTest {
 
             StringWriter writer = new StringWriter();
             
-            double score = DebugScoring.debugSimilarity(writer, query, index);
+            double score = DebugScoring.debugSimilarity(writer, query, index, weightConfig);
             
             String output = writer.toString();
             assertTrue(output.contains("Debug Similarity"), "Should contain debug header");
@@ -746,7 +754,7 @@ class Phase16ZoneOneCompletionTest {
 
             StringWriter writer = new StringWriter();
             
-            DebugScoring.debugSimilarity(writer, query, index);
+            DebugScoring.debugSimilarity(writer, query, index, weightConfig);
             
             String output = writer.toString();
             assertTrue(output.contains("Name Score") || output.contains("score"), 
@@ -822,9 +830,8 @@ class Phase16ZoneOneCompletionTest {
             );
 
             StringWriter writer = new StringWriter();
-            double debugScore = DebugScoring.debugSimilarity(writer, query, index);
+            double debugScore = DebugScoring.debugSimilarity(writer, query, index, weightConfig);
             
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double normalScore = scorer.scoreWithBreakdown(query, index, ScoringContext.disabled())
                     .totalWeightedScore();
             

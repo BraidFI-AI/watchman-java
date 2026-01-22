@@ -1,6 +1,5 @@
 package io.moov.watchman.config;
 
-import io.moov.watchman.bulk.AwsBatchJobSubmitter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,11 +32,13 @@ public class AwsConfig {
             .build();
     }
 
-    @Bean
-    public AwsBatchJobSubmitter awsBatchJobSubmitter(
-            BatchClient batchClient,
-            @Value("${watchman.aws.batch.job-queue-arn}") String jobQueueArn,
-            @Value("${watchman.aws.batch.job-definition-arn}") String jobDefinitionArn) {
-        return new AwsBatchJobSubmitter(batchClient, jobQueueArn, jobDefinitionArn);
-    }
+    // AwsBatchJobSubmitter archived with AWS Batch POC
+    // Uncomment when AWS Batch integration is restored
+    // @Bean
+    // public AwsBatchJobSubmitter awsBatchJobSubmitter(
+    //         BatchClient batchClient,
+    //         @Value("${watchman.aws.batch.job-queue-arn}") String jobQueueArn,
+    //         @Value("${watchman.aws.batch.job-definition-arn}") String jobDefinitionArn) {
+    //     return new AwsBatchJobSubmitter(batchClient, jobQueueArn, jobDefinitionArn);
+    // }
 }

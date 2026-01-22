@@ -1,16 +1,13 @@
 package io.moov.watchman.search;
 
-import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.PreparedFields;
 import io.moov.watchman.model.SourceList;
-import io.moov.watchman.similarity.JaroWinklerSimilarity;
-import io.moov.watchman.similarity.PhoneticFilter;
-import io.moov.watchman.similarity.TextNormalizer;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,15 +20,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * Performance Impact: 10-100x improvement by avoiding redundant normalization.
  */
+@SpringBootTest
 @DisplayName("PreparedFields Integration with EntityScorer")
 class PreparedFieldsIntegrationTest {
 
+    @Autowired
     private EntityScorer scorer;
-    
-    @BeforeEach
-    void setUp() {
-        scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-    }
 
     @Test
     @DisplayName("Should use PreparedFields.normalizedNames for name matching")

@@ -1,6 +1,5 @@
 package io.moov.watchman.config;
 
-import io.moov.watchman.bulk.AwsBatchJobSubmitter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,10 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Test AWS configuration beans.
- * RED phase: These tests define required AWS SDK beans.
  */
 @SpringBootTest
-class AwsConfigTest {
+class AwsConfigIntegrationTest {
 
     @Autowired
     private ApplicationContext context;
@@ -31,19 +29,18 @@ class AwsConfigTest {
 
     @Test
     void shouldHaveBatchClientBean() {
-        // Assert - RED phase: This will fail until we implement BatchClient bean
+        // Assert
         assertThat(context.containsBean("batchClient")).isTrue();
         
         BatchClient batchClient = context.getBean(BatchClient.class);
         assertThat(batchClient).isNotNull();
     }
 
-    @Test
-    void shouldHaveAwsBatchJobSubmitterBean() {
-        // Assert
-        assertThat(context.containsBean("awsBatchJobSubmitter")).isTrue();
-        
-        AwsBatchJobSubmitter submitter = context.getBean(AwsBatchJobSubmitter.class);
-        assertThat(submitter).isNotNull();
-    }
+    // AwsBatchJobSubmitter archived with AWS Batch POC - test disabled
+    // @Test
+    // void shouldHaveAwsBatchJobSubmitterBean() {
+    //     assertThat(context.containsBean("awsBatchJobSubmitter")).isTrue();
+    //     AwsBatchJobSubmitter submitter = context.getBean(AwsBatchJobSubmitter.class);
+    //     assertThat(submitter).isNotNull();
+    // }
 }

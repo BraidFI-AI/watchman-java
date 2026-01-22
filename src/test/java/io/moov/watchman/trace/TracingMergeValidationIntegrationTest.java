@@ -3,12 +3,16 @@ package io.moov.watchman.trace;
 import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.search.EntityScorer;
-import io.moov.watchman.search.EntityScorerImpl;
-import io.moov.watchman.similarity.*;
+import io.moov.watchman.similarity.JaroWinklerSimilarity;
+import io.moov.watchman.similarity.PhoneticFilter;
+import io.moov.watchman.similarity.SimilarityService;
+import io.moov.watchman.similarity.TextNormalizer;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,9 +26,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * They will FAIL initially and guide the merge process.
  * <p>
  * Success = All tests passing + all 830 existing tests still passing.
+ * Uses @SpringBootTest to load configuration from application.yml.
  */
+@SpringBootTest
 @DisplayName("🔴 RED: Tracing Merge Validation")
-class TracingMergeValidationTest {
+class TracingMergeValidationIntegrationTest {
+
+    @Autowired
+    private EntityScorer scorer;
 
     @Nested
     @DisplayName("Infrastructure Existence Tests")
@@ -201,8 +210,6 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("EntityScorer accepts ScoringContext parameter")
         void entityScorerAcceptsContext() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-            
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId
             ScoringContext ctx = ScoringContext.disabled();
@@ -217,8 +224,6 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Backward compatibility: old API still works")
         void backwardCompatibilityMaintained() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-            
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId
             
@@ -232,8 +237,6 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Tracing captures lifecycle phases")
         void tracingCapturesLifecyclePhases() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-            
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId to trigger full scoring
             ScoringContext ctx = ScoringContext.enabled("test-lifecycle");
@@ -265,8 +268,6 @@ class TracingMergeValidationTest {
         @Test
         @DisplayName("Tracing includes score breakdown")
         void tracingIncludesBreakdown() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-            
             Entity query = createTestPerson();
             Entity index = createTestPersonIndex();  // Different sourceId
             ScoringContext ctx = ScoringContext.enabled("test-breakdown");
@@ -318,8 +319,6 @@ class TracingMergeValidationTest {
         @Disabled("Performance benchmarks are too flaky for CI - use JMH for real benchmarking")
         @DisplayName("Disabled context has minimal overhead")
         void disabledContextMinimalOverhead() {
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-            
             Person queryPerson = new Person("John Smith", List.of(), null, LocalDate.of(1980, 1, 1), null, null,
                     List.of(), List.of());
             Entity query = new Entity(

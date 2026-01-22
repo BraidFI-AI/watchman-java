@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 3. Default values
  */
 @SpringBootTest
-class SimilarityConfigTest {
+class SimilarityConfigIntegrationTest {
 
     @Autowired(required = false)
     private SimilarityConfig config;

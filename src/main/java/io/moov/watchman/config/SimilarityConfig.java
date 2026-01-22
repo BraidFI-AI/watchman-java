@@ -22,65 +22,64 @@ import org.springframework.context.annotation.Configuration;
 public class SimilarityConfig {
 
     /**
-     * Jaro-Winkler boost threshold (default: 0.7)
+     * Jaro-Winkler boost threshold (required)
      * Only apply prefix boost if base Jaro score >= this threshold
      */
-    private double jaroWinklerBoostThreshold = 0.7;
+    private double jaroWinklerBoostThreshold;
 
     /**
-     * Jaro-Winkler prefix size (default: 4)
+     * Jaro-Winkler prefix size (required)
      * Number of characters to check for common prefix
      */
-    private int jaroWinklerPrefixSize = 4;
+    private int jaroWinklerPrefixSize;
 
     /**
-     * Length difference cutoff factor (default: 0.9)
+     * Length difference cutoff factor (required)
      * If shorter string < (longer string * cutoff), return 0.0
      */
-    private double lengthDifferenceCutoffFactor = 0.9;
+    private double lengthDifferenceCutoffFactor;
 
     /**
-     * Length difference penalty weight (default: 0.3)
+     * Length difference penalty weight (required)
      * Penalty applied based on length difference
-     * Go default: 0.3, Current Java: 0.1
      */
-    private double lengthDifferencePenaltyWeight = 0.3;
+    private double lengthDifferencePenaltyWeight;
 
     /**
-     * Different letter penalty weight (default: 0.9)
+     * Different letter penalty weight (required)
      * Penalty for mismatched characters in Jaro-Winkler
      */
-    private double differentLetterPenaltyWeight = 0.9;
+    private double differentLetterPenaltyWeight;
 
     /**
-     * Exact match favoritism (default: 0.0 = disabled)
-     * Boost applied to exact matches
+     * Exact match favoritism (required)
+     * Boost applied to exact matches (0.0 = disabled)
      */
-    private double exactMatchFavoritism = 0.0;
+    private double exactMatchFavoritism;
 
     /**
-     * Unmatched index token weight (default: 0.15)
+     * Unmatched index token weight (required)
      * Penalty for tokens in index that don't match query
      */
-    private double unmatchedIndexTokenWeight = 0.15;
+    private double unmatchedIndexTokenWeight;
 
     /**
-     * Disable phonetic filtering (default: false)
+     * Disable phonetic filtering (required)
      * If true, skip Soundex pre-filter
      */
-    private boolean phoneticFilteringDisabled = false;
+    private boolean phoneticFilteringDisabled;
 
     /**
-     * Keep stopwords (default: false)
+     * Keep stopwords (required)
      * If true, don't remove stopwords during normalization
      */
-    private boolean keepStopwords = false;
+    private boolean keepStopwords;
 
     /**
-     * Log stopword debugging (default: false)
+     * Log stopword debugging (required)
      * If true, log stopword removal details
      */
-    private boolean logStopwordDebugging = false;
+    private boolean logStopwordDebugging;
 
     // Getters and setters
 

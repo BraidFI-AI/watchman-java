@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
     "watchman.download.on-startup=false"
 })
 @DisplayName("Required Config Enforcement - No Fallback to Hardcoded Values")
-class RequiredConfigTest {
+public class RequiredConfigIntegrationTest {
 
     @Autowired
     private ApplicationContext context;

@@ -1,5 +1,6 @@
 package io.moov.watchman.search;
 
+import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.similarity.SimilarityService;
 import io.moov.watchman.similarity.TextNormalizer;
@@ -15,7 +16,7 @@ import java.util.Objects;
  * 
  * Ported from Go implementation: pkg/search/similarity.go
  * 
- * Weights (from Go):
+ * Weights configurable via WeightConfig (default to Go values):
  * - Critical identifiers (sourceId, crypto, govId, contact): 50
  * - Name comparison: 35
  * - Address matching: 25
@@ -23,18 +24,17 @@ import java.util.Objects;
  */
 public class EntityScorerImpl implements EntityScorer {
 
-    // Weights from Go implementation
-    private static final double CRITICAL_ID_WEIGHT = 50.0;
-    private static final double NAME_WEIGHT = 35.0;
-    private static final double ADDRESS_WEIGHT = 25.0;
-    private static final double SUPPORTING_INFO_WEIGHT = 15.0;
-
     private final SimilarityService similarityService;
     private final TextNormalizer normalizer;
+    private final WeightConfig weightConfig;
 
-    public EntityScorerImpl(SimilarityService similarityService) {
+    public EntityScorerImpl(SimilarityService similarityService, WeightConfig weightConfig) {
+        if (weightConfig == null) {
+            throw new IllegalArgumentException("WeightConfig cannot be null");
+        }
         this.similarityService = similarityService;
         this.normalizer = new TextNormalizer();
+        this.weightConfig = weightConfig;
     }
 
     @Override
@@ -64,8 +64,8 @@ public class EntityScorerImpl implements EntityScorer {
         double bestNameScore = Math.max(nameScore, altNamesScore);
 
         // Calculate weighted final score
-        double totalWeight = NAME_WEIGHT;
-        double weightedSum = bestNameScore * NAME_WEIGHT;
+        double totalWeight = weightConfig.getNameWeight();
+        double weightedSum = bestNameScore * weightConfig.getNameWeight();
         double finalScore = weightedSum / totalWeight;
 
         return new ScoreBreakdown(
@@ -105,20 +105,27 @@ public class EntityScorerImpl implements EntityScorer {
         }
 
         // Calculate individual factor scores with tracing
-        double nameScore = ctx.traced(Phase.NAME_COMPARISON, "Compare names",
-                () -> compareNames(query.name(), index, ctx));
-        double altNamesScore = ctx.traced(Phase.ALT_NAME_COMPARISON, "Compare alt names",
-                () -> compareAltNames(query.name(), index, ctx));
-        double govIdScore = ctx.traced(Phase.GOV_ID_COMPARISON, "Compare government IDs",
-                () -> compareGovernmentIds(query.governmentIds(), index.governmentIds()));
-        double cryptoScore = ctx.traced(Phase.CRYPTO_COMPARISON, "Compare crypto addresses",
-                () -> compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses()));
-        double addressScore = ctx.traced(Phase.ADDRESS_COMPARISON, "Compare addresses",
-                () -> compareAddresses(query.addresses(), index.addresses()));
-        double contactScore = ctx.traced(Phase.CONTACT_COMPARISON, "Compare contact info",
-                () -> compareContact(query.contact(), index.contact()));
-        double dateScore = ctx.traced(Phase.DATE_COMPARISON, "Compare dates",
-                () -> compareDates(query, index));
+        double nameScore = weightConfig.isNameComparisonEnabled()
+            ? ctx.traced(Phase.NAME_COMPARISON, "Compare names", () -> compareNames(query.name(), index, ctx))
+            : 0.0;
+        double altNamesScore = weightConfig.isAltNameComparisonEnabled()
+            ? ctx.traced(Phase.ALT_NAME_COMPARISON, "Compare alt names", () -> compareAltNames(query.name(), index, ctx))
+            : 0.0;
+        double govIdScore = weightConfig.isGovIdComparisonEnabled()
+            ? ctx.traced(Phase.GOV_ID_COMPARISON, "Compare government IDs", () -> compareGovernmentIds(query.governmentIds(), index.governmentIds()))
+            : 0.0;
+        double cryptoScore = weightConfig.isCryptoComparisonEnabled()
+            ? ctx.traced(Phase.CRYPTO_COMPARISON, "Compare crypto addresses", () -> compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses()))
+            : 0.0;
+        double addressScore = weightConfig.isAddressComparisonEnabled()
+            ? ctx.traced(Phase.ADDRESS_COMPARISON, "Compare addresses", () -> compareAddresses(query.addresses(), index.addresses()))
+            : 0.0;
+        double contactScore = weightConfig.isContactComparisonEnabled()
+            ? ctx.traced(Phase.CONTACT_COMPARISON, "Compare contact info", () -> compareContact(query.contact(), index.contact()))
+            : 0.0;
+        double dateScore = weightConfig.isDateComparisonEnabled()
+            ? ctx.traced(Phase.DATE_COMPARISON, "Compare dates", () -> compareDates(query, index))
+            : 0.0;
 
         // SourceId mismatch penalty: if both have sourceIds but they don't match,
         // this counts as a critical identifier mismatch (score 0 for that factor)
@@ -127,7 +134,9 @@ public class EntityScorerImpl implements EntityScorer {
             && !query.sourceId().equals(index.sourceId());
 
         // Calculate weighted final score
-        boolean hasExactMatch = govIdScore >= 0.99 || cryptoScore >= 0.99 || contactScore >= 0.99;
+        boolean hasExactMatch = govIdScore >= weightConfig.getExactMatchThreshold() 
+            || cryptoScore >= weightConfig.getExactMatchThreshold() 
+            || contactScore >= weightConfig.getExactMatchThreshold();
 
         double finalScore = ctx.traced(Phase.AGGREGATION, "Calculate weighted score", () -> {
             if (hasExactMatch) {
@@ -172,8 +181,8 @@ public class EntityScorerImpl implements EntityScorer {
             }
             
             // Recalculate with address
-            double totalWeight = NAME_WEIGHT + ADDRESS_WEIGHT;
-            double weightedSum = breakdown.nameScore() * NAME_WEIGHT + addressScore * ADDRESS_WEIGHT;
+            double totalWeight = weightConfig.getNameWeight() + weightConfig.getAddressWeight();
+            double weightedSum = breakdown.nameScore() * weightConfig.getNameWeight() + addressScore * weightConfig.getAddressWeight();
             return weightedSum / totalWeight;
         }
         
@@ -410,36 +419,36 @@ public class EntityScorerImpl implements EntityScorer {
 
         // Best name score
         double bestNameScore = Math.max(nameScore, altNameScore);
-        weightedSum += bestNameScore * NAME_WEIGHT;
-        totalWeight += NAME_WEIGHT;
+        weightedSum += bestNameScore * weightConfig.getNameWeight();
+        totalWeight += weightConfig.getNameWeight();
 
         // If sourceIds were both provided but don't match, add a 0 score with critical weight
         // This prevents a name-only match from being 1.0 when sourceIds are mismatched
         if (sourceIdMismatch) {
-            weightedSum += 0.0 * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+            weightedSum += 0.0 * weightConfig.getCriticalIdWeight();
+            totalWeight += weightConfig.getCriticalIdWeight();
         }
 
         // Add other factors if present
         if (govIdScore > 0) {
-            weightedSum += govIdScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+            weightedSum += govIdScore * weightConfig.getCriticalIdWeight();
+            totalWeight += weightConfig.getCriticalIdWeight();
         }
         if (cryptoScore > 0) {
-            weightedSum += cryptoScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+            weightedSum += cryptoScore * weightConfig.getCriticalIdWeight();
+            totalWeight += weightConfig.getCriticalIdWeight();
         }
         if (contactScore > 0) {
-            weightedSum += contactScore * CRITICAL_ID_WEIGHT;
-            totalWeight += CRITICAL_ID_WEIGHT;
+            weightedSum += contactScore * weightConfig.getCriticalIdWeight();
+            totalWeight += weightConfig.getCriticalIdWeight();
         }
         if (addressScore > 0) {
-            weightedSum += addressScore * ADDRESS_WEIGHT;
-            totalWeight += ADDRESS_WEIGHT;
+            weightedSum += addressScore * weightConfig.getAddressWeight();
+            totalWeight += weightConfig.getAddressWeight();
         }
         if (dateScore > 0) {
-            weightedSum += dateScore * SUPPORTING_INFO_WEIGHT;
-            totalWeight += SUPPORTING_INFO_WEIGHT;
+            weightedSum += dateScore * weightConfig.getSupportingInfoWeight();
+            totalWeight += weightConfig.getSupportingInfoWeight();
         }
 
         return totalWeight > 0 ? weightedSum / totalWeight : 0.0;

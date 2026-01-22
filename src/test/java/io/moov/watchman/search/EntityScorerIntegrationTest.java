@@ -1,16 +1,13 @@
 package io.moov.watchman.search;
 
-import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
-import io.moov.watchman.similarity.JaroWinklerSimilarity;
-import io.moov.watchman.similarity.PhoneticFilter;
-import io.moov.watchman.similarity.TextNormalizer;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,7 +19,7 @@ import static org.assertj.core.api.Assertions.within;
  * Tests for entity scoring logic.
  * Test cases ported from Go implementation: pkg/search/similarity_test.go
  * 
- * Scoring weights from Go implementation:
+ * Scoring weights loaded from application.yml (watchman.weights.*):
  * - Critical identifiers (sourceId, crypto): 50
  * - Government IDs: 50
  * - Contact info (email, phone): 50
@@ -32,14 +29,11 @@ import static org.assertj.core.api.Assertions.within;
  * - Address matching: 25
  * - Supporting info: 15
  */
-class EntityScorerTest {
+@SpringBootTest
+class EntityScorerIntegrationTest {
 
+    @Autowired
     private EntityScorer scorer;
-
-    @BeforeEach
-    void setUp() {
-        scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-    }
 
     @Nested
     @DisplayName("Critical Identifier Matching (Weight 50)")

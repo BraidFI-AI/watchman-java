@@ -1,14 +1,14 @@
 package io.moov.watchman.similarity;
 
-import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.normalize.PhoneNormalizer;
 import io.moov.watchman.scorer.AddressNormalizer;
 import io.moov.watchman.search.EntityScorer;
-import io.moov.watchman.search.EntityScorerImpl;
 import io.moov.watchman.trace.ScoringContext;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.Arrays;
 import java.util.List;
@@ -26,8 +26,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * Tests: 20 comprehensive tests across 4 categories
  * Expected: All tests fail initially (RED phase)
+ * Uses @SpringBootTest to load configuration from application.yml.
  */
-public class Phase17ZoneTwoQualityTest {
+@SpringBootTest
+public class Phase17ZoneTwoQualityIntegrationTest {
+
+    @Autowired
+    private EntityScorer scorer;
 
     @Nested
     class StopwordCachingTests {
@@ -173,7 +178,6 @@ public class Phase17ZoneTwoQualityTest {
             ).normalize();
             
             // Score should be high because "THE" is removed from both
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should match well (> 0.9) since "PABLO ESCOBAR" matches "PABLO ESCOBAR"
@@ -461,7 +465,6 @@ public class Phase17ZoneTwoQualityTest {
             ).normalize();
             
             // Score should be high because apostrophe normalized out
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should match well since "JOHNS COMPANY" matches "JOHNS COMPANY"
@@ -853,7 +856,6 @@ public class Phase17ZoneTwoQualityTest {
             assertEquals(queryNorm.line1(), queryNorm.line1().toLowerCase());
             
             // Score addresses - should match well
-            EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
             double score = scorer.score(queryEntity.name(), indexEntity);
             
             // Should have good address component score

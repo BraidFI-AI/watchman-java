@@ -49,17 +49,20 @@ public class DebugScoring {
      * @param w     Writer for debug output (null-safe)
      * @param query Query entity
      * @param index Index entity
+     * @param weightConfig Weight configuration for scoring
      * @return Final similarity score
      */
-    public static double debugSimilarity(Writer w, Entity query, Entity index) {
+    public static double debugSimilarity(Writer w, Entity query, Entity index, io.moov.watchman.config.WeightConfig weightConfig) {
         // Get detailed score breakdown using EntityScorerImpl
-        // TODO: Inject config via constructor when these utilities become Spring-managed beans
-        EntityScorer scorer = new EntityScorerImpl(new JaroWinklerSimilarity(
-            new TextNormalizer(),
-            new PhoneticFilter(true),
-            new SimilarityConfig()
-        ));
-        ScoreBreakdown breakdown = scorer.scoreWithBreakdown(query, index, ScoringContext.disabled());
+        EntityScorer scorer = new EntityScorerImpl(
+            new JaroWinklerSimilarity(
+                new TextNormalizer(),
+                new PhoneticFilter(true),
+                new io.moov.watchman.config.SimilarityConfig()
+            ),
+            weightConfig
+        );
+        ScoreBreakdown breakdown = scorer.scoreWithBreakdown(query, index, io.moov.watchman.trace.ScoringContext.disabled());
         
         debug(w, "=== Debug Similarity ===\n");
         debug(w, "Query: %s (%s)\n", query.name(), query.type());

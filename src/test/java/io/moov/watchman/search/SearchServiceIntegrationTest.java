@@ -1,16 +1,13 @@
 package io.moov.watchman.search;
 
-import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.index.EntityIndex;
-import io.moov.watchman.index.InMemoryEntityIndex;
 import io.moov.watchman.model.*;
-import io.moov.watchman.similarity.JaroWinklerSimilarity;
-import io.moov.watchman.similarity.PhoneticFilter;
-import io.moov.watchman.similarity.TextNormalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 
@@ -20,17 +17,21 @@ import static org.assertj.core.api.Assertions.within;
 /**
  * Tests for the search service and entity scoring.
  * Test cases ported from Go implementation: pkg/search/similarity_test.go
+ * Uses @SpringBootTest to load configuration from application.yml.
  */
-class SearchServiceTest {
+@SpringBootTest
+class SearchServiceIntegrationTest {
 
+    @Autowired
     private SearchService searchService;
+    
+    @Autowired
     private EntityIndex entityIndex;
 
     @BeforeEach
     void setUp() {
-        entityIndex = new InMemoryEntityIndex();
-        EntityScorer entityScorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-        searchService = new SearchServiceImpl(entityIndex, entityScorer);
+        // Clear and reload test data
+        entityIndex.clear();
         
         // Add test data
         entityIndex.addAll(List.of(

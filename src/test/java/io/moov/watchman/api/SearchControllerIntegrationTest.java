@@ -1,21 +1,15 @@
 package io.moov.watchman.api;
 
-import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.index.EntityIndex;
-import io.moov.watchman.index.InMemoryEntityIndex;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.SourceList;
-import io.moov.watchman.search.EntityScorerImpl;
-import io.moov.watchman.search.SearchService;
-import io.moov.watchman.search.SearchServiceImpl;
-import io.moov.watchman.similarity.JaroWinklerSimilarity;
-import io.moov.watchman.similarity.PhoneticFilter;
-import io.moov.watchman.similarity.TextNormalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -25,19 +19,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for SearchController REST endpoints.
+ * Uses @SpringBootTest to load full application context with configuration from application.yml.
  */
-class SearchControllerTest {
+@SpringBootTest
+class SearchControllerIntegrationTest {
 
+    @Autowired
     private SearchController controller;
+    
+    @Autowired
     private EntityIndex entityIndex;
 
     @BeforeEach
     void setUp() {
-        entityIndex = new InMemoryEntityIndex();
-        var scorer = new EntityScorerImpl(new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig()));
-        SearchService searchService = new SearchServiceImpl(entityIndex, scorer);
-        var traceRepository = new io.moov.watchman.trace.InMemoryTraceRepository();
-        controller = new SearchController(searchService, entityIndex, scorer, traceRepository);
+        // Clear and reload test data
+        entityIndex.clear();
 
         // Load test data
         entityIndex.addAll(List.of(

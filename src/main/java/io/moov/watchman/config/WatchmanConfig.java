@@ -59,8 +59,8 @@ public class WatchmanConfig {
     }
 
     @Bean
-    public EntityScorer entityScorer(SimilarityService similarityService) {
-        return new EntityScorerImpl(similarityService);
+    public EntityScorer entityScorer(SimilarityService similarityService, WeightConfig weightConfig) {
+        return new EntityScorerImpl(similarityService, weightConfig);
     }
 
     @Bean
