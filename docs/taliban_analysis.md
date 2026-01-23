@@ -23,7 +23,7 @@ When Java and Go produced different results, an independent reference was requir
 - Deployment: AWS ECS (Elastic Container Service)
 - Version: 0.1.0-SNAPSHOT (Java 21, Spring Boot 3.2.1)
 - Entities Loaded: 18,511 OFAC records
-- Features: ScoreTrace enabled, `/v2/search` API with trace parameter
+- Features: ScoreTrace enabled, `/v1/search` API with trace parameter
 - Testing: localhost:8084 for controlled testing
 
 **Go Watchman:**
@@ -148,11 +148,11 @@ After observing the anomaly in Braid, we tested the APIs directly:
 **Java Watchman (AWS ECS Production):**
 ```bash
 # Remote endpoint
-curl "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/search?name=TALIBAN+ORGANIZATION"
+curl "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search?name=TALIBAN+ORGANIZATION"
 # Result: 1 match - TALIBAN (SDN 6636), score=0.913 ✅
 
 # With trace for detailed breakdown
-curl "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/search?name=TALIBAN+ORGANIZATION&trace=true&limit=1"
+curl "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search?name=TALIBAN+ORGANIZATION&trace=true&limit=1"
 # Result: Same match with breakdown showing nameScore=0.913
 ```
 
@@ -163,17 +163,17 @@ curl "http://localhost:8084/search?name=TALIBAN"
 # Result: 0 matches
 
 # Triggered manual data load
-curl -X POST "http://localhost:8084/v2/download"
+curl -X POST "http://localhost:8084/v1/download"
 # Result: Loaded 18,511 entities in 30 seconds
 
 # Retry with correct endpoint
-curl "http://localhost:8084/v2/search?name=TALIBAN+ORGANIZATION&trace=true"
+curl "http://localhost:8084/v1/search?name=TALIBAN+ORGANIZATION&trace=true"
 # Result: 1 match - TALIBAN (SDN 6636), score=0.913 ✅
 ```
 
 **Go Watchman (Fly.io - same version Braid uses internally):**
 ```bash
-curl "https://watchman-go.fly.dev/v2/search?name=TALIBAN+ORGANIZATION"
+curl "https://watchman-go.fly.dev/v1/search?name=TALIBAN+ORGANIZATION"
 # Result: 10 matches, but Taliban (6636) NOT in results ❌
 # Top match: "TEHRAN PRISONS ORGANIZATION" (score 0.538)
 ```
@@ -197,7 +197,7 @@ To understand Java's scoring breakdown, we used the ScoreTrace feature:
 
 **Enable Trace:**
 ```bash
-curl "http://localhost:8084/v2/search?name=TALIBAN+ORGANIZATION&trace=true&limit=1"
+curl "http://localhost:8084/v1/search?name=TALIBAN+ORGANIZATION&trace=true&limit=1"
 ```
 
 **ScoreTrace Output:**

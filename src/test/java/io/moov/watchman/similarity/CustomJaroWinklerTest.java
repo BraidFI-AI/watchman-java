@@ -5,6 +5,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Nested;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,14 +50,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * Created: Jan 9, 2026 - Phase 2 Task 3
  */
+@SpringBootTest
 @DisplayName("Phase 2 - customJaroWinkler Token-Level Penalties")
 public class CustomJaroWinklerTest {
 
     private JaroWinklerSimilarity similarity;
 
+    @Autowired
+    private SimilarityConfig similarityConfig;
+
     @BeforeEach
     void setUp() {
-        similarity = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
+        similarity = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), similarityConfig);
     }
 
     @Nested

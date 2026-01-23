@@ -103,10 +103,10 @@ Smoke test deployed ECS endpoint.
 ```
 
 **What it does:**
-1. Tests `/v2/health` endpoint
-2. Tests `/v2/search?name=Maduro`
-3. Tests `/v2/search/batch` with sample data
-4. Tests `/v2/nemesis/trigger` (if port 8084 available)
+1. Tests `/v1/health` endpoint
+2. Tests `/v1/search?name=Maduro`
+3. Tests `/v1/search/batch` with sample data
+4. Tests `/v1/nemesis/trigger` (if port 8084 available)
 5. Reports response times and success/failure
 
 **Example output:**
@@ -325,7 +325,7 @@ Sequential load testing with curl.
 ```
 
 **What it does:**
-1. Sends N sequential GET requests to /v2/search
+1. Sends N sequential GET requests to /v1/search
 2. Measures response time for each
 3. Calculates statistics: min, max, avg, p95, p99
 4. Reports success/failure counts
@@ -384,7 +384,7 @@ scenarios:
   - name: Batch screening
     flow:
       - post:
-          url: /v2/search/batch
+          url: /v1/search/batch
           json:
             entities: [...]
             minMatch: 0.88

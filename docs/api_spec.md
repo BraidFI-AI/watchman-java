@@ -9,7 +9,7 @@ REST API endpoints for OFAC sanctions screening. All endpoints return JSON unles
 
 ---
 
-## GET /v2/search
+## GET /v1/search
 
 Search for a single entity against OFAC sanctions lists.
 
@@ -29,7 +29,7 @@ Search for a single entity against OFAC sanctions lists.
 ### Request Example
 
 ```bash
-curl "http://localhost:8080/v2/search?name=Nicolas%20Maduro&minMatch=0.85&limit=5&trace=true"
+curl "http://localhost:8080/v1/search?name=Nicolas%20Maduro&minMatch=0.85&limit=5&trace=true"
 ```
 
 ### Response Format
@@ -128,7 +128,7 @@ curl "http://localhost:8080/v2/search?name=Nicolas%20Maduro&minMatch=0.85&limit=
   "error": "Bad Request",
   "message": "Missing required parameter: name",
   "status": 400,
-  "path": "/v2/search",
+  "path": "/v1/search",
   "requestId": "abc-123",
   "timestamp": "2026-01-14T12:00:00Z"
 }
@@ -140,7 +140,7 @@ curl "http://localhost:8080/v2/search?name=Nicolas%20Maduro&minMatch=0.85&limit=
   "error": "Internal Server Error",
   "message": "Failed to load OFAC data",
   "status": 500,
-  "path": "/v2/search",
+  "path": "/v1/search",
   "requestId": "abc-123",
   "timestamp": "2026-01-14T12:00:00Z"
 }
@@ -148,7 +148,7 @@ curl "http://localhost:8080/v2/search?name=Nicolas%20Maduro&minMatch=0.85&limit=
 
 ---
 
-## POST /v2/search/batch
+## POST /v1/search/batch
 
 Screen multiple entities in a single request (up to 1,000 entities).
 
@@ -193,7 +193,7 @@ Screen multiple entities in a single request (up to 1,000 entities).
 ### Request Example
 
 ```bash
-curl -X POST http://localhost:8080/v2/search/batch \
+curl -X POST http://localhost:8080/v1/search/batch \
   -H "Content-Type: application/json" \
   -d '{
     "entities": [
@@ -266,43 +266,11 @@ curl -X POST http://localhost:8080/v2/search/batch \
   "error": "Bad Request",
   "message": "Batch size exceeds maximum: 1000",
   "status": 400,
-  "path": "/v2/search/batch",
+  "path": "/v1/search/batch",
   "requestId": "abc-123",
   "timestamp": "2026-01-14T12:00:00Z"
 }
 ```
-
----
-
-## POST /v2/nemesis/trigger
-
-Trigger autonomous parity testing (Nemesis). Compares Java vs Go implementations.
-
-**Note:** This endpoint runs on port 8084 locally, not 8080.
-
-### Request Example
-
-```bash
-curl -X POST http://localhost:8084/v2/nemesis/trigger
-```
-
-### Response Format
-
-```json
-{
-  "status": "started",
-  "reportPath": "/data/reports/nemesis-20260114.json",
-  "timestamp": "2026-01-14T12:00:00Z"
-}
-```
-
-### Response Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| status | string | Execution status: "started" |
-| reportPath | string | Path to generated report |
-| timestamp | string | ISO-8601 timestamp |
 
 ---
 
@@ -381,14 +349,14 @@ curl http://localhost:8080/api/reports/trace-abc-123/summary
 
 ---
 
-## GET /v2/health
+## GET /v1/health
 
 Health check endpoint.
 
 ### Request Example
 
 ```bash
-curl http://localhost:8080/v2/health
+curl http://localhost:8080/v1/health
 ```
 
 ### Response Format

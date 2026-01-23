@@ -45,7 +45,7 @@ class SearchApiIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        baseUrl = "http://localhost:" + port + "/v2";
+        baseUrl = "http://localhost:" + port + "/v1";
         entityIndex.clear();
     }
 
@@ -54,7 +54,7 @@ class SearchApiIntegrationTest {
     class HealthEndpointTests {
 
         @Test
-        @DisplayName("GET /v2/health returns healthy status")
+        @DisplayName("GET /v1/health returns healthy status")
         void healthEndpointReturnsHealthy() {
             ResponseEntity<SearchController.HealthResponse> response = 
                 restTemplate.getForEntity(baseUrl + "/health", SearchController.HealthResponse.class);
@@ -65,7 +65,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/health returns entity count")
+        @DisplayName("GET /v1/health returns entity count")
         void healthEndpointReturnsEntityCount() {
             // Add some entities
             entityIndex.add(Entity.of("1", "Test Entity", EntityType.PERSON, SourceList.US_OFAC));
@@ -84,7 +84,7 @@ class SearchApiIntegrationTest {
     class SearchEndpointTests {
 
         @Test
-        @DisplayName("GET /v2/search with name parameter returns results")
+        @DisplayName("GET /v1/search with name parameter returns results")
         void searchWithNameReturnsResults() {
             entityIndex.add(Entity.of("12345", "Nicolas Maduro", EntityType.PERSON, SourceList.US_OFAC));
 
@@ -99,7 +99,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/search without name returns bad request")
+        @DisplayName("GET /v1/search without name returns bad request")
         void searchWithoutNameReturnsBadRequest() {
             ResponseEntity<Map> response = 
                 restTemplate.getForEntity(baseUrl + "/search", Map.class);
@@ -108,7 +108,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/search with empty name returns bad request")
+        @DisplayName("GET /v1/search with empty name returns bad request")
         void searchWithEmptyNameReturnsBadRequest() {
             ResponseEntity<Map> response = 
                 restTemplate.getForEntity(baseUrl + "/search?name=", Map.class);
@@ -117,7 +117,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/search respects limit parameter")
+        @DisplayName("GET /v1/search respects limit parameter")
         void searchRespectsLimitParameter() {
             for (int i = 0; i < 10; i++) {
                 entityIndex.add(Entity.of("id" + i, "Test Person " + i, EntityType.PERSON, SourceList.US_OFAC));
@@ -133,7 +133,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/search filters by minMatch")
+        @DisplayName("GET /v1/search filters by minMatch")
         void searchFiltersbyMinMatch() {
             entityIndex.add(Entity.of("1", "Exact Match Name", EntityType.PERSON, SourceList.US_OFAC));
             entityIndex.add(Entity.of("2", "Something Completely Different", EntityType.PERSON, SourceList.US_OFAC));
@@ -149,7 +149,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/search filters by type")
+        @DisplayName("GET /v1/search filters by type")
         void searchFiltersByType() {
             entityIndex.add(Entity.of("1", "Test Person", EntityType.PERSON, SourceList.US_OFAC));
             entityIndex.add(Entity.of("2", "Test Company", EntityType.BUSINESS, SourceList.US_OFAC));
@@ -166,7 +166,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/search filters by source")
+        @DisplayName("GET /v1/search filters by source")
         void searchFiltersBySource() {
             entityIndex.add(Entity.of("1", "OFAC Entity", EntityType.PERSON, SourceList.US_OFAC));
             entityIndex.add(Entity.of("2", "CSL Entity", EntityType.PERSON, SourceList.US_CSL));
@@ -182,7 +182,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/search returns sorted by score descending")
+        @DisplayName("GET /v1/search returns sorted by score descending")
         void searchReturnsSortedByScoreDescending() {
             entityIndex.add(Entity.of("1", "Test Name", EntityType.PERSON, SourceList.US_OFAC));
             entityIndex.add(Entity.of("2", "Test Name Exact", EntityType.PERSON, SourceList.US_OFAC));
@@ -210,7 +210,7 @@ class SearchApiIntegrationTest {
     class ListInfoEndpointTests {
 
         @Test
-        @DisplayName("GET /v2/listinfo returns list information")
+        @DisplayName("GET /v1/listinfo returns list information")
         void listInfoReturnsListInformation() {
             ResponseEntity<Map> response = 
                 restTemplate.getForEntity(baseUrl + "/listinfo", Map.class);
@@ -222,7 +222,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/listinfo returns all source lists")
+        @DisplayName("GET /v1/listinfo returns all source lists")
         void listInfoReturnsAllSourceLists() {
             ResponseEntity<Map> response = 
                 restTemplate.getForEntity(baseUrl + "/listinfo", Map.class);
@@ -235,7 +235,7 @@ class SearchApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /v2/listinfo reflects entity counts")
+        @DisplayName("GET /v1/listinfo reflects entity counts")
         void listInfoReflectsEntityCounts() {
             entityIndex.add(Entity.of("1", "Test 1", EntityType.PERSON, SourceList.US_OFAC));
             entityIndex.add(Entity.of("2", "Test 2", EntityType.PERSON, SourceList.US_OFAC));

@@ -280,7 +280,7 @@ This document tracks feature-by-feature parity between Go and Java implementatio
 | 114 | `NewClient()` | client.go | Constructor | ✅ | Client creation |
 | 115 | `SearchByEntity()` | client.go | `search()` | ⚠️ | Simplified in Java |
 | 116 | `IngestFile()` | client.go | Spring Boot controllers | ❌ | **N/A** - Java uses Spring Boot REST API with `@RestController` annotations |
-| 117 | `ListInfo()` | client.go | `/v2/listinfo` | ⚠️ | Different response format |
+| 117 | `ListInfo()` | client.go | `/v1/listinfo` | ⚠️ | Different response format |
 | 118 | `BuildQueryParameters()` | client.go | Spring `@RequestParam` | ❌ | **N/A** - Java uses Spring Boot auto-binding with `@RequestParam` and `@RequestBody` |
 | 119 | `SetSearchOpts()` | client.go | Spring configuration | ❌ | **N/A** - Java uses Spring Boot `application.yml` and `@ConfigurationProperties` |
 | 120 | `setPersonParameters()` | client.go | Spring auto-binding | ❌ | **N/A** - Java uses Spring Boot request DTOs with automatic parameter binding |

@@ -52,7 +52,7 @@ JaroWinklerSimilarity scorer = new JaroWinklerSimilarity(config);
 ```bash
 export WATCHMAN_SIMILARITY_JARO_WINKLER_BOOST_THRESHOLD=0.8
 ./mvnw spring-boot:run
-curl "http://localhost:8080/v2/search?name=TEST"
+curl "http://localhost:8080/v1/search?name=TEST"
 # Verify scoring uses 0.8 threshold instead of default 0.7
 ```
 
@@ -66,7 +66,7 @@ curl "http://localhost:8080/v2/search?name=TEST"
 
 **Test 4:** Check config in ScoreTrace
 ```bash
-curl "http://localhost:8080/v2/search?name=Maduro&trace=true"
+curl "http://localhost:8080/v1/search?name=Maduro&trace=true"
 # Verify trace JSON includes applied config values
 ```
 

@@ -4,6 +4,8 @@ import io.moov.watchman.config.SimilarityConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,16 +20,20 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * These tests document the expected behavior with Go's weight of 0.3.
  */
+@SpringBootTest
 @DisplayName("Phase 2: Length Difference Penalty Weight (0.3 vs 0.1)")
 class LengthDifferencePenaltyTest {
 
     private JaroWinklerSimilarity similarity;
 
+    @Autowired
+    private SimilarityConfig similarityConfig;
+
     @BeforeEach
     void setUp() {
         TextNormalizer normalizer = new TextNormalizer();
         PhoneticFilter phoneticFilter = new PhoneticFilter();
-        similarity = new JaroWinklerSimilarity(normalizer, phoneticFilter, new SimilarityConfig());
+        similarity = new JaroWinklerSimilarity(normalizer, phoneticFilter, similarityConfig);
     }
 
     @Test

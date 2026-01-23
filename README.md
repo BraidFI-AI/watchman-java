@@ -49,13 +49,13 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/search?q=<query>` | Search (Go-compatible, uses 'q' parameter) |
-| `GET` | `/v2/search?name=<query>` | Search (v2 API, uses 'name' parameter) |
-| `POST` | `/v2/search/batch` | Batch screening (up to 1000 items) |
-| `POST` | `/v2/search/batch/async` | Async batch screening |
-| `POST` | `/v2/download` | Trigger data refresh |
-| `GET` | `/v2/download/status` | Check download status |
+| `GET` | `/v1/search?name=<query>` | Search (v1 API, uses 'name' parameter) |
+| `POST` | `/v1/search/batch` | Batch screening (up to 1000 items) |
+| `POST` | `/v1/search/batch/async` | Async batch screening |
+| `POST` | `/v1/download` | Trigger data refresh |
+| `GET` | `/v1/download/status` | Check download status |
 | `GET` | `/health` | Health check with entity counts |
-| `GET` | `/v2/listinfo` | Get loaded list information |
+| `GET` | `/v1/listinfo` | Get loaded list information |
 | `GET` | `/api/reports/{sessionId}` | Get human-readable HTML score report |
 | `GET` | `/api/reports/{sessionId}/summary` | Get JSON summary with phase contributions and operator insights |
 
@@ -63,16 +63,16 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/v2/nemesis/trigger` | Trigger parity test run (async/sync) |
-| `GET` | `/v2/nemesis/status/{jobId}` | Check job status and execution logs |
-| `GET` | `/v2/nemesis/reports` | List recent parity test reports |
+| `POST` | `/v1/nemesis/trigger` | Trigger parity test run (async/sync) |
+| `GET` | `/v1/nemesis/status/{jobId}` | Check job status and execution logs |
+| `GET` | `/v1/nemesis/reports` | List recent parity test reports |
 
 ### Example Usage
 
 **Search Entities:**
 ```bash
-# V2 API (recommended)
-curl "http://localhost:8084/v2/search?name=Nicolas%20Maduro&limit=5"
+# V1 API (recommended)
+curl "http://localhost:8084/v1/search?name=Nicolas%20Maduro&limit=5"
 
 # Go-compatible API (legacy)
 curl "http://localhost:8084/search?q=Nicolas%20Maduro&limit=5"
@@ -81,23 +81,23 @@ curl "http://localhost:8084/search?q=Nicolas%20Maduro&limit=5"
 **Trigger Parity Test (Async):**
 ```bash
 # Production (AWS ECS)
-curl -X POST http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/nemesis/trigger \
+curl -X POST http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/nemesis/trigger \
   -H "Content-Type: application/json" \
   -d '{"queries": 100, "includeOfacApi": false, "async": true}'
 
 # Local
-curl -X POST http://localhost:8084/v2/nemesis/trigger \
+curl -X POST http://localhost:8084/v1/nemesis/trigger \
   -H "Content-Type: application/json" \
   -d '{"queries": 10, "includeOfacApi": false, "async": true}'
 ```bash
-curl -X POST http://localhost:8084/v2/nemesis/trigger \
+curl -X POST http://localhost:8084/v1/nemesis/trigger \
   -H "Content-Type: application/json" \
   -d '{"queries": 10, "async": true}'
 ```
 
 **Check Test Status:**
 ```bash
-curl http://localhost:8084/v2/nemesis/status/nemesis-20260111-123456
+curl http://localhost:8084/v1/nemesis/status/nemesis-20260111-123456
 ```
 
 ---
@@ -117,7 +117,7 @@ Watchman Java downloads sanctions data **directly from official government sourc
 Data is automatically refreshed daily (configurable). You can also trigger a manual refresh:
 
 ```bash
-curl -X POST http://localhost:8084/v2/download
+curl -X POST http://localhost:8084/v1/download
 ```
 
 ---
@@ -329,8 +329,8 @@ public ResponseEntity<List<SearchResultDTO>> search(
 
 | Feature | Description |
 |---------|-------------|
-| **Batch Screening API** | `POST /v2/search/batch` - Screen up to 1000 items in parallel |
-| **Async Batch API** | `POST /v2/search/batch/async` - Non-blocking batch processing |
+| **Batch Screening API** | `POST /v1/search/batch` - Screen up to 1000 items in parallel |
+| **Async Batch API** | `POST /v1/search/batch/async` - Non-blocking batch processing |
 | **Batch Statistics** | Response includes match counts, processing time, confidence levels |
 
 ---
@@ -457,7 +457,7 @@ The **Nemesis Repair Agent** is an autonomous system that continuously validates
 
 **Triggering Modes:**
 1. **Scheduled (Cron)** - Automatic every 5 minutes on production
-2. **REST API** - `POST /v2/nemesis/trigger` for on-demand execution
+2. **REST API** - `POST /v1/nemesis/trigger` for on-demand execution
 3. **Manual Script** - `./scripts/trigger-nemesis.sh` for local testing
 
 **Workflow:**

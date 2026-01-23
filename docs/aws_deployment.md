@@ -54,7 +54,7 @@ aws ecs describe-services --cluster watchman-java --services watchman-java-servi
 
 **Test 2:** Test ALB endpoint
 ```bash
-curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/health
+curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/health
 # Verify: {"status":"UP","ofacEntitiesLoaded":18511}
 ```
 

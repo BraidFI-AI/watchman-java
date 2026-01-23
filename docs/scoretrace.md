@@ -44,7 +44,7 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
 **API integration:**
 ```bash
 # Search with trace
-curl "http://localhost:8080/v2/search?name=Maduro&trace=true"
+curl "http://localhost:8080/v1/search?name=Maduro&trace=true"
 # Response includes reportUrl field
 
 # Get HTML report
@@ -63,7 +63,7 @@ curl "http://localhost:8080/api/reports/abc-123/summary"
 
 **Test 2:** Capture trace for known entity
 ```bash
-curl "http://localhost:8080/v2/search?name=Nicolas%20Maduro&trace=true"
+curl "http://localhost:8080/v1/search?name=Nicolas%20Maduro&trace=true"
 # Verify: Response contains reportUrl
 # Verify: trace.breakdown.nameScore present
 # Verify: trace.events[] contains 12 lifecycle phases
@@ -71,7 +71,7 @@ curl "http://localhost:8080/v2/search?name=Nicolas%20Maduro&trace=true"
 
 **Test 3:** HTML report generation
 ```bash
-SESSION_ID=$(curl -s "http://localhost:8080/v2/search?name=Maduro&trace=true" | jq -r '.reportUrl' | grep -oE '[^/]+$')
+SESSION_ID=$(curl -s "http://localhost:8080/v1/search?name=Maduro&trace=true" | jq -r '.reportUrl' | grep -oE '[^/]+$')
 curl "http://localhost:8080/api/reports/$SESSION_ID" > report.html
 open report.html
 # Verify: Human-readable HTML with score breakdowns
@@ -85,7 +85,7 @@ curl "http://localhost:8080/api/reports/$SESSION_ID/summary"
 
 **Test 5:** Nemesis integration
 ```bash
-curl -X POST http://localhost:8084/v2/nemesis/trigger
+curl -X POST http://localhost:8084/v1/nemesis/trigger
 # Verify: Divergences automatically include java_trace field
 # Verify: Traces saved to /data/reports/traces/
 ```

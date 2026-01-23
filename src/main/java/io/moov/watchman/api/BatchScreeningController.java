@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * REST controller for batch screening operations.
  */
 @RestController
-@RequestMapping("/v2/search")
+@RequestMapping("/v1/search")
 public class BatchScreeningController {
 
     private static final Logger log = LoggerFactory.getLogger(BatchScreeningController.class);

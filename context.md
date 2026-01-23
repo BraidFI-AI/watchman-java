@@ -5,6 +5,51 @@
 
 ---
 
+## Session: January 22, 2026 (v2→v1 API Migration + ScoreConfig Test Fix)
+
+### What We Decided
+- Migrate all API endpoints from /v2/ to /v1/ (POC-appropriate versioning)
+- Remove Go Watchman compatibility layer (V1CompatibilityController) - parity no longer objective
+- Option 2 is mandatory: Fix failing tests using Spring Test Context (@SpringBootTest) instead of plain constructors
+- Investigated why tests didn't fail during ScoreConfig redesign (Jan 13-15)
+
+### What Is Now True
+- **v2→v1 Migration Complete**: 22 files updated across Java controllers, tests, docs, Postman
+  * SearchController: @RequestMapping("/v2") → @RequestMapping("/v1")
+  * BatchScreeningController: @RequestMapping("/v2/search") → @RequestMapping("/v1/search")
+  * All integration tests: http://localhost:port/v2/ → /v1/
+  * Documentation: README, api_spec, scoreconfig, aws_deployment, error_handling, feature_parity_gaps, scoretrace, trace_integration, scripts, taliban_analysis, TESTING.md (braid-integration), trace/README
+  * Postman collection: 20 endpoint paths updated
+  * Git commit: [to be completed]
+- **Go Compatibility Removed**: 3 files deleted (V1CompatibilityController, V1CompatibilityControllerIntegrationTest, V1CompatibilityIntegrationTest) - 186+ lines removed
+- **Integration tests ALL PASSING**: 13/13 tests green ✅
+- **Timeline Investigation Results**:
+  * Jan 13, 2026: ScoreConfig Phase 1 integration (SimilarityConfig functional, tests passed with hardcoded behavior)
+  * Jan 15, 2026: Enforcement commit (f5dfb42) removed constructors, required explicit config injection
+  * Commit message stated: "All tests pass: 1,206 total (1,196 passing + 5 new + **8 pre-existing failures**)"
+  * Jan 22, 2026: Discovered 17 failures (increased from 8), all in similarity algorithm tests
+- **Root Cause Identified**: Tests use `new SimilarityConfig()` instead of Spring-managed beans
+  * Plain constructor returns default 0.0 for lengthDifferencePenaltyWeight
+  * Application.yml has configured value: 0.3
+  * Tests never loaded YAML config, so penalties weren't applied
+- **Fix Applied**: Converted 3 test classes to use Spring Test Context
+  * CustomJaroWinklerTest.java: Added @SpringBootTest + @Autowired SimilarityConfig
+  * JaroWinklerSimilarityTest.java: Added @SpringBootTest + @Autowired SimilarityConfig  
+  * LengthDifferencePenaltyTest.java: Added @SpringBootTest + @Autowired SimilarityConfig
+  * Result: 51 tests in these 3 files now pass ✅
+- **Current Test Status**: 1,117 tests total, 12 failures, 1 error, 1 skipped
+  * Improved from 17 failures to 12 failures
+  * Remaining failures in: SimilarityConfigIntegrationTest (custom configs), TitleComparisonTest (3), JaroWinklerWithFavoritismTest (1), TraceSummaryServiceTest (1), ReportRendererSummaryTest (5), ReportSummaryControllerTest (1 error)
+
+### What Is Still Unknown
+- Whether remaining 12 test failures are architecture-related or test definition issues
+- If SimilarityConfigIntegrationTest needs @SpringBootTest (tests custom config values, not application.yml)
+- Why test failure count increased from 8 (Jan 15) to 17 (Jan 22) - different test run scope or new failures?
+- Whether TitleComparisonTest/JaroWinklerWithFavoritismTest failures are related to config loading
+- If report/tracing tests (6 failures + 1 error) are independent issues
+
+---
+
 ## Session: January 16, 2026 (Braid Integration Example)
 
 ### What We Decided
@@ -117,10 +162,10 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 
 ### What We Decided
 - Implemented AWS Batch POC with in-memory job orchestration (production will use AWS Batch + Redis/DynamoDB)
-- Push model: Braid submits bulk job via `POST /v2/batch/bulk-job`, polls status via `GET /v2/batch/bulk-job/{jobId}`
+- Push model: Braid submits bulk job via `POST /v1/batch/bulk-job`, polls status via `GET /v1/batch/bulk-job/{jobId}`
 - Automatic chunking: splits large batches into 1000-item chunks, reuses existing `BatchScreeningService`
 - Minimal Braid changes: single `WatchmanBulkScreeningService` with `@Scheduled` cron job at 1am EST
-- Zero changes to existing real-time endpoints (`/v2/search`, `/v2/search/batch`)
+- Zero changes to existing real-time endpoints (`/v1/search`, `/v1/search/batch`)
 
 ### What Is Now True
 - **File-in-file-out baseline**: S3 input files → S3 output files (batch processing pattern)
@@ -133,7 +178,7 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - **S3 processing complete**: `processS3BulkJob()` reads from S3, processes in 1000-item chunks, writes results to S3
 - **NDJSON streaming**: [NdjsonReader.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/bulk/NdjsonReader.java) parses S3 files line-by-line (memory-efficient for large files)
 - **Dual input modes**: HTTP JSON arrays (`items[]`) OR S3 NDJSON files (`s3InputPath`) - validated at construction time
-- **Controller**: [BulkBatchController.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/api/BulkBatchController.java) at `/v2/batch/bulk-job` returns 202 Accepted with `resultPath` in status
+- **Controller**: [BulkBatchController.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/api/BulkBatchController.java) at `/v1/batch/bulk-job` returns 202 Accepted with `resultPath` in status
 - **Service**: [BulkJobService.java](file:///Users/randysannicolas/Documents/GitHub/watchman-java/src/main/java/io/moov/watchman/bulk/BulkJobService.java) orchestrates async processing with 5-thread executor
 - **Job states**: SUBMITTED → RUNNING → COMPLETED/FAILED with progress tracking and error messages
 - **Chunking**: Splits jobs into 1000-item batches, processes sequentially within async worker
@@ -308,7 +353,7 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - Go Watchman is a reference point but NOT ground truth (no longer the validation target)
 - Braid sandbox API integration validates real-world screening (https://api.sandbox.braid.zone)
 - Taliban Organization case documented in docs/taliban_analysis.md with mathematical proof
-- AWS ECS endpoint validated: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v2/search
+- AWS ECS endpoint validated: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search
 - ScoreTrace feature documented as debugging tool for understanding Java's scoring breakdown
 - Putin (individual) correctly blocked by Braid, Taliban Organization (business) incorrectly allowed
 - Java scores Taliban at 0.913 (correct), Go scores at 0.538 (below threshold - missed)
@@ -377,7 +422,7 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - Rejected A2's PR (claude/trace-similarity-scoring-Cqcc8) due to compilation errors and scope creep
 - Split A2's work into focused phases: Phase 1 (bug fix), Phase 2 (ScoringConfig feature), Phase 3 (runtime overrides)
 - Implemented Phase 1 only using strict TDD (RED → GREEN → REFACTOR)
-- Phase 2 (ScoringConfig) and Phase 3 (POST /v2/search) deferred to future sessions
+- Phase 2 (ScoringConfig) and Phase 3 (POST /v1/search) deferred to future sessions
 
 ### What Is Now True
 - **SimilarityConfig is fully functional** - all 10 configuration parameters now work
@@ -398,7 +443,7 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 
 ### What Is Still Unknown
 - When to implement Phase 2 (ScoringConfig for factor-level controls)
-- Whether to implement Phase 3 (runtime config overrides via POST /v2/search)
+- Whether to implement Phase 3 (runtime config overrides via POST /v1/search)
 - If we need profile-based configs (strict.yml, lenient.yml, compliance.yml)
 - How to expose config metadata in ScoreTrace output
 
@@ -418,7 +463,7 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - Current bottleneck: Go sequential processing at ~11 names/sec
 - Proposed throughput: 30 parallel jobs × 4.2 names/sec = 126 names/sec (10x improvement)
 - Braid integration: Minimal code changes needed (new BatchScreeningClient service)
-- Existing batch API (/v2/search/batch) will be leveraged by AWS Batch workers
+- Existing batch API (/v1/search/batch) will be leveraged by AWS Batch workers
 - Same Docker image used for both ECS and Batch (different entrypoints)
 
 ### What Is Still Unknown

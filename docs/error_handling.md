@@ -33,7 +33,7 @@ Global exception handling with consistent JSON error responses, proper HTTP stat
   "error": "Bad Request",
   "message": "Missing required parameter: name",
   "status": 400,
-  "path": "/v2/search",
+  "path": "/v1/search",
   "requestId": "abc-123",
   "timestamp": "2026-01-15T12:00:00Z"
 }
@@ -57,13 +57,13 @@ Global exception handling with consistent JSON error responses, proper HTTP stat
 ## How to validate
 **Test 1:** Verify error format consistency
 ```bash
-curl "http://localhost:8084/v2/search"
+curl "http://localhost:8084/v1/search"
 # Expect: 400 with error/message/status/path/requestId/timestamp fields
 ```
 
 **Test 2:** Request ID propagation
 ```bash
-curl -H "X-Request-ID: test-123" "http://localhost:8084/v2/search?name=Test"
+curl -H "X-Request-ID: test-123" "http://localhost:8084/v1/search?name=Test"
 # Check logs: grep "test-123" logs/application.log
 # Verify: Request ID in all log statements and response header
 ```
@@ -71,11 +71,11 @@ curl -H "X-Request-ID: test-123" "http://localhost:8084/v2/search?name=Test"
 **Test 3:** Batch validation errors
 ```bash
 # Empty batch
-curl -X POST -H "Content-Type: application/json" "http://localhost:8084/v2/search/batch" -d '{"items": []}'
+curl -X POST -H "Content-Type: application/json" "http://localhost:8084/v1/search/batch" -d '{"items": []}'
 # Expect: 400 with "at least one item" message
 
 # Oversized batch (1001 items)
-curl -X POST -H "Content-Type: application/json" "http://localhost:8084/v2/search/batch" -d '{"items": [/* 1001 items */]}'
+curl -X POST -H "Content-Type: application/json" "http://localhost:8084/v1/search/batch" -d '{"items": [/* 1001 items */]}'
 # Expect: 400 with "exceeds maximum limit: 1001 items (max: 1000)" message
 ```
 

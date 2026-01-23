@@ -4,7 +4,7 @@
 Integrated ScoreTrace into Nemesis for root cause analysis of scoring divergences. Nemesis enables trace=true for ALL queries automatically, capturing full scoring breakdown without additional request overhead.
 
 ## Scope
-- SearchController.java - Added trace parameter to /v2/search endpoint
+- SearchController.java - Added trace parameter to /v1/search endpoint
 - SearchResponse.java - Added ScoringTrace field to response
 - NemesisService.java - Auto-enables tracing for divergent queries
 - scripts/compare-implementations.py - Captures traces in report JSON
@@ -53,13 +53,13 @@ public ResponseEntity<SearchResponse> search(
 ## How to validate
 **Test 1:** Verify trace parameter works
 ```bash
-curl "http://localhost:8080/v2/search?name=Maduro&trace=true"
+curl "http://localhost:8080/v1/search?name=Maduro&trace=true"
 # Verify: Response includes trace field with sessionId, breakdown, events
 ```
 
 **Test 2:** Nemesis captures traces
 ```bash
-curl -X POST http://localhost:8084/v2/nemesis/trigger
+curl -X POST http://localhost:8084/v1/nemesis/trigger
 cat /data/reports/nemesis-$(date +%Y%m%d).json | jq '.divergences[0].java_trace'
 # Verify: Divergences include java_trace field
 ```
@@ -67,10 +67,10 @@ cat /data/reports/nemesis-$(date +%Y%m%d).json | jq '.divergences[0].java_trace'
 **Test 3:** Verify trace overhead
 ```bash
 # Without trace
-time curl "http://localhost:8080/v2/search?name=Maduro"
+time curl "http://localhost:8080/v1/search?name=Maduro"
 
 # With trace
-time curl "http://localhost:8080/v2/search?name=Maduro&trace=true"
+time curl "http://localhost:8080/v1/search?name=Maduro&trace=true"
 # Verify: <10ms difference
 ```
 

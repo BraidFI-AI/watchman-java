@@ -23,10 +23,10 @@ import java.util.stream.Collectors;
 
 /**
  * REST controller for entity search operations.
- * Implements the /v2/search and /v2/listinfo endpoints.
+ * Implements the /v1/search and /v1/listinfo endpoints.
  */
 @RestController
-@RequestMapping("/v2")
+@RequestMapping("/v1")
 @CrossOrigin(origins = "*")
 public class SearchController {
 

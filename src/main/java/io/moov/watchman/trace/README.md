@@ -32,7 +32,7 @@ ScoringTrace trace = ctx.toTrace();
 ### API Integration
 
 ```java
-@GetMapping("/v2/search")
+@GetMapping("/v1/search")
 public SearchResponse search(
     @RequestParam String name,
     @RequestParam(defaultValue = "false") boolean trace
@@ -302,7 +302,7 @@ return breakdown;
 Add trace parameter to REST endpoints:
 
 ```java
-@GetMapping("/v2/search")
+@GetMapping("/v1/search")
 public SearchResponse search(
     @RequestParam String name,
     @RequestParam(defaultValue = "false") boolean trace
@@ -325,7 +325,7 @@ public SearchResponse search(
 ### 1. Debugging False Positives
 
 ```bash
-curl "http://localhost:8080/v2/search?name=Juan%20Garcia&trace=true" | jq .trace
+curl "http://localhost:8080/v1/search?name=Juan%20Garcia&trace=true" | jq .trace
 ```
 
 Analyze why a name matched when it shouldn't have.

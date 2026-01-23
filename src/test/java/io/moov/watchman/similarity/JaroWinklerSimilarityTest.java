@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -18,13 +20,17 @@ import static org.assertj.core.api.Assertions.within;
  * These tests verify that our Java implementation produces identical scores
  * to the Go reference implementation.
  */
+@SpringBootTest
 class JaroWinklerSimilarityTest {
 
     private SimilarityService similarityService;
 
+    @Autowired
+    private SimilarityConfig similarityConfig;
+
     @BeforeEach
     void setUp() {
-        similarityService = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), new SimilarityConfig());
+        similarityService = new JaroWinklerSimilarity(new TextNormalizer(), new PhoneticFilter(true), similarityConfig);
     }
 
     @Nested
