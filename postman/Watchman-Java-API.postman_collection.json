@@ -8,7 +8,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8084",
+      "value": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com",
       "type": "string"
     }
   ],
