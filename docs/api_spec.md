@@ -439,23 +439,34 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/data/sta
 
 ### Overview
 
-**ScoreTrace** captures detailed scoring breakdowns for debugging and compliance review. Enable tracing by adding `trace=true` to any search request.
+**ScoreTrace is the core compliance and explainability engine** - it captures the complete decision path for every match, making sanctions screening auditable and tunable.
 
-**What ScoreTrace Captures:**
-- **Component Scores**: Name, address, DOB, government ID matching
-- **Phase Execution**: Normalization, comparison, aggregation with timing
-- **Candidate Selection**: Which entities were compared
-- **Final Calculation**: How component scores combined into final score
+**Why ScoreTrace matters:**
+- **Regulatory Compliance**: Explain every match decision to auditors with full scoring breakdown
+- **False Positive Reduction**: Understand why low-confidence matches occurred and tune thresholds
+- **Algorithm Transparency**: See exactly how Jaro-Winkler, address matching, and date comparison contributed to final scores
+- **Performance Optimization**: Identify which scoring phases are slow and optimize hot paths
 
-**Use Cases:**
-- **Compliance Audit**: Explain why an entity matched or didn't match
-- **Threshold Tuning**: Understand score distribution to optimize minMatch
-- **Performance Analysis**: Identify slow phases in scoring pipeline
-- **Debugging**: Investigate unexpected match results
+**Enable tracing** by adding `trace=true` to any search request. Zero overhead when disabled.
+
+**What ScoreTrace Captures (9 Phases):**
+1. **NAME_COMPARISON** - Jaro-Winkler similarity on primary name with length penalties
+2. **ALT_NAME_COMPARISON** - Match against all alternate names  
+3. **ADDRESS_COMPARISON** - Geographic location matching with normalization
+4. **GOV_ID_COMPARISON** - TIN, passport, national ID exact matching
+5. **CRYPTO_COMPARISON** - Cryptocurrency wallet address matching
+6. **CONTACT_COMPARISON** - Email and phone number matching
+7. **DATE_COMPARISON** - Date of birth with transposition detection
+8. **AGGREGATION** - Weighted combination of all component scores
+9. **NORMALIZATION** - Final score adjustments and filtering
 
 **Two Output Formats:**
-1. **HTML Report** (`/api/reports/{sessionId}`) - Visual, human-readable
-2. **JSON Summary** (`/api/reports/{sessionId}/summary`) - Structured data for automation
+1. **HTML Report** (`/api/reports/{sessionId}`) - Visual breakdown for compliance review
+2. **JSON Summary** (`/api/reports/{sessionId}/summary`) - Structured data for dashboards
+
+**📚 Deep Dive Documentation:**
+- **[ScoreTrace Technical Guide](scoretrace.md)** - Architecture, 9-phase system, performance analysis
+- **[ScoreConfig Reference](scoreconfig.md)** - 10 tunable parameters controlling Jaro-Winkler algorithm
 
 ---
 
@@ -478,6 +489,12 @@ curl "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search?
   "reportUrl": "/api/reports/trace-abc-123"
 }
 ```
+
+**What happens during traced execution:**
+- All 9 scoring phases are captured with timing and intermediate values
+- Component scores (`nameScore`, `addressScore`, etc.) saved to `breakdown` field on each entity
+- Trace stored in-memory with 24-hour TTL
+- `sessionId` used to retrieve HTML or JSON report
 
 **Step 2a:** Get HTML report (for humans)
 
@@ -504,12 +521,13 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/api/reports
 ```
 
 **Response:** HTML page with:
-- Visual score breakdown by component
-- Phase-by-phase execution details with timing
-- Color-coded match indicators
-- Complete entity details
+- **Visual score breakdown** by all 9 components (name, address, DOB, gov ID, crypto, contact, date, aggregation, normalization)
+- **Phase-by-phase execution** with timing in milliseconds
+- **Color-coded match indicators** (green = high confidence, yellow = medium, red = low)
+- **Complete entity details** including all alternate names, programs, and source data
+- **Algorithm parameters** showing active ScoreConfig settings
 
-**Best For:** Compliance review, audit trails, customer explanations
+**Best For:** Compliance review, audit trails, customer explanations, regulatory filings
 
 ---
 
@@ -548,26 +566,45 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/api/reports
 }
 ```
 
-**Best For:** Dashboards, performance monitoring, automated analysis
+**Best For:** Dashboards, performance monitoring, automated analysis, threshold tuning
+
+**Key Fields Explained:**
+- **breakdown**: Component scores for each of the 9 phases (0.0-1.0 each)
+- **insights**: Human-readable explanations like "Name comparison was primary match factor (score: 0.95)" or "Government ID exact match found"
+- **processingTimeMs**: Total time spent scoring this entity
+- **totalCandidates**: How many entities were compared before filtering
 
 **Report Retention:** 24 hours (in-memory storage)
+
+**See also:** [ScoreTrace Technical Guide](scoretrace.md) for architecture details
 
 ---
 
 ## ScoreTrace Best Practices
 
 **When to Enable Trace:**
-- ✅ Debugging unexpected match results
-- ✅ Compliance audit trails
-- ✅ Threshold tuning (analyze score distribution)
-- ✅ Performance optimization
-- ❌ Production high-volume screening (adds overhead)
-- ❌ Every request (traces consume memory)
+- ✅ Investigating customer disputes ("Why did my transaction get flagged?")
+- ✅ Regulatory audits requiring match justification
+- ✅ Threshold tuning across a sample dataset
+- ✅ Performance profiling to identify bottlenecks
+- ✅ Debugging false positives/negatives
+- ❌ Production high-volume screening (5-10ms overhead per request)
+- ❌ Every request in real-time workflows (memory pressure from 24hr storage)
 
 **Performance Impact:**
-- Adds ~5-10ms per request
-- Traces stored in memory for 24 hours
-- Batch requests: trace applies to all entities
+- Adds **5-10ms** per request (negligible for manual review, significant at scale)
+- Traces stored in memory: **~50KB per trace** × 24 hours retention
+- Batch requests: trace applies to **all entities** (can generate large traces)
+
+**Recommended Workflow:**
+1. **Normal operation**: `trace=false` (default) for all production screening
+2. **Investigation mode**: `trace=true` for specific cases needing explanation
+3. **Tuning phase**: Enable traces on sample dataset, analyze with `/summary` endpoint, adjust ScoreConfig parameters
+4. **Audit preparation**: Re-run flagged matches with `trace=true`, save HTML reports
+
+**📚 Related Documentation:**
+- **[ScoreConfig Parameters](scoreconfig.md)** - 10 tunable parameters (Jaro-Winkler threshold, length penalties, phonetic filtering)
+- **[ScoreTrace Architecture](scoretrace.md)** - 9-phase system, zero-overhead design, performance benchmarks
 
 **Trace Scenarios:**
 
