@@ -58,6 +58,13 @@
   - scoreconfig.md correctly describes configuration parameters (not phases) ✅
   - phase_scoring_mechanics.md documents all 12 lifecycle phases ✅
   - scoretrace.md updated to reflect lifecycle concept ✅
+- **Phase System Architecture Clarified (January 24, 2026)**:
+  * Total of 12 phases defined in Phase.java enum
+  * 10 phases write trace entries when trace=true (observable via ScoreTrace)
+  * 3 phases do not write trace entries: TOKENIZATION, PHONETIC_FILTER (child processes inside name comparison), FILTERING (post-processing in SearchController)
+  * Phase hierarchy: Top-level phases (NAME_COMPARISON, ALT_NAME_COMPARISON) contain child processes as implementation details
+  * All 12 phases execute regardless of tracing - trace flag affects observability, not functionality
+  * Documentation updated: Phase.java JavaDoc, phase_scoring_mechanics.md restructured to show hierarchy, scoretrace.md corrected from 9 to 10 traced phases
 
 ---
 

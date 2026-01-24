@@ -943,3 +943,19 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
+### 2026-01-24: Phase Tracing Design - Observable vs Implementation Detail
+
+**Decision**: Distinguish between traced phases (10) that write debug entries and untraced phases (3) that execute silently as implementation details or post-processing steps.
+
+**Rationale**:
+- TOKENIZATION and PHONETIC_FILTER are internal mechanisms of name comparison, not independent scoring steps - exposing them in traces would create noise without adding diagnostic value
+- FILTERING is post-processing applied in SearchController after all scores calculated - it's a threshold application, not a scoring phase
+- Tracing should capture scoring lifecycle checkpoints, not every internal substep
+- Maintains clean separation: EntityScorerImpl owns traced scoring phases, SearchController owns result filtering
+
+**Implementation**: Phase.java enum contains all 12 phases. EntityScorerImpl calls `ctx.record()` for 10 traced phases. TOKENIZATION/PHONETIC_FILTER execute inside JaroWinklerSimilarity without trace calls. FILTERING applies minMatch threshold in SearchController.
+
+**Impact**: ScoreTrace output shows 10 phases reflecting the logical scoring journey. Developers understand phase hierarchy: some are top-level lifecycle steps, others are child processes or post-processing. Documentation clarifies that all 12 phases execute - tracing is an observability feature, not a functional gate.
+
+---
+
