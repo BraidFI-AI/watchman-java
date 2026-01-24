@@ -48,6 +48,17 @@
 - Whether TitleComparisonTest/JaroWinklerWithFavoritismTest failures are related to config loading
 - If report/tracing tests (6 failures + 1 error) are independent issues
 
+### Documentation Issues to Fix
+- **Terminology clarification completed (Jan 24, 2026)**:
+  - **Key distinction established**: Phases are lifecycle steps (12 total: NORMALIZATION through FILTERING), while configuration parameters are tuning levers
+  - **ScoreConfig architecture**: Parent concept with two children:
+    - SimilarityConfig: 10 algorithm tuning parameters (Jaro-Winkler settings, penalties, filters)
+    - WeightConfig: 13 business tuning parameters (scoring weights, phase toggles, thresholds)
+  - **Lifecycle framing**: Phases represent sequential steps - some contribute scores (NAME_COMPARISON → 0.92), others prepare data (NORMALIZATION) or filter (PHONETIC_FILTER)
+  - scoreconfig.md correctly describes configuration parameters (not phases) ✅
+  - phase_scoring_mechanics.md documents all 12 lifecycle phases ✅
+  - scoretrace.md updated to reflect lifecycle concept ✅
+
 ---
 
 ## Session: January 16, 2026 (Braid Integration Example)

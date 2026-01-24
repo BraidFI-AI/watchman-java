@@ -17,16 +17,16 @@ Opt-in scoring observability system capturing phase-by-phase scoring decisions. 
 - src/main/java/io/moov/watchman/scoring/EntityScorer.java
 - src/main/java/io/moov/watchman/api/reports/TraceSummaryService.java
 
-**9 scoring phases traced:**
-1. NAME_COMPARISON - Jaro-Winkler on primary name
-2. ALT_NAME_COMPARISON - Match against alternate names
-3. ADDRESS_COMPARISON - Geographic matching
-4. GOV_ID_COMPARISON - TIN, passport, national ID
-5. CRYPTO_COMPARISON - Cryptocurrency addresses
-6. CONTACT_COMPARISON - Email, phone
-7. DATE_COMPARISON - Date of birth with transposition detection
-8. AGGREGATION - Weighted score combination
-9. NORMALIZATION - Final score adjustments
+**9 phases currently traced (of 12 total lifecycle phases):**
+1. NORMALIZATION - Text cleanup and preparation
+2. NAME_COMPARISON - Jaro-Winkler on primary name
+3. ALT_NAME_COMPARISON - Match against alternate names
+4. ADDRESS_COMPARISON - Geographic matching
+5. GOV_ID_COMPARISON - TIN, passport, national ID
+6. CRYPTO_COMPARISON - Cryptocurrency addresses
+7. CONTACT_COMPARISON - Email, phone
+8. DATE_COMPARISON - Date of birth with transposition detection
+9. AGGREGATION - Weighted score combination
 
 **Usage pattern:**
 ```java
@@ -83,13 +83,6 @@ curl "http://localhost:8080/api/reports/$SESSION_ID/summary"
 # Verify: totalEntitiesScored, phaseContributions, phaseTimings, insights[]
 ```
 
-**Test 5:** Nemesis integration
-```bash
-curl -X POST http://localhost:8084/v1/nemesis/trigger
-# Verify: Divergences automatically include java_trace field
-# Verify: Traces saved to /data/reports/traces/
-```
-
 ## Implementation Details
 
 **Trace storage:** In-memory with 24-hour TTL
@@ -98,5 +91,7 @@ curl -X POST http://localhost:8084/v1/nemesis/trigger
 - NORMALIZATION, TOKENIZATION, PHONETIC_FILTER
 - NAME_COMPARISON, ALT_NAME_COMPARISON, GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON, ADDRESS_COMPARISON, DATE_COMPARISON
 - AGGREGATION, FILTERING
+
+**Lifecycle concept:** Phases represent sequential steps in the scoring process. Some phases contribute numerical scores (NAME_COMPARISON → 0.92), others prepare data (NORMALIZATION), filter candidates (PHONETIC_FILTER), or combine results (AGGREGATION).
 
 **Note:** 7 comparison phases (NAME through DATE) are configurable via WeightConfig enable/disable toggles.

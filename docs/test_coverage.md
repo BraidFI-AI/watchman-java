@@ -13,7 +13,7 @@
 **Test organization (63 classes, 1,032 tests):**
 - Similarity: JaroWinklerSimilarityTest (28 tests), stopword/phonetic tests (318 total)
 - Search: EntityScorerTest (45 tests), SearchControllerTest (18 tests)
-- Integration: NemesisIntegrationTest, SearchIntegrationTest, BatchIntegrationTest
+- Integration: SearchIntegrationTest, BatchIntegrationTest
 - Parsers: OFAC, CSL, EU, UK (58 tests)
 - Tracing: ScoringContextTest (15 tests), trace infrastructure (32 total)
 
@@ -45,14 +45,14 @@
 ```bash
 ./scripts/test-integration.sh
 # Verify: End-to-end pipeline tests pass
-# Includes: NemesisIntegrationTest, SearchIntegrationTest, BatchIntegrationTest
+# Includes: SearchIntegrationTest, BatchIntegrationTest
 ```
 
 **Test 5:** Live API validation
 ```bash
 ./scripts/test-live-api.sh
 # Verifies: Deployed ECS endpoint responds correctly
-# Tests: /v2/search, /v2/search/batch, /v2/nemesis/trigger
+# Tests: /v2/search, /v2/search/batch
 ```
 
 ## Test Data

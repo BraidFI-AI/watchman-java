@@ -4,7 +4,7 @@
 Java-specific improvements categorized as: new features (not in Go), enhancements (better than Go), Java ecosystem advantages (Spring Boot, type safety, tooling). Includes batch API, ScoreTrace, configuration management, records.
 
 ## Scope
-- New features: Batch API, ScoreTrace, SimilarityConfig, Nemesis
+- New features: Batch API, ScoreTrace, SimilarityConfig
 - Enhancements: ID normalization, test coverage (1,032 tests), error handling
 - Java advantages: Records, sealed types, Spring Boot, IDE support
 - Out of scope: Features that exactly match Go (parity items)
@@ -14,7 +14,6 @@ Java-specific improvements categorized as: new features (not in Go), enhancement
 - POST /v2/search/batch - Screen up to 1,000 entities in single request
 - ScoreTrace - Opt-in scoring observability (ScoringContext, trace=true param)
 - SimilarityConfig - Type-safe centralized config (10 parameters)
-- Nemesis - Autonomous parity testing with repair pipeline
 - HTML/JSON score reports - GET /api/reports/{sessionId}
 
 **Enhancements over Go:**

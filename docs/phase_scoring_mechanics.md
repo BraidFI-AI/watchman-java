@@ -1,7 +1,7 @@
 # Phase Scoring Mechanics
 
 ## Purpose
-Technical reference for understanding how each phase contributes to the final match score. This document is independent of Go implementation and describes the Java system's actual behavior.
+Technical reference for understanding the scoring lifecycle. Each phase represents a step in the sequential process that entity data takes from raw input to final match decision. Some phases contribute numerical scores, others prepare or filter data. This document is independent of Go implementation and describes the Java system's actual behavior.
 
 ---
 
@@ -20,6 +20,27 @@ Weights are only included when a factor is present and non-zero. This prevents d
 - Address: 25
 - Critical ID (gov/crypto/contact): 50
 - Supporting Info (dates): 15
+
+---
+
+## What is a Phase?
+
+A **phase** represents a step in the scoring lifecycle - the sequential journey that entity data takes from raw input to final match decision.
+
+**Lifecycle Steps:**
+- **Preparation phases** (NORMALIZATION, TOKENIZATION): Clean and transform data for comparison
+- **Filtering phases** (PHONETIC_FILTER, FILTERING): Decide what to compare or return
+- **Comparison phases** (NAME_COMPARISON, ADDRESS_COMPARISON, etc.): Generate similarity scores
+- **Aggregation phase** (AGGREGATION): Combine individual scores into final result
+
+**Score Contributors:** 8 of 12 phases directly contribute numerical scores to the final match score:
+- NAME_COMPARISON, ALT_NAME_COMPARISON (contribute to nameScore)
+- GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON (contribute to criticalIdScore)
+- ADDRESS_COMPARISON (contributes to addressScore)
+- DATE_COMPARISON (contributes to supportingInfoScore)
+- AGGREGATION (combines weighted scores)
+
+The remaining 4 phases (NORMALIZATION, TOKENIZATION, PHONETIC_FILTER, FILTERING) prepare data or filter results but do not generate scores themselves.
 
 ---
 

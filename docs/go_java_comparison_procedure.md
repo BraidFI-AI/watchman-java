@@ -48,13 +48,7 @@ Would require capturing Go pipeline state after each transformation and comparin
 # Tests: NamePhaseTest, NormalizationPhaseTest, StopwordTest
 ```
 
-**Test 2:** Check feature coverage
-```bash
-./scripts/nemesis_feature_coverage.py
-# Verify: Reports % of Go features implemented in Java
-```
-
-**Test 3:** Manual Go comparison
+**Test 2:** Manual Go comparison
 ```bash
 # Go API
 curl "https://watchman-go.fly.dev/v2/search?name=José%20de%20la%20Cruz"
@@ -63,13 +57,6 @@ curl "https://watchman-go.fly.dev/v2/search?name=José%20de%20la%20Cruz"
 curl "http://localhost:8080/v2/search?name=José%20de%20la%20Cruz"
 
 # Compare: Results, scores, entity IDs should match
-```
-
-**Test 4:** Nemesis divergence detection
-```bash
-curl -X POST http://localhost:8084/v2/nemesis/trigger
-# Verify: Report shows divergences (if any)
-# Analyze: java_data vs go_data for same queries
 ```
 
 ## Assumptions and open questions

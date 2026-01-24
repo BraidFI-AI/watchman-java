@@ -6,7 +6,7 @@ A complete Java port of [Moov Watchman](https://github.com/moov-io/watchman) - a
 
 Watchman Java is a feature-complete reimplementation of the Go-based Watchman sanctions screening platform. It provides real-time screening against global sanctions watchlists (OFAC SDN, US CSL, EU CSL, UK CSL) with fuzzy name matching using Jaro-Winkler similarity scoring.
 
-This project was built using **Test-Driven Development (TDD)**, with tests ensuring feature parity with the original Go implementation. An autonomous **Nemesis Repair Agent** continuously validates parity and auto-generates fixes.
+This project was built using **Test-Driven Development (TDD)**, with tests ensuring feature parity with the original Go implementation.
 
 ## Features
 
@@ -20,8 +20,6 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | **REST API** | Spring Boot API compatible with original Watchman endpoints |
 | **Auto-Refresh** | Scheduled data refresh from official sources |
 | **Filtering** | Filter by source list, entity type, minimum match score |
-| **Nemesis REST API** | Programmatic parity testing with async/sync modes |
-| **Autonomous Repair** | AI-powered divergence detection and auto-fix generation |
 
 ## Quick Start
 
@@ -59,14 +57,6 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | `GET` | `/api/reports/{sessionId}` | Get human-readable HTML score report |
 | `GET` | `/api/reports/{sessionId}/summary` | Get JSON summary with phase contributions and operator insights |
 
-#### Nemesis Parity Testing API
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/nemesis/trigger` | Trigger parity test run (async/sync) |
-| `GET` | `/v1/nemesis/status/{jobId}` | Check job status and execution logs |
-| `GET` | `/v1/nemesis/reports` | List recent parity test reports |
-
 ### Example Usage
 
 **Search Entities:**
@@ -76,28 +66,6 @@ curl "http://localhost:8084/v1/search?name=Nicolas%20Maduro&limit=5"
 
 # Go-compatible API (legacy)
 curl "http://localhost:8084/search?q=Nicolas%20Maduro&limit=5"
-```
-
-**Trigger Parity Test (Async):**
-```bash
-# Production (AWS ECS)
-curl -X POST http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/nemesis/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"queries": 100, "includeOfacApi": false, "async": true}'
-
-# Local
-curl -X POST http://localhost:8084/v1/nemesis/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"queries": 10, "includeOfacApi": false, "async": true}'
-```bash
-curl -X POST http://localhost:8084/v1/nemesis/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"queries": 10, "async": true}'
-```
-
-**Check Test Status:**
-```bash
-curl http://localhost:8084/v1/nemesis/status/nemesis-20260111-123456
 ```
 
 ---

@@ -46,7 +46,7 @@ prompt = f"Use only these APIs:\\n{api_ref}\\n\\nGenerate fix for: {issue}"
 ./mvnw clean package -DskipTests
 python3 scripts/generate_api_reference.py
 # Verify: target/API-REFERENCE.md created
-# Verify: Contains EntityScorerImpl, SearchController, NemesisService
+# Verify: Contains EntityScorerImpl, SearchController
 ```
 
 **Test 2:** Check completeness
