@@ -92,16 +92,17 @@ curl -X POST http://localhost:8084/v1/download
 
 ## Deployment
 
-### Production (AWS ECS)
+### Sandbox/Development (AWS ECS)
 
-The service runs on AWS ECS Fargate with Application Load Balancer:
+The service is available in a sandbox environment on AWS ECS Fargate with Application Load Balancer:
 
 - **Endpoint**: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
 - **Compute**: 1 vCPU, 2GB RAM
 - **Cost**: ~$55/month (24/7 availability)
 - **Architecture**: linux/amd64
+- **Note**: This is a development/testing environment. Production deployment depends on user requirements.
 
-See [docs/aws_deployment.md](docs/aws_deployment.md) for complete deployment guide.
+See [docs/aws_deployment.md](docs/aws_deployment.md) for deployment guide.
 
 ### Local Development
 
