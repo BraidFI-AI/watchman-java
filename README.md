@@ -36,7 +36,7 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 # Run the application
 ./mvnw spring-boot:run
 
-# Run all tests (1,369 tests: 1,138 unit + 231 integration)
+# Run all tests (1117 tests with 13 failures as of Jan 2026)
 ./mvnw test
 ```
 
@@ -120,8 +120,6 @@ Watchman Java operates within a three-system architecture for comprehensive vali
 | **Moov Watchman (Go)** | Open-source baseline | Feature parity target at github.com/moov-io/watchman |
 | **Watchman Java** | This project | Complete Java port of Go implementation |
 | **OFAC-API** | Commercial service | Optional validation at ofac-api.com (paid subscription) |
-
-**Parity Testing:** The Nemesis agent continuously compares Java vs Go implementations to ensure behavioral equivalence. Optionally includes OFAC-API for commercial comparison (requires API key).
 
 ---
 
@@ -313,7 +311,6 @@ src/
 │   │   ├── SearchController.java
 │   │   ├── DownloadController.java
 │   │   ├── BatchScreeningController.java
-│   │   ├── NemesisController.java   # Parity testing API
 │   │   ├── V1CompatibilityController.java
 │   │   ├── HealthController.java
 │   │   ├── GlobalExceptionHandler.java
@@ -398,7 +395,7 @@ See [docs/test_coverage.md](docs/test_coverage.md) for detailed test documentati
 - Test case descriptions
 - Coverage of Go test cases
 
-**Summary: 330+ tests across 22+ test classes**
+**Summary: 1117 tests across 60+ test classes**
 
 | Area | Tests | Coverage |
 |------|-------|----------|
@@ -408,39 +405,7 @@ See [docs/test_coverage.md](docs/test_coverage.md) for detailed test documentati
 | REST API | 62 | Controllers, DTOs, validation, error handling |
 | Download Service | 32 | Refresh, scheduling, multi-source |
 | Batch Screening | 21 | Parallel processing, statistics |
-| Nemesis API | 7 | Async/sync execution, job tracking, validation |
 | Integration | 61 | End-to-end pipeline tests |
-
-## Nemesis Repair Agent
-
-The **Nemesis Repair Agent** is an autonomous system that continuously validates the Java implementation against the Go baseline, detects divergences, and automatically generates code fixes.
-
-**Key Features:**
-- 🤖 **Autonomous Testing** - Runs every 5 minutes via cron OR on-demand via REST API
-- 🔍 **AI-Powered Analysis** - Uses Claude/GPT-4 to analyze divergences and identify patterns
-- 🛠️ **Automated Fixes** - Generates code fixes and creates GitHub PRs automatically
-- 📊 **Coverage Tracking** - Ensures 90% of OFAC entities are tested
-- 🚀 **CI/CD Integration** - Auto-deploys to AWS ECS after PR merge
-- 🌐 **REST API** - Programmatic triggering with async/sync modes and job tracking
-
-**Triggering Modes:**
-1. **Scheduled (Cron)** - Automatic every 5 minutes on production
-2. **REST API** - `POST /v1/nemesis/trigger` for on-demand execution
-3. **Manual Script** - `./scripts/trigger-nemesis.sh` for local testing
-
-**Workflow:**
-```
-Nemesis → Detect divergences → Classify issues → Analyze code → 
-Generate fixes → Create PR → Human approval → Auto-deploy
-```
-
-**Comparison Modes:**
-- **Default:** Java vs Go (feature parity testing)
-- **Optional:** Include OFAC-API commercial service with `--include-ofac-api` flag
-
-**Status:** Fully operational with human approval gate for all PRs.
-
-See [docs/nemesis.md](docs/nemesis.md) for complete documentation.
 
 ---
 
@@ -448,9 +413,8 @@ See [docs/nemesis.md](docs/nemesis.md) for complete documentation.
 
 | Document | Description |
 |----------|-------------|
-| [api_spec.md](docs/api_spec.md) | Complete API reference with examples (includes Nemesis endpoints) |
-| [nemesis.md](docs/nemesis.md) | Nemesis autonomous testing & repair system |
-| [aws_deployment.md](docs/aws_deployment.md) | AWS deployment guide (ECS + Batch) |
+| [api_spec.md](docs/api_spec.md) | Complete API reference with examples |
+| [aws_deployment.md](docs/aws_deployment.md) | AWS deployment guide (ECS) |
 | [test_coverage.md](docs/test_coverage.md) | Detailed test documentation |
 | [error_handling.md](docs/error_handling.md) | Error handling & logging guide |
 | [go_java_comparison_procedure.md](docs/go_java_comparison_procedure.md) | Parity testing methodology |
