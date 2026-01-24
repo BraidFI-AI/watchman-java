@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watchman Admin UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #002441;
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+        }
+        
+        .tab.active {
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .tab-content {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .config-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .form-group input[type="number"],
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .trace-list {
+            list-style: none;
+        }
+        
+        .trace-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .trace-item:hover {
+            background: #ecf0f1;
+        }
+        
+        .doc-accordion {
+            margin-bottom: 15px;
+        }
+        
+        .doc-accordion-header {
+            background: #3498db;
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s;
+        }
+        
+        .doc-accordion-header:hover {
+            background: #2980b9;
+        }
+        
+        .doc-accordion-header.active {
+            border-radius: 6px 6px 0 0;
+        }
+        
+        .doc-accordion-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .doc-accordion-content.active {
+            display: block;
+        }
+        
+        .doc-accordion-content h2 {
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        
+        .doc-accordion-content h3 {
+            color: #34495e;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .doc-accordion-content h4 {
+            color: #555;
+            margin-top: 12px;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        
+        .doc-accordion-content p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        .doc-accordion-content code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .doc-accordion-content pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .doc-accordion-content ul, .doc-accordion-content ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .doc-accordion-content li {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+        
+        .doc-accordion-content strong {
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Watchman Admin UI</h1>
+            <p class="subtitle">Configuration Management • ScoreTrace Inspection • Testing</p>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('config')">ScoreConfig</button>
+            <button class="tab" onclick="showTab('traces')">ScoreTrace</button>
+            <button class="tab" onclick="showTab('test')">Test Search</button>
+            <button class="tab" onclick="showTab('docs')">Documentation</button>
+        </div>
+        
+        <!-- Configuration Tab -->
+        <div id="config" class="tab-content active">
+            <div id="config-alert"></div>
+            
+            <div class="config-grid">
+                <!-- Similarity Config -->
+                <div class="config-section">
+                    <h3>Similarity Parameters</h3>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Algorithm-level parameters controlling Jaro-Winkler scoring behavior</p>
+                    <div class="form-group">
+                        <label>Jaro-Winkler Boost Threshold</label>
+                        <input type="number" id="jaroWinklerBoostThreshold" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Jaro-Winkler Prefix Size</label>
+                        <input type="number" id="jaroWinklerPrefixSize" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Length Difference Penalty Weight</label>
+                        <input type="number" id="lengthDifferencePenaltyWeight" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Length Difference Cutoff Factor</label>
+                        <input type="number" id="lengthDifferenceCutoffFactor" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Different Letter Penalty Weight</label>
+                        <input type="number" id="differentLetterPenaltyWeight" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Exact Match Favoritism</label>
+                        <input type="number" id="exactMatchFavoritism" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Unmatched Index Token Weight</label>
+                        <input type="number" id="unmatchedIndexTokenWeight" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="phoneticFilteringDisabled">
+                            Disable Phonetic Filtering
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="keepStopwords">
+                            Keep Stopwords
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="logStopwordDebugging">
+                            Log Stopword Debugging
+                        </label>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="saveSimilarityConfig()">Save Similarity</button>
+                    </div>
+                </div>
+                
+                <!-- Weight Config -->
+                <div class="config-section">
+                    <h3>Weight Parameters</h3>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Business-level weights and phase controls for scoring</p>
+                    <div class="form-group">
+                        <label>Name Weight</label>
+                        <input type="number" id="nameWeight" step="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Address Weight</label>
+                        <input type="number" id="addressWeight" step="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Critical ID Weight</label>
+                        <input type="number" id="criticalIdWeight" step="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Supporting Info Weight</label>
+                        <input type="number" id="supportingInfoWeight" step="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Score</label>
+                        <input type="number" id="minimumScore" step="0.1" min="0" max="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Exact Match Threshold</label>
+                        <input type="number" id="exactMatchThreshold" step="0.01" min="0" max="1">
+                    </div>
+                    <h4 style="margin: 15px 0 10px 0; font-size: 14px;">Phase Toggles</h4>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="nameComparisonEnabled">
+                            Name Comparison
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="altNameComparisonEnabled">
+                            Alt Name Comparison
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="addressComparisonEnabled">
+                            Address Comparison
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="govIdComparisonEnabled">
+                            Gov ID Comparison
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="cryptoComparisonEnabled">
+                            Crypto Comparison
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="contactComparisonEnabled">
+                            Contact Comparison
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="dateComparisonEnabled">
+                            Date Comparison
+                        </label>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="saveWeightConfig()">Save Weights</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="loadConfig()">Reload</button>
+                <button class="btn btn-danger" onclick="resetConfig()">Reset to Defaults</button>
+            </div>
+        </div>
+        
+        <!-- ScoreTrace Tab -->
+        <div id="traces" class="tab-content">
+            <h2>Recent ScoreTrace Sessions</h2>
+            <p class="subtitle" style="margin-bottom: 20px;">View detailed scoring reports</p>
+            <div id="traces-content" class="loading">
+                <p>ScoreTrace list coming soon...</p>
+                <p style="margin-top: 10px; font-size: 13px;">For now, use search with ?trace=true and view reports at /api/reports/{sessionId}</p>
+            </div>
+        </div>
+        
+        <!-- Test Search Tab -->
+        <div id="test" class="tab-content">
+            <h2>Test Search</h2>
+            <p class="subtitle" style="margin-bottom: 20px;">Test current configuration with real queries</p>
+            <div id="test-alert"></div>
+            
+            <div class="form-group">
+                <label>Search Name</label>
+                <input type="text" id="testName" placeholder="e.g., Nicolas Maduro" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="testTrace">
+                    Enable ScoreTrace
+                </label>
+            </div>
+            
+            <div class="actions">
+                <button class="btn btn-primary" onclick="runTestSearch()">Run Search</button>
+            </div>
+            
+            <div id="test-results" style="margin-top: 20px;"></div>
+        </div>
+        
+        <!-- Documentation Tab -->
+        <div id="docs" class="tab-content">
+            <h2>Documentation</h2>
+            <p class="subtitle" style="margin-bottom: 20px;">Comprehensive guides for understanding scoring and configuration</p>
+            
+            <!-- Phase Scoring Mechanics -->
+            <div class="doc-accordion">
+                <div class="doc-accordion-header" onclick="toggleAccordion(this)">
+                    <span>📊 Phase Scoring Mechanics</span>
+                    <span>▼</span>
+                </div>
+                <div class="doc-accordion-content">
+                    <h2>Purpose</h2>
+                    <p>Technical reference for understanding the scoring lifecycle. Each phase represents a step in the sequential process that entity data takes from raw input to final match decision. Some phases contribute numerical scores, others prepare or filter data.</p>
+                    
+                    <h2>Scoring Formula Overview</h2>
+                    <p><strong>Final Score = Weighted Average of Active Factors</strong></p>
+                    <pre>finalScore = (nameScore × nameWeight + addressScore × addressWeight + ...) / totalWeight</pre>
+                    <p>Weights are only included when a factor is present and non-zero. This prevents dilution by missing data.</p>
+                    <p><strong>Default Weights:</strong></p>
+                    <ul>
+                        <li>Name: 35</li>
+                        <li>Address: 25</li>
+                        <li>Critical ID (gov/crypto/contact): 50</li>
+                        <li>Supporting Info (dates): 15</li>
+                    </ul>
+                    
+                    <h2>What is a Phase?</h2>
+                    <p>A <strong>phase</strong> represents a step in the scoring lifecycle - the sequential journey that entity data takes from raw input to final match decision.</p>
+                    <p><strong>Total: 12 phases</strong> (defined in Phase.java enum)<br>
+                    <strong>Traced: 10 phases</strong> (write debug entries when trace=true)<br>
+                    <strong>Not Traced: 3 phases</strong> (execute but don't write trace entries)</p>
+                    
+                    <h3>Phase Hierarchy</h3>
+                    <p><strong>Top-Level Phases (10 traced):</strong></p>
+                    <ul>
+                        <li>NORMALIZATION - Text cleanup</li>
+                        <li>NAME_COMPARISON - Primary name matching</li>
+                        <li>ALT_NAME_COMPARISON - Alternate name matching</li>
+                        <li>GOV_ID_COMPARISON - Government ID matching</li>
+                        <li>CRYPTO_COMPARISON - Cryptocurrency address matching</li>
+                        <li>CONTACT_COMPARISON - Email/phone matching</li>
+                        <li>ADDRESS_COMPARISON - Geographic matching</li>
+                        <li>DATE_COMPARISON - Birth date matching</li>
+                        <li>AGGREGATION - Weighted score combination</li>
+                        <li>FILTERING - Applied in SearchController post-scoring</li>
+                    </ul>
+                    
+                    <p><strong>Child Processes (2 not traced):</strong></p>
+                    <ul>
+                        <li>TOKENIZATION - Generates word combinations (runs inside NAME_COMPARISON/ALT_NAME_COMPARISON)</li>
+                        <li>PHONETIC_FILTER - Soundex-based filtering (runs inside NAME_COMPARISON/ALT_NAME_COMPARISON)</li>
+                    </ul>
+                    
+                    <h3>Score Contributors</h3>
+                    <p><strong>8 phases directly contribute numerical scores:</strong></p>
+                    <ul>
+                        <li>NAME_COMPARISON, ALT_NAME_COMPARISON (contribute to nameScore)</li>
+                        <li>GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON (contribute to criticalIdScore)</li>
+                        <li>ADDRESS_COMPARISON (contributes to addressScore)</li>
+                        <li>DATE_COMPARISON (contributes to supportingInfoScore)</li>
+                        <li>AGGREGATION (combines weighted scores)</li>
+                    </ul>
+                    
+                    <p><strong>All 12 phases execute during scoring. Tracing affects observability, not functionality.</strong></p>
+                    
+                    <h2>Key Phases Detail</h2>
+                    
+                    <h3>Phase 1: NORMALIZATION</h3>
+                    <p><strong>Purpose:</strong> Text cleanup to enable accurate comparison</p>
+                    <ul>
+                        <li>Removes diacritics (é → e, ñ → n)</li>
+                        <li>Converts to lowercase</li>
+                        <li>Removes punctuation</li>
+                        <li>Normalizes whitespace</li>
+                    </ul>
+                    <p><strong>Impact on score:</strong> NONE (preprocessing only)</p>
+                    
+                    <h3>Phase 2: TOKENIZATION</h3>
+                    <p><strong>Purpose:</strong> Handle name particles and spacing variations</p>
+                    <p>Generates word combinations by merging short words (≤3 chars):</p>
+                    <ul>
+                        <li>"Jean de la Cruz" → ["jean de la cruz", "jean dela cruz", "jean delacruz"]</li>
+                        <li>"van der Berg" → ["van der berg", "vander berg", "vanderberg"]</li>
+                    </ul>
+                    <p><strong>Impact on score:</strong> INCREASES matches by 20-40%</p>
+                    
+                    <h3>Phase 3: PHONETIC_FILTER</h3>
+                    <p><strong>Purpose:</strong> Skip obviously non-matching comparisons early</p>
+                    <p>Compares first character Soundex codes. If first characters are NOT phonetically similar, returns score 0.0.</p>
+                    <p><strong>Impact on score:</strong> REDUCES false positives by ~5%</p>
+                    <p><strong>Can be disabled:</strong> config.phoneticFilteringDisabled = true</p>
+                    
+                    <h3>Phase 4: NAME_COMPARISON</h3>
+                    <p><strong>Purpose:</strong> Primary identity matching using Jaro-Winkler similarity</p>
+                    <p><strong>Impact on score:</strong> DOMINANT factor (weight 35). Typically 60-80% of final score.</p>
+                    <p><strong>Score range:</strong></p>
+                    <ul>
+                        <li>1.0 = Exact match</li>
+                        <li>0.85-0.99 = Very close (common typos, accents)</li>
+                        <li>0.70-0.84 = Similar but noticeable differences</li>
+                        <li>&lt;0.70 = Probably different entities</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- ScoreConfig Reference -->
+            <div class="doc-accordion">
+                <div class="doc-accordion-header" onclick="toggleAccordion(this)">
+                    <span>⚙️ ScoreConfig Reference</span>
+                    <span>▼</span>
+                </div>
+                <div class="doc-accordion-content">
+                    <h2>Summary</h2>
+                    <p>Centralized type-safe configuration for scoring parameters. Configuration is managed through Spring Boot's <code>@ConfigurationProperties</code> system.</p>
+                    
+                    <h2>SimilarityConfig - Algorithm Parameters</h2>
+                    <p><strong>10 parameters controlling Jaro-Winkler scoring behavior:</strong></p>
+                    
+                    <h3>jaroWinklerBoostThreshold (default: 0.7)</h3>
+                    <p>Minimum score before Jaro-Winkler prefix boost applies. Range: 0-1.</p>
+                    
+                    <h3>jaroWinklerPrefixSize (default: 4)</h3>
+                    <p>Number of leading characters to compare for prefix boost.</p>
+                    
+                    <h3>lengthDifferencePenaltyWeight (default: 0.3)</h3>
+                    <p>Penalty weight when names differ significantly in length. Range: 0-1.</p>
+                    
+                    <h3>lengthDifferenceCutoffFactor (default: 0.9)</h3>
+                    <p>Threshold ratio for applying length penalty. Range: 0-1.</p>
+                    
+                    <h3>differentLetterPenaltyWeight (default: 0.9)</h3>
+                    <p>Penalty when characters differ between names. Range: 0-1.</p>
+                    
+                    <h3>exactMatchFavoritism (default: 0.0)</h3>
+                    <p>Boost applied to exact matches. Range: 0-1.</p>
+                    
+                    <h3>unmatchedIndexTokenWeight (default: 0.15)</h3>
+                    <p>Weight for tokens in query not found in index. Range: 0-1.</p>
+                    
+                    <h3>phoneticFilteringDisabled (default: false)</h3>
+                    <p>Disable Soundex phonetic matching. May reduce fuzzy match quality.</p>
+                    
+                    <h3>keepStopwords (default: false)</h3>
+                    <p>Keep common words like 'the', 'and' in matching (usually filtered).</p>
+                    
+                    <h3>logStopwordDebugging (default: false)</h3>
+                    <p>Enable debug logging for stopword filtering behavior.</p>
+                    
+                    <h2>WeightConfig - Business-Level Controls</h2>
+                    <p><strong>13 parameters for scoring weights and phase toggles:</strong></p>
+                    
+                    <h3>Weights (4 parameters)</h3>
+                    <ul>
+                        <li><strong>nameWeight (default: 0.4)</strong> - Weight for name comparison scores</li>
+                        <li><strong>addressWeight (default: 0.3)</strong> - Weight for address comparison scores</li>
+                        <li><strong>criticalIdWeight (default: 0.2)</strong> - Weight for government ID matching</li>
+                        <li><strong>supportingInfoWeight (default: 0.1)</strong> - Weight for additional data (crypto, contact, dates)</li>
+                    </ul>
+                    
+                    <h3>Thresholds (2 parameters)</h3>
+                    <ul>
+                        <li><strong>minimumScore (default: 0.7)</strong> - Minimum score to return match</li>
+                        <li><strong>exactMatchThreshold (default: 0.95)</strong> - Score considered exact match</li>
+                    </ul>
+                    
+                    <h3>Phase Toggles (7 parameters)</h3>
+                    <p>Enable/disable comparison phases (all default: true):</p>
+                    <ul>
+                        <li><strong>nameComparisonEnabled</strong> - Primary name matching</li>
+                        <li><strong>altNameComparisonEnabled</strong> - Alternate name matching</li>
+                        <li><strong>addressComparisonEnabled</strong> - Geographic matching</li>
+                        <li><strong>govIdComparisonEnabled</strong> - Government ID matching</li>
+                        <li><strong>cryptoComparisonEnabled</strong> - Cryptocurrency address matching</li>
+                        <li><strong>contactComparisonEnabled</strong> - Email/phone matching</li>
+                        <li><strong>dateComparisonEnabled</strong> - Date of birth matching</li>
+                    </ul>
+                    
+                    <h2>Configuration Sources (Priority Order)</h2>
+                    <ol>
+                        <li>Command-line: <code>--watchman.similarity.jaro-winkler-boost-threshold=0.8</code></li>
+                        <li>Environment: <code>WATCHMAN_SIMILARITY_JARO_WINKLER_BOOST_THRESHOLD=0.8</code></li>
+                        <li>YAML: application.yml</li>
+                        <li>Defaults: SimilarityConfig.java / WeightConfig.java</li>
+                    </ol>
+                    
+                    <p><strong>Total configuration surface:</strong> 23 parameters (10 SimilarityConfig + 13 WeightConfig)</p>
+                </div>
+            </div>
+            
+            <!-- ScoreTrace Guide -->
+            <div class="doc-accordion">
+                <div class="doc-accordion-header" onclick="toggleAccordion(this)">
+                    <span>🔍 ScoreTrace Guide</span>
+                    <span>▼</span>
+                </div>
+                <div class="doc-accordion-content">
+                    <h2>Summary</h2>
+                    <p>Opt-in scoring observability system capturing phase-by-phase scoring decisions. Generates JSON traces (technical) and HTML reports (compliance/audit). Zero overhead when disabled.</p>
+                    
+                    <h2>10 Traced Phases</h2>
+                    <p>These phases write debug entries when trace=true:</p>
+                    <ol>
+                        <li>NORMALIZATION - Text cleanup and preparation</li>
+                        <li>NAME_COMPARISON - Jaro-Winkler on primary name</li>
+                        <li>ALT_NAME_COMPARISON - Match against alternate names</li>
+                        <li>GOV_ID_COMPARISON - TIN, passport, national ID</li>
+                        <li>CRYPTO_COMPARISON - Cryptocurrency addresses</li>
+                        <li>CONTACT_COMPARISON - Email, phone</li>
+                        <li>ADDRESS_COMPARISON - Geographic matching</li>
+                        <li>DATE_COMPARISON - Date of birth with transposition detection</li>
+                        <li>AGGREGATION - Weighted score combination</li>
+                        <li>FILTERING - Applied in SearchController post-scoring</li>
+                    </ol>
+                    
+                    <h2>3 Untraced Phases</h2>
+                    <p>These execute but don't write trace entries:</p>
+                    <ul>
+                        <li><strong>TOKENIZATION</strong> - Runs inside NAME_COMPARISON/ALT_NAME_COMPARISON (child process)</li>
+                        <li><strong>PHONETIC_FILTER</strong> - Runs inside NAME_COMPARISON/ALT_NAME_COMPARISON (child process)</li>
+                        <li><strong>FILTERING</strong> - Runs in SearchController after scoring (post-processing)</li>
+                    </ul>
+                    <p><strong>Note:</strong> The 3 untraced phases execute and function correctly. Tracing affects observability (debug output), not functionality.</p>
+                    
+                    <h2>API Integration</h2>
+                    <p><strong>Search with trace:</strong></p>
+                    <pre>curl "http://localhost:8080/v1/search?name=Maduro&trace=true"</pre>
+                    <p>Response includes <code>reportUrl</code> field</p>
+                    
+                    <p><strong>Get HTML report:</strong></p>
+                    <pre>curl "http://localhost:8080/api/reports/abc-123"</pre>
+                    
+                    <p><strong>Get JSON summary:</strong></p>
+                    <pre>curl "http://localhost:8080/api/reports/abc-123/summary"</pre>
+                    
+                    <h2>Implementation Details</h2>
+                    <ul>
+                        <li><strong>Trace storage:</strong> In-memory with 24-hour TTL</li>
+                        <li><strong>Performance:</strong> &lt;5ns overhead when disabled</li>
+                        <li><strong>Key classes:</strong> ScoringContext.java, EntityScorer.java, TraceSummaryService.java</li>
+                    </ul>
+                    
+                    <h2>Usage Pattern</h2>
+                    <pre>// Enable tracing
+ScoringContext ctx = ScoringContext.enabled(sessionId);
+double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
+ScoringTrace trace = ctx.toTrace();
+
+// Disabled (production default)
+ScoringContext ctx = ScoringContext.disabled();
+double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
+// No trace overhead</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'config') {
+                loadConfig();
+            }
+        }
+        
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/config`);
+                const data = await response.json();
+                
+                // Populate similarity fields
+                Object.keys(data.similarity).forEach(key => {
+                    const el = document.getElementById(key);
+                    if (el) {
+                        if (el.type === 'checkbox') {
+                            el.checked = data.similarity[key];
+                        } else {
+                            el.value = data.similarity[key];
+                        }
+                    }
+                });
+                
+                // Populate weight fields
+                Object.keys(data.weights).forEach(key => {
+                    const el = document.getElementById(key);
+                    if (el) {
+                        if (el.type === 'checkbox') {
+                            el.checked = data.weights[key];
+                        } else {
+                            el.value = data.weights[key];
+                        }
+                    }
+                });
+                
+                showAlert('config', 'Configuration loaded successfully', 'success');
+            } catch (error) {
+                showAlert('config', `Error loading configuration: ${error.message}`, 'error');
+            }
+        }
+        
+        // Save similarity config
+        async function saveSimilarityConfig() {
+            const config = {
+                jaroWinklerBoostThreshold: parseFloat(document.getElementById('jaroWinklerBoostThreshold').value),
+                jaroWinklerPrefixSize: parseInt(document.getElementById('jaroWinklerPrefixSize').value),
+                lengthDifferencePenaltyWeight: parseFloat(document.getElementById('lengthDifferencePenaltyWeight').value),
+                lengthDifferenceCutoffFactor: parseFloat(document.getElementById('lengthDifferenceCutoffFactor').value),
+                differentLetterPenaltyWeight: parseFloat(document.getElementById('differentLetterPenaltyWeight').value),
+                exactMatchFavoritism: parseFloat(document.getElementById('exactMatchFavoritism').value),
+                unmatchedIndexTokenWeight: parseFloat(document.getElementById('unmatchedIndexTokenWeight').value),
+                phoneticFilteringDisabled: document.getElementById('phoneticFilteringDisabled').checked,
+                keepStopwords: document.getElementById('keepStopwords').checked,
+                logStopwordDebugging: document.getElementById('logStopwordDebugging').checked
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/config/similarity`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('config', data.message, 'success');
+                } else {
+                    showAlert('config', `Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('config', `Error saving configuration: ${error.message}`, 'error');
+            }
+        }
+        
+        // Save weight config
+        async function saveWeightConfig() {
+            const config = {
+                nameWeight: parseFloat(document.getElementById('nameWeight').value),
+                addressWeight: parseFloat(document.getElementById('addressWeight').value),
+                criticalIdWeight: parseFloat(document.getElementById('criticalIdWeight').value),
+                supportingInfoWeight: parseFloat(document.getElementById('supportingInfoWeight').value),
+                minimumScore: parseFloat(document.getElementById('minimumScore').value),
+                exactMatchThreshold: parseFloat(document.getElementById('exactMatchThreshold').value),
+                nameComparisonEnabled: document.getElementById('nameComparisonEnabled').checked,
+                altNameComparisonEnabled: document.getElementById('altNameComparisonEnabled').checked,
+                addressComparisonEnabled: document.getElementById('addressComparisonEnabled').checked,
+                govIdComparisonEnabled: document.getElementById('govIdComparisonEnabled').checked,
+                cryptoComparisonEnabled: document.getElementById('cryptoComparisonEnabled').checked,
+                contactComparisonEnabled: document.getElementById('contactComparisonEnabled').checked,
+                dateComparisonEnabled: document.getElementById('dateComparisonEnabled').checked
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/config/weights`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('config', data.message, 'success');
+                } else {
+                    showAlert('config', `Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('config', `Error saving configuration: ${error.message}`, 'error');
+            }
+        }
+        
+        // Reset to defaults
+        async function resetConfig() {
+            if (!confirm('Are you sure you want to reset all configuration to defaults?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/config/reset`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('config', data.message, 'success');
+                    loadConfig();
+                } else {
+                    showAlert('config', `Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('config', `Error resetting configuration: ${error.message}`, 'error');
+            }
+        }
+        
+        // Run test search
+        async function runTestSearch() {
+            const name = document.getElementById('testName').value;
+            const trace = document.getElementById('testTrace').checked;
+            
+            if (!name) {
+                showAlert('test', 'Please enter a name to search', 'error');
+                return;
+            }
+            
+            try {
+                const url = `${API_BASE}/v1/search?name=${encodeURIComponent(name)}&limit=5${trace ? '&trace=true' : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                let html = '<div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">';
+                html += `<h3>Results: ${data.SDNs ? data.SDNs.length : 0} matches</h3>`;
+                
+                if (trace && data.traceSessionId) {
+                    html += `<p style="margin: 10px 0;"><a href="/api/reports/${data.traceSessionId}" target="_blank" style="color: #3498db;">View ScoreTrace Report</a></p>`;
+                }
+                
+                if (data.SDNs && data.SDNs.length > 0) {
+                    data.SDNs.forEach(sdn => {
+                        html += `<div style="background: white; padding: 15px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #3498db;">`;
+                        html += `<strong>${sdn.sdnName}</strong> - Match: ${(sdn.match * 100).toFixed(1)}%<br>`;
+                        html += `<small>Type: ${sdn.sdnType || 'N/A'} | Programs: ${sdn.programs ? sdn.programs.join(', ') : 'N/A'}</small>`;
+                        html += `</div>`;
+                    });
+                } else {
+                    html += '<p style="color: #7f8c8d; margin-top: 10px;">No matches found</p>';
+                }
+                
+                html += '</div>';
+                document.getElementById('test-results').innerHTML = html;
+                
+            } catch (error) {
+                showAlert('test', `Error running search: ${error.message}`, 'error');
+            }
+        }
+        
+        // Show alert
+        function showAlert(tab, message, type) {
+            const alertDiv = document.getElementById(`${tab}-alert`);
+            alertDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => alertDiv.innerHTML = '', 5000);
+        }
+        
+        // Toggle accordion
+        function toggleAccordion(header) {
+            const content = header.nextElementSibling;
+            const isActive = content.classList.contains('active');
+            
+            // Close all accordions
+            document.querySelectorAll('.doc-accordion-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.doc-accordion-header').forEach(h => h.classList.remove('active'));
+            
+            // Toggle current accordion
+            if (!isActive) {
+                content.classList.add('active');
+                header.classList.add('active');
+            }
+        }
+        
+        // Load config on page load
+        loadConfig();
+    </script>
+</body>
+</html>

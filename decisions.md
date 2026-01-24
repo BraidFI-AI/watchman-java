@@ -959,3 +959,27 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
+### 2026-01-24: Documentation Delivery Pattern in Admin UI
+
+**Decision**: Embed documentation as static HTML in accordion sections rather than using tooltips or dynamic markdown rendering.
+
+**Context**: Initial tooltip implementation was too brief. Considered three options:
+- Option A: Static HTML conversion (chosen)
+- Option B: Dynamic markdown rendering with REST API
+- Option C: Simplified accordion with extracted points
+
+**Rationale**:
+- No runtime dependencies (no markdown parser library, no HTTP requests)
+- Fast loading and works offline
+- Content stays synchronized with docs/ folder through manual conversion
+- Accordion UI provides better information density than tooltips
+- Users can expand/collapse sections as needed
+
+**Implementation**: Admin UI includes Documentation tab with three accordion sections (Phase Scoring Mechanics, ScoreConfig Reference, ScoreTrace Guide). Content converted from markdown (phase_scoring_mechanics.md, scoreconfig.md, scoretrace.md) to embedded HTML with proper styling and code formatting.
+
+**Tradeoff**: Requires manual sync when source markdown changes, but documentation changes are infrequent and Admin UI is MVP scope. Accepted for simplicity and zero dependencies.
+
+**Impact**: Users have comprehensive reference documentation within the UI without needing to consult external markdown files. 23 configuration parameters fully documented with defaults, ranges, and descriptions.
+
+---
+

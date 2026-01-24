@@ -695,6 +695,153 @@
           "description": "Get JSON summary using sessionId from Step 1. Shows phase contributions, timings, and insights for automation/dashboards."
         }
       ]
+    },
+    {
+      "name": "Admin Config",
+      "description": "## Admin Configuration API\n\nManage scoring configuration at runtime without restarts. Control algorithm-level similarity parameters and business-level weight settings.\n\n### Endpoints\n\n- **GET /api/admin/config** - Get all configuration\n- **PUT /api/admin/config/similarity** - Update similarity parameters\n- **PUT /api/admin/config/weights** - Update weight parameters\n- **POST /api/admin/config/reset** - Reset to defaults\n\n### Configuration Structure\n\n**SimilarityConfig (10 parameters):**\n- Algorithm-level parameters controlling Jaro-Winkler scoring\n- Examples: jaroWinklerBoostThreshold, phoneticFilteringDisabled\n\n**WeightConfig (13 parameters):**\n- Business-level weights and phase toggles\n- Examples: nameWeight, minimumScore, nameComparisonEnabled\n\n### Use Cases\n\n✅ **Score Tuning**: Adjust thresholds based on false positive/negative rates\n✅ **A/B Testing**: Compare different configurations in test environments\n✅ **Phase Control**: Disable specific comparison phases for performance\n✅ **Debugging**: Enable detailed logging to troubleshoot scoring issues\n\n### Best Practices\n\n- Test config changes in non-production environments first\n- Use reset endpoint to return to known-good defaults\n- Changes apply immediately to all new searches (in-memory only)\n- Document configuration changes for audit trails\n\n### Important Notes\n\n⚠️ **In-Memory Only**: Changes persist until service restart\n⚠️ **No Authentication**: This is an MVP feature - add auth for production\n⚠️ **No Persistence**: Changes are not saved to application.yml",
+      "item": [
+        {
+          "name": "Get All Configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "config"
+              ]
+            },
+            "description": "Get current configuration including all similarity parameters and weight settings. Returns a combined view of both SimilarityConfig (10 parameters) and WeightConfig (13 parameters)."
+          },
+          "response": [
+            {
+              "name": "Configuration Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"similarity\": {\n    \"jaroWinklerBoostThreshold\": 0.7,\n    \"jaroWinklerPrefixSize\": 4,\n    \"lengthDifferencePenaltyWeight\": 0.3,\n    \"lengthDifferenceCutoffFactor\": 0.9,\n    \"differentLetterPenaltyWeight\": 0.9,\n    \"exactMatchFavoritism\": 0.0,\n    \"unmatchedIndexTokenWeight\": 0.15,\n    \"phoneticFilteringDisabled\": false,\n    \"keepStopwords\": false,\n    \"logStopwordDebugging\": false\n  },\n  \"weights\": {\n    \"nameWeight\": 35.0,\n    \"addressWeight\": 25.0,\n    \"criticalIdWeight\": 50.0,\n    \"supportingInfoWeight\": 15.0,\n    \"minimumScore\": 0.0,\n    \"exactMatchThreshold\": 0.99,\n    \"nameComparisonEnabled\": true,\n    \"altNameComparisonEnabled\": true,\n    \"addressComparisonEnabled\": true,\n    \"govIdComparisonEnabled\": true,\n    \"cryptoComparisonEnabled\": true,\n    \"contactComparisonEnabled\": true,\n    \"dateComparisonEnabled\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Similarity Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jaroWinklerBoostThreshold\": 0.8,\n  \"jaroWinklerPrefixSize\": 4,\n  \"lengthDifferencePenaltyWeight\": 0.3,\n  \"lengthDifferenceCutoffFactor\": 0.9,\n  \"differentLetterPenaltyWeight\": 0.9,\n  \"exactMatchFavoritism\": 0.0,\n  \"unmatchedIndexTokenWeight\": 0.15,\n  \"phoneticFilteringDisabled\": false,\n  \"keepStopwords\": false,\n  \"logStopwordDebugging\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/config/similarity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "config",
+                "similarity"
+              ]
+            },
+            "description": "Update algorithm-level similarity parameters. All 10 fields are required. Changes apply immediately to the singleton SimilarityConfig bean.\n\n**Parameters:**\n- jaroWinklerBoostThreshold (0-1): Minimum score for prefix boost\n- jaroWinklerPrefixSize (int): Leading chars for prefix boost\n- lengthDifferencePenaltyWeight (0-1): Penalty for length mismatch\n- lengthDifferenceCutoffFactor (0-1): Threshold for length penalty\n- differentLetterPenaltyWeight (0-1): Penalty for char differences\n- exactMatchFavoritism (0-1): Boost for exact matches\n- unmatchedIndexTokenWeight (0-1): Weight for missing tokens\n- phoneticFilteringDisabled (bool): Disable Soundex filtering\n- keepStopwords (bool): Keep common words in matching\n- logStopwordDebugging (bool): Enable stopword debug logs"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Similarity configuration updated successfully\"\n}"
+            },
+            {
+              "name": "Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"timestamp\": \"2026-01-24T10:00:00.000+00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Invalid configuration: jaroWinklerBoostThreshold must be between 0 and 1\",\n  \"path\": \"/api/admin/config/similarity\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Weight Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nameWeight\": 40.0,\n  \"addressWeight\": 30.0,\n  \"criticalIdWeight\": 50.0,\n  \"supportingInfoWeight\": 15.0,\n  \"minimumScore\": 0.75,\n  \"exactMatchThreshold\": 0.95,\n  \"nameComparisonEnabled\": true,\n  \"altNameComparisonEnabled\": true,\n  \"addressComparisonEnabled\": true,\n  \"govIdComparisonEnabled\": true,\n  \"cryptoComparisonEnabled\": true,\n  \"contactComparisonEnabled\": true,\n  \"dateComparisonEnabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/config/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "config",
+                "weights"
+              ]
+            },
+            "description": "Update business-level weight parameters and phase toggles. All 13 fields are required. Changes apply immediately to the singleton WeightConfig bean.\n\n**Weight Parameters (4):**\n- nameWeight: Weight for name comparison (higher = name matters more)\n- addressWeight: Weight for address comparison\n- criticalIdWeight: Weight for gov/crypto IDs\n- supportingInfoWeight: Weight for contact info and dates\n\n**Thresholds (2):**\n- minimumScore (0-1): Minimum match score to return\n- exactMatchThreshold (0-1): Score considered exact match\n\n**Phase Toggles (7):**\n- nameComparisonEnabled: Enable primary name matching\n- altNameComparisonEnabled: Enable alternate name matching\n- addressComparisonEnabled: Enable geographic matching\n- govIdComparisonEnabled: Enable government ID matching\n- cryptoComparisonEnabled: Enable crypto address matching\n- contactComparisonEnabled: Enable email/phone matching\n- dateComparisonEnabled: Enable date of birth matching"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Weight configuration updated successfully\"\n}"
+            },
+            {
+              "name": "Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"timestamp\": \"2026-01-24T10:00:00.000+00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Invalid configuration: minimumScore must be between 0 and 1\",\n  \"path\": \"/api/admin/config/weights\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reset to Defaults",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/config/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "config",
+                "reset"
+              ]
+            },
+            "description": "Reset all configuration to application.yml defaults. Reloads both SimilarityConfig and WeightConfig from the original Spring Boot configuration.\n\n**Use this when:**\n- Testing config changes went wrong\n- Need to return to known-good baseline\n- Starting fresh tuning session\n- Troubleshooting unexpected behavior"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Configuration reset to defaults from application.yml\"\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

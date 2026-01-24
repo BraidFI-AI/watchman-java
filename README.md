@@ -57,6 +57,18 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | `GET` | `/api/reports/{sessionId}` | Get human-readable HTML score report |
 | `GET` | `/api/reports/{sessionId}/summary` | Get JSON summary with phase contributions and operator insights |
 
+#### Admin UI API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/admin.html` | Web-based Admin UI for config management |
+| `GET` | `/api/admin/config` | Get all configuration (23 parameters) |
+| `PUT` | `/api/admin/config/similarity` | Update similarity config (10 params) |
+| `PUT` | `/api/admin/config/weights` | Update weight config (13 params) |
+| `POST` | `/api/admin/config/reset` | Reset config to defaults |
+
+See [docs/admin_ui.md](docs/admin_ui.md) for details.
+
 ### Example Usage
 
 **Search Entities:**

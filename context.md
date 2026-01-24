@@ -41,12 +41,32 @@
   * Improved from 17 failures to 12 failures
   * Remaining failures in: SimilarityConfigIntegrationTest (custom configs), TitleComparisonTest (3), JaroWinklerWithFavoritismTest (1), TraceSummaryServiceTest (1), ReportRendererSummaryTest (5), ReportSummaryControllerTest (1 error)
 
+### Admin UI Implementation (January 24, 2026)
+- **Admin UI complete**: Single-page application (SPA) at /admin.html with 4 tabs (ScoreConfig, ScoreTrace, Test Search, Documentation)
+- **Admin Config API**: 4 REST endpoints for runtime configuration management:
+  * GET /api/admin/config - Retrieve all 23 parameters (10 similarity + 13 weight)
+  * PUT /api/admin/config/similarity - Update algorithm-level parameters
+  * PUT /api/admin/config/weights - Update business-level parameters and phase toggles
+  * POST /api/admin/config/reset - Reset to application.yml defaults
+- **AdminConfigController.java**: Spring Boot REST controller with in-memory config updates (no persistence)
+- **AdminConfigControllerTest.java**: 7 integration tests (all passing) using @SpringBootTest and MockMvc
+- **DTO classes**: 4 Java Records for type-safe API responses (AdminConfigResponse, SimilarityConfigDTO, WeightConfigDTO, AdminMessageResponse)
+- **Documentation tab**: Embedded static HTML with accordion sections covering Phase Scoring Mechanics, ScoreConfig parameters (23 total), and ScoreTrace usage guide
+- **Documentation approach**: Converted markdown to static HTML (no runtime dependencies, no markdown parser, works offline)
+- **Postman collection**: Updated with "Admin Config" folder containing all 4 endpoints with examples, validation errors, and parameter documentation
+- **Configuration changes**: Apply immediately to singleton Spring beans (SimilarityConfig, WeightConfig) but reset on service restart
+- **UI features**: Test Search integration, config reset functionality, success/error alerts, Braid blue branding (#002441)
+- **TDD implementation**: Strict RED-GREEN cycle with 7 failing tests first, then implementation to pass all tests
+
 ### What Is Still Unknown
 - Whether remaining 12 test failures are architecture-related or test definition issues
 - If SimilarityConfigIntegrationTest needs @SpringBootTest (tests custom config values, not application.yml)
 - Why test failure count increased from 8 (Jan 15) to 17 (Jan 22) - different test run scope or new failures?
 - Whether TitleComparisonTest/JaroWinklerWithFavoritismTest failures are related to config loading
 - If report/tracing tests (6 failures + 1 error) are independent issues
+- Whether to add authentication/authorization to Admin UI (currently MVP with no auth)
+- If config changes should persist to application.yml or remain in-memory only
+- Whether to add audit logging for configuration changes
 
 ### Documentation Issues to Fix
 - **Terminology clarification completed (Jan 24, 2026)**:
