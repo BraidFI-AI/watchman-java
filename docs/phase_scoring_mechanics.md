@@ -27,20 +27,49 @@ Weights are only included when a factor is present and non-zero. This prevents d
 
 A **phase** represents a step in the scoring lifecycle - the sequential journey that entity data takes from raw input to final match decision.
 
-**Lifecycle Steps:**
-- **Preparation phases** (NORMALIZATION, TOKENIZATION): Clean and transform data for comparison
-- **Filtering phases** (PHONETIC_FILTER, FILTERING): Decide what to compare or return
-- **Comparison phases** (NAME_COMPARISON, ADDRESS_COMPARISON, etc.): Generate similarity scores
-- **Aggregation phase** (AGGREGATION): Combine individual scores into final result
+**Total: 12 phases** (defined in Phase.java enum)
+**Traced: 10 phases** (write debug entries when trace=true)
+**Not Traced: 3 phases** (execute but don't write trace entries)
 
-**Score Contributors:** 8 of 12 phases directly contribute numerical scores to the final match score:
+### Phase Hierarchy
+
+**Top-Level Phases (10 traced):**
+These call `ctx.record()` or `ctx.traced()` in EntityScorerImpl and appear in trace output:
+- NORMALIZATION - Text cleanup
+- NAME_COMPARISON - Primary name matching (includes TOKENIZATION + PHONETIC_FILTER as child processes)
+- ALT_NAME_COMPARISON - Alternate name matching (includes TOKENIZATION + PHONETIC_FILTER as child processes)
+- GOV_ID_COMPARISON - Government ID matching
+- CRYPTO_COMPARISON - Cryptocurrency address matching
+- CONTACT_COMPARISON - Email/phone matching
+- ADDRESS_COMPARISON - Geographic matching
+- DATE_COMPARISON - Birth date matching
+- AGGREGATION - Weighted score combination
+- FILTERING - Applied in SearchController post-scoring
+
+**Child Processes (2 not traced):**
+These execute inside parent phases as implementation details:
+- TOKENIZATION - Generates word combinations (runs inside NAME_COMPARISON/ALT_NAME_COMPARISON)
+- PHONETIC_FILTER - Soundex-based filtering (runs inside NAME_COMPARISON/ALT_NAME_COMPARISON)
+
+**Post-Processing (1 not traced):**
+- FILTERING - Applies minMatch threshold after scoring completes (runs in SearchController)
+
+### Score Contributors
+
+**8 phases directly contribute numerical scores:**
 - NAME_COMPARISON, ALT_NAME_COMPARISON (contribute to nameScore)
 - GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON (contribute to criticalIdScore)
 - ADDRESS_COMPARISON (contributes to addressScore)
 - DATE_COMPARISON (contributes to supportingInfoScore)
 - AGGREGATION (combines weighted scores)
 
-The remaining 4 phases (NORMALIZATION, TOKENIZATION, PHONETIC_FILTER, FILTERING) prepare data or filter results but do not generate scores themselves.
+**4 phases support scoring but don't generate scores:**
+- NORMALIZATION - Prepares text
+- TOKENIZATION - Generates combinations
+- PHONETIC_FILTER - Pre-filters candidates
+- FILTERING - Filters final results
+
+**All 12 phases execute during scoring. Tracing affects observability, not functionality.**
 
 ---
 

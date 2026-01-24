@@ -17,16 +17,23 @@ Opt-in scoring observability system capturing phase-by-phase scoring decisions. 
 - src/main/java/io/moov/watchman/scoring/EntityScorer.java
 - src/main/java/io/moov/watchman/api/reports/TraceSummaryService.java
 
-**9 phases currently traced (of 12 total lifecycle phases):**
+**10 phases currently traced (of 12 total lifecycle phases):**
 1. NORMALIZATION - Text cleanup and preparation
 2. NAME_COMPARISON - Jaro-Winkler on primary name
 3. ALT_NAME_COMPARISON - Match against alternate names
-4. ADDRESS_COMPARISON - Geographic matching
-5. GOV_ID_COMPARISON - TIN, passport, national ID
-6. CRYPTO_COMPARISON - Cryptocurrency addresses
-7. CONTACT_COMPARISON - Email, phone
+4. GOV_ID_COMPARISON - TIN, passport, national ID (appears twice: line 103 for perfect match, line 115 for fuzzy)
+5. CRYPTO_COMPARISON - Cryptocurrency addresses
+6. CONTACT_COMPARISON - Email, phone
+7. ADDRESS_COMPARISON - Geographic matching
 8. DATE_COMPARISON - Date of birth with transposition detection
 9. AGGREGATION - Weighted score combination
+
+**3 phases not traced (execute but don't write trace entries):**
+- TOKENIZATION - Runs inside NAME_COMPARISON/ALT_NAME_COMPARISON (child process)
+- PHONETIC_FILTER - Runs inside NAME_COMPARISON/ALT_NAME_COMPARISON (child process)
+- FILTERING - Runs in SearchController after scoring (post-processing)
+
+**Note:** The 3 untraced phases execute and function correctly. TOKENIZATION and PHONETIC_FILTER are implementation details inside name comparison phases. FILTERING applies the minMatch threshold after all scoring completes. Tracing affects observability (debug output), not functionality.
 
 **Usage pattern:**
 ```java
