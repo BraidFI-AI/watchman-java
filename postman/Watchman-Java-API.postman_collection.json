@@ -409,42 +409,6 @@
           ]
         },
         {
-          "name": "Batch Screen - Large (100 items)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\"requestId\": \"1\", \"name\": \"Customer One\"},\n    {\"requestId\": \"2\", \"name\": \"Customer Two\"},\n    {\"requestId\": \"3\", \"name\": \"Customer Three\"},\n    {\"requestId\": \"4\", \"name\": \"Customer Four\"},\n    {\"requestId\": \"5\", \"name\": \"Customer Five\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/search/batch",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "search",
-                "batch"
-              ]
-            },
-            "description": "Example large batch request (modify items array as needed, max 1000)"
-          },
-          "response": [
-            {
-              "name": "Large Batch Response",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"batchId\": \"batch-large-789\",\n  \"results\": [\n    {\n      \"requestId\": \"1\",\n      \"query\": \"Customer One\",\n      \"status\": \"COMPLETED\",\n      \"errorMessage\": null,\n      \"matches\": []\n    }\n  ],\n  \"statistics\": {\n    \"totalProcessed\": 5,\n    \"withMatches\": 0,\n    \"withoutMatches\": 5,\n    \"failed\": 0\n  },\n  \"totalItems\": 5,\n  \"totalMatches\": 0,\n  \"itemsWithMatches\": 0,\n  \"processingTimeMs\": 87,\n  \"processedAt\": \"2026-01-04T12:00:00Z\"\n}"
-            }
-          ]
-        },
-        {
           "name": "Batch Screen - Async",
           "request": {
             "method": "POST",
