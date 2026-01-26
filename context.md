@@ -58,6 +58,20 @@
 - **UI features**: Test Search integration, config reset functionality, success/error alerts, Braid blue branding (#002441)
 - **TDD implementation**: Strict RED-GREEN cycle with 7 failing tests first, then implementation to pass all tests
 
+### Admin UI Deployment Verification (January 26, 2026)
+- **Admin UI verified accessible**: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/admin.html
+- **Deployment automation**: GitHub Actions workflow (.github/workflows/deploy-ecs.yml) triggers on push to main
+  * Builds Docker image (linux/amd64)
+  * Pushes to ECR with commit SHA tag
+  * Updates ECS task definition
+  * Deploys to watchman-java-cluster
+- **Current deployment**: Task definition revision 73, image tag 17710b8 (deployed Jan 24, 2026 12:22 PM)
+- **Tuning guide created**: docs/tuning_guide.md provides fuzzy matching parameter tuning without requiring algorithm expertise
+  * Quick reference table mapping problems to parameters
+  * 6 practical workflows (reduce false positives, find missing matches, name-only mode, strict compliance, Admin UI live tuning, validation)
+  * Common scenarios with concrete curl examples (abbreviations, nicknames, typos, common names)
+  * Decision tree for fast parameter selection
+
 ### What Is Still Unknown
 - Whether remaining 12 test failures are architecture-related or test definition issues
 - If SimilarityConfigIntegrationTest needs @SpringBootTest (tests custom config values, not application.yml)

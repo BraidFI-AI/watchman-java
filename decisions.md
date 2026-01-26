@@ -979,6 +979,26 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Tradeoff**: Requires manual sync when source markdown changes, but documentation changes are infrequent and Admin UI is MVP scope. Accepted for simplicity and zero dependencies.
 
+---
+
+### 2026-01-26: Created Non-Technical Tuning Guide
+
+**Decision**: Created docs/tuning_guide.md as practical reference for ScoreConfig parameter tuning without requiring fuzzy matching expertise.
+
+**Rationale**: 
+- Existing docs (scoreconfig.md, phase_scoring_mechanics.md) document what parameters exist but not how/when to change them
+- Maintainers need problem→solution mapping ("too many false positives" → "increase min-match to 0.92")
+- 23 total parameters across SimilarityConfig (10) and WeightConfig (13) require decision framework
+
+**Implementation**: 
+- Quick reference table: Problem → Parameter → Expected outcome
+- 6 workflows: Reduce false positives, find missing matches, name-only screening, strict compliance, Admin UI live tuning, validation
+- Common scenarios: Abbreviations, nicknames, typos, common names with concrete examples
+- Decision tree at end for fast lookups
+- All examples use actual curl commands with jq for immediate testing
+
+**Impact**: Enables tuning by non-algorithm experts using observable outcomes rather than algorithm theory. References Admin UI for live experimentation without service restart.
+
 **Impact**: Users have comprehensive reference documentation within the UI without needing to consult external markdown files. 23 configuration parameters fully documented with defaults, ranges, and descriptions.
 
 ---
