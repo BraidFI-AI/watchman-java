@@ -1,5 +1,6 @@
 package io.moov.watchman.api;
 
+import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.index.EntityIndex;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
@@ -36,13 +37,15 @@ public class SearchController {
     private final EntityIndex entityIndex;
     private final EntityScorer entityScorer;
     private final io.moov.watchman.trace.TraceRepository traceRepository;
+    private final WeightConfig weightConfig;
     private Instant lastUpdated = Instant.now();
 
-    public SearchController(SearchService searchService, EntityIndex entityIndex, EntityScorer entityScorer, io.moov.watchman.trace.TraceRepository traceRepository) {
+    public SearchController(SearchService searchService, EntityIndex entityIndex, EntityScorer entityScorer, io.moov.watchman.trace.TraceRepository traceRepository, WeightConfig weightConfig) {
         this.searchService = searchService;
         this.entityIndex = entityIndex;
         this.entityScorer = entityScorer;
         this.traceRepository = traceRepository;
+        this.weightConfig = weightConfig;
     }
 
     /**
@@ -58,11 +61,16 @@ public class SearchController {
             @RequestParam(required = false) String type,
             @RequestParam(required = false) List<String> altNames,
             @RequestParam(required = false, defaultValue = "10") Integer limit,
-            @RequestParam(required = false, defaultValue = "0.88") Double minMatch,
+            @RequestParam(required = false) Double minMatch,
             @RequestParam(required = false) String requestID,
             @RequestParam(required = false, defaultValue = "false") Boolean debug,
             @RequestParam(required = false, defaultValue = "false") Boolean trace
     ) {
+        // Use weightConfig.minimumScore as default when no minMatch query param provided
+        if (minMatch == null) {
+            minMatch = weightConfig.getMinimumScore();
+        }
+        
         logger.info("Search request: name={}, source={}, type={}, limit={}, minMatch={}", 
             name, source, type, limit, minMatch);
 
@@ -82,27 +90,11 @@ public class SearchController {
         // Get candidates from index (filtered by source/type if specified)
         List<Entity> candidates = getCandidates(request);
 
-        // Enable tracing if requested
-        ScoringContext ctx = Boolean.TRUE.equals(trace) 
-            ? ScoringContext.enabled(UUID.randomUUID().toString())
-            : ScoringContext.disabled();
-
-        // Score and filter candidates (with optional tracing)
+        // Score all candidates without tracing (fast path)
         List<SearchResult> results = candidates.stream()
             .map(entity -> {
-                if (Boolean.TRUE.equals(trace)) {
-                    // Use trace-enabled scoring with breakdown
-                    ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(
-                        Entity.of(null, request.name(), null, null),
-                        entity, 
-                        ctx
-                    );
-                    return new SearchResult(entity, breakdown.totalWeightedScore(), breakdown);
-                } else {
-                    // Use regular scoring
-                    double score = searchService.scoreEntity(request.name(), entity);
-                    return SearchResult.of(entity, score);
-                }
+                double score = searchService.scoreEntity(request.name(), entity);
+                return SearchResult.of(entity, score);
             })
             .filter(result -> result.score() >= request.minMatch())
             .sorted((a, b) -> Double.compare(b.score(), a.score()))
@@ -111,13 +103,26 @@ public class SearchController {
 
         logger.info("Search completed: {} results for name={}", results.size(), name);
 
-        // Build response with optional trace data
-        ScoringTrace traceData = Boolean.TRUE.equals(trace) ? ctx.toTrace() : null;
-        
-        // Save trace to repository if tracing is enabled
-        if (traceData != null) {
+        // If tracing enabled, re-score ONLY the filtered results with breakdown
+        ScoringTrace traceData = null;
+        if (Boolean.TRUE.equals(trace) && !results.isEmpty()) {
+            ScoringContext ctx = ScoringContext.enabled(UUID.randomUUID().toString());
+            
+            // Re-score each filtered result with tracing
+            results = results.stream()
+                .map(result -> {
+                    ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(
+                        Entity.of(null, request.name(), null, null),
+                        result.entity(),
+                        ctx
+                    );
+                    return new SearchResult(result.entity(), breakdown.totalWeightedScore(), breakdown);
+                })
+                .toList();
+            
+            traceData = ctx.toTrace();
             traceRepository.save(traceData);
-            logger.debug("Trace saved: sessionId={}", traceData.sessionId());
+            logger.debug("Trace saved: sessionId={}, entitiesTraced={}", traceData.sessionId(), results.size());
         }
         
         SearchResponse response = SearchResponse.from(results, requestID, Boolean.TRUE.equals(debug), traceData);

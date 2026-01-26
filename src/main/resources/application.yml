@@ -25,10 +25,6 @@ watchman:
       url: https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw
     uk-csl:
       url: https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv
-  search:
-    default-limit: 10
-    max-limit: 100
-    min-match: 0.88
   # ScoreConfig: Centralized scoring configuration
   similarity:
     jaro-winkler-boost-threshold: 0.7
@@ -46,7 +42,7 @@ watchman:
     address-weight: 25.0
     critical-id-weight: 50.0
     supporting-info-weight: 15.0
-    minimum-score: 0.0
+    minimum-score: 0.88
     exact-match-threshold: 0.99
     name-comparison-enabled: true
     alt-name-comparison-enabled: true

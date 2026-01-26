@@ -1,5 +1,6 @@
 package io.moov.watchman.api;
 
+import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.index.EntityIndex;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
@@ -29,6 +30,9 @@ class SearchControllerIntegrationTest {
     
     @Autowired
     private EntityIndex entityIndex;
+
+    @Autowired
+    private WeightConfig weightConfig;
 
     @BeforeEach
     void setUp() {
@@ -248,6 +252,65 @@ class SearchControllerIntegrationTest {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().status()).isEqualTo("healthy");
             assertThat(response.getBody().entityCount()).isEqualTo(6);
+        }
+    }
+
+    @Nested
+    @DisplayName("MinimumScore Default Behavior")
+    class MinimumScoreTests {
+
+        @Test
+        @DisplayName("Should use weightConfig.minimumScore when no minMatch query param provided")
+        void shouldUseWeightConfigMinimumScoreAsDefault() {
+            // GIVEN: weightConfig has minimumScore set (from application.yml)
+            double configuredMinScore = weightConfig.getMinimumScore();
+            assertThat(configuredMinScore).isGreaterThan(0.0); // Verify it's configured
+
+            // Add entity with score just below threshold
+            entityIndex.clear();
+            entityIndex.addAll(List.of(
+                Entity.of("7140", "Nicolas Maduro", EntityType.PERSON, SourceList.US_OFAC),
+                Entity.of("7141", "Smith John", EntityType.PERSON, SourceList.US_OFAC) // Low similarity to "Maduro"
+            ));
+
+            // WHEN: Search without minMatch parameter (should use weightConfig default)
+            ResponseEntity<SearchResponse> response = controller.search(
+                "Maduro", null, null, null, null, 10, null, null, false, false
+            );
+
+            // THEN: Results filtered by weightConfig.minimumScore
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            
+            // All returned results should have score >= configuredMinScore
+            response.getBody().entities().forEach(hit -> {
+                assertThat(hit.score())
+                    .as("Result score should be >= weightConfig.minimumScore")
+                    .isGreaterThanOrEqualTo(configuredMinScore);
+            });
+        }
+
+        @Test
+        @DisplayName("Should allow query param minMatch to override weightConfig.minimumScore")
+        void shouldAllowQueryParamToOverrideDefault() {
+            // GIVEN: weightConfig has minimumScore set
+            double configuredMinScore = weightConfig.getMinimumScore();
+            double overrideMinScore = configuredMinScore - 0.1; // Lower threshold
+
+            entityIndex.clear();
+            entityIndex.addAll(List.of(
+                Entity.of("7140", "Nicolas Maduro", EntityType.PERSON, SourceList.US_OFAC)
+            ));
+
+            // WHEN: Search with explicit minMatch parameter
+            ResponseEntity<SearchResponse> responseWithParam = controller.search(
+                "Maduro", null, null, null, null, 10, overrideMinScore, null, false, false
+            );
+
+            // THEN: Uses the provided minMatch value, not weightConfig default
+            assertThat(responseWithParam.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(responseWithParam.getBody()).isNotNull();
+            assertThat(responseWithParam.getBody().entities()).isNotEmpty();
         }
     }
 }
