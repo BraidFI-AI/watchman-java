@@ -72,6 +72,29 @@
   * Common scenarios with concrete curl examples (abbreviations, nicknames, typos, common names)
   * Decision tree for fast parameter selection
 
+### Parameter Consolidation and UI Modernization (January 26, 2026)
+- **Parameter consolidation complete**: Eliminated duplicate/non-functional minimumScore parameter using TDD
+  * RED phase: Created SearchControllerMinMatchIntegrationTest exposing unused weightConfig.minimumScore
+  * GREEN phase: Wired SearchController to use weightConfig.getMinimumScore() as default (removed hardcoded 0.88)
+  * Consolidated application.yml: deleted watchman.search.min-match, updated watchman.weights.minimum-score from 0.0→0.88
+  * Query parameter ?minMatch still works as override for backward compatibility
+  * All tests passing: 2/2 new integration tests green, single source of truth established
+- **Admin UI modernized**: Contemporary design system without framework dependencies
+  * CSS variables for consistent theming (indigo/slate color palette replacing dated blues)
+  * Layered shadow system with professional elevation (sm/md/lg/xl)
+  * Gradient backgrounds with fixed attachment and proper depth
+  * Smooth animations and micro-interactions on hover/focus states
+  * Enhanced typography (improved weights, letter-spacing, 24px/32px spacing rhythm)
+  * Custom scrollbar styling and input focus rings
+  * Professional border radius system (10px-16px)
+  * Match Threshold section uses prominent gradient styling with dedicated saveThreshold() function
+  * Design inspiration: Modern SaaS dashboards (Linear, Vercel, Stripe)
+  * Pure CSS implementation - zero framework dependencies, no build step
+- **Test suite status**: 14 pre-existing test failures unrelated to parameter consolidation
+  * ReportRenderer, TraceSummary, JaroWinkler, TitleComparison, SimilarityConfig tests failing
+  * SearchControllerMinMatchIntegrationTest validates consolidated parameter behavior (2/2 passing)
+  * Failures existed before refactoring, not introduced by this work
+
 ### What Is Still Unknown
 - Whether remaining 12 test failures are architecture-related or test definition issues
 - If SimilarityConfigIntegrationTest needs @SpringBootTest (tests custom config values, not application.yml)

@@ -1003,3 +1003,42 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
+### 2026-01-26: Admin UI Design Approach - Pure CSS Over Frameworks
+
+**Decision**: Modernize Admin UI using pure CSS with CSS variables instead of adopting UI frameworks (Tailwind, Bootstrap, React, Vaadin).
+
+**Rationale**: 
+- Zero build step complexity - admin.html remains a single deployable file
+- No dependency management or version conflicts
+- Easier maintenance for ops/compliance tooling context
+- Modern design achievable with CSS variables, gradients, and animations
+- Faster iteration without framework learning curve
+- Design inspiration from contemporary SaaS dashboards (Linear, Vercel, Stripe) demonstrates pure CSS sufficiency
+
+**Implementation**: CSS variables for theming (:root with --primary, --surface, --shadow-*), indigo/slate color palette, layered shadow system, gradient backgrounds, smooth transitions, enhanced typography (font-weight 600/700, letter-spacing -0.3px), custom scrollbar styling, micro-interactions on hover/focus.
+
+**Tradeoff**: Limited to CSS capabilities vs. rich component libraries, but adequate for admin dashboard use case. No advanced features like virtual scrolling or complex state management, but not needed for current requirements.
+
+**Impact**: Modern professional appearance matching 2024+ design standards without framework overhead. Single HTML file deployment maintained. Future enhancement possible by adding framework if requirements change.
+
+---
+
+### 2026-01-26: Separate Threshold Update Function
+
+**Decision**: Created dedicated `saveThreshold()` function for updating `minimumScore` parameter, separate from `saveWeightConfig()`.
+
+**Rationale**:
+- Prominent threshold section has its own update button per UX hierarchy requirements
+- Prevents accidental updates to other weight parameters during quick threshold adjustments
+- Reflects business priority: threshold is the "first decision" and deserves isolated control
+- Smaller payload for single-parameter updates improves performance and reduces error surface area
+- UX clarity: dedicated control for most frequently adjusted parameter
+
+**Implementation**: `saveThreshold()` fetches current config via GET /api/admin/config/weights, updates only minimumScore field, PUTs updated config back, refreshes currentThreshold display element. `saveWeightConfig()` handles remaining 12 weight parameters without including minimumScore.
+
+**Tradeoff**: Two update functions instead of one, but improved UX and reduced accidental changes outweigh code duplication. Both functions call same PUT /api/admin/config/weights endpoint with different payloads.
+
+**Impact**: Operators can quickly adjust match threshold without risk of changing other parameters. Prominent placement reinforces this is the primary tuning control for most use cases.
+
+---
+
