@@ -664,6 +664,18 @@
             </div>
             
             <div class="form-group">
+                <label>Entity Type (optional)</label>
+                <select id="testType" style="width: 100%;">
+                    <option value="">All Types</option>
+                    <option value="PERSON">Person</option>
+                    <option value="BUSINESS">Business</option>
+                    <option value="ORGANIZATION">Organization</option>
+                    <option value="AIRCRAFT">Aircraft</option>
+                    <option value="VESSEL">Vessel</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
                 <label class="checkbox-label">
                     <input type="checkbox" id="testTrace">
                     Enable ScoreTrace
@@ -1125,6 +1137,7 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
         // Run test search
         async function runTestSearch() {
             const name = document.getElementById('testName').value;
+            const type = document.getElementById('testType').value;
             const trace = document.getElementById('testTrace').checked;
             
             if (!name) {
@@ -1133,7 +1146,13 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
             }
             
             try {
-                const url = `${API_BASE}/v1/search?name=${encodeURIComponent(name)}&limit=5${trace ? '&trace=true' : ''}`;
+                let url = `${API_BASE}/v1/search?name=${encodeURIComponent(name)}&limit=5`;
+                if (type) {
+                    url += `&type=${type}`;
+                }
+                if (trace) {
+                    url += '&trace=true';
+                }
                 const response = await fetch(url);
                 const data = await response.json();
                 
