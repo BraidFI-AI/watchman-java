@@ -14,7 +14,7 @@ Java-specific improvements categorized as: new features (not in Go), enhancement
 - POST /v2/search/batch - Screen up to 1,000 entities in single request
 - ScoreTrace - Opt-in scoring observability (ScoringContext, trace=true param)
 - SimilarityConfig - Type-safe centralized config (10 parameters)
-- HTML/JSON score reports - GET /api/reports/{sessionId}
+- HTML/JSON ScoreTrace reports - GET /api/reports/{sessionId}
 
 **Enhancements over Go:**
 - Government ID normalization: detects SSN vs TIN vs passport

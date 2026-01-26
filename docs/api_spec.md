@@ -15,7 +15,7 @@ REST API endpoints for sanctions screening against global watchlists (OFAC, EU, 
 - [Search](#search) - Single entity screening with fuzzy matching
 - [Batch Screening](#batch-screening) - Bulk screening (up to 1,000 entities)
 - [Data Management](#data-management) - Download and refresh sanctions data
-- [Score Reports](#score-reports) - Detailed scoring breakdowns and trace analysis
+- [ScoreTrace Reports](#scoretrace-reports) - Detailed scoring breakdowns and trace analysis
 
 ---
 
@@ -435,7 +435,7 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/data/sta
 
 ---
 
-## Score Reports
+## ScoreTrace Reports
 
 ### Overview
 
