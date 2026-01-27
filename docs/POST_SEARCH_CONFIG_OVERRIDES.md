@@ -16,7 +16,7 @@ The POST `/v2/search` endpoint extends the existing GET endpoint with the abilit
 1. **Non-invasive**: GET endpoint unchanged - production traffic unaffected
 2. **Request-scoped**: Each request creates isolated component instances (thread-safe)
 3. **Partial overrides**: Only specify parameters you want to change
-4. **Full observability**: Trace enabled by default, config values in metadata
+4. **Full observability**: Trace opt-in for debugging, config values always in metadata
 5. **TDD approach**: Tests written first, implementation follows
 
 ## Architecture
@@ -104,7 +104,7 @@ Content-Type: application/json
       "limit": 25
     }
   },
-  "trace": true                          // Optional, defaults to true
+  "trace": false                         // Optional, defaults to false (enable for debugging)
 }
 ```
 
@@ -208,7 +208,7 @@ public record SearchRequestBody(
     Boolean trace
 ) {
     public SearchRequestBody {
-        trace = trace != null ? trace : true;  // Default to true
+        trace = trace != null ? trace : false;  // Default to false (opt-in for debugging)
     }
 }
 ```
@@ -616,13 +616,15 @@ public ResponseEntity<SearchResponse> searchWithConfig(...) {
 
 **Symptom**: `debug` field is null in response
 
-**Solution**: POST defaults to `trace: true`, but can be overridden:
+**Solution**: Trace defaults to `false` (opt-in for debugging). Explicitly enable it:
 ```json
 {
   "query": {"name": "Test"},
-  "trace": true  // Explicitly enable
+  "trace": true  // Must explicitly enable for debugging
 }
 ```
+
+**Note**: Trace is disabled by default because it adds overhead and is only needed for debugging/tuning.
 
 ### Issue: Null pointer exception
 
@@ -654,8 +656,8 @@ A: Yes! All fields are nullable. Only specify what you want to change.
 **Q: How do I know which config was actually used?**
 A: Check `debug.metadata` in the response - it shows all applied config values.
 
-**Q: Is trace always enabled for POST?**
-A: By default yes, but you can set `"trace": false` to disable.
+**Q: Is trace enabled by default for POST?**
+A: No, trace defaults to `false` (same as GET). Explicitly set `"trace": true` to enable for debugging/tuning.
 
 **Q: Can I use this for batch screening?**
 A: Not yet. Currently single-query only. Batch support is a future enhancement.
