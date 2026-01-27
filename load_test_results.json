@@ -1,0 +1,48 @@
+{
+  "base_url": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com",
+  "timestamp": "2026-01-26T21:22:16.073009",
+  "results": [
+    {
+      "test_name": "Search Endpoint Load Test",
+      "endpoint": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search",
+      "total_requests": 4131,
+      "successful_requests": 4121,
+      "failed_requests": 10,
+      "duration_seconds": 1325.560396194458,
+      "requests_per_second": 3.1164177896832608,
+      "latency_stats": {
+        "min": 632.3928833007812,
+        "max": 30083.099126815796,
+        "mean": 3206.9819277696647,
+        "median": 3128.0570030212402,
+        "p95": 3756.2901496887207,
+        "p99": 4265.348997116089
+      },
+      "error_details": {
+        "Timeout": 10
+      },
+      "timestamp": "2026-01-26T19:42:04.245452"
+    },
+    {
+      "test_name": "Batch Endpoint Load Test (batch_size=1000)",
+      "endpoint": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search/batch",
+      "total_requests": 100,
+      "successful_requests": 0,
+      "failed_requests": 100,
+      "duration_seconds": 6011.773207902908,
+      "requests_per_second": 0.016634027356278645,
+      "latency_stats": {
+        "min": 60078.52506637573,
+        "max": 60295.427083969116,
+        "mean": 60116.08946800232,
+        "median": 60103.49488258362,
+        "p95": 60213.55184316635,
+        "p99": 60294.948642253876
+      },
+      "error_details": {
+        "Timeout": 100
+      },
+      "timestamp": "2026-01-26T21:22:16.060695"
+    }
+  ]
+}

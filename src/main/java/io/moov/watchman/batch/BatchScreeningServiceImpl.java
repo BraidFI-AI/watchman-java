@@ -27,7 +27,7 @@ public class BatchScreeningServiceImpl implements BatchScreeningService {
 
     private static final Logger log = LoggerFactory.getLogger(BatchScreeningServiceImpl.class);
     private static final int DEFAULT_MAX_BATCH_SIZE = 1000;
-    private static final int DEFAULT_PARALLELISM = Runtime.getRuntime().availableProcessors();
+    private static final int DEFAULT_PARALLELISM = 16; // Fixed thread pool size for consistent performance across environments
     private static final double DEFAULT_MIN_MATCH = 0.88;
     private static final int DEFAULT_LIMIT = 10;
 

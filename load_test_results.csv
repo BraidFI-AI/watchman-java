@@ -1,0 +1,3 @@
+Test Name,Endpoint,Total Requests,Successful,Failed,Success Rate %,Duration (s),Throughput (req/s),Latency Min (ms),Latency Max (ms),Latency Mean (ms),Latency Median (ms),Latency P95 (ms),Latency P99 (ms),Errors
+Search Endpoint Load Test,http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search,4131,4121,10,99.76,1325.56,3.12,632.39,30083.10,3206.98,3128.06,3756.29,4265.35,Timeout: 10
+Batch Endpoint Load Test (batch_size=1000),http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search/batch,100,0,100,0.00,6011.77,0.02,60078.53,60295.43,60116.09,60103.49,60213.55,60294.95,Timeout: 100
