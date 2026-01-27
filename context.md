@@ -72,6 +72,22 @@
   * Common scenarios with concrete curl examples (abbreviations, nicknames, typos, common names)
   * Decision tree for fast parameter selection
 
+### AWS ECS Performance Baseline (January 26, 2026)
+- **Infrastructure configuration**: 1 vCPU (1024 CPU units), 2GB RAM, Fargate platform, us-east-1
+- **ALB endpoint**: watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
+- **Search endpoint performance** (/v1/search):
+  * Throughput: 2.97 requests/sec sustained
+  * Success rate: 99.7% (4,155 successful / 4,166 total requests)
+  * Latency: 3.4s mean, 3.2s median, 4.5s P99
+  * Test parameters: 10 concurrent users, 23-minute duration, realistic 1-2% match rate
+- **Batch endpoint status** (/v1/search/batch):
+  * Processing rate: 1.7-3.1 items/sec (1000 items processed in 5-10 minutes)
+  * Thread pool: Fixed at 8 threads (optimal for 1 vCPU + I/O-bound workload)
+  * **Known limitation**: ALB idle timeout (60s default) causes HTTP 504 errors for batches >150 items
+  * Root cause: Server completes processing successfully but connection terminates during response transmission
+  * Evidence: CloudWatch logs show successful batch completion (e.g., 577s processing time) followed by ClientAbortException during JSON serialization
+- **Load test infrastructure**: scripts/aws_load_test.py with progress logging, CSV/JSON export, realistic test data generation
+
 ### Parameter Consolidation and UI Modernization (January 26, 2026)
 - **Parameter consolidation complete**: Eliminated duplicate/non-functional minimumScore parameter using TDD
   * RED phase: Created SearchControllerMinMatchIntegrationTest exposing unused weightConfig.minimumScore
