@@ -111,6 +111,24 @@
   * SearchControllerMinMatchIntegrationTest validates consolidated parameter behavior (2/2 passing)
   * Failures existed before refactoring, not introduced by this work
 
+### Braid Integration Requirements (January 27, 2026)
+- **Existing infrastructure**: Braid has JMS (JmsTemplate, OfacTransactionQueue) for async processing
+- **Two use cases**:
+  * Real-time screening: Customer onboarding and transaction runtime (uses /v1/search, /v1/search/batch sync endpoints)
+  * Nightly population screening: Scheduled bulk screening across customer base (uses sync batch pattern, no async changes desired)
+- **MoovService integration**: Existing OFAC cache with configurable TTL (default 10 minutes), watchman HTTP client wrapper
+- **ALB timeout resolution**: Increase idle timeout from 60s to 600s (10 minutes) to support batches up to 1,500 items synchronously
+
+### Admin UI Expansion Plan (January 27, 2026)
+- **Planned configuration surface area**:
+  * PerformanceConfig: Thread pools, timeouts, retry policy, batch sizing (9 parameters)
+  * CacheConfig: OFAC cache TTL, max size, statistics (3 parameters)
+  * InfrastructureInfo: Read-only AWS status, recommendations (display only)
+  * MonitoringConfig: Log levels, metrics export (future phase)
+- **Configuration pattern**: YAML defaults + environment variable overrides + Admin UI runtime testing (changes reset on restart, matching SimilarityConfig/WeightConfig behavior)
+- **API pattern**: GET/PUT /api/admin/{category}, POST /api/admin/{category}/reset
+- **Implementation phases**: 4 phases defined (PerformanceConfig, CacheConfig, InfrastructureInfo, unified navigation)
+
 ### What Is Still Unknown
 - Whether remaining 12 test failures are architecture-related or test definition issues
 - If SimilarityConfigIntegrationTest needs @SpringBootTest (tests custom config values, not application.yml)

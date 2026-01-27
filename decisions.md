@@ -139,6 +139,55 @@
 - Option 2: Most scalable, follows async job pattern, requires API changes and client polling logic
 - Option 3: Least disruptive but reduces throughput efficiency (more HTTP overhead for smaller batches)
 
+---
+
+### 2026-01-27: Increase ALB Idle Timeout to Support Synchronous Batch Pattern
+
+**Decision**: Increase AWS ALB idle timeout from 60 seconds (default) to 600 seconds (10 minutes).
+
+**Context**: 
+- Braid integration requires two patterns: real-time (1-150 items) and nightly bulk screening (1,000+ items)
+- Braid does not want to change existing synchronous batch processing pattern
+- Current 60s timeout causes HTTP 504 errors for batches >150 items despite successful server-side completion
+
+**Rationale**:
+- Simple AWS configuration change (no code changes required)
+- Supports batches up to 1,500 items within 10-minute window (2.5 items/sec × 600s)
+- Maintains Braid's existing integration pattern (MoovService synchronous HTTP calls)
+- Alternative async pattern (Option 2 from Jan 26 analysis) not needed for current requirements
+
+**Implementation**: 
+```bash
+aws elbv2 modify-load-balancer-attributes \
+  --load-balancer-arn <watchman-java-alb-arn> \
+  --attributes Key=idle_timeout.timeout_seconds,Value=600
+```
+
+**Impact**: Enables nightly bulk screening with 1,000-item batches completing in ~6.5 minutes without timeout errors.
+
+---
+
+### 2026-01-27: Centralized Performance Configuration Architecture
+
+**Decision**: Create centralized `PerformanceConfig` class following existing SimilarityConfig/WeightConfig pattern (YAML + env vars + Admin UI runtime updates).
+
+**Rationale**:
+- Single source of truth for operational settings (thread pools, timeouts, batch sizing, retry policy)
+- Consistent with existing configuration architecture (no new patterns to learn)
+- Enables operator self-service tuning via Admin UI without code deploys
+- YAML + environment variables provide deployment-time configuration
+- Admin UI provides runtime testing (changes reset on restart, forcing intentional persistence)
+
+**Scope**: Extract hardcoded values from BatchScreeningServiceImpl and other services:
+- Thread pool sizing (currently hardcoded: 8)
+- HTTP timeouts (search, batch, connection)
+- Retry policy (max attempts, backoff)
+- Batch size recommendations
+
+**No database persistence**: Matches existing config behavior - in-memory updates for testing, YAML/env vars for production persistence.
+
+**Future phases**: Expose CacheConfig (MoovService), InfrastructureInfo (AWS status), MonitoringConfig (logging/metrics).
+
 **Implementation**: 
 - ReportController: `Optional.orElseThrow(() -> new EntityNotFoundException(...))`
 - BatchScreeningController: `throw new IllegalArgumentException("Batch request must...")`
