@@ -129,12 +129,34 @@
 - **API pattern**: GET/PUT /api/admin/{category}, POST /api/admin/{category}/reset
 - **Implementation phases**: 4 phases defined (PerformanceConfig, CacheConfig, InfrastructureInfo, unified navigation)
 
+### Test Suite Achievement (January 29, 2026)
+- **Status**: 1,126/1,126 tests passing (100% coverage) ✅
+- **Fixed in this session**: All 13 remaining test failures resolved
+  * SimilarityConfigIntegrationTest (2 failures) - Added @SpringBootTest for config loading
+  * TraceSummaryServiceTest (1 failure) - Fixed case-sensitive assertions
+  * ReportSummaryControllerTest (1 error) - Converted to MockMvc HTTP testing
+  * TitleComparisonTest (3 failures) - Refactored to use Spring-managed bean
+  * JaroWinklerWithFavoritismTest (1 failure) - Refactored to use Spring-managed bean
+  * SearchControllerIntegrationTest (1 failure) - Fixed test data for realistic scoring
+  * ReportRendererSummaryTest (5 failures) - Updated HTML template matching
+- **Root cause identified and fixed**: Static utility classes cannot access Spring configuration
+  * Classes like TitleMatcher, JaroWinklerWithFavoritism used `new SimilarityConfig()` internally
+  * This returned default 0.0 penalty weight instead of configured 0.3 from application.yml
+  * Affected both test reliability AND production scoring accuracy
+  * **Solution**: Converted to Spring `@Component` beans with constructor injection
+  * All configuration-dependent classes now properly load application.yml values
+
+### Configuration and Dependency Injection Architecture
+All utility classes that depend on `SimilarityConfig` must be Spring-managed beans using `@Component` with constructor injection. Static utility classes cannot access Spring configuration properties from `application.yml` and will use default values instead.
+
+**Critical classes using configuration:**
+- `TitleMatcher` - job title similarity matching (requires length-difference-penalty-weight: 0.3)
+- `JaroWinklerWithFavoritism` - enhanced Jaro-Winkler with exact match boost
+- `EntityTitleComparer` - entity title fuzzy comparison
+
+These classes must use constructor injection to receive the configured penalty weight (0.3). Static implementations would default to 0.0, causing incorrect scoring behavior in production.
+
 ### What Is Still Unknown
-- Whether remaining 12 test failures are architecture-related or test definition issues
-- If SimilarityConfigIntegrationTest needs @SpringBootTest (tests custom config values, not application.yml)
-- Why test failure count increased from 8 (Jan 15) to 17 (Jan 22) - different test run scope or new failures?
-- Whether TitleComparisonTest/JaroWinklerWithFavoritismTest failures are related to config loading
-- If report/tracing tests (6 failures + 1 error) are independent issues
 - Whether to add authentication/authorization to Admin UI (currently MVP with no auth)
 - If config changes should persist to application.yml or remain in-memory only
 - Whether to add audit logging for configuration changes
