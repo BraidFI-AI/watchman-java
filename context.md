@@ -156,6 +156,18 @@ All utility classes that depend on `SimilarityConfig` must be Spring-managed bea
 
 These classes must use constructor injection to receive the configured penalty weight (0.3). Static implementations would default to 0.0, causing incorrect scoring behavior in production.
 
+### Word Order Insensitivity Architecture (January 30, 2026)
+
+Word order insensitivity uses **phonetic set matching (Soundex)** rather than exact string equality. This handles spelling variations like "Muhammad/Mohammad" or "Husayn/Hussein" when tokens are reordered.
+
+**Implementation**: `JaroWinklerSimilarity.phoneticSetsMatch()` (lines ~172-188)
+- Converts both token arrays to Soundex code sets
+- Compares sets for phonetic equivalence (order-independent)
+- Returns 1.0 score only if phonetically equivalent AND same token count
+- Different token counts fall back to `bestPairJaro()` with penalties
+
+**BSA Consultant Feedback Resolution**: Prior to Jan 30, 2026, observation #2 (name order sensitivity) was VALID. Query "Muhammad Husayn AL-JASIM" scored 0.851 (filtered at 0.88 threshold) while "AL-JASIM Muhammad Husayn" scored 0.893 (passed). Root cause: word order check used exact string set equality instead of phonetic equality. Fixed by implementing `phoneticSetsMatch()` method using existing Soundex infrastructure.
+
 ### What Is Still Unknown
 - Whether to add authentication/authorization to Admin UI (currently MVP with no auth)
 - If config changes should persist to application.yml or remain in-memory only

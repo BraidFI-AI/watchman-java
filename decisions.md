@@ -1174,3 +1174,44 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
+### 2026-01-30: Phonetic Set Matching for Word Order Insensitivity
+
+**Decision**: Implement phonetic set matching (Soundex-based) in word order insensitivity check instead of exact string set equality.
+
+**Context**: BSA consultant correctly observed that "AL-JASIM Muhammad Husayn" vs "Muhammad Husayn AL-JASIM" produced different results at 0.88 threshold (0.893 vs 0.851). Root cause was exact string comparison failing on spelling variations like Muhammad/Mohammad, Husayn/Hussein.
+
+**Alternatives Considered**:
+1. Lower threshold from 0.88 to 0.80 (band-aid, doesn't solve root cause)
+2. Implement phonetic set matching (chosen - addresses root cause)
+
+**Rationale**: 
+- Soundex infrastructure already exists (PhoneticFilter.soundex())
+- Phonetic matching aligns with BSA/AML expectation that spelling variants are equivalent
+- Maintains precision (0.88 threshold) while improving recall for valid name variations
+- Test coverage: 3 TDD tests added in PhoneticWordOrderTests
+
+**Implementation**: `JaroWinklerSimilarity.phoneticSetsMatch()` method added, replacing exact set equality at lines 114-121 and 151-156.
+
+**Impact**: "Muhammad Husayn AL-JASIM" now scores 1.0 against "AL-JASIM, Mohammad Hussein" regardless of word order. BSA consultant observation #2 resolved.
+
+---
+
+### 2026-01-30: Code Fix vs Configuration Tuning for Name Order Sensitivity
+
+**Decision**: Fix the bug in code rather than tune threshold configuration.
+
+**Context**: When investigating BSA consultant feedback, discovered that lowering threshold to 0.80 would mask the symptom but not fix the underlying phonetic equivalence gap.
+
+**Tradeoff**: Code fix requires testing and deployment but provides permanent solution. Threshold tuning is faster but creates technical debt and may increase false positives.
+
+**Rationale**: Phonetic infrastructure (Soundex) already existed but wasn't integrated into word order logic. Using existing capabilities rather than workarounds aligns with engineering best practices.
+
+**Test Coverage**: 3 TDD tests in `JaroWinklerSimilarityTest.PhoneticWordOrderTests`:
+- Test 1: Exact token reordering ("AEROCARIBBEAN AIRLINES" ↔ "AIRLINES AEROCARIBBEAN" = 1.0)
+- Test 2: Phonetic variations with reordering ("Muhammad Husayn AL-JASIM" ↔ "AL-JASIM Mohammad Hussein" = 1.0)
+- Test 3: Different token counts edge case (2 tokens vs 3 tokens < 1.0 but > 0.8)
+
+**Impact**: All 3 tests passing. Real-world validation confirms both "Muhammad Husayn AL-JASIM" and "AL-JASIM Muhammad Husayn" now return score 1.0 at 0.88 threshold.
+
+---
+

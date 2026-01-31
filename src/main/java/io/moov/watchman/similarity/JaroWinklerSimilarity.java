@@ -112,13 +112,10 @@ public class JaroWinklerSimilarity implements SimilarityService {
         String[] tokens1 = normalizer.tokenize(norm1);
         String[] tokens2 = normalizer.tokenize(norm2);
         
-        // For tokenized similarity, we check if all tokens match (possibly reordered)
-        if (tokens1.length == tokens2.length) {
-            Set<String> set1 = new HashSet<>(Arrays.asList(tokens1));
-            Set<String> set2 = new HashSet<>(Arrays.asList(tokens2));
-            if (set1.equals(set2)) {
-                return 1.0;
-            }
+        // For tokenized similarity, check if all tokens match (possibly reordered)
+        // Use phonetic matching to handle spelling variations like Muhammad/Mohammad
+        if (tokens1.length == tokens2.length && phoneticSetsMatch(tokens1, tokens2)) {
+            return 1.0;
         }
         
         return bestPairJaro(tokens1, tokens2);
@@ -149,13 +146,10 @@ public class JaroWinklerSimilarity implements SimilarityService {
             // PreparedName is already normalized, just tokenize
             String[] candidateTokens = normalizer.tokenize(preparedName);
             
-            // Check for exact match (reordered)
-            if (queryTokens.length == candidateTokens.length) {
-                Set<String> set1 = new HashSet<>(Arrays.asList(queryTokens));
-                Set<String> set2 = new HashSet<>(Arrays.asList(candidateTokens));
-                if (set1.equals(set2)) {
-                    return 1.0; // Perfect match found
-                }
+            // Check for phonetic match (reordered)
+            // Use phonetic matching to handle spelling variations
+            if (queryTokens.length == candidateTokens.length && phoneticSetsMatch(queryTokens, candidateTokens)) {
+                return 1.0; // Perfect match found
             }
             
             // Calculate similarity
@@ -169,6 +163,35 @@ public class JaroWinklerSimilarity implements SimilarityService {
     @Override
     public boolean phoneticallyCompatible(String s1, String s2) {
         return phoneticFilter.arePhonteticallyCompatible(s1, s2);
+    }
+    
+    /**
+     * Check if two token arrays are phonetically equivalent sets.
+     * Uses Soundex to handle spelling variations like Muhammad/Mohammad, Husayn/Hussein.
+     * 
+     * This fixes the BSA consultant observation that name order sensitivity still occurs
+     * due to spelling variations not being treated as equivalent by exact string matching.
+     * 
+     * @param tokens1 First array of tokens
+     * @param tokens2 Second array of tokens
+     * @return true if both arrays contain phonetically equivalent tokens (order-independent)
+     */
+    private boolean phoneticSetsMatch(String[] tokens1, String[] tokens2) {
+        if (tokens1.length != tokens2.length) {
+            return false;
+        }
+        
+        Set<String> soundexSet1 = new HashSet<>();
+        for (String token : tokens1) {
+            soundexSet1.add(phoneticFilter.soundex(token));
+        }
+        
+        Set<String> soundexSet2 = new HashSet<>();
+        for (String token : tokens2) {
+            soundexSet2.add(phoneticFilter.soundex(token));
+        }
+        
+        return soundexSet1.equals(soundexSet2);
     }
     
     /**

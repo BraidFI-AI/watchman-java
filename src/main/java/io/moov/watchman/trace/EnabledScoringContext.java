@@ -60,14 +60,14 @@ final class EnabledScoringContext implements ScoringContext {
         Instant start = Instant.now();
         try {
             T result = operation.get();
-            long durationMs = Duration.between(start, Instant.now()).toMillis();
+            double durationMs = Duration.between(start, Instant.now()).toNanos() / 1_000_000.0;
             events.add(ScoringEvent.now(phase, description, Map.of(
                     "durationMs", durationMs,
                     "success", true
             )));
             return result;
         } catch (Exception e) {
-            long durationMs = Duration.between(start, Instant.now()).toMillis();
+            double durationMs = Duration.between(start, Instant.now()).toNanos() / 1_000_000.0;
             events.add(ScoringEvent.now(phase, description, Map.of(
                     "durationMs", durationMs,
                     "success", false,
@@ -82,13 +82,13 @@ final class EnabledScoringContext implements ScoringContext {
         Instant start = Instant.now();
         try {
             operation.run();
-            long durationMs = Duration.between(start, Instant.now()).toMillis();
+            double durationMs = Duration.between(start, Instant.now()).toNanos() / 1_000_000.0;
             events.add(ScoringEvent.now(phase, description, Map.of(
                     "durationMs", durationMs,
                     "success", true
             )));
         } catch (Exception e) {
-            long durationMs = Duration.between(start, Instant.now()).toMillis();
+            double durationMs = Duration.between(start, Instant.now()).toNanos() / 1_000_000.0;
             events.add(ScoringEvent.now(phase, description, Map.of(
                     "durationMs", durationMs,
                     "success", false,
@@ -126,7 +126,13 @@ final class EnabledScoringContext implements ScoringContext {
                 duration.toMillis()
         );
     }
-
+    /**
+     * Returns the duration in decimal milliseconds for higher precision reporting.
+     * Used by trace reports to show sub-millisecond timings.
+     */
+    public double durationMsDecimal() {
+        return Duration.between(startTime, Instant.now()).toNanos() / 1_000_000.0;
+    }
     @Override
     public String toString() {
         return "EnabledScoringContext{" +

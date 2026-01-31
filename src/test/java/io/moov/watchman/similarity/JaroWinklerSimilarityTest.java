@@ -240,4 +240,54 @@ class JaroWinklerSimilarityTest {
             assertThat(score).isLessThan(0.5);
         }
     }
+
+    @Nested
+    @DisplayName("Phonetic Word Order Insensitivity (BSA Consultant Feedback Fix)")
+    class PhoneticWordOrderTests {
+
+        @Test
+        @DisplayName("Test 1: Exact token reordering (already works)")
+        void testWordOrderInsensitivity_ExactTokens() {
+            // GIVEN: Same words, different order, exact spelling
+            String query = "AEROCARIBBEAN AIRLINES";
+            String candidate = "AIRLINES AEROCARIBBEAN";
+            
+            // WHEN: Calculate similarity
+            double score = similarityService.tokenizedSimilarity(query, candidate);
+            
+            // THEN: Should return perfect match
+            assertThat(score).isCloseTo(1.0, within(0.001));
+        }
+
+        @Test
+        @DisplayName("Test 2: Phonetic spelling variations with reordering (THE BUG FIX)")
+        void testWordOrderInsensitivity_PhoneticVariations() {
+            // GIVEN: Same words, different order, phonetic spelling variations
+            // "Muhammad" (M530) = "Mohammad" (M530)
+            // "Husayn" (H250) = "Hussein" (H250)
+            String query = "Muhammad Husayn AL-JASIM";
+            String candidate = "AL-JASIM Mohammad Hussein";
+            
+            // WHEN: Calculate similarity
+            double score = similarityService.tokenizedSimilarity(query, candidate);
+            
+            // THEN: Should return perfect match due to phonetic equivalence
+            assertThat(score).isCloseTo(1.0, within(0.001));
+        }
+
+        @Test
+        @DisplayName("Test 3: Different token counts should NOT match (edge case)")
+        void testWordOrderInsensitivity_DifferentTokenCounts() {
+            // GIVEN: Different number of tokens (missing middle name)
+            String query = "Muhammad AL-JASIM";          // 2 tokens
+            String candidate = "AL-JASIM Mohammad Hussein"; // 3 tokens
+            
+            // WHEN: Calculate similarity
+            double score = similarityService.tokenizedSimilarity(query, candidate);
+            
+            // THEN: Should NOT return 1.0 (missing token penalty applies)
+            assertThat(score).isLessThan(1.0);
+            assertThat(score).isGreaterThan(0.8);
+        }
+    }
 }
