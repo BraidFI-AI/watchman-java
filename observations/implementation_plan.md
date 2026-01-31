@@ -57,66 +57,56 @@ void htmlReport_shouldDisplayAllAliases() {
 
 ---
 
-## Phase 2: Name Normalization (Critical)
+## Phase 2: Name Normalization (Critical) ✅ COMPLETED (Jan 30, 2026)
 
-### Task 2.1: Create Name Parser Utility
+### Task 2.1: ~~Create Name Parser Utility~~ → Phonetic Set Matching (Alternate Solution) ✅
 
-**Files:**
-- `src/main/java/com/watchman/util/NameParser.java` (new)
-- `src/test/java/com/watchman/util/NameParserTest.java` (new)
+**Status:** COMPLETED - Implemented phonetic set matching instead of permutation generation
 
-**RED Phase:**
-```java
-@Test
-void nameParserpermutations_forwardAndReverse() {
-    List<String> permutations = NameParser.generatePermutations("AL-JASIM, Muhammad Husayn");
-    assertTrue(permutations.contains("AL-JASIM, Muhammad Husayn"));
-    assertTrue(permutations.contains("Muhammad Husayn AL-JASIM"));
-}
-```
+**Actual Implementation:**
+- `src/main/java/io/moov/watchman/similarity/JaroWinklerSimilarity.java`
+  - Added `phoneticSetsMatch()` helper method (lines ~172-188)
+  - Uses existing Soundex infrastructure from `PhoneticFilter`
+  - Replaced exact string set equality with phonetic equality (2 locations)
 
-**GREEN Phase:**
-```java
-public class NameParser {
-    public static List<String> generatePermutations(String name) {
-        // Parse components: prefix, first, middle, last
-        // Generate: [last, first middle], [first middle last]
-        // Handle commas, hyphens
-    }
-}
-```
+**Decision Rationale:**
+- Soundex infrastructure already existed but wasn't integrated into word order logic
+- More robust than permutation generation - handles spelling variations (Muhammad/Mohammad, Husayn/Hussein)
+- Maintains 0.88 threshold precision while improving recall
 
-**Acceptance:**
-- Generates both "last, first" and "first last" forms
-- Handles hyphenated names
-- Test passes
+**Test Coverage:**
+- `src/test/java/io/moov/watchman/similarity/JaroWinklerSimilarityTest.java`
+- 3 TDD tests in `PhoneticWordOrderTests` class (all passing):
+  1. Exact token reordering (AEROCARIBBEAN AIRLINES)
+  2. Phonetic variations with reordering (Muhammad/Mohammad, Husayn/Hussein)
+  3. Different token counts edge case
+
+**Acceptance:** ✅
+- Phonetic equivalence provides word order insensitivity
+- All tests passing (31/31 in JaroWinklerSimilarityTest)
 
 ---
 
-### Task 2.2: Apply Permutations in Search
+### Task 2.2: ~~Apply Permutations in Search~~ → Phonetic Matching in Tokenized Similarity ✅
 
-**Files:**
-- `src/main/java/com/watchman/search/SearchService.java`
+**Status:** COMPLETED - Integrated phonetic matching into existing tokenized similarity
 
-**RED Phase:**
-```java
-@Test
-void search_nameOrderInsensitive() {
-    SearchResult r1 = searchService.search("AL-JASIM, Muhammad Husayn");
-    SearchResult r2 = searchService.search("Muhammad Husayn AL-JASIM");
-    assertEquals(r1.getEntityId(), r2.getEntityId());
-    assertEquals(r1.getMatchScore(), r2.getMatchScore(), 0.01);
-}
+**Actual Implementation:**
+- Modified `tokenizedSimilarity()` and `tokenizedSimilarityWithPrepared()` methods
+- Both query orders now return score 1.0 when phonetically equivalent
+- No changes needed to SearchService - fix at algorithm layer
+
+**Real-World Validation:** ✅
+```bash
+# Both queries now score 1.0 at 0.88 threshold
+curl ".../v1/search?name=Muhammad+Husayn+AL-JASIM&minMatch=0.88"  # score: 1.0
+curl ".../v1/search?name=AL-JASIM+Muhammad+Husayn&minMatch=0.88"  # score: 1.0
 ```
 
-**GREEN Phase:**
-- In searchInternal(), generate permutations
-- Search each permutation
-- Return highest scoring match
-
-**Acceptance:**
-- Name order does not affect match
-- Test passes
+**Acceptance:** ✅
+- Name order does not affect match when phonetically equivalent
+- BSA consultant observation #2 RESOLVED
+- Git commit: 072836b "Fix BSA consultant observation: phonetic word order insensitivity"
 
 ---
 
@@ -258,11 +248,16 @@ void matchCount_alignsWithOFAC() {
 ## Success Criteria
 
 - [ ] All 4 critical observations addressed
-- [ ] All new tests passing
-- [ ] Existing test suite still passes
+  - [ ] Observation #1: Match-level transparency (alias visibility)
+  - [x] **Observation #2: Name order sensitivity** ✅ RESOLVED (Jan 30, 2026)
+  - [ ] Observation #3: Missing identifying attributes
+  - [ ] Observation #4: Alias matching gap
+  - [ ] Observation #5: Match count discrepancy
+- [x] Phase 2 (Name Normalization) tests passing ✅
+- [x] Existing test suite still passes (1,126/1,126) ✅
 - [ ] API contract updated (OpenAPI spec)
 - [ ] Documentation updated (docs/api_spec.md)
-- [ ] No performance regression
+- [x] No performance regression ✅
 
 ---
 
