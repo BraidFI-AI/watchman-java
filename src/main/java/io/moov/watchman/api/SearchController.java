@@ -106,23 +106,53 @@ public class SearchController {
         // If tracing enabled, re-score ONLY the filtered results with breakdown
         ScoringTrace traceData = null;
         if (Boolean.TRUE.equals(trace) && !results.isEmpty()) {
-            ScoringContext ctx = ScoringContext.enabled(UUID.randomUUID().toString());
+            String sessionId = UUID.randomUUID().toString();
             
-            // Re-score each filtered result with tracing
+            // Re-score each filtered result with tracing (each entity gets its own context)
             results = results.stream()
                 .map(result -> {
+                    ScoringContext ctx = ScoringContext.enabled(sessionId);
+                    
                     ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(
                         Entity.of(null, request.name(), null, null),
                         result.entity(),
                         ctx
                     );
-                    return new SearchResult(result.entity(), breakdown.totalWeightedScore(), breakdown);
+                    
+                    // Extract matchedAlias from context metadata
+                    String matchedAlias = null;
+                    ScoringTrace entityTrace = ctx.toTrace();
+                    if (entityTrace != null && entityTrace.metadata() != null) {
+                        Object aliasObj = entityTrace.metadata().get("matchedAlias");
+                        if (aliasObj instanceof String) {
+                            matchedAlias = (String) aliasObj;
+                        }
+                    }
+                    
+                    return new SearchResult(result.entity(), breakdown.totalWeightedScore(), breakdown, matchedAlias);
                 })
                 .toList();
             
-            traceData = ctx.toTrace();
-            traceRepository.save(traceData);
-            logger.debug("Trace saved: sessionId={}, entitiesTraced={}", traceData.sessionId(), results.size());
+            // Save trace for the first result (for report generation)
+            if (!results.isEmpty()) {
+                Entity firstEntity = results.get(0).entity();
+                ScoringContext reportCtx = ScoringContext.enabled(sessionId);
+                
+                // Add entity name and aliases to metadata for report
+                reportCtx.withMetadata("entityName", firstEntity.name());
+                if (firstEntity.altNames() != null && !firstEntity.altNames().isEmpty()) {
+                    reportCtx.withMetadata("aliases", firstEntity.altNames());
+                }
+                
+                entityScorer.scoreWithBreakdown(
+                    Entity.of(null, request.name(), null, null),
+                    firstEntity,
+                    reportCtx
+                );
+                traceData = reportCtx.toTrace();
+                traceRepository.save(traceData);
+                logger.debug("Trace saved: sessionId={}, entitiesTraced={}", traceData.sessionId(), results.size());
+            }
         }
         
         SearchResponse response = SearchResponse.from(results, requestID, Boolean.TRUE.equals(debug), traceData);

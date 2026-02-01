@@ -66,6 +66,9 @@ public class ReportRenderer {
         html.append("      <p><strong>Generated:</strong> ").append(FORMATTER.format(Instant.now())).append("</p>\n");
         html.append("    </div>\n");
         
+        // Entity Details (NEW - shows entity name and aliases)
+        html.append(renderEntityDetails(trace.metadata()));
+        
         // Executive Summary (NEW - appears first)
         ReportSummary summary = summaryService.generateSummary(trace);
         html.append(renderExecutiveSummary(summary));
@@ -87,6 +90,52 @@ public class ReportRenderer {
         html.append("</body>\n");
         html.append("</html>\n");
         
+        return html.toString();
+    }
+    
+    private String renderEntityDetails(Map<String, Object> metadata) {
+        if (metadata == null) {
+            return "";
+        }
+        
+        StringBuilder html = new StringBuilder();
+        html.append("    <section class=\"entity-details\">\n");
+        html.append("      <h2>👤 Entity Information</h2>\n");
+        
+        // Entity Name
+        Object entityName = metadata.get("entityName");
+        if (entityName != null) {
+            html.append("      <div class=\"detail-item\">\n");
+            html.append("        <span class=\"detail-label\">Primary Name:</span>\n");
+            html.append("        <span class=\"detail-value\">").append(entityName).append("</span>\n");
+            html.append("      </div>\n");
+        }
+        
+        // Aliases
+        Object aliases = metadata.get("aliases");
+        if (aliases instanceof List<?> aliasList && !aliasList.isEmpty()) {
+            html.append("      <div class=\"detail-item aliases-section\">\n");
+            html.append("        <span class=\"detail-label\">Known Aliases:</span>\n");
+            html.append("        <ul class=\"aliases-list\">\n");
+            for (Object alias : aliasList) {
+                if (alias != null) {
+                    html.append("          <li>").append(alias).append("</li>\n");
+                }
+            }
+            html.append("        </ul>\n");
+            html.append("      </div>\n");
+        }
+        
+        // Matched Alias (if applicable)
+        Object matchedAlias = metadata.get("matchedAlias");
+        if (matchedAlias != null) {
+            html.append("      <div class=\"detail-item matched-alias\">\n");
+            html.append("        <span class=\"detail-label\">⭐ Matched Alias:</span>\n");
+            html.append("        <span class=\"detail-value highlight\">").append(matchedAlias).append("</span>\n");
+            html.append("      </div>\n");
+        }
+        
+        html.append("    </section>\n");
         return html.toString();
     }
     
@@ -365,6 +414,53 @@ public class ReportRenderer {
             }
             .meta p {
               margin: 5px 0;
+            }
+            .entity-details {
+              margin: 30px 0;
+              padding: 20px;
+              background: #f9f9f9;
+              border-left: 4px solid #3498db;
+              border-radius: 5px;
+            }
+            .detail-item {
+              margin: 15px 0;
+            }
+            .detail-label {
+              font-weight: bold;
+              color: #2c3e50;
+              margin-right: 10px;
+            }
+            .detail-value {
+              color: #555;
+            }
+            .detail-value.highlight {
+              color: #e74c3c;
+              font-weight: bold;
+              background: #fff3cd;
+              padding: 2px 8px;
+              border-radius: 3px;
+            }
+            .aliases-section {
+              margin-top: 20px;
+            }
+            .aliases-list {
+              list-style: none;
+              padding-left: 0;
+              margin: 10px 0;
+            }
+            .aliases-list li {
+              padding: 8px 12px;
+              margin: 5px 0;
+              background: white;
+              border-left: 3px solid #95a5a6;
+              border-radius: 3px;
+            }
+            .matched-alias {
+              margin-top: 20px;
+              padding: 15px;
+              background: #fff3cd;
+              border-left: 4px solid #f39c12;
+              border-radius: 5px;
             }
             .subtitle {
               color: #7f8c8d;

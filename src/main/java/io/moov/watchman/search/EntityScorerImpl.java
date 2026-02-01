@@ -2,6 +2,7 @@ package io.moov.watchman.search;
 
 import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.model.*;
+import io.moov.watchman.scoring.NameMatch;
 import io.moov.watchman.similarity.SimilarityService;
 import io.moov.watchman.similarity.TextNormalizer;
 import io.moov.watchman.trace.Phase;
@@ -53,7 +54,8 @@ public class EntityScorerImpl implements EntityScorer {
 
         // Calculate individual factor scores
         double nameScore = compareNames(queryName, candidate);
-        double altNamesScore = compareAltNames(queryName, candidate);
+        NameMatch altNamesMatch = compareAltNamesWithMatch(queryName, candidate);
+        double altNamesScore = altNamesMatch.score();
         double addressScore = 0.0; // No query address for simple name search
         double govIdScore = 0.0;   // No query ID for simple name search
         double cryptoScore = 0.0;  // No query crypto for simple name search
@@ -108,9 +110,18 @@ public class EntityScorerImpl implements EntityScorer {
         double nameScore = weightConfig.isNameComparisonEnabled()
             ? ctx.traced(Phase.NAME_COMPARISON, "Compare names", () -> compareNames(query.name(), index, ctx))
             : 0.0;
-        double altNamesScore = weightConfig.isAltNameComparisonEnabled()
-            ? ctx.traced(Phase.ALT_NAME_COMPARISON, "Compare alt names", () -> compareAltNames(query.name(), index, ctx))
-            : 0.0;
+        
+        // Compare alt names and track which alias matched
+        NameMatch altNamesMatch = weightConfig.isAltNameComparisonEnabled()
+            ? ctx.traced(Phase.ALT_NAME_COMPARISON, "Compare alt names", () -> compareAltNamesWithMatch(query.name(), index, ctx))
+            : NameMatch.noMatch();
+        double altNamesScore = altNamesMatch.score();
+        
+        // Store matched alias in metadata if applicable
+        if (altNamesMatch.matchedName() != null && altNamesScore > nameScore) {
+            ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+        }
+        
         double govIdScore = weightConfig.isGovIdComparisonEnabled()
             ? ctx.traced(Phase.GOV_ID_COMPARISON, "Compare government IDs", () -> compareGovernmentIds(query.governmentIds(), index.governmentIds()))
             : 0.0;
@@ -220,35 +231,41 @@ public class EntityScorerImpl implements EntityScorer {
     }
 
     private double compareAltNames(String queryName, Entity candidate, ScoringContext ctx) {
+        return compareAltNamesWithMatch(queryName, candidate, ctx).score();
+    }
+    
+    private NameMatch compareAltNamesWithMatch(String queryName, Entity candidate) {
+        return compareAltNamesWithMatch(queryName, candidate, ScoringContext.disabled());
+    }
+
+    private NameMatch compareAltNamesWithMatch(String queryName, Entity candidate, ScoringContext ctx) {
         if (queryName == null || queryName.isBlank() || candidate == null) {
-            return 0.0;
+            return NameMatch.noMatch();
+        }
+        
+        List<String> altNames = candidate.altNames();
+        if (altNames == null || altNames.isEmpty()) {
+            return NameMatch.noMatch();
         }
         
         // Use PreparedFields if available for optimized scoring
         // PreparedFields.normalizedAltNames contains ONLY alternate names (not primary)
         if (candidate.preparedFields() != null && candidate.preparedFields().normalizedAltNames() != null 
                 && !candidate.preparedFields().normalizedAltNames().isEmpty()) {
-            return similarityService.tokenizedSimilarityWithPrepared(
-                queryName, 
-                candidate.preparedFields().normalizedAltNames(),
-                ctx
-            );
+            // With prepared fields, we don't have direct alias name access, so fall through
+            // to the altNames loop below
         }
         
-        // Fallback to on-the-fly normalization with altNames
-        List<String> altNames = candidate.altNames();
-        if (altNames == null || altNames.isEmpty()) {
-            return 0.0;
-        }
-        
-        double maxScore = 0.0;
+        // Find best matching alias
+        NameMatch bestMatch = NameMatch.noMatch();
         for (String altName : altNames) {
             if (altName != null && !altName.isBlank()) {
                 double score = similarityService.tokenizedSimilarity(queryName, altName);
-                maxScore = Math.max(maxScore, score);
+                NameMatch currentMatch = NameMatch.alias(score, altName);
+                bestMatch = bestMatch.best(currentMatch);
             }
         }
-        return maxScore;
+        return bestMatch;
     }
 
     private double compareGovernmentIds(List<GovernmentId> queryIds, List<GovernmentId> indexIds) {

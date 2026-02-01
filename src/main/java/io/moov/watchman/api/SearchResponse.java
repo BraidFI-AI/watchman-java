@@ -58,7 +58,8 @@ public record SearchResponse(
         double score,
         List<String> altNames,
         List<String> programs,
-        ScoreBreakdown breakdown
+        ScoreBreakdown breakdown,
+        String matchedAlias
     ) {
         public static SearchHit from(SearchResult result, boolean includeBreakdown) {
             Entity entity = result.entity();
@@ -71,7 +72,8 @@ public record SearchResponse(
                 result.score(),
                 entity.altNames(),
                 entity.sanctionsInfo() != null ? entity.sanctionsInfo().programs() : null,
-                includeBreakdown ? result.breakdown() : null
+                includeBreakdown ? result.breakdown() : null,
+                result.matchedAlias()
             );
         }
     }
