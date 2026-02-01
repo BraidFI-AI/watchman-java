@@ -1298,3 +1298,61 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 **Impact**: All tests compile (BUILD SUCCESS), 16/16 RemarksParser tests passing, 3/5 integration tests passing (2 failures are test setup issues, not production bugs).
 
 ---
+
+### 2026-02-01: Alias Expansion Always-On (Not Trace/Audit Feature)
+
+**Decision**: Alias expansion is operationalized as standard behavior for all search operations, not a trace/audit-only feature.
+
+**Context**: Initial question during Phase 4 implementation: "Does alias expansion belong in trace/audit functionality or should it be surfaced operationally?"
+
+**Rationale**:
+- BSA/AML compliance requirement: Match count must align with OFAC.gov presentation format
+- OFAC.gov shows N+1 visible rows when entity has N aliases (primary + each alias)
+- Auditors expect to see same match count as official source (validation requirement)
+- Performance impact negligible (<1% latency, ~10-30ms)
+- Transparency requirement: Users should see which specific alias triggered match
+
+**Implementation**: SearchServiceImpl.expandAliases() transforms 1 entity with N aliases into N+1 SearchResult objects. SearchResponse.uniqueEntities tracks distinct entity count for compliance reporting.
+
+**Impact**: All search endpoints (v1/search, bulk, batch) now return expanded results. Match counts now align with OFAC.gov presentation.
+
+---
+
+### 2026-02-01: Score Entity Once, Expand Results (Not Per-Alias Scoring)
+
+**Decision**: Alias expansion scores the entity's primary name once, then creates multiple SearchResult objects with the same score (one per alias).
+
+**Context**: Two implementation options existed:
+1. Score entity once, copy score to expanded results (chosen)
+2. Score each alias independently, rank all results by score
+
+**Rationale**:
+- Performance optimization: Prevents N+1 scoring operations per entity
+- Keeps latency impact minimal (<1% observed, ~10-30ms)
+- Scoring primary name is sufficient - aliases are variations of same identity
+- OFAC compliance only requires presenting aliases, not re-scoring them
+- Simpler implementation with fewer edge cases
+
+**Tradeoff**: All alias results share same score (no differentiation based on alias quality). Accepted because compliance requirement is presentation, not ranking precision.
+
+**Impact**: expandAliases() method uses flatMap pattern to create primary + alias results with identical scores. Test coverage: 8/8 integration tests passing.
+
+---
+
+### 2026-02-01: Removed Dedicated Postman Alias Expansion Example
+
+**Decision**: Removed separate "Alias Expansion - Shows Multiple Results Per Entity" example from Postman collection.
+
+**Context**: Initial documentation included dedicated example to showcase new feature. User feedback: "we need [the] separate example? it will create developer confusion."
+
+**Rationale**:
+- Alias expansion is standard behavior, not a special feature requiring configuration
+- Separate example implied users need to do something specific to enable it
+- All existing examples already demonstrate alias expansion behavior
+- Simpler documentation reduces onboarding complexity
+
+**Implementation**: Updated all existing Postman examples to document uniqueEntities and matchedAlias fields. Removed 43 lines of dedicated example code.
+
+**Impact**: Documentation now treats alias expansion as default behavior (git commit: 4151b38). Prevents developer confusion about enabling/configuring feature.
+
+---

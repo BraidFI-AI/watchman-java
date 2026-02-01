@@ -42,18 +42,27 @@
   * ✅ Phase 3 (Identifying Attributes) - RemarksParser (Feb 1, 2026)
   * ✅ Phase 4 Task 4.1 (Alias Ingestion) - parseAltNames() working
   * ✅ Phase 4 Task 4.2 (Match Count Validation) - Alias expansion (Feb 1, 2026)
+- **Alias Expansion is Always-On**: Feature operationalized for all search operations (not a trace/audit feature)
+  * 1 entity with N aliases → N+1 SearchResult objects (primary + each alias)
+  * SearchResponse.uniqueEntities tracks distinct entity count before expansion
+  * Performance impact: <1% latency (~10-30ms for typical searches)
+- **SearchController Architecture Consolidated**: Single scoring path via SearchService delegation
+  * Removed inline scoring logic from SearchController
+  * All search operations (single, bulk, batch) use searchService.search()
+  * Dead code eliminated (unused getCandidates call)
+- **AWS Production Validation Complete**:
+  * Test case: "AL-BAGHDADI, Hassan" with 2 aliases returns 3 results at 94.8% match
+  * Test case: "AL BAGHDADI, Ali AL-Mahmoudi" with 1 alias returns 2 results at 92.1% match
+  * uniqueEntities correctly reports distinct count (2) while showing 5 total results
+- **Git Commits**: 
+  * dc2d6b5 - Phase 4 alias expansion implementation (+550/-54 lines, 7 files)
+  * 4151b38 - Removed dedicated Postman alias expansion example
+  * 343b20f - Comprehensive validation documentation
 
 ### What Is Still Unknown
-- **17 pre-existing test failures** (not introduced by alias expansion feature):
-  * Report rendering tests (6) - HTML generation needs updates for expanded results
-  * Empty search results (3) - Searches returning 0 when expecting at least 1
-  * Scoring algorithm bugs (6) - Length penalty, favoritism, title comparison issues
-  * Error handling (1) - 404 handling in ReportController
-  * Type casting (1) - Double→Long cast in ScoringContext
-  * These failures existed before alias expansion work and are tracked separately
 - Whether to add pagination support when alias expansion creates large result sets
 - If batch screening endpoints need special handling for expanded results
-- Documentation updates needed for OpenAPI spec and API reference
+- Documentation updates needed for OpenAPI spec to document uniqueEntities field
 
 ### Next Steps
 - Fix 17 pre-existing test failures (separate from alias expansion feature)
