@@ -58,7 +58,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 null,
                 List.of(), List.of(), Arrays.asList("THE KINGPIN", "EL JEFE"), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             // Normalize entity
@@ -107,7 +108,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 null,
                 List.of(), List.of(), Arrays.asList("A FRIEND OF OURS", "THE ASSOCIATE"), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -153,7 +155,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 query, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
             
             Person index = new Person(
@@ -174,7 +177,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 index, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
             
             // Score should be high because "THE" is removed from both
@@ -204,7 +208,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             // Normalize multiple times
@@ -244,7 +249,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -290,7 +296,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -327,7 +334,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 null, business, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -366,7 +374,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -403,7 +412,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -440,7 +450,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 query, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
             
             Person index = new Person(
@@ -461,7 +472,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 index, null, null, null, null,
                 null,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
             
             // Score should be high because apostrophe normalized out
@@ -611,7 +623,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 person, null, null, null, null,
                 contact,
                 List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -708,7 +721,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
             
             Entity normalized = entity.normalize();
@@ -819,7 +833,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
             
             Person index = new Person(
@@ -843,7 +858,8 @@ public class Phase17ZoneTwoQualityIntegrationTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
             
             // Addresses should be normalized in entities

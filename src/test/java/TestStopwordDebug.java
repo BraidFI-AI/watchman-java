@@ -22,7 +22,8 @@ public class TestStopwordDebug {
             person, null, null, null, null,
             null,
             List.of(), List.of(), List.of(), List.of(),
-            null, List.of(), null, null
+            null, List.of(), null, null,
+                null, null, null, null, null
         );
         
         Entity normalized = entity.normalize();

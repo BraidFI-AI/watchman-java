@@ -228,7 +228,8 @@ public class EUCSLParserImpl implements EUCSLParser {
                 new SanctionsInfo(List.of("EU"), false, null),
                 List.of(), // historicalInfo
                 remark,
-                null // preparedFields - computed at index time
+                null, // preparedFields - computed at index time
+                null, null, null, null, null // identifying attributes
             );
         }
     }

@@ -81,7 +81,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -113,7 +114,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
@@ -155,7 +157,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Business indexBusiness = new Business(
@@ -184,7 +187,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
@@ -226,7 +230,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -258,7 +263,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
@@ -300,7 +306,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -332,7 +339,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
@@ -375,7 +383,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Aircraft indexAircraft = new Aircraft(
@@ -407,7 +416,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
@@ -451,7 +461,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -483,7 +494,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
@@ -528,7 +540,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -560,7 +573,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
@@ -639,7 +653,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -671,7 +686,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             StringWriter writer = new StringWriter();
@@ -717,7 +733,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -749,7 +766,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             StringWriter writer = new StringWriter();
@@ -794,7 +812,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Person indexPerson = new Person(
@@ -826,7 +845,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             StringWriter writer = new StringWriter();
@@ -877,7 +897,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             GovernmentId indexId = new GovernmentId(GovernmentIdType.SSN, "123-45-6789", "USA");
@@ -910,7 +931,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
@@ -951,7 +973,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             GovernmentId indexId = new GovernmentId(GovernmentIdType.TAX_ID, "12-3456789", "USA");
@@ -981,7 +1004,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
@@ -1013,7 +1037,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             Entity index = new Entity(
@@ -1035,7 +1060,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             IdMatchResult result = ExactIdMatcher.compareGovernmentIDs(query, index, 15.0);
@@ -1069,7 +1095,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             CryptoAddress indexAddress = new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
@@ -1092,7 +1119,8 @@ class Phase16ZoneOneCompletionIntegrationTest {
                     null,
                     List.of(),
                     null,
-                    null
+                    null,
+                null, null, null, null, null  // identifying attributes
             );
 
             IdMatchResult result = ExactIdMatcher.compareCryptoWallets(query, index, 15.0);

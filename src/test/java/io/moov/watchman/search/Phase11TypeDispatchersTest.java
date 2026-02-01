@@ -123,7 +123,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Person", EntityType.PERSON, SourceList.US_OFAC, "test-id",
                     person, null, null, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -134,7 +135,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Corp", EntityType.BUSINESS, SourceList.US_OFAC, "test-id",
                     null, business, null, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -145,7 +147,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Org", EntityType.ORGANIZATION, SourceList.US_OFAC, "test-id",
                     null, null, org, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -155,7 +158,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Ship", EntityType.VESSEL, SourceList.US_OFAC, "test-id",
                     null, null, null, null, vessel,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -165,7 +169,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Plane", EntityType.AIRCRAFT, SourceList.US_OFAC, "test-id",
                     null, null, null, aircraft, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
     }
@@ -271,7 +276,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Person", EntityType.PERSON, SourceList.US_OFAC, "test-id",
                     person, null, null, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -282,7 +288,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Corp", EntityType.BUSINESS, SourceList.US_OFAC, "test-id",
                     null, business, null, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -293,7 +300,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Org", EntityType.ORGANIZATION, SourceList.US_OFAC, "test-id",
                     null, null, org, null, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), govIds,
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -303,7 +311,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Ship", EntityType.VESSEL, SourceList.US_OFAC, "test-id",
                     null, null, null, null, vessel,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -313,7 +322,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Plane", EntityType.AIRCRAFT, SourceList.US_OFAC, "test-id",
                     null, null, null, aircraft, null,
                     ContactInfo.empty(), List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
     }
@@ -416,7 +426,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Entity", EntityType.PERSON, SourceList.US_OFAC, "test-id",
                     null, null, null, null, null,
                     ContactInfo.empty(), addresses, List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
         }
 
@@ -425,7 +436,8 @@ class Phase11TypeDispatchersTest {
                     "test-id", "Test Entity", EntityType.PERSON, SourceList.US_OFAC, "test-id",
                     null, null, null, null, null,
                     ContactInfo.empty(), addresses, List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
         }
     }

@@ -259,7 +259,12 @@ public class EntityMerger {
                 mergedSanctionsInfo,
                 List.of(),  // historicalInfo - not merged yet
                 firstNonNull(e1.remarks(), e2.remarks()),  // First non-null remarks
-                null  // PreparedFields will be set by normalize()
+                null,  // PreparedFields will be set by normalize()
+                firstNonNull(e1.dateOfBirth(), e2.dateOfBirth()),
+                firstNonNull(e1.placeOfBirth(), e2.placeOfBirth()),
+                firstNonNull(e1.nationality(), e2.nationality()),
+                firstNonNull(e1.passportNumber(), e2.passportNumber()),
+                firstNonNull(e1.passportCountry(), e2.passportCountry())
         );
     }
 

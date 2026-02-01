@@ -170,7 +170,8 @@ class AliasReportDisplayTest {
                 null, List.of(), List.of(), 
                 List.of("AL-MALIZI", "Abu Sayyaf Group"),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             entityIndex.add(entity.normalize());

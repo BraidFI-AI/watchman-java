@@ -156,7 +156,8 @@ public class CSLParserImpl implements CSLParser {
             sanctions,
             List.of(), // historicalInfo
             remarks,
-            null // preparedFields - computed at index time
+            null, // preparedFields - computed at index time
+            null, null, null, null, null // identifying attributes
         );
     }
 

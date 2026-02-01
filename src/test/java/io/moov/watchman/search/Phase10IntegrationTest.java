@@ -103,7 +103,8 @@ class Phase10IntegrationTest {
                     null, null, null, null, null,
                     ContactInfo.empty(),
                     List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
     }
@@ -231,7 +232,8 @@ class Phase10IntegrationTest {
                     null, null, null, null, null,
                     contact,
                     List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             ).normalize();
         }
     }
@@ -379,7 +381,8 @@ class Phase10IntegrationTest {
                     person, null, null, null, null,
                     ContactInfo.empty(),
                     List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -396,7 +399,8 @@ class Phase10IntegrationTest {
                     null, business, null, null, null,
                     ContactInfo.empty(),
                     List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -413,7 +417,8 @@ class Phase10IntegrationTest {
                     null, null, org, null, null,
                     ContactInfo.empty(),
                     List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -431,7 +436,8 @@ class Phase10IntegrationTest {
                     null, null, null, null, vessel,
                     ContactInfo.empty(),
                     List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
 
@@ -449,7 +455,8 @@ class Phase10IntegrationTest {
                     null, null, null, aircraft, null,
                     ContactInfo.empty(),
                     List.of(), List.of(), List.of(), List.of(),
-                    null, List.of(), null, null
+                    null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
             );
         }
     }

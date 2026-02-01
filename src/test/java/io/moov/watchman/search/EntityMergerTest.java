@@ -51,7 +51,8 @@ class EntityMergerTest {
             sanctionsInfo,
             List.of(),  // historicalInfo
             null,  // remarks
-            null   // preparedFields
+            null,  // preparedFields
+            null, null, null, null, null  // identifying attributes
         );
     }
 

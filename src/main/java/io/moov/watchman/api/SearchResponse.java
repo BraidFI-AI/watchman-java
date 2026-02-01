@@ -59,7 +59,12 @@ public record SearchResponse(
         List<String> altNames,
         List<String> programs,
         ScoreBreakdown breakdown,
-        String matchedAlias
+        String matchedAlias,
+        String dateOfBirth,
+        String placeOfBirth,
+        String nationality,
+        String passportNumber,
+        String passportCountry
     ) {
         public static SearchHit from(SearchResult result, boolean includeBreakdown) {
             Entity entity = result.entity();
@@ -73,7 +78,12 @@ public record SearchResponse(
                 entity.altNames(),
                 entity.sanctionsInfo() != null ? entity.sanctionsInfo().programs() : null,
                 includeBreakdown ? result.breakdown() : null,
-                result.matchedAlias()
+                result.matchedAlias(),
+                entity.dateOfBirth(),
+                entity.placeOfBirth(),
+                entity.nationality(),
+                entity.passportNumber(),
+                entity.passportCountry()
             );
         }
     }

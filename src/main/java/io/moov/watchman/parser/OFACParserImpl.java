@@ -9,6 +9,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -24,9 +25,11 @@ import java.util.*;
 public class OFACParserImpl implements OFACParser {
 
     private final EntityTypeParser typeParser;
+    private final RemarksParser remarksParser;
 
     public OFACParserImpl() {
         this.typeParser = new EntityTypeParser();
+        this.remarksParser = new RemarksParser();
     }
 
     @Override
@@ -286,6 +289,14 @@ public class OFACParserImpl implements OFACParser {
         List<String> programs = parsePrograms(program);
         SanctionsInfo sanctions = SanctionsInfo.of(programs);
         
+        // Parse identifying attributes from remarks field
+        RemarksParser.ParsedRemarks parsed = remarksParser.parse(remarks);
+        String dobString = parsed.dateOfBirth().map(LocalDate::toString).orElse(null);
+        String pobString = parsed.placeOfBirth().orElse(null);
+        String nationalityString = parsed.nationality().orElse(null);
+        String passportNumber = parsed.governmentIds().isEmpty() ? null : parsed.governmentIds().get(0).number();
+        String passportCountry = parsed.governmentIds().isEmpty() ? null : parsed.governmentIds().get(0).country().orElse(null);
+        
         return new Entity(
             entityId,
             name,
@@ -305,7 +316,12 @@ public class OFACParserImpl implements OFACParser {
             sanctions,
             List.of(), // historicalInfo
             remarks,
-            null // preparedFields - computed at index time
+            null, // preparedFields - computed at index time
+            dobString,
+            pobString,
+            nationalityString,
+            passportNumber,
+            passportCountry
         );
     }
     

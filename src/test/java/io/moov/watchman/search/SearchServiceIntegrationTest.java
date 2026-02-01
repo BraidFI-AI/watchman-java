@@ -122,7 +122,8 @@ class SearchServiceIntegrationTest {
                 "ABC123", "Test Entity", EntityType.PERSON, SourceList.US_OFAC, "ABC123",
                 null, null, null, null, null,
                 null, List.of(), List.of(), List.of(), List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             // If we search by sourceId directly, should get exact match
@@ -163,7 +164,8 @@ class SearchServiceIntegrationTest {
                 person, null, null, null, null,
                 null, List.of(), List.of(), List.of(), 
                 List.of(new GovernmentId(GovernmentIdType.PASSPORT, "V12345678", "Venezuela")),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             Entity entityWithoutId = Entity.of("2", "Nicolas Maduro", EntityType.PERSON, SourceList.US_OFAC);

@@ -306,7 +306,8 @@ public class UKCSLParserImpl implements UKCSLParser {
                 new SanctionsInfo(List.of("UK"), false, null),
                 List.of(), // historicalInfo
                 otherInfo,
-                null // preparedFields - computed at index time
+                null, // preparedFields - computed at index time
+                null, null, null, null, null // identifying attributes
             );
         }
     }

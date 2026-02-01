@@ -61,7 +61,8 @@ public class CoverageCalculationTest {
                 null, // sanctionsInfo
                 List.of(), // historicalInfo
                 null, // remarks
-                null  // preparedFields
+                null,  // preparedFields
+                null, null, null, null, null  // identifying attributes
         );
 
         // Should count: name + contact + address + crypto + altNames + govIds
@@ -88,7 +89,8 @@ public class CoverageCalculationTest {
                 Collections.emptyList(), // cryptoAddresses
                 Collections.emptyList(), // altNames
                 Collections.emptyList(), // governmentIds
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
         );
 
         // Should count at least the name field
@@ -120,7 +122,8 @@ public class CoverageCalculationTest {
                 Collections.emptyList(),
                 Arrays.asList("Acme Inc", "Acme LLC"),
                 Collections.singletonList(new GovernmentId(GovernmentIdType.TAX_ID, "12-3456789", "US")),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
         );
 
         int count = EntityScorer.countAvailableFields(entity);
@@ -152,7 +155,8 @@ public class CoverageCalculationTest {
                 Collections.singletonList(new CryptoAddress("BTC", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")),
                 Collections.singletonList("Alt Name"),
                 Collections.singletonList(new GovernmentId(GovernmentIdType.PASSPORT, "ABC123", "US")),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
         );
 
         // Should count: name + contact + address + crypto + altNames + govIds + source
@@ -174,7 +178,8 @@ public class CoverageCalculationTest {
                 Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
         );
 
         // Should count: name + source + address
@@ -209,7 +214,8 @@ public class CoverageCalculationTest {
                 Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null  // identifying attributes
         );
 
         // Create pieces showing multiple fields were compared

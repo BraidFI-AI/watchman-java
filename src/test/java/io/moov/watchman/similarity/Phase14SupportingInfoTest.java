@@ -36,7 +36,8 @@ class Phase14SupportingInfoTest {
                 sanctions,
                 List.of(), // historicalInfo
                 null,
-                null
+                null,
+                null, null, null, null, null
         );
     }
 
@@ -57,7 +58,8 @@ class Phase14SupportingInfoTest {
                 null, // sanctionsInfo
                 historical,
                 null,
-                null
+                null,
+                null, null, null, null, null
         );
     }
 
@@ -78,7 +80,8 @@ class Phase14SupportingInfoTest {
                 sanctions,
                 historical,
                 null,
-                null
+                null,
+                null, null, null, null, null
         );
     }
 
@@ -156,7 +159,8 @@ class Phase14SupportingInfoTest {
                     List.of(), List.of(), List.of(), List.of(),
                     null, // no sanctions
                     List.of(), // no historical
-                    null, null
+                    null, null,
+                null, null, null, null, null
             );
             Entity index = new Entity(
                     "2", "Test", EntityType.PERSON, SourceList.US_OFAC, "2",
@@ -164,7 +168,8 @@ class Phase14SupportingInfoTest {
                     List.of(), List.of(), List.of(), List.of(),
                     null,
                     List.of(),
-                    null, null
+                    null, null,
+                null, null, null, null, null
             );
 
             ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);

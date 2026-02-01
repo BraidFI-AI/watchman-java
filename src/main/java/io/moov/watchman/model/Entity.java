@@ -33,7 +33,12 @@ public record Entity(
     SanctionsInfo sanctionsInfo,
     List<HistoricalInfo> historicalInfo,
     String remarks,
-    PreparedFields preparedFields
+    PreparedFields preparedFields,
+    String dateOfBirth,
+    String placeOfBirth,
+    String nationality,
+    String passportNumber,
+    String passportCountry
 ) {
     /**
      * Creates an Entity with minimal required fields.
@@ -43,7 +48,8 @@ public record Entity(
             id, name, type, source, id,
             null, null, null, null, null,
             null, List.of(), List.of(), List.of(), List.of(),
-            null, List.of(), null, null
+            null, List.of(), null, null,
+            null, null, null, null, null
         );
     }
     
@@ -205,7 +211,8 @@ public record Entity(
             id, name, type, source, sourceId,
             person, business, organization, aircraft, vessel,
             normalizedContact, normalizedAddressList, cryptoAddresses, altNames, governmentIds,
-            sanctionsInfo, historicalInfo, remarks, prepared
+            sanctionsInfo, historicalInfo, remarks, prepared,
+            dateOfBirth, placeOfBirth, nationality, passportNumber, passportCountry
         );
     }
     

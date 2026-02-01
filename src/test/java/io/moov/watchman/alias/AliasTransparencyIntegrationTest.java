@@ -75,7 +75,8 @@ class AliasTransparencyIntegrationTest {
                 null, List.of(), List.of(), 
                 List.of("AL-MALIZI", "Abu Sayyaf Group"),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             entityIndex.add(entity.normalize());
@@ -114,7 +115,8 @@ class AliasTransparencyIntegrationTest {
                 null, List.of(), List.of(), 
                 List.of("MADURO MOROS, Nicolas"),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             entityIndex.add(entity.normalize());
@@ -153,7 +155,8 @@ class AliasTransparencyIntegrationTest {
                 null, List.of(), List.of(), 
                 List.of("Nicolas MADURO", "MADURO, Nicolas", "Nicolas MADURO MOROS"),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             entityIndex.add(entity.normalize());
@@ -192,7 +195,8 @@ class AliasTransparencyIntegrationTest {
                 null, List.of(), List.of(), 
                 List.of("AL-MALIZI"),
                 List.of(),
-                null, List.of(), null, null
+                null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             entityIndex.add(entity.normalize());
@@ -224,13 +228,15 @@ class AliasTransparencyIntegrationTest {
             Entity entity1 = new Entity(
                 "1", "Abu Sayyaf", EntityType.PERSON, SourceList.US_OFAC, "1",
                 null, null, null, null, null, null, List.of(), List.of(), 
-                List.of("AL-MALIZI"), List.of(), null, List.of(), null, null
+                List.of("AL-MALIZI"), List.of(), null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             Entity entity2 = new Entity(
                 "2", "Nicolas Maduro", EntityType.PERSON, SourceList.US_OFAC, "2",
                 null, null, null, null, null, null, List.of(), List.of(), 
-                List.of("MADURO MOROS, Nicolas"), List.of(), null, List.of(), null, null
+                List.of("MADURO MOROS, Nicolas"), List.of(), null, List.of(), null, null,
+                null, null, null, null, null
             );
             
             entityIndex.add(entity1.normalize());

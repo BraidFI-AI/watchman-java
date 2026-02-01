@@ -59,7 +59,8 @@ public class Phase15NameScoringTest {
             null,              // sanctionsInfo
             List.of(),         // historicalInfo
             null,              // remarks
-            prepared           // preparedFields
+            prepared,          // preparedFields
+            null, null, null, null, null  // identifying attributes
         );
     }
     
@@ -93,7 +94,8 @@ public class Phase15NameScoringTest {
             null,              // sanctionsInfo
             List.of(),         // historicalInfo
             null,              // remarks
-            prepared           // preparedFields
+            prepared,          // preparedFields
+            null, null, null, null, null  // identifying attributes
         );
     }
     
@@ -127,7 +129,8 @@ public class Phase15NameScoringTest {
             null,              // sanctionsInfo
             List.of(),         // historicalInfo
             null,              // remarks
-            prepared           // preparedFields
+            prepared,          // preparedFields
+            null, null, null, null, null  // identifying attributes
         );
     }
     
@@ -161,7 +164,8 @@ public class Phase15NameScoringTest {
             null,              // sanctionsInfo
             List.of(),         // historicalInfo
             null,              // remarks
-            prepared           // preparedFields
+            prepared,          // preparedFields
+            null, null, null, null, null  // identifying attributes
         );
     }
 

@@ -1,8 +1,14 @@
 package io.moov.watchman.parser;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses the Remarks field from OFAC SDN data to extract structured information.
@@ -11,38 +17,127 @@ import java.util.Optional;
  * - DOB 15 May 1963
  * - POB Caracas, Venezuela
  * - Passport V12345678 (Venezuela)
- * - Tax ID No. 52-2083095
- * 
- * TODO: Implement after EntityTypeParser is complete
+ * - nationality Egypt
  */
 public class RemarksParser {
+
+    // Regex patterns for extraction
+    private static final Pattern DOB_PATTERN = Pattern.compile("DOB\\s+(\\d{1,2}\\s+\\w+\\s+\\d{4}|\\d{4})", Pattern.CASE_INSENSITIVE);
+    private static final Pattern POB_PATTERN = Pattern.compile("POB\\s+([^;]+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NATIONALITY_PATTERN = Pattern.compile("nationality\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PASSPORT_PATTERN = Pattern.compile("(?:alt\\.\\s+)?Passport\\s+([A-Z0-9]+)(?:\\s+\\(([^)]+)\\))?", Pattern.CASE_INSENSITIVE);
+    
+    // Date formatters for various OFAC date patterns
+    private static final DateTimeFormatter[] DATE_FORMATTERS = {
+        DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH)
+    };
 
     /**
      * Parse a complete remarks string and return all extracted data.
      */
     public ParsedRemarks parse(String remarks) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (remarks == null || remarks.isEmpty() || remarks.equals("-0-")) {
+            return new ParsedRemarks();
+        }
+
+        Optional<LocalDate> dob = extractDateOfBirth(remarks);
+        Optional<String> pob = extractPlaceOfBirth(remarks);
+        Optional<String> nationality = extractNationality(remarks);
+        List<ExtractedId> ids = extractGovernmentIds(remarks);
+
+        return new ParsedRemarks(dob, pob, ids, nationality);
     }
 
     /**
      * Extract date of birth from remarks.
      */
     public Optional<LocalDate> extractDateOfBirth(String remarks) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (remarks == null || remarks.isEmpty() || remarks.equals("-0-")) {
+            return Optional.empty();
+        }
+
+        Matcher matcher = DOB_PATTERN.matcher(remarks);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+
+        String dateStr = matcher.group(1).trim();
+        
+        // Handle year-only format
+        if (dateStr.matches("\\d{4}")) {
+            return Optional.of(LocalDate.of(Integer.parseInt(dateStr), 1, 1));
+        }
+
+        // Try various date formats
+        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
+            try {
+                return Optional.of(LocalDate.parse(dateStr, formatter));
+            } catch (DateTimeParseException e) {
+                // Try next formatter
+            }
+        }
+
+        return Optional.empty();
     }
 
     /**
      * Extract place of birth from remarks.
      */
     public Optional<String> extractPlaceOfBirth(String remarks) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (remarks == null || remarks.isEmpty() || remarks.equals("-0-")) {
+            return Optional.empty();
+        }
+
+        Matcher matcher = POB_PATTERN.matcher(remarks);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(matcher.group(1).trim());
+    }
+
+    /**
+     * Extract nationality from remarks.
+     */
+    private Optional<String> extractNationality(String remarks) {
+        if (remarks == null || remarks.isEmpty() || remarks.equals("-0-")) {
+            return Optional.empty();
+        }
+
+        Matcher matcher = NATIONALITY_PATTERN.matcher(remarks);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(matcher.group(1).trim());
     }
 
     /**
      * Extract government IDs (passports, tax IDs, etc.) from remarks.
      */
     public List<ExtractedId> extractGovernmentIds(String remarks) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (remarks == null || remarks.isEmpty() || remarks.equals("-0-")) {
+            return List.of();
+        }
+
+        List<ExtractedId> ids = new ArrayList<>();
+        Matcher matcher = PASSPORT_PATTERN.matcher(remarks);
+        
+        while (matcher.find()) {
+            String passportNumber = matcher.group(1);
+            String country = matcher.group(2);
+            
+            ids.add(new ExtractedId(
+                "Passport",
+                passportNumber,
+                country != null ? Optional.of(country) : Optional.empty()
+            ));
+        }
+
+        return ids;
     }
 
     /**
@@ -62,5 +157,5 @@ public class RemarksParser {
     /**
      * Extracted government ID with type and value.
      */
-    public record ExtractedId(String type, String value, Optional<String> country) {}
+    public record ExtractedId(String type, String number, Optional<String> country) {}
 }
