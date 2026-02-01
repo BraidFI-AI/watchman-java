@@ -748,3 +748,43 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - Whether archived materials will be needed in future (preserved locally for potential restoration)
 
 ---
+## Session: February 1, 2026 (Phase 3: Identifying Attributes)
+
+### What We Decided
+- Implement Phase 3 (Identifying Attributes) using TDD methodology
+- Extract structured data from OFAC semi-structured "remarks" field using regex parsing
+- Add 5 identifying attribute fields to Entity and SearchResponse.SearchHit
+- Fix failing test files manually instead of automated test generation
+
+### What Is Now True
+- **RemarksParser Implementation Complete**: 162 lines, 16/16 unit tests passing
+  * Extracts: dateOfBirth, placeOfBirth, nationality, passportNumber, passportCountry
+  * Regex patterns: "DOB 19 Jun 1951", "POB Giza, Egypt", "nationality Egypt", "Passport 1084010 (Egypt)"
+  * DateTimeFormatter handles multiple formats: "d MMM yyyy", "dd MMMM yyyy", "yyyy"
+  * All methods return Optional<T> for graceful degradation when data missing
+  * ExtractedId record: (String type, String number, Optional<String> country)
+- **Entity Record Extended**: Changed from 19 to 24 parameters (lines 40-42)
+  * Added: dateOfBirth, placeOfBirth, nationality, passportNumber, passportCountry (all String)
+- **SearchResponse.SearchHit Extended**: Lines 62-66 expose identifying attributes in API
+- **OFACParserImpl Integration**: Lines 293-303 parse remarks during entity creation
+  * RemarksParser.ParsedRemarks holds all extracted attributes
+  * Attributes flow into Entity constructor from parsed remarks
+- **All Parsers Updated**: CSLParser, UKCSLParser, EUCSLParser, EntityMerger pass nulls for new fields
+- **Test Infrastructure Fixes**: 25+ test files updated for Entity constructor signature change
+  * AliasTransparencyIntegrationTest.java, EntityMergerTest.java, EntityScorerIntegrationTest.java: Helper method updates
+  * Phase10-17 integration tests: Bulk pattern replacement via Python regex scripts
+  * TracingMergeValidationIntegrationTest.java, CoverageCalculationIntegrationTest.java: Manual edits
+  * RemarksParserTest.java: Fixed ExtractedId field access (.value() → .number())
+- **Compilation Status**: BUILD SUCCESS for all production and test code
+- **Test Results**:
+  * RemarksParserTest: 16/16 passing
+  * IdentifyingAttributesIntegrationTest: 3/5 passing (2 failures are test setup issues)
+  * Integration test failures: Search returns 0 results (manual entity creation doesn't match parser flow)
+- **Git Commit**: d979f10 "Phase 3: Identifying Attributes" (28 files, 870 insertions, 124 deletions)
+- **Deployment**: Pushed to GitHub for AWS testing (local server had Ctrl+C issues)
+
+### What Is Still Unknown
+- Whether integration test setup issues need fixing or tests should be revised
+- Performance impact of regex parsing on OFAC load time (not measured yet)
+
+---

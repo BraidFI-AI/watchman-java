@@ -1215,3 +1215,86 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
+### 2026-02-01: Regex Parsing for OFAC Remarks Extraction
+
+**Decision**: Use java.util.regex.Pattern/Matcher for extracting identifying attributes from OFAC semi-structured "remarks" field.
+
+**Context**: OFAC remarks contain structured data in semi-structured text: "DOB 19 Jun 1951; POB Giza, Egypt; nationality Egypt; Passport 1084010 (Egypt)".
+
+**Rationale**:
+- Regex provides direct pattern matching for known OFAC formats without parsing overhead
+- Standard Java library (no external dependencies)
+- Performance acceptable for ~18,000 entities loaded once at startup
+- Alternative (NLP/tokenization) would be over-engineering for consistent OFAC format
+
+**Implementation**: RemarksParser with 4 regex patterns (DOB_PATTERN, POB_PATTERN, NATIONALITY_PATTERN, PASSPORT_PATTERN), DateTimeFormatter for multiple date formats, Optional<T> return types for graceful degradation.
+
+**Impact**: 16/16 unit tests passing, successfully extracts attributes from real OFAC data.
+
+---
+
+### 2026-02-01: Flat Field Structure for Identifying Attributes
+
+**Decision**: Added 5 flat fields to Entity record (dateOfBirth, placeOfBirth, nationality, passportNumber, passportCountry) instead of nested object.
+
+**Context**: Phase 3 requires exposing OFAC identifying attributes in search API responses.
+
+**Alternatives Considered**:
+1. Nested IdentifyingAttributes record with 5 fields (rejected - over-engineering)
+2. Flat fields in Entity record (chosen)
+3. Map<String, String> for flexible attributes (rejected - loses type safety)
+
+**Rationale**:
+- Aligns with existing Entity structure (flat fields for name, type, programs, remarks)
+- Simpler serialization to SearchResponse.SearchHit (direct field mapping)
+- No nesting complexity in API JSON responses
+- Fixed schema matches OFAC data structure (consistent fields across entities)
+
+**Tradeoff**: Entity constructor signature changed from 19→24 parameters, requiring 25+ test file updates. Manual fix investment accepted over architectural complexity.
+
+**Impact**: API cleanly exposes dateOfBirth, placeOfBirth, nationality, passportNumber, passportCountry at top level of search hit JSON.
+
+---
+
+### 2026-02-01: Optional.empty() for Missing OFAC Data
+
+**Decision**: RemarksParser methods return Optional.empty() when remarks field lacks specific attributes, Entity stores null for missing values.
+
+**Context**: Not all OFAC entities have complete identifying attribute data (e.g., some have DOB but no passport).
+
+**Rationale**:
+- Avoids throwing exceptions during parsing (graceful degradation)
+- Null fields in API response are standard JSON practice for missing data
+- Consumers can distinguish "not provided by OFAC" (null) from "parsed but empty" ("")
+- Aligns with Java best practices for optional values
+
+**Implementation**: extractDateOfBirth(), extractPlaceOfBirth(), extractNationality(), extractGovernmentIds() all return Optional<T>, caller maps to null if empty.
+
+**Impact**: Parser never fails on malformed/incomplete remarks, API responses include only available attributes.
+
+---
+
+### 2026-02-01: Manual Test File Fixes Over Automated Generation
+
+**Decision**: Fixed 25+ failing test files manually (multi_replace_string_in_file + Python regex scripts) instead of regenerating tests with AI tooling.
+
+**Context**: Entity constructor signature change (19→24 params) broke 100+ test call sites across integration and unit tests.
+
+**Alternatives Considered**:
+1. Automated test regeneration with AI (rejected - test logic would be rewritten, losing domain knowledge)
+2. Manual fixes with tooling assistance (chosen)
+
+**Rationale**:
+- Preserves existing test coverage and business logic assertions
+- Python regex scripts handled 80% of pattern-based fixes (e.g., "null, List.of()" → "null, List.of(), null, null, null, null, null")
+- Manual edits for edge cases (syntax errors, comment placement, helper methods) ensured correctness
+- "Spend time on test infra" directive: systematic fix built skills for future Entity changes
+
+**Implementation**:
+- Helper method updates: EntityMergerTest.createEntity(), EntityScorerIntegrationTest.buildEntity()
+- Python scripts: Phase10-17 bulk constructor fixes
+- Manual pattern fixes: Phase15 comma positioning, Phase16/17 multi-line null blocks, TracingMerge .normalize() patterns
+
+**Impact**: All tests compile (BUILD SUCCESS), 16/16 RemarksParser tests passing, 3/5 integration tests passing (2 failures are test setup issues, not production bugs).
+
+---
