@@ -92,6 +92,27 @@
   * Examiner evaluation guidance and regulatory compliance considerations
 - **Documentation Purpose**: Support BSA examinations, compliance audits, and operational understanding of screening methodology
 
+## Auto-Clearance Feature Documentation (February 1, 2026)
+
+The Auto-Clearance feature has comprehensive product documentation in `docs/auto_clearance_product_overview.md` (700+ lines). This document serves as the primary reference for stakeholders, compliance officers, and QA teams.
+
+**Document Structure:**
+- Executive summary with business value (40-70% false positive reduction)
+- Two-phase workflow explanation with detailed API specifications
+- 5 Admin UI test procedures with expected results and troubleshooting guide
+- Technical implementation details (9 new files, 2 modified, ~150 lines in SearchServiceImpl)
+- All 6 user stories with ✅/⏳ completion status tracking
+- Future enhancements roadmap (short/medium/long-term)
+- Regulatory compliance and audit trail considerations
+
+**Current Implementation Status (v1.0):**
+- ✅ Phase 1: Name Detection (85% threshold)
+- ✅ Phase 2: Address-Based Clearance (50% mismatch threshold)
+- ⏳ Phase 2: DOB and Government ID clearance (pending)
+- ⏳ Configuration API (thresholds currently hardcoded)
+
+**Test Validation:** 5 test cases cover auto-clear scenarios, manual review triggers, pending status handling, no-match fast path, and mixed result workflows.
+
 ---
 
 ## Session: January 22, 2026 (v2→v1 API Migration + ScoreConfig Test Fix)
