@@ -247,49 +247,6 @@
           ]
         },
         {
-          "name": "Search with Alias Expansion (OFAC Compliance)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/v1/search?name=AL-BAGHDADI&minMatch=0.85&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "search"
-              ],
-              "query": [
-                {
-                  "key": "name",
-                  "value": "AL-BAGHDADI",
-                  "description": "Entity with multiple aliases"
-                },
-                {
-                  "key": "minMatch",
-                  "value": "0.85",
-                  "description": "Score threshold"
-                },
-                {
-                  "key": "limit",
-                  "value": "10",
-                  "description": "Max results"
-                }
-              ]
-            },
-            "description": "## Alias Expansion Feature (Phase 4)\n\nDemonstrates how entities with aliases return multiple results to match OFAC.gov presentation.\n\n### What This Shows\n- **Alias Expansion**: 1 entity with 3 aliases → 4 results (primary + 3 aliases)\n- **uniqueEntities**: Shows distinct entity count (1) vs totalResults (4)\n- **matchedAlias**: Indicates which specific alias triggered each result\n- **OFAC Compliance**: Matches OFAC.gov display format (4 visible rows)\n\n### Use Cases\n✅ BSA/AML compliance reporting\n✅ Match count validation against OFAC.gov\n✅ Alias-level transparency for investigations\n\n### Field Definitions\n- **totalResults**: Total search results returned (includes expanded aliases)\n- **uniqueEntities**: Distinct entities matched (before alias expansion)\n- **matchedAlias**: Which alias name caused this specific result (null for primary name match)\n\n### Example\nSearching \"AL-BAGHDADI\" returns:\n- 1 result for primary name: \"AL-BAGHDADI, Ibrahim Awwad Ibrahim Ali\"\n- 3 results for aliases: \"Abu Bakr\", \"Abu Du'a\", \"Dr. Ibrahim\"\n- Total: 4 results from 1 unique entity"
-          },
-          "response": [
-            {
-              "name": "Alias Expansion Results",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"entities\": [\n    {\n      \"id\": \"6636\",\n      \"name\": \"AL-BAGHDADI, Ibrahim Awwad Ibrahim Ali\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"6636\",\n      \"score\": 0.92,\n      \"altNames\": [\n        \"Abu Bakr\",\n        \"Abu Du'a\",\n        \"Dr. Ibrahim\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": null,\n      \"matchedAlias\": null,\n      \"dateOfBirth\": \"1971-07-28\",\n      \"placeOfBirth\": \"Samarra, Iraq\",\n      \"nationality\": \"IQ\",\n      \"passportNumber\": null,\n      \"passportCountry\": null\n    },\n    {\n      \"id\": \"6636\",\n      \"name\": \"AL-BAGHDADI, Ibrahim Awwad Ibrahim Ali\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"6636\",\n      \"score\": 0.92,\n      \"altNames\": [\n        \"Abu Bakr\",\n        \"Abu Du'a\",\n        \"Dr. Ibrahim\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": null,\n      \"matchedAlias\": \"Abu Bakr\",\n      \"dateOfBirth\": \"1971-07-28\",\n      \"placeOfBirth\": \"Samarra, Iraq\",\n      \"nationality\": \"IQ\",\n      \"passportNumber\": null,\n      \"passportCountry\": null\n    },\n    {\n      \"id\": \"6636\",\n      \"name\": \"AL-BAGHDADI, Ibrahim Awwad Ibrahim Ali\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"6636\",\n      \"score\": 0.92,\n      \"altNames\": [\n        \"Abu Bakr\",\n        \"Abu Du'a\",\n        \"Dr. Ibrahim\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": null,\n      \"matchedAlias\": \"Abu Du'a\",\n      \"dateOfBirth\": \"1971-07-28\",\n      \"placeOfBirth\": \"Samarra, Iraq\",\n      \"nationality\": \"IQ\",\n      \"passportNumber\": null,\n      \"passportCountry\": null\n    },\n    {\n      \"id\": \"6636\",\n      \"name\": \"AL-BAGHDADI, Ibrahim Awwad Ibrahim Ali\",\n      \"type\": \"PERSON\",\n      \"source\": \"OFAC_SDN\",\n      \"sourceId\": \"6636\",\n      \"score\": 0.92,\n      \"altNames\": [\n        \"Abu Bakr\",\n        \"Abu Du'a\",\n        \"Dr. Ibrahim\"\n      ],\n      \"programs\": [\n        \"SDGT\"\n      ],\n      \"breakdown\": null,\n      \"matchedAlias\": \"Dr. Ibrahim\",\n      \"dateOfBirth\": \"1971-07-28\",\n      \"placeOfBirth\": \"Samarra, Iraq\",\n      \"nationality\": \"IQ\",\n      \"passportNumber\": null,\n      \"passportCountry\": null\n    }\n  ],\n  \"totalResults\": 4,\n  \"uniqueEntities\": 1,\n  \"requestID\": null,\n  \"debug\": null,\n  \"trace\": null,\n  \"reportUrl\": null\n}"
-            }
-          ]
-        },
-        {
           "name": "Search with ScoreTrace",
           "request": {
             "method": "GET",
