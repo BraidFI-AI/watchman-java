@@ -6,6 +6,34 @@
 
 ## Decision Log
 
+### 2026-02-01: BSA/AML Compliance Documentation Strategy
+
+**Decision**: Created comprehensive technical overview titled "OFAC Screening Technical Overview for BSA/AML Compliance" (docs/ofac_screening_technical_overview.md) targeting BSA officers and examiners.
+
+**Rationale**: 
+- Compliance officers require detailed methodology documentation beyond API references for regulatory examinations
+- Need clear distinction between algorithmic fuzzy matching and OFAC.gov official SDN Search Tool
+- Support BSA/AML audit requirements with documented scoring, validation, and false positive management processes
+- Provide examiner evaluation guidance for regulatory reviews
+
+**Scope**: 
+- Complete screening lifecycle: input processing → multi-phase scoring → match validation → alias expansion → audit trail
+- All 4 scoring phases with threshold interpretation and recommended actions
+- False positive management strategies (contextual filtering, threshold tuning, allowlisting)
+- Regulatory compliance considerations (BSA, PATRIOT Act, FinCEN guidance)
+- System limitations and disclaimers about differences from OFAC.gov
+
+**Key Content**:
+- Multi-phase scoring algorithm with score interpretation tables
+- Match validation logic (name, address, identity, contextual)
+- Alias expansion mechanics and performance impact (<1% latency)
+- Audit trail and record retention requirements (5-year minimum)
+- Examiner evaluation guidance for regulatory compliance assessment
+
+**Impact**: Provides BSA officers with technical foundation to understand and defend screening methodology during regulatory examinations. Document clearly states this is not a replacement for OFAC.gov searches and requires human compliance judgment.
+
+---
+
 ### 2026-01-29: Achieved 100% Test Coverage (1,126/1,126 Tests Passing)
 
 **Status**: All 1,126 tests passing. Fixed 13 test failures spanning 7 test classes.

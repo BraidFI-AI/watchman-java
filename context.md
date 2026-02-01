@@ -71,6 +71,27 @@
 - Consider pagination implications for expanded results
 - Test batch screening endpoint behavior with alias expansion
 
+### BSA/AML Compliance Documentation (February 1, 2026)
+- **Comprehensive Technical Overview Created**: docs/ofac_screening_technical_overview.md (429 lines)
+  * Document title: "OFAC Screening Technical Overview for BSA/AML Compliance"
+  * Audience: BSA officers, AML compliance examiners, risk management teams
+  * Covers: Multi-phase scoring methodology, match validation, alias expansion, false positive management, audit trail, regulatory compliance
+- **Key Disclaimers Included**: 
+  * Explicitly states system uses algorithmic fuzzy matching distinct from OFAC.gov website
+  * Warns against direct comparison to OFAC's SDN Search Tool
+  * Emphasizes requirement for human review and judgment
+- **Document Sections**: 10 main sections + glossary covering complete screening lifecycle
+  * System overview and data sources
+  * Screening workflow (input → normalization → scoring → expansion → response)
+  * Multi-phase scoring with score interpretation tables (0.95-1.00 = very high confidence)
+  * Match validation logic (name, address, identity, contextual validation)
+  * Alias expansion explanation with performance metrics
+  * False positive mitigation strategies (contextual filtering, threshold tuning, allowlisting)
+  * Audit trail and regulatory record retention (5 years minimum)
+  * AWS production validation results
+  * Examiner evaluation guidance and regulatory compliance considerations
+- **Documentation Purpose**: Support BSA examinations, compliance audits, and operational understanding of screening methodology
+
 ---
 
 ## Session: January 22, 2026 (v2→v1 API Migration + ScoreConfig Test Fix)
