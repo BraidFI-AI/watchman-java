@@ -6,6 +6,7 @@ import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.SearchResult;
 import io.moov.watchman.model.SourceList;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -13,6 +14,9 @@ import java.util.stream.Stream;
 /**
  * Implementation of SearchService that searches entities in the index
  * and returns scored results.
+ * 
+ * Phase 4 Implementation: Expands aliases to match OFAC.gov presentation.
+ * One entity with N aliases returns N+1 results (primary + each alias).
  */
 public class SearchServiceImpl implements SearchService {
 
@@ -48,15 +52,44 @@ public class SearchServiceImpl implements SearchService {
             entityStream = entityStream.filter(e -> e.type() == entityType);
         }
 
+        // Expand aliases: 1 entity with N aliases → N+1 results
         return entityStream
-            .map(entity -> {
-                double score = scoreEntity(query, entity);
-                return SearchResult.of(entity, score);
-            })
-            .filter(result -> result.score() >= minMatch)
+            .flatMap(entity -> expandAliases(entity, query, minMatch))
             .sorted(Comparator.comparing(SearchResult::score).reversed())
             .limit(limit)
             .toList();
+    }
+
+    /**
+     * Expand entity into multiple search results: one for primary name + one per alias.
+     * This matches OFAC.gov presentation where each alias appears as separate result.
+     * 
+     * @param entity the entity to expand
+     * @param query search query
+     * @param minMatch minimum score threshold
+     * @return stream of search results (primary + matching aliases)
+     */
+    private Stream<SearchResult> expandAliases(Entity entity, String query, double minMatch) {
+        List<SearchResult> results = new ArrayList<>();
+        
+        // Score primary name
+        double primaryScore = scoreEntity(query, entity);
+        
+        // Only expand if primary entity meets threshold
+        if (primaryScore >= minMatch) {
+            // Add primary result
+            results.add(SearchResult.of(entity, primaryScore));
+            
+            // Add result for each alias
+            if (entity.altNames() != null && !entity.altNames().isEmpty()) {
+                for (String alias : entity.altNames()) {
+                    // Each alias gets its own result entry
+                    results.add(SearchResult.withAlias(entity, primaryScore, alias));
+                }
+            }
+        }
+        
+        return results.stream();
     }
 
     @Override

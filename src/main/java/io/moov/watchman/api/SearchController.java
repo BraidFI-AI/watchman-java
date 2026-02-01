@@ -77,7 +77,7 @@ public class SearchController {
         // Validate - need at least a name to search
         if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest()
-                .body(new SearchResponse(List.of(), 0, requestID, 
+                .body(new SearchResponse(List.of(), 0, 0, requestID, 
                     new SearchResponse.DebugInfo("Name parameter is required"), null, null));
         }
 
@@ -87,19 +87,14 @@ public class SearchController {
             limit, minMatch, requestID, debug
         );
 
-        // Get candidates from index (filtered by source/type if specified)
-        List<Entity> candidates = getCandidates(request);
-
-        // Score all candidates without tracing (fast path)
-        List<SearchResult> results = candidates.stream()
-            .map(entity -> {
-                double score = searchService.scoreEntity(request.name(), entity);
-                return SearchResult.of(entity, score);
-            })
-            .filter(result -> result.score() >= request.minMatch())
-            .sorted((a, b) -> Double.compare(b.score(), a.score()))
-            .limit(request.limit())
-            .toList();
+        // Use SearchService to score and expand aliases
+        List<SearchResult> results = searchService.search(
+            request.name(),
+            request.parseSource(),
+            request.parseType(),
+            request.limit(),
+            request.minMatch()
+        );
 
         logger.info("Search completed: {} results for name={}", results.size(), name);
 

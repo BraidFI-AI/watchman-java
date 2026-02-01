@@ -9,10 +9,13 @@ import java.util.List;
 
 /**
  * Response DTO for search API.
+ * 
+ * Phase 4: Added uniqueEntities to show distinct entity count when aliases are expanded.
  */
 public record SearchResponse(
     List<SearchHit> entities,
     int totalResults,
+    Integer uniqueEntities,
     String requestID,
     DebugInfo debug,
     ScoringTrace trace,
@@ -33,12 +36,19 @@ public record SearchResponse(
             .map(r -> SearchHit.from(r, trace != null))
             .toList();
         
+        // Count unique entities (important when aliases are expanded)
+        int uniqueEntityCount = (int) results.stream()
+            .map(r -> r.entity().id())
+            .distinct()
+            .count();
+        
         // Generate reportUrl if trace is present
         String reportUrl = trace != null ? "/api/reports/" + trace.sessionId() : null;
         
         return new SearchResponse(
             hits,
             hits.size(),
+            uniqueEntityCount,
             requestId,
             includeDebug ? new DebugInfo("Search completed") : null,
             trace,
