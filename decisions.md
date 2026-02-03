@@ -6,6 +6,24 @@
 
 ## Decision Log
 
+### 2026-02-03: Security Scanning Infrastructure Setup
+
+**Decision**: Implement automated security scanning with Semgrep (static analysis) and Trivy (dependency/container vulnerabilities) enforced on every commit and push.
+
+**Rationale**: Proactive security posture requires automated checks before code enters version control. Pre-commit/pre-push hooks block commits with HIGH or CRITICAL findings. CI workflow provides audit trail and scan artifacts for review.
+
+**Implementation**: 
+- Husky manages Git hooks (.husky/pre-commit, .husky/pre-push)
+- Scripts execute Semgrep and Trivy (scripts/pre-commit-security.sh, scripts/pre-push-security.sh)
+- GitHub Actions workflow runs scans on push/PR (.github/workflows/security-scan.yml)
+- Suppressions managed via .semgrepignore (POC exceptions documented)
+
+**Impact**: All code changes are scanned before commit. Blocks commits with unresolved HIGH/CRITICAL findings. Forces explicit documentation of security exceptions via .semgrepignore.
+
+**References**: [security-scan.yml](.github/workflows/security-scan.yml), [docs/security-scan-change-note.md](docs/security-scan-change-note.md), [.semgrepignore](.semgrepignore)
+
+---
+
 ### 2026-02-02: "Configuration Management" Product Naming
 
 **Decision**: Use "Configuration Management" as umbrella term for admin configuration APIs while preserving "ScoreConfig" and "Auto-Clearance" as distinct feature names.
@@ -48,6 +66,18 @@ Follow Configuration Management pattern: in-memory changes, reset on restart, va
 **Benefits**: Runtime control without redeployment, compliance tuning (test different list combinations), cost optimization (skip expensive downloads), reduce false positives by excluding specific lists.
 
 **Impact**: Clearer product hierarchy in Postman collection. Users understand they're managing sanctions list sources, not generic "data". Sets foundation for future API implementation.
+
+---
+
+### 2026-02-03: AWS Batch Feature Suppression
+
+**Decision**: Suppress all AWS Batch POC code and test artifacts in `archive/aws-batch-poc/` from security scans using `.semgrepignore`.
+
+**Rationale**: AWS Batch integration is deprecated and not used in current or future releases; code retained for historical context only.
+
+**Impact**: No AWS Batch features are active or maintained. Suppressed files are excluded from scans and reviews.
+
+**Reference**: [README.md](README.md), [.semgrepignore](.semgrepignore)
 
 ---
 
@@ -341,7 +371,7 @@ aws elbv2 modify-load-balancer-attributes \
 
 **Future phases**: Expose CacheConfig (MoovService), InfrastructureInfo (AWS status), MonitoringConfig (logging/metrics).
 
-**Implementation**: 
+**Implementation**:
 - ReportController: `Optional.orElseThrow(() -> new EntityNotFoundException(...))`
 - BatchScreeningController: `throw new IllegalArgumentException("Batch request must...")`
 - GlobalExceptionHandler: 10 exception handlers → ErrorResponse DTO
@@ -360,7 +390,7 @@ aws elbv2 modify-load-balancer-attributes \
 - Easier to test validation rules independently
 - Centralizes batch size limit (MAX_BATCH_SIZE = 1000) in one place
 
-**Implementation**: 
+**Implementation**:
 - BatchRequestValidator @Component with validate(request) method
 - Injected into BatchScreeningController constructor
 - Throws IllegalArgumentException with descriptive messages
@@ -380,7 +410,7 @@ aws elbv2 modify-load-balancer-attributes \
 - Message inspection is pragmatic solution that works across database vendors
 - Provides user-friendly "Database operation timed out" message instead of technical details
 
-**Implementation**: 
+**Implementation**:
 ```java
 String messageLower = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
 String message = messageLower.contains("timeout") || messageLower.contains("timed out")
@@ -408,13 +438,13 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Rationale**: User required strictest enforcement: "remove any opportunity for fall back to hard coded values. ScoreConfig must be set or it fails." Fail-fast behavior at application startup preferred over silent runtime defaults.
 
-**Implementation**: 
+**Implementation**:
 - Updated 7 production files: AddressComparer, AffiliationComparer, NameScorer, SupportingInfoComparer, JaroWinklerWithFavoritism, TitleMatcher, DebugScoring
 - Updated 19 test files to use 3-arg constructor with explicit new SimilarityConfig()
 - Created RequiredConfigTest (5 tests) to enforce policy via reflection
 - All static utility classes marked with TODO comments for future Spring DI refactoring
 
-**Impact**: 
+**Impact**:
 - Config injection now mandatory - impossible to create JaroWinklerSimilarity without config
 - Application fails at startup (not runtime) if config misconfigured
 - Test suite: 1,206 tests (1,196 passing + 5 new + 8 pre-existing failures)
@@ -446,7 +476,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Implemented WeightConfig as separate @ConfigurationProperties bean with 13 parameters for business-level scoring controls.
 
-**Rationale**: 
+**Rationale**:
 - SimilarityConfig handles algorithm parameters (Jaro-Winkler internals)
 - WeightConfig handles business parameters (weights, thresholds, phase toggles)
 - Two-level separation provides clear operator vs engineer responsibility
@@ -520,13 +550,13 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Use change note format (max 350 words) for feature/operational docs, but exempt reference documentation from word limits.
 
-**Rationale**: 
+**Rationale**:
 - Change notes work well for features, processes, operational guides (focus on "what changed, how to verify")
 - API specs and script catalogs are permanent reference material developers keep open while coding
 - Reference docs need: full request/response examples, complete parameter tables, copy/paste ready commands
 - Condensing api_spec.md to 371 words removed essential examples developers need
 
-**Implementation**: 
+**Implementation**:
 - Change notes: nemesis.md, scoreconfig.md, scoretrace.md, error_handling.md, etc. (15 docs)
 - Reference docs: api_spec.md (1,373 words), scripts.md (1,325 words)
 
@@ -540,7 +570,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Create comprehensive evidence document (`docs/divergence_evidence.md`) with all test results, API responses, Braid customer IDs, and scoring comparisons.
 
-**Structure**: 
+**Structure**:
 - Wave 1: Exact SDN matches (baseline)
 - Wave 2: Close variations with suffixes (where Go fails)
 - Wave 3: Fuzzy matches with descriptors (stress testing)
@@ -578,7 +608,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Test ALL 4 systems (Java Watchman, Go Watchman, OFAC-API, Braid Sandbox) for each test case, not just API comparisons.
 
-**Rationale**: 
+**Rationale**:
 - Braid customer creation provides real-world validation (not just scoring comparisons)
 - Testing Braid directly reveals actual blocking behavior vs theoretical API scores
 - Raises stakes: not just "Go scores lower" but "sanctioned entities can create accounts"
@@ -678,7 +708,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 - **SimilarityConfig** = CONTROL algorithm parameters (Phase 1 complete)
 - **WeightConfig** = CONTROL business factors (Phase 2 completed 2026-01-17)
 
-**Rationale**: 
+**Rationale**:
 - ScoreTrace provides visibility ("Why did this score 0.72?")
 - ScoreConfig provides tunability ("Make it more strict")
 - Two-level control: algorithm (SimilarityConfig) + business logic (ScoringConfig)
@@ -710,7 +740,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Rejected PR due to compilation errors and scope creep. Rebuilt Phase 1 (SimilarityConfig integration) from scratch using strict TDD.
 
-**Rationale**: 
+**Rationale**:
 - PR mixed bug fix (SimilarityConfig not integrated) with new features (ScoringConfig, POST /v2/search)
 - Compilation errors in Entity.java and EntityScorerImpl.java
 - Violated "minimal, incremental changes" principle
@@ -746,7 +776,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 - `govIdScore()` → `governmentIdScore()`
 - `cryptoScore()` → `cryptoAddressScore()`
 
-**Rationale**: 
+**Rationale**:
 - Maintains consistency with field naming conventions
 - Reflects full terminology (government ID, cryptocurrency address)
 - Prevents future confusion about available methods
@@ -810,7 +840,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Added inline IAM policy `SecretsManagerAccess` to `ecsTaskExecutionRole` granting `secretsmanager:GetSecretValue` permission for the GitHub token secret.
 
-**Rationale**: 
+**Rationale**:
 - Task definition requires GITHUB_TOKEN secret for application functionality
 - ECS tasks need execution role permissions to retrieve secrets before container starts
 - Scoped permission to specific secret ARN for security
@@ -870,261 +900,13 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 ---
 
-### 2026-01-13: Application Load Balancer for Stable Endpoint
-
-**Decision**: Deploy Application Load Balancer in front of ECS service instead of using dynamic public IPs.
-
-**Rationale**: 
-- ECS Fargate tasks get new public IPs on every deployment/restart
-- Manual IP tracking is error-prone and breaks automation
-- ALB provides stable DNS endpoint: watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
-- Additional $18/month cost is acceptable for production stability
-
-**Tradeoff**: Adds $18/month to infrastructure cost, but eliminates operational overhead of IP management.
-
----
-
-### 2026-01-13: Reduce Compute Resources to 1 vCPU / 2GB
-
-**Decision**: Reduce ECS task from 2 vCPU/4GB to 1 vCPU/2GB (task definition revision 9).
-
-**Rationale**:
-- Nemesis testing workload is I/O bound (network calls to APIs), not CPU bound
-- Processes queries serially, not in parallel
-- 50% compute cost reduction: $73/month → $37/month
-- 1 vCPU sufficient for ~4 queries/second throughput
-- 2GB RAM accommodates 18K OFAC entities + 1GB JVM heap
-
-**Tradeoff**: Slightly slower initial OFAC data load (~30-40 seconds vs ~20 seconds), but acceptable for testing use case.
-
----
-
-### 2026-01-13: Build Docker Images for x86_64 Architecture
-
-**Decision**: Docker images must be built for linux/amd64 platform, not ARM64.
-
-**Rationale**:
-- ECS Fargate uses x86_64 (Intel/AMD) architecture by default
-- Building on Apple Silicon (ARM) produces incompatible images
-- Deployment fails with "CannotPullContainerError: image Manifest does not contain descriptor matching platform"
-
-**Implementation**: Use `docker buildx build --platform linux/amd64` for ECS deployments.
-
----
-
-### 2026-01-13: Repair Pipeline as Core Nemesis Feature
-
-**Decision**: Integrate repair pipeline as core Nemesis functionality (STEP 8), not optional/separate.
-
-**Rationale**:
-- User intent: "Nemesis, end to end includes repair" - repair is not separate from detection
-- Provides complete autonomous testing loop: detect → analyze → propose fixes → create PR
-- GitHub issues serve as reporting mechanism for both divergences and proposed fixes
-- Runs automatically when REPAIR_PIPELINE_ENABLED=true and AI provider configured
-
-**Tradeoff**: Requires OpenAI/Anthropic API key and adds ~$33/month in AI costs for daily runs with fix generation. Without AI key, pipeline runs in analysis-only mode.
-
----
-
-### 2026-01-13: Separate Summary Endpoint for Non-Technical Operators
-
-**Context**: Existing scoretrace returns massive JSON with every event, making it difficult for non-technical operators to understand "why this customer matched" or measure trace run effectiveness.
-
-**Decision**: Create dedicated `/api/reports/{sessionId}/summary` endpoint that returns condensed JSON with phase contributions, timings, and plain-English insights.
-
-**Rationale**:
-- Dual audience requirement: developers need full trace, operators need summaries
-- HTML reports are visual but not programmatically accessible for dashboards
-- Summary provides actionable insights without overwhelming detail
-- Enables automated monitoring and compliance dashboards
-
-**Alternatives Considered**:
-1. ❌ Modify HTML report to include summary section - not machine-readable
-2. ❌ Add optional parameter to trace endpoint - would complicate existing response structure
-3. ✅ Separate endpoint - clean separation of concerns, backward compatible
-
-**Impact**: Operators can now integrate trace insights into dashboards and monitoring without parsing full event streams.
-
----
-
-### 2026-01-13: AWS Batch for High-Volume Nightly Processing
-
-**Context**: Braid runs nightly OFAC screens for 250-300k customers using Go Watchman. Process takes 6-8 hours (sequential), sometimes runs into operating hours (past 8am EST), impacting real-time payment operations.
-
-**Decision**: Implement dual-path architecture:
-- **Real-Time Path**: Keep existing ECS Fargate (always-on) for transaction/onboarding screens (<200ms latency)
-- **Batch Path**: New AWS Batch with Fargate Spot for nightly bulk processing (~40 minutes)
-
-**Rationale**:
-- Go implementation processes sequentially (~11 names/sec), causing 6-8 hour runtime
-- Java batch API already exists (/v2/search/batch) with parallel processing
-- AWS Batch scales to 30+ concurrent jobs (126 names/sec = 10x speedup)
-- Fargate Spot reduces cost by 70% ($23/month vs $80/month for on-demand)
-- Minimal Braid code changes: single BatchScreeningClient service
-- Results written to S3 for audit, alerts sent via webhook per-match
-
-**Architecture**:
-- Split 300k names into 30 chunks (10k each)
-- Each AWS Batch job processes 1 chunk using existing /v2/search/batch endpoint
-- Jobs run in parallel, complete in ~40 minutes total
-- Supports both push (Braid calls API) and pull (EventBridge schedule) workflows
-
-**Open Questions** (blocking implementation):
-1. Push vs pull model preference?
-2. Does Braid Alert API webhook already exist?
-3. Input data format (CSV columns, JSON schema)?
-4. Historical retention requirements for S3 results?
-5. Network configuration (same VPC as Braid)?
-
-**Next Steps**: Await answers to open questions, then proceed with TDD phases (RED → GREEN → REFACTOR).
-
----
-
-### 2026-01-13: TraceSummary as Analysis Layer
-
-**Context**: TraceSummaryService and ReportSummary models already existed in codebase for HTML rendering.
-
-**Decision**: Created TraceSummary.java as separate analysis layer that operates on ScoringTrace data, rather than modifying existing TraceSummaryService.
-
-**Rationale**:
-- TraceSummaryService focused on HTML report generation
-- TraceSummary focused on statistical analysis and insight generation
-- Separation of concerns: rendering vs analysis
-- TDD approach: defined behavior through tests first
-
-**Tradeoff**: Two similar-sounding classes exist (TraceSummary vs TraceSummaryService), but they serve distinct purposes and don't duplicate functionality.
-
----
-
-### 2026-01-13: Fixed ScoreBreakdown Method Names
-
-**Context**: Test compilation revealed method name discrepancies in ScoreBreakdown model.
-
-**Decision**: Corrected method names to match actual implementation:
-- `govIdScore()` → `governmentIdScore()`
-- `cryptoScore()` → `cryptoAddressScore()`
-
-**Rationale**: 
-- Maintains consistency with field naming conventions
-- Reflects full terminology (government ID, cryptocurrency address)
-- Prevents future confusion about available methods
-
-**Impact**: Fixed compilation errors in TraceSummary.java and TraceSummaryService.java.
-
----
-
-### 2026-01-13: Documentation Filename Convention
-
-**Context**: Audit revealed 20+ broken inter-document links caused by case mismatch. Some links used uppercase (SCORETRACE.md, NEMESIS.md) while actual files were lowercase (scoretrace.md, nemesis.md).
-
-**Decision**: All documentation files use lowercase filenames with underscores separating words (e.g., `feature_parity_gaps.md`, not `FEATURE_PARITY_GAPS.md` or `FeatureParityGaps.md`).
-
-**Rationale**:
-- Prevents broken links on case-sensitive filesystems (Linux, macOS with case-sensitive APFS)
-- Consistent with Unix/web conventions
-- Easier to type and reference in terminal commands
-- Matches existing file structure in `/docs` directory
-
-**Impact**: Fixed all broken links across README.md and 5 documentation files. All inter-document navigation now works correctly.
-
-**Related Files**: All markdown files in `/docs` and `README.md`
-
----
-
-### 2026-01-13: Rejected A2 PR and Rebuilt SimilarityConfig Integration from Scratch
-
-**Context**: Agent A2 submitted PR `claude/trace-similarity-scoring-Cqcc8` with 36 file changes attempting to fix SimilarityConfig integration, add ScoringConfig, and add runtime config override API.
-
-**Decision**: Rejected PR due to compilation errors and scope creep. Rebuilt Phase 1 (SimilarityConfig integration) from scratch using strict TDD.
-
-**Rationale**: 
-- PR mixed bug fix (SimilarityConfig not integrated) with new features (ScoringConfig, POST /v2/search)
-- Compilation errors in Entity.java and EntityScorerImpl.java
-- Violated "minimal, incremental changes" principle
-- No evidence of TDD workflow (tests not written first)
-
-**Impact**: Phase 1 completed cleanly in 3 files with 47 passing tests. Phase 2 completed 2026-01-17. Phase 3 deferred.
-
----
-
-### 2026-01-13: Application Load Balancer for Stable Endpoint
-
-**Decision**: Deploy Application Load Balancer in front of ECS service instead of using dynamic public IPs.
-
-**Rationale**: 
-- ECS Fargate tasks get new public IPs on every deployment/restart
-- Manual IP tracking is error-prone and breaks automation
-- ALB provides stable DNS endpoint: watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com
-- Additional $18/month cost is acceptable for production stability
-
-**Tradeoff**: Adds $18/month to infrastructure cost, but eliminates operational overhead of IP management.
-
----
-
-### 2026-01-13: Reduce Compute Resources to 1 vCPU / 2GB
-
-**Decision**: Reduce ECS task from 2 vCPU/4GB to 1 vCPU/2GB (task definition revision 9).
-
-**Rationale**:
-- Nemesis testing workload is I/O bound (network calls to APIs), not CPU bound
-- Processes queries serially, not in parallel
-- 50% compute cost reduction: $73/month → $37/month
-- 1 vCPU sufficient for ~4 queries/second throughput
-- 2GB RAM accommodates 18K OFAC entities + 1GB JVM heap
-
-**Tradeoff**: Slightly slower initial OFAC data load (~30-40 seconds vs ~20 seconds), but acceptable for testing use case.
-
----
-
-### 2026-01-13: Build Docker Images for x86_64 Architecture
-
-**Decision**: Docker images must be built for linux/amd64 platform, not ARM64.
-
-**Rationale**:
-- ECS Fargate uses x86_64 (Intel/AMD) architecture by default
-- Building on Apple Silicon (ARM) produces incompatible images
-- Deployment fails with "CannotPullContainerError: image Manifest does not contain descriptor matching platform"
-
-**Implementation**: Use `docker buildx build --platform linux/amd64` for ECS deployments.
-
----
-
-### 2026-01-13: Repair Pipeline as Core Nemesis Feature
-
-**Decision**: Integrate repair pipeline as core Nemesis functionality (STEP 8), not optional/separate.
-
-**Rationale**:
-- User intent: "Nemesis, end to end includes repair" - repair is not separate from detection
-- Provides complete autonomous testing loop: detect → analyze → propose fixes → create PR
-- GitHub issues serve as reporting mechanism for both divergences and proposed fixes
-- Runs automatically when REPAIR_PIPELINE_ENABLED=true and AI provider configured
-
-**Tradeoff**: Requires OpenAI/Anthropic API key and adds ~$33/month in AI costs for daily runs with fix generation. Without AI key, pipeline runs in analysis-only mode.
-
----
-
-### 2026-01-12: Session Workflow Improvement
-
-**Context**: Need better continuity across work sessions to track decisions and context.
-
-**Decision**: Created `context.md` and `decisions.md` in `/docs` to maintain lightweight session recaps and decision log.
-
-**Rationale**:
-- Improves context retention between sessions
-- Documents critical decisions with rationale
-- Keeps files lightweight (50-100 lines) for easy scanning
-
-**Usage**: At end of each session, update context.md with what we decided, what is now true, what is still unknown.
-
----
-
 ### 2026-01-12: Fixed ECS Task Execution IAM Permissions
 
 **Context**: ECS tasks were failing to start with 18 consecutive failures due to inability to retrieve GitHub token from AWS Secrets Manager.
 
 **Decision**: Added inline IAM policy `SecretsManagerAccess` to `ecsTaskExecutionRole` granting `secretsmanager:GetSecretValue` permission for the GitHub token secret.
 
-**Rationale**: 
+**Rationale**:
 - Task definition requires GITHUB_TOKEN secret for application functionality
 - ECS tasks need execution role permissions to retrieve secrets before container starts
 - Scoped permission to specific secret ARN for security
@@ -1143,7 +925,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Context**: Stripping down project for Braid integration focus. Decided general direction excludes AWS Batch. Java superiority established, no longer seeking Go parity.
 
-**Rationale**: 
+**Rationale**:
 - Preserves 6+ months of work locally in case requirements change
 - Removes clutter from active codebase and git repository
 - Can restore specific files if needed without git history archaeology
@@ -1228,12 +1010,12 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Created docs/tuning_guide.md as practical reference for ScoreConfig parameter tuning without requiring fuzzy matching expertise.
 
-**Rationale**: 
+**Rationale**:
 - Existing docs (scoreconfig.md, phase_scoring_mechanics.md) document what parameters exist but not how/when to change them
 - Maintainers need problem→solution mapping ("too many false positives" → "increase min-match to 0.92")
 - 23 total parameters across SimilarityConfig (10) and WeightConfig (13) require decision framework
 
-**Implementation**: 
+**Implementation**:
 - Quick reference table: Problem → Parameter → Expected outcome
 - 6 workflows: Reduce false positives, find missing matches, name-only screening, strict compliance, Admin UI live tuning, validation
 - Common scenarios: Abbreviations, nicknames, typos, common names with concrete examples
@@ -1250,7 +1032,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 
 **Decision**: Modernize Admin UI using pure CSS with CSS variables instead of adopting UI frameworks (Tailwind, Bootstrap, React, Vaadin).
 
-**Rationale**: 
+**Rationale**:
 - Zero build step complexity - admin.html remains a single deployable file
 - No dependency management or version conflicts
 - Easier maintenance for ops/compliance tooling context
@@ -1295,7 +1077,7 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 1. Lower threshold from 0.88 to 0.80 (band-aid, doesn't solve root cause)
 2. Implement phonetic set matching (chosen - addresses root cause)
 
-**Rationale**: 
+**Rationale**:
 - Soundex infrastructure already exists (PhoneticFilter.soundex())
 - Phonetic matching aligns with BSA/AML expectation that spelling variants are equivalent
 - Maintains precision (0.88 threshold) while improving recall for valid name variations
@@ -1467,3 +1249,11 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 **Impact**: Documentation now treats alias expansion as default behavior (git commit: 4151b38). Prevents developer confusion about enabling/configuring feature.
 
 ---
+
+### February 3, 2026: POC Container USER Check Suppression
+
+- Decision: Suppress Semgrep USER check for Dockerfile in `.semgrepignore` to allow root user in container during POC development.
+- Rationale: Expedite proof-of-concept work; non-root enforcement will be restored before production.
+- Impact: Container may run as root during POC. This is a temporary, documented exception.
+- TODO: Remove suppression and enforce non-root USER before production deployment.
+- Reference: [README.md](README.md), [Dockerfile](Dockerfile), [.semgrepignore](.semgrepignore)

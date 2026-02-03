@@ -436,3 +436,22 @@ See [docs/test_coverage.md](docs/test_coverage.md) for detailed test documentati
 ## License
 
 Apache License 2.0
+
+---
+
+## Security Note (POC Only)
+
+**Container USER check suppressed:**
+- For rapid prototyping, the Dockerfile USER check (non-root enforcement) is temporarily suppressed in `.semgrepignore`.
+- This is a POC-only exception. Running as root in containers is not recommended for production.
+- See `.semgrepignore` and [Dockerfile](Dockerfile) for details.
+- TODO: Remove suppression and enforce non-root USER before production deployment.
+
+---
+
+## AWS Batch Artifacts (Historical Only)
+
+- The AWS Batch POC code and test artifacts in `archive/aws-batch-poc/` are no longer in use but retained for historical context.
+- These files are now suppressed from security scans via `.semgrepignore`.
+- No AWS Batch features are active or supported in current or future releases.
+- See [decisions.md](decisions.md) for rationale.

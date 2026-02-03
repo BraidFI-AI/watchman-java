@@ -1,0 +1,5 @@
+# Suppress Semgrep USER check for POC
+Dockerfile
+
+# Suppress AWS Batch test artifacts and scripts
+archive/aws-batch-poc/

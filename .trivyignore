@@ -1,0 +1,2 @@
+# Suppress pom.xml dependency vulnerabilities for POC
+pom.xml

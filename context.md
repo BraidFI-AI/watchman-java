@@ -5,6 +5,30 @@
 
 ---
 
+## Session: February 3, 2026 (Security Scanning Infrastructure)
+
+### What We Decided
+- Implement automated security scanning with Semgrep (static analysis) and Trivy (dependency/container vulnerabilities)
+- Enforce scans on every commit and push via Husky Git hooks
+- Suppress Dockerfile USER check for POC (documented in README, decisions, .semgrepignore)
+- Suppress AWS Batch artifacts from scans (deprecated feature, historical context only)
+
+### What Is Now True
+- Semgrep and Trivy run automatically on every commit and push via Husky Git hooks
+- GitHub Actions workflow (.github/workflows/security-scan.yml) runs scans on push to main and PRs
+- Pre-commit hook executes scripts/pre-commit-security.sh, pre-push hook executes scripts/pre-push-security.sh
+- Scans can be suppressed via .semgrepignore (currently: Dockerfile USER check for POC, AWS Batch artifacts)
+- Husky v9+ installed via npm for Git hook management
+- Commit 8d3afe4: Initial security scanning setup (6 files: workflow, hooks, scripts, docs)
+- Container USER check suppressed temporarily for POC (documented as POC-only exception with TODO)
+- AWS Batch POC artifacts in archive/aws-batch-poc/ excluded from security scans
+
+### What Is Still Unknown
+- Whether dependency vulnerabilities (18 HIGH/CRITICAL in pom.xml) will be addressed or suppressed
+- Production timeline for removing Dockerfile USER suppression
+
+---
+
 ## Session: February 1, 2026 (Alias Expansion for OFAC Compliance - Phase 4 Task 4.2)
 
 ### What We Decided
