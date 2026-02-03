@@ -38,7 +38,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y wget
           wget -qO- https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.2_Linux-64bit.deb | sudo dpkg -i -
       - name: Run Trivy FS scan
-        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --format json --output trivy-report.json .
+        run: trivy fs --scanners secret --scanners secret --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --format json --output trivy-report.json .
       - name: Upload Trivy report
         uses: actions/upload-artifact@v4
         with:
