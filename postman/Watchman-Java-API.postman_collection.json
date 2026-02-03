@@ -773,8 +773,8 @@
       ]
     },
     {
-      "name": "ScoreConfig & WeightConfig",
-      "description": "## ScoreConfig & WeightConfig API\n\nManage scoring configuration at runtime without restarts. Control algorithm-level similarity parameters and business-level weight settings.\n\n### Endpoints\n\n- **GET /api/admin/config** - Get all configuration\n- **PUT /api/admin/config/similarity** - Update similarity parameters\n- **PUT /api/admin/config/weights** - Update weight parameters\n- **POST /api/admin/config/reset** - Reset to defaults\n\n### Configuration Structure\n\n**SimilarityConfig (10 parameters):**\n- Algorithm-level parameters controlling Jaro-Winkler scoring\n- Examples: jaroWinklerBoostThreshold, phoneticFilteringDisabled\n\n**WeightConfig (13 parameters):**\n- Business-level weights and phase toggles\n- Examples: nameWeight, minimumScore, nameComparisonEnabled\n\n### Use Cases\n\n✅ **Score Tuning**: Adjust thresholds based on false positive/negative rates\n✅ **A/B Testing**: Compare different configurations in test environments\n✅ **Phase Control**: Disable specific comparison phases for performance\n✅ **Debugging**: Enable detailed logging to troubleshoot scoring issues\n\n### Best Practices\n\n- Test config changes in non-production environments first\n- Use reset endpoint to return to known-good defaults\n- Changes apply immediately to all new searches (in-memory only)\n- Document configuration changes for audit trails\n\n### Important Notes\n\n⚠️ **In-Memory Only**: Changes persist until service restart\n⚠️ **No Authentication**: This is an MVP feature - add auth for production\n⚠️ **No Persistence**: Changes are not saved to application.yml",
+      "name": "Configuration Management",
+      "description": "## Configuration Management API\n\nUnified API for managing **ScoreConfig** and **Auto-Clearance** features at runtime without restarts.\n\n### Product Features\n\n**ScoreConfig (23 parameters):**\n- **SimilarityConfig** (10 params): Algorithm-level Jaro-Winkler scoring parameters\n- **WeightConfig** (13 params): Business-level weights and phase toggles\n\n**Auto-Clearance (3 parameters):**\n- **Phase 1 Threshold**: Name similarity for detection (default: 0.85)\n- **Address Mismatch Threshold**: Address similarity for auto-clear (default: 0.50)\n- **DOB Difference Threshold**: Years difference for auto-clear (default: 1)\n\n**Total Surface: 26 configurable parameters**\n\n### Endpoints\n\n- **GET /api/admin/config** - Get all configuration (26 parameters)\n- **PUT /api/admin/config/similarity** - Update SimilarityConfig\n- **PUT /api/admin/config/weights** - Update WeightConfig\n- **PUT /api/admin/config/auto-clearance** - Update Auto-Clearance thresholds\n- **POST /api/admin/config/reset** - Reset all to defaults\n\n### Use Cases\n\n✅ **Score Tuning**: Adjust scoring thresholds based on false positive/negative rates\n✅ **Auto-Clearance Optimization**: Fine-tune clearance thresholds to balance automation vs. manual review\n✅ **A/B Testing**: Compare different configurations in test environments\n✅ **Phase Control**: Disable specific comparison phases for performance\n✅ **Debugging**: Enable detailed logging to troubleshoot scoring issues\n\n### Best Practices\n\n- Test config changes in non-production environments first\n- Use reset endpoint to return to known-good defaults\n- Changes apply immediately to all new searches (in-memory only)\n- Document configuration changes for audit trails\n- Monitor auto-clearance rates after threshold adjustments\n\n### Important Notes\n\n⚠️ **In-Memory Only**: Changes persist until service restart\n⚠️ **No Authentication**: This is an MVP feature - add auth for production\n⚠️ **No Persistence**: Changes are not saved to application.yml",
       "item": [
         {
           "name": "Get All Configuration",
@@ -792,14 +792,14 @@
                 "config"
               ]
             },
-            "description": "Get current configuration including all similarity parameters and weight settings. Returns a combined view of both SimilarityConfig (10 parameters) and WeightConfig (13 parameters)."
+            "description": "Get current configuration including all 26 parameters: SimilarityConfig (10), WeightConfig (13), and AutoClearanceConfig (3). Returns unified view of ScoreConfig and Auto-Clearance features."
           },
           "response": [
             {
               "name": "Configuration Response",
               "status": "OK",
               "code": 200,
-              "body": "{\n  \"similarity\": {\n    \"jaroWinklerBoostThreshold\": 0.7,\n    \"jaroWinklerPrefixSize\": 4,\n    \"lengthDifferencePenaltyWeight\": 0.3,\n    \"lengthDifferenceCutoffFactor\": 0.9,\n    \"differentLetterPenaltyWeight\": 0.9,\n    \"exactMatchFavoritism\": 0.0,\n    \"unmatchedIndexTokenWeight\": 0.15,\n    \"phoneticFilteringDisabled\": false,\n    \"keepStopwords\": false,\n    \"logStopwordDebugging\": false\n  },\n  \"weights\": {\n    \"nameWeight\": 35.0,\n    \"addressWeight\": 25.0,\n    \"criticalIdWeight\": 50.0,\n    \"supportingInfoWeight\": 15.0,\n    \"minimumScore\": 0.0,\n    \"exactMatchThreshold\": 0.99,\n    \"nameComparisonEnabled\": true,\n    \"altNameComparisonEnabled\": true,\n    \"addressComparisonEnabled\": true,\n    \"govIdComparisonEnabled\": true,\n    \"cryptoComparisonEnabled\": true,\n    \"contactComparisonEnabled\": true,\n    \"dateComparisonEnabled\": true\n  }\n}"
+              "body": "{\n  \"similarity\": {\n    \"jaroWinklerBoostThreshold\": 0.7,\n    \"jaroWinklerPrefixSize\": 4,\n    \"lengthDifferencePenaltyWeight\": 0.3,\n    \"lengthDifferenceCutoffFactor\": 0.9,\n    \"differentLetterPenaltyWeight\": 0.9,\n    \"exactMatchFavoritism\": 0.0,\n    \"unmatchedIndexTokenWeight\": 0.15,\n    \"phoneticFilteringDisabled\": false,\n    \"keepStopwords\": false,\n    \"logStopwordDebugging\": false\n  },\n  \"weights\": {\n    \"nameWeight\": 35.0,\n    \"addressWeight\": 25.0,\n    \"criticalIdWeight\": 50.0,\n    \"supportingInfoWeight\": 15.0,\n    \"minimumScore\": 0.0,\n    \"exactMatchThreshold\": 0.99,\n    \"nameComparisonEnabled\": true,\n    \"altNameComparisonEnabled\": true,\n    \"addressComparisonEnabled\": true,\n    \"govIdComparisonEnabled\": true,\n    \"cryptoComparisonEnabled\": true,\n    \"contactComparisonEnabled\": true,\n    \"dateComparisonEnabled\": true\n  },\n  \"autoClearance\": {\n    \"phase1Threshold\": 0.85,\n    \"addressMismatchThreshold\": 0.50,\n    \"dobDifferenceThresholdYears\": 1\n  }\n}"
             }
           ]
         },
@@ -890,6 +890,55 @@
           ]
         },
         {
+          "name": "Update Auto-Clearance Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phase1Threshold\": 0.85,\n  \"addressMismatchThreshold\": 0.50,\n  \"dobDifferenceThresholdYears\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/config/auto-clearance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "config",
+                "auto-clearance"
+              ]
+            },
+            "description": "Update Auto-Clearance feature thresholds. All 3 fields are required. Changes apply immediately to the singleton AutoClearanceConfig bean.\n\n**Parameters:**\n\n**phase1Threshold (0-1):**\n- Name similarity threshold for Phase 1 detection\n- Default: 0.85 (85%)\n- Higher = fewer matches, Lower = more matches\n- Validation: Must be 0-1\n\n**addressMismatchThreshold (0-1):**\n- Address similarity below this = auto-clear\n- Default: 0.50 (50%)\n- Lower = more auto-clears, Higher = more manual reviews\n- Validation: Must be 0-1\n\n**dobDifferenceThresholdYears (int):**\n- DOB difference above this (in years) = auto-clear\n- Default: 1 year\n- Lower = stricter (fewer auto-clears), Higher = lenient (more auto-clears)\n- Validation: Must be >= 0\n\n**Use Cases:**\n- Tune auto-clearance aggressiveness based on false positive rates\n- Adjust Phase 1 sensitivity to balance detection vs. performance\n- Optimize address/DOB thresholds for specific customer demographics"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Auto-clearance configuration updated successfully\"\n}"
+            },
+            {
+              "name": "Validation Error - Phase1 Threshold",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"timestamp\": \"2026-02-02T10:00:00.000+00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Invalid configuration: phase1Threshold must be 0-1\",\n  \"path\": \"/api/admin/config/auto-clearance\"\n}"
+            },
+            {
+              "name": "Validation Error - DOB Threshold",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"timestamp\": \"2026-02-02T10:00:00.000+00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Invalid configuration: dobDifferenceThresholdYears must be >= 0\",\n  \"path\": \"/api/admin/config/auto-clearance\"\n}"
+            }
+          ]
+        },
+        {
           "name": "Reset to Defaults",
           "request": {
             "method": "POST",
@@ -906,7 +955,7 @@
                 "reset"
               ]
             },
-            "description": "Reset all configuration to application.yml defaults. Reloads both SimilarityConfig and WeightConfig from the original Spring Boot configuration.\n\n**Use this when:**\n- Testing config changes went wrong\n- Need to return to known-good baseline\n- Starting fresh tuning session\n- Troubleshooting unexpected behavior"
+            "description": "Reset all configuration to application.yml defaults. Reloads SimilarityConfig, WeightConfig, and AutoClearanceConfig from the original Spring Boot configuration.\n\n**Use this when:**\n- Testing config changes went wrong\n- Need to return to known-good baseline\n- Starting fresh tuning session\n- Troubleshooting unexpected behavior\n- Auto-clearance thresholds need reset"
           },
           "response": [
             {

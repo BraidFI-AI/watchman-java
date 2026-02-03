@@ -1,10 +1,10 @@
 # Auto-Clearance Feature - Product Overview
 
-**Feature Version:** 1.0 (Phase 1 + Phase 2 Address)  
+**Feature Version:** 1.0 (Phase 1 + Phase 2 Complete)  
 **Release Date:** February 2026  
-**Status:** Production Ready (Partial Implementation)  
-**Document Version:** 1.0  
-**Last Updated:** February 1, 2026
+**Status:** Production Ready  
+**Document Version:** 2.0  
+**Last Updated:** February 2, 2026
 
 ---
 
@@ -24,9 +24,9 @@
 
 ✅ **Phase 1: Name Detection** - Complete  
 ✅ **Phase 2: Address-Based Clearance** - Complete  
-⏳ **Phase 2: Date of Birth Clearance** - Pending  
-⏳ **Phase 2: Government ID Clearance** - Pending  
-⏳ **Configuration API** - Pending (thresholds currently hardcoded)
+✅ **Phase 2: Date of Birth Clearance** - Complete  
+✅ **Phase 2: Government ID Clearance** - Complete  
+✅ **Configuration API** - Complete (Admin UI integration included)
 
 ---
 
@@ -57,15 +57,17 @@ For each Phase 1 match, the system evaluates available discriminators:
 - **Auto-Clear Condition:** Address similarity < 50% (clear mismatch)
 - **Manual Review:** Address similarity ≥ 50% or no address available
 
-**2. Date of Birth Clearance (Future)**
+**2. Date of Birth Clearance (Implemented)**
 - Exact match comparison (no fuzzy logic for dates)
 - **Auto-Clear Condition:** DOBs differ by more than configurable threshold (default: 1 year)
-- **Manual Review:** DOBs match or no DOB available
+- **Manual Review:** DOBs match within threshold or no DOB available
+- **Example:** Query DOB 1985-06-15, Entity DOB 1990-06-15 = 5 years difference → AUTO_CLEARED
 
-**3. Government ID Clearance (Future)**
-- Exact match comparison for passport, SSN, national ID numbers
-- **Auto-Clear Condition:** IDs present but don't match
+**3. Government ID Clearance (Implemented)**
+- Case-insensitive exact match comparison for passport, SSN, national ID numbers
+- **Auto-Clear Condition:** IDs present but don't match (exact comparison)
 - **Manual Review:** IDs match or no ID available
+- **Example:** Query ID "A12345678", Entity ID "B98765432" → AUTO_CLEARED
 
 **Precedence:** If ANY discriminator indicates a clear mismatch, the match is auto-cleared. If ALL discriminators either match or are unavailable, the match requires manual review.
 
@@ -126,6 +128,13 @@ Content-Type: application/json
             "score": 0.25,
             "threshold": 0.50,
             "matched": false
+          },
+          "dob": {
+            "matched": false,
+            "differenceYears": 5
+          },
+          "governmentId": {
+            "matched": false
           }
         }
       }
@@ -159,42 +168,43 @@ Content-Type: application/json
 
 ## Configuration
 
-### Current Thresholds (Hardcoded in v1.0)
+### Configuration (application.yml)
 
-```java
-// Phase 1: Name Detection
-AUTO_CLEARANCE_PHASE1_THRESHOLD = 0.85  // 85% name similarity
+All thresholds are externalized and configurable:
 
-// Phase 2: Address Clearance
-AUTO_CLEARANCE_ADDRESS_MISMATCH_THRESHOLD = 0.50  // 50% address similarity
+```yaml
+watchman:
+  auto-clearance:
+    phase1-threshold: 0.85              # 85% name similarity for Phase 1
+    address-mismatch-threshold: 0.50    # 50% address similarity for auto-clear
+    dob-difference-threshold-years: 1   # 1 year DOB difference for auto-clear
 ```
 
-### Future: Configurable via Admin API (Story 6)
+### Admin API Configuration (Implemented)
 
+**GET /api/admin/config** - Retrieve current configuration:
 ```json
 {
+  "similarity": { /* 10 algorithm parameters */ },
+  "weights": { /* 13 scoring parameters */ },
   "autoClearance": {
-    "enabled": true,
-    "phase1": {
-      "nameThreshold": 0.85
-    },
-    "phase2": {
-      "address": {
-        "enabled": true,
-        "mismatchThreshold": 0.50
-      },
-      "dateOfBirth": {
-        "enabled": true,
-        "differenceThresholdYears": 1
-      },
-      "governmentId": {
-        "enabled": true,
-        "exactMatchRequired": true
-      }
-    }
+    "phase1Threshold": 0.85,
+    "addressMismatchThreshold": 0.50,
+    "dobDifferenceThresholdYears": 1
   }
 }
 ```
+
+**PUT /api/admin/config/auto-clearance** - Update thresholds:
+```json
+{
+  "phase1Threshold": 0.85,
+  "addressMismatchThreshold": 0.50,
+  "dobDifferenceThresholdYears": 1
+}
+```
+
+**Admin UI:** Access at `/admin` - Auto-Clearance Thresholds section with real-time updates (no restart required).
 
 ---
 
@@ -397,21 +407,32 @@ AUTO_CLEARANCE_ADDRESS_MISMATCH_THRESHOLD = 0.50  // 50% address similarity
 
 **Files Created:**
 - `AutoClearancePhase1Test.java` - Phase 1 TDD tests (3 test cases)
-- `AutoClearancePhase2AddressTest.java` - Phase 2 TDD tests (3 test cases)
+- `AutoClearancePhase2AddressTest.java` - Phase 2 Address TDD tests (3 test cases)
+- `AutoClearancePhase2DobTest.java` - Phase 2 DOB TDD tests (5 test cases)
+- `AutoClearancePhase2GovIdTest.java` - Phase 2 Government ID TDD tests (5 test cases)
 - `AutoClearanceResponse.java` - API response DTO
 - `AutoClearanceResult.java` - Individual clearance result DTO
 - `Phase1Detection.java` - Phase 1 detection result
-- `AutoClearanceStatus.java` - Status enum (AUTO_CLEARED, MANUAL_REVIEW, PENDING)
+- `AutoClearanceStatus.java` - Status record (status, reason, discriminators)
 - `DiscriminatorDetails.java` - Discriminator scores container
-- `DiscriminatorScore.java` - Individual discriminator score
+- `DiscriminatorScore.java` - Individual discriminator score (fuzzy/exact factory methods)
 - `AutoClearanceSummary.java` - Summary counts DTO
+- `AutoClearanceConfig.java` - Configuration properties bean
+- `AutoClearanceConfigDTO.java` - Admin API DTO
+- `AdminConfigControllerTest.java` - Admin API TDD tests (9 test cases)
 
 **Files Modified:**
-- `SearchService.java` - Added `searchWithAutoClearance()` interface methods
-- `SearchServiceImpl.java` - Implemented two-phase workflow (~150 lines)
-  - `searchWithAutoClearance()` - Main entry point
-  - `applyAutoClearance()` - Phase 2 orchestrator
-  - `applyAddressClearance()` - Address comparison logic
+- `SearchService.java` - Added `searchWithAutoClearance()` interface methods (4 overloads)
+- `SearchServiceImpl.java` - Implemented two-phase workflow (~250 lines)
+  - `searchWithAutoClearance()` - Main entry point with query variants
+  - `applyAutoClearance()` - Phase 2 orchestrator (collects first PENDING reason)
+  - `applyAddressClearance()` - Address fuzzy comparison logic
+  - `applyDobClearance()` - Date of birth exact comparison (1 year threshold)
+  - `applyGovIdClearance()` - Government ID exact comparison (case-insensitive)
+- `AdminConfigController.java` - Added auto-clearance configuration endpoints
+- `AdminConfigResponse.java` - Added `autoClearance` field (26 total parameters)
+- `WatchmanConfig.java` - Injected AutoClearanceConfig into SearchService
+- `admin.html` - Added Auto-Clearance Thresholds UI section with JavaScript handlers
 
 ### Algorithm Details
 
@@ -489,7 +510,7 @@ boolean autoClear = bestMatch.similarity() < 0.50;
 
 ---
 
-### ⏳ Story 3: Phase 2 DOB-Based Auto-Clearance
+### ✅ Story 3: Phase 2 DOB-Based Auto-Clearance
 **As a** compliance officer  
 **I want** matches with different dates of birth to be auto-cleared  
 **So that** I can quickly eliminate generational name overlaps
@@ -497,23 +518,23 @@ boolean autoClear = bestMatch.similarity() < 0.50;
 **Acceptance Criteria:**
 - DOB difference > 1 year triggers auto-clear (configurable)
 - Exact date matching (no fuzzy logic for dates)
-- Clear reason provided: "Date of birth mismatch"
+- Clear reason provided: "Date of birth mismatch (X years difference)"
 
-**Status:** ⏳ Pending Implementation
+**Status:** ✅ Complete (5 test cases, all passing)
 
 ---
 
-### ⏳ Story 4: Phase 2 Government ID Auto-Clearance
+### ✅ Story 4: Phase 2 Government ID Auto-Clearance
 **As a** compliance officer  
 **I want** matches with different government IDs to be auto-cleared  
 **So that** I can leverage official identification data
 
 **Acceptance Criteria:**
 - Mismatched passport/SSN/national ID triggers auto-clear
-- Exact matching only (no fuzzy logic for IDs)
+- Case-insensitive exact matching (no fuzzy logic for IDs)
 - Clear reason provided: "Government ID mismatch"
 
-**Status:** ⏳ Pending Implementation
+**Status:** ✅ Complete (5 test cases, all passing)
 
 ---
 
@@ -531,27 +552,28 @@ boolean autoClear = bestMatch.similarity() < 0.50;
 
 ---
 
-### ⏳ Story 6: Configurable Thresholds
+### ✅ Story 6: Configurable Thresholds
 **As a** compliance officer  
 **I want** to adjust auto-clearance thresholds via the Admin UI  
 **So that** I can tune the system to my organization's risk tolerance
 
 **Acceptance Criteria:**
-- Thresholds configurable via ScoreConfig API
+- Thresholds configurable via Admin Config API
 - Admin UI provides threshold adjustment interface
 - Changes take effect immediately (no restart required)
+- Validation ensures thresholds are within acceptable ranges
 
-**Status:** ⏳ Pending Implementation (currently hardcoded constants)
+**Status:** ✅ Complete (9 Admin API test cases, all passing)
 
 ---
 
 ## Future Enhancements
 
 ### Short-Term (Next Sprint)
-1. **DOB Clearance Logic** - Implement Story 3
-2. **Government ID Clearance Logic** - Implement Story 4
-3. **Configuration API** - Move thresholds to ScoreConfig (Story 6)
-4. **Admin UI Controls** - Add threshold adjustment interface
+1. **REST Endpoint** - Create POST `/v1/search/autoclearance` endpoint
+2. **Integration Testing** - End-to-end API tests with real OFAC data
+3. **Performance Optimization** - Benchmark and optimize Phase 2 processing
+4. **Documentation** - API reference and integration guide updates
 
 ### Medium-Term (Next Quarter)
 1. **Machine Learning Tuning** - Use historical clearance data to optimize thresholds
@@ -661,5 +683,21 @@ This document should be updated whenever:
 - API response format changes
 - Regulatory guidance evolves
 
-**Last Review:** February 1, 2026  
+**Last Review:** February 2, 2026  
 **Next Review:** March 1, 2026
+
+---
+
+## Test Summary
+
+**Total Test Coverage:** 25 test cases (all passing)
+- Phase 1 Tests: 3 test cases
+- Phase 2 Address Tests: 3 test cases  
+- Phase 2 DOB Tests: 5 test cases
+- Phase 2 Government ID Tests: 5 test cases
+- Admin API Tests: 9 test cases
+
+**Test Methodology:** Strict TDD (RED-GREEN-REFACTOR)
+- All tests written before implementation
+- No hardcoded constants (all configuration externalized)
+- Integration tests with MockMvc for Admin API

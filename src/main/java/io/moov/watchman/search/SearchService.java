@@ -49,4 +49,24 @@ public interface SearchService {
      * @return Weighted similarity score
      */
     double scoreEntity(String query, Entity entity);
+
+    /**
+     * Search with auto-clearance (Phase 1: Name-only detection).
+     * 
+     * @param queryName Name to search for
+     * @return Auto-clearance response with phase1 detection results
+     */
+    AutoClearanceResponse searchWithAutoClearance(String queryName);
+
+    /**
+     * Search with auto-clearance including discriminators for Phase 2.
+     * 
+     * @param queryName Name to search for
+     * @param queryAddress Address for clearance (optional)
+     * @param queryDob Date of birth for clearance (optional)
+     * @param queryGovId Government ID for clearance (optional)
+     * @return Auto-clearance response with phase1 and phase2 results
+     */
+    AutoClearanceResponse searchWithAutoClearance(String queryName, String queryAddress, 
+                                                   java.time.LocalDate queryDob, String queryGovId);
 }

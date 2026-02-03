@@ -64,7 +64,7 @@ public class WatchmanConfig {
     }
 
     @Bean
-    public SearchService searchService(EntityIndex entityIndex, EntityScorer entityScorer) {
-        return new SearchServiceImpl(entityIndex, entityScorer);
+    public SearchService searchService(EntityIndex entityIndex, EntityScorer entityScorer, AutoClearanceConfig autoClearanceConfig) {
+        return new SearchServiceImpl(entityIndex, entityScorer, autoClearanceConfig);
     }
 }

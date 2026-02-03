@@ -1,5 +1,6 @@
 package io.moov.watchman.api;
 
+import io.moov.watchman.config.AutoClearanceConfig;
 import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.config.WeightConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * RED Phase: Tests for Admin Config REST API.
  * 
  * These tests define the desired behavior for viewing and editing
- * ScoreConfig (SimilarityConfig + WeightConfig) via REST API.
+ * ScoreConfig (SimilarityConfig + WeightConfig + AutoClearanceConfig) via REST API.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,6 +35,9 @@ class AdminConfigControllerTest {
 
     @Autowired
     private WeightConfig weightConfig;
+
+    @Autowired
+    private AutoClearanceConfig autoClearanceConfig;
 
     @BeforeEach
     void resetConfig() {
@@ -62,6 +66,10 @@ class AdminConfigControllerTest {
         weightConfig.setCryptoComparisonEnabled(true);
         weightConfig.setContactComparisonEnabled(true);
         weightConfig.setDateComparisonEnabled(true);
+
+        autoClearanceConfig.setPhase1Threshold(0.85);
+        autoClearanceConfig.setAddressMismatchThreshold(0.50);
+        autoClearanceConfig.setDobDifferenceThresholdYears(1);
     }
 
     // ==================== GET /api/admin/config ====================
@@ -74,15 +82,18 @@ class AdminConfigControllerTest {
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.similarity").exists())
             .andExpect(jsonPath("$.weights").exists())
+            .andExpect(jsonPath("$.autoClearance").exists())
             .andExpect(jsonPath("$.similarity.jaroWinklerBoostThreshold").value(0.7))
             .andExpect(jsonPath("$.similarity.jaroWinklerPrefixSize").value(4))
             .andExpect(jsonPath("$.weights.nameWeight").value(35.0))
-            .andExpect(jsonPath("$.weights.addressWeight").value(25.0));
+            .andExpect(jsonPath("$.weights.addressWeight").value(25.0))
+            .andExpect(jsonPath("$.autoClearance.phase1Threshold").value(0.85))
+            .andExpect(jsonPath("$.autoClearance.addressMismatchThreshold").value(0.50));
     }
 
     @Test
-    @DisplayName("GET /api/admin/config should include all 23 parameters")
-    void shouldReturnAll23Parameters() throws Exception {
+    @DisplayName("GET /api/admin/config should include all 26 parameters")
+    void shouldReturnAll26Parameters() throws Exception {
         mockMvc.perform(get("/api/admin/config"))
             .andExpect(status().isOk())
             // SimilarityConfig - 10 parameters
@@ -109,7 +120,11 @@ class AdminConfigControllerTest {
             .andExpect(jsonPath("$.weights.govIdComparisonEnabled").exists())
             .andExpect(jsonPath("$.weights.cryptoComparisonEnabled").exists())
             .andExpect(jsonPath("$.weights.contactComparisonEnabled").exists())
-            .andExpect(jsonPath("$.weights.dateComparisonEnabled").exists());
+            .andExpect(jsonPath("$.weights.dateComparisonEnabled").exists())
+            // AutoClearanceConfig - 3 parameters
+            .andExpect(jsonPath("$.autoClearance.phase1Threshold").exists())
+            .andExpect(jsonPath("$.autoClearance.addressMismatchThreshold").exists())
+            .andExpect(jsonPath("$.autoClearance.dobDifferenceThresholdYears").exists());
     }
 
     // ==================== PUT /api/admin/config/similarity ====================
@@ -230,6 +245,52 @@ class AdminConfigControllerTest {
         mockMvc.perform(get("/api/admin/config"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.similarity.jaroWinklerBoostThreshold").value(0.7))
-            .andExpect(jsonPath("$.weights.nameWeight").value(35.0));
+            .andExpect(jsonPath("$.weights.nameWeight").value(35.0))
+            .andExpect(jsonPath("$.autoClearance.phase1Threshold").value(0.85));
+    }
+
+    // ==================== PUT /api/admin/config/auto-clearance ====================
+
+    @Test
+    @DisplayName("PUT /api/admin/config/auto-clearance should update auto-clearance config")
+    void shouldUpdateAutoClearanceConfig() throws Exception {
+        String updatedConfig = """
+            {
+                "phase1Threshold": 0.90,
+                "addressMismatchThreshold": 0.40,
+                "dobDifferenceThresholdYears": 2
+            }
+            """;
+
+        mockMvc.perform(put("/api/admin/config/auto-clearance")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedConfig))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("Auto-clearance configuration updated successfully"));
+
+        // Verify the changes persisted
+        mockMvc.perform(get("/api/admin/config"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.autoClearance.phase1Threshold").value(0.90))
+            .andExpect(jsonPath("$.autoClearance.addressMismatchThreshold").value(0.40))
+            .andExpect(jsonPath("$.autoClearance.dobDifferenceThresholdYears").value(2));
+    }
+
+    @Test
+    @DisplayName("PUT /api/admin/config/auto-clearance should reject invalid threshold values")
+    void shouldRejectInvalidAutoClearanceConfig() throws Exception {
+        String invalidConfig = """
+            {
+                "phase1Threshold": 1.5,
+                "addressMismatchThreshold": -0.1
+            }
+            """;
+
+        mockMvc.perform(put("/api/admin/config/auto-clearance")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidConfig))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value(containsString("Invalid configuration")));
     }
 }

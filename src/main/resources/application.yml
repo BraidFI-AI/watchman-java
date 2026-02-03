@@ -51,6 +51,10 @@ watchman:
     crypto-comparison-enabled: true
     contact-comparison-enabled: true
     date-comparison-enabled: true
+  auto-clearance:
+    phase1-threshold: 0.85
+    address-mismatch-threshold: 0.50
+    dob-difference-threshold-years: 1
   bulk:
     input-bucket: ${WATCHMAN_BULK_INPUT_BUCKET:watchman-input}
     results-bucket: ${WATCHMAN_BULK_RESULTS_BUCKET:watchman-results}

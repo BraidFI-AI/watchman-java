@@ -17,15 +17,21 @@ import java.util.stream.Stream;
  * 
  * Phase 4 Implementation: Expands aliases to match OFAC.gov presentation.
  * One entity with N aliases returns N+1 results (primary + each alias).
+ * 
+ * Auto-Clearance Implementation: Two-phase screening workflow.
+ * - Phase 1: Name-only detection (threshold: 85%)
+ * - Phase 2: Auto-clearance using discriminators (TBD)
  */
 public class SearchServiceImpl implements SearchService {
 
     private final EntityIndex entityIndex;
     private final EntityScorer entityScorer;
+    private final io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig;
 
-    public SearchServiceImpl(EntityIndex entityIndex, EntityScorer entityScorer) {
+    public SearchServiceImpl(EntityIndex entityIndex, EntityScorer entityScorer, io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig) {
         this.entityIndex = entityIndex;
         this.entityScorer = entityScorer;
+        this.autoClearanceConfig = autoClearanceConfig;
     }
 
     @Override
@@ -98,5 +104,299 @@ public class SearchServiceImpl implements SearchService {
             return 0.0;
         }
         return entityScorer.score(query, entity);
+    }
+
+    @Override
+    public AutoClearanceResponse searchWithAutoClearance(String queryName) {
+        return searchWithAutoClearance(queryName, null, null, null);
+    }
+
+    /**
+     * Search with auto-clearance: two-phase workflow.
+     * 
+     * Phase 1: Name-only detection
+     * - Scores all entities using name similarity only
+     * - Includes matches with nameScore >= 85%
+     * - Ignores address/DOB/ID in Phase 1
+     * 
+     * Phase 2: Auto-clearance (not yet implemented)
+     * - Will use discriminators (address/DOB/ID) to auto-clear false positives
+     * 
+     * @param queryName Name to search for (required)
+     * @param queryAddress Address for Phase 2 clearance (optional, not yet used)
+     * @param queryDob Date of birth for Phase 2 clearance (optional, not yet used)
+     * @param queryGovId Government ID for Phase 2 clearance (optional, not yet used)
+     * @return Auto-clearance response with phase1 results and summary
+     */
+    @Override
+    public AutoClearanceResponse searchWithAutoClearance(String queryName, String queryAddress,
+                                                         java.time.LocalDate queryDob, String queryGovId) {
+        List<AutoClearanceResult> results = entityIndex.getAll().stream()
+            .map(entity -> {
+                // Phase 1: Score using name only
+                double nameScore = entityScorer.score(queryName, entity);
+                
+                // Filter: Only include if nameScore >= threshold
+                if (nameScore < autoClearanceConfig.getPhase1Threshold()) {
+                    return null;
+                }
+                
+                // Create Phase 1 detection result
+                Phase1Detection phase1 = new Phase1Detection(nameScore, "NAME_MATCH");
+                
+                // Phase 2: Auto-clearance using discriminators
+                AutoClearanceStatus autoClearance = applyAutoClearance(
+                    entity, queryAddress, queryDob, queryGovId
+                );
+                
+                // Final status based on Phase 2 result
+                String finalStatus = (autoClearance != null && "AUTO_CLEARED".equals(autoClearance.getStatus()))
+                    ? "AUTO_CLEARED"
+                    : "REQUIRES_MANUAL_REVIEW";
+                
+                return new AutoClearanceResult(
+                    entity.id(),
+                    entity.name(),
+                    null, // matchedAlias: TODO integrate with alias expansion
+                    phase1,
+                    autoClearance,
+                    finalStatus
+                );
+            })
+            .filter(result -> result != null)
+            .toList();
+        
+        // Calculate summary counts
+        long autoClearedCount = results.stream()
+            .filter(r -> "AUTO_CLEARED".equals(r.getFinalStatus()))
+            .count();
+        
+        AutoClearanceSummary summary = new AutoClearanceSummary(
+            results.size(),  // phase1Matches
+            (int) autoClearedCount,
+            (int) (results.size() - autoClearedCount)  // manualReviewRequired
+        );
+        
+        return new AutoClearanceResponse(results, summary);
+    }
+
+    private AutoClearanceStatus applyAutoClearance(io.moov.watchman.model.Entity entity,
+                                                    String queryAddress,
+                                                    java.time.LocalDate queryDob,
+                                                    String queryGovId) {
+        AutoClearanceStatus firstPendingResult = null;
+        
+        // Try address clearance first
+        if (queryAddress != null && !queryAddress.isBlank()) {
+            AutoClearanceStatus addressResult = applyAddressClearance(entity, queryAddress);
+            if ("AUTO_CLEARED".equals(addressResult.getStatus())) {
+                return addressResult;
+            }
+            if (firstPendingResult == null && "PENDING".equals(addressResult.getStatus())) {
+                firstPendingResult = addressResult;
+            }
+        }
+        
+        // Try DOB clearance
+        if (queryDob != null) {
+            AutoClearanceStatus dobResult = applyDobClearance(entity, queryDob);
+            if ("AUTO_CLEARED".equals(dobResult.getStatus())) {
+                return dobResult;
+            }
+            if (firstPendingResult == null && "PENDING".equals(dobResult.getStatus())) {
+                firstPendingResult = dobResult;
+            }
+        }
+        
+        // Try Government ID clearance
+        if (queryGovId != null && !queryGovId.isBlank()) {
+            AutoClearanceStatus govIdResult = applyGovIdClearance(entity, queryGovId);
+            if ("AUTO_CLEARED".equals(govIdResult.getStatus())) {
+                return govIdResult;
+            }
+            if (firstPendingResult == null && "PENDING".equals(govIdResult.getStatus())) {
+                firstPendingResult = govIdResult;
+            }
+        }
+        
+        // If we have a pending result from one of the discriminators, return it
+        if (firstPendingResult != null) {
+            return firstPendingResult;
+        }
+        
+        return new AutoClearanceStatus(
+            "PENDING",
+            "No discriminating data available",
+            new DiscriminatorDetails(null, null, null)
+        );
+    }
+
+    private AutoClearanceStatus applyAddressClearance(io.moov.watchman.model.Entity entity,
+                                                      String queryAddress) {
+        if (entity.addresses() == null || entity.addresses().isEmpty()) {
+            return new AutoClearanceStatus(
+                "PENDING",
+                "No entity address available for comparison",
+                new DiscriminatorDetails(null, null, null)
+            );
+        }
+        
+        // Parse query address string into Address object (simple parsing)
+        // Format expected: "123 Street, City, State ZIP" or similar
+        String[] parts = queryAddress.split(",");
+        io.moov.watchman.model.Address queryAddr;
+        if (parts.length >= 2) {
+            String line1 = parts[0].trim();
+            String city = parts.length > 1 ? parts[1].trim() : "";
+            String stateZip = parts.length > 2 ? parts[2].trim() : "";
+            String[] stateZipParts = stateZip.split("\\s+");
+            String state = stateZipParts.length > 0 ? stateZipParts[0] : "";
+            String zip = stateZipParts.length > 1 ? stateZipParts[1] : "";
+            queryAddr = new io.moov.watchman.model.Address(line1, null, city, state, zip, "US");
+        } else {
+            // Simple fallback: treat whole string as line1
+            queryAddr = io.moov.watchman.model.Address.of(queryAddress, "", "US");
+        }
+        
+        // Normalize addresses
+        io.moov.watchman.model.PreparedAddress preparedQueryAddr = 
+            io.moov.watchman.scorer.AddressNormalizer.normalizeAddress(queryAddr);
+        
+        java.util.List<io.moov.watchman.model.PreparedAddress> preparedEntityAddrs = entity.addresses().stream()
+            .map(addr -> io.moov.watchman.scorer.AddressNormalizer.normalizeAddress(addr))
+            .toList();
+        
+        double addressScore = io.moov.watchman.scorer.AddressComparer.findBestAddressMatch(
+            java.util.List.of(preparedQueryAddr),
+            preparedEntityAddrs
+        );
+        
+        DiscriminatorScore addressDiscriminator = DiscriminatorScore.fuzzy(
+            addressScore,
+            autoClearanceConfig.getAddressMismatchThreshold()
+        );
+        
+        DiscriminatorDetails discriminators = new DiscriminatorDetails(
+            addressDiscriminator,
+            null,
+            null
+        );
+        
+        if (addressScore < autoClearanceConfig.getAddressMismatchThreshold()) {
+            return new AutoClearanceStatus(
+                "AUTO_CLEARED",
+                String.format("Address mismatch (score: %.0f%%)", addressScore * 100),
+                discriminators
+            );
+        } else {
+            return new AutoClearanceStatus(
+                "PENDING",
+                String.format("Address similar (score: %.0f%%), requires manual review", addressScore * 100),
+                discriminators
+            );
+        }
+    }
+
+    private AutoClearanceStatus applyDobClearance(io.moov.watchman.model.Entity entity,
+                                                   java.time.LocalDate queryDob) {
+        // Check if entity has person data with DOB
+        if (entity.person() == null || entity.person().birthDate() == null) {
+            return new AutoClearanceStatus(
+                "PENDING",
+                "No entity date of birth available for comparison",
+                new DiscriminatorDetails(null, null, null)
+            );
+        }
+        
+        java.time.LocalDate entityDob = entity.person().birthDate();
+        
+        // Calculate absolute difference in years
+        long yearsDifference = Math.abs(java.time.temporal.ChronoUnit.YEARS.between(queryDob, entityDob));
+        
+        // Create discriminator with exact match logic
+        boolean dobMatched = yearsDifference <= autoClearanceConfig.getDobDifferenceThresholdYears();
+        DiscriminatorScore dobDiscriminator = DiscriminatorScore.exact(dobMatched);
+        
+        DiscriminatorDetails discriminators = new DiscriminatorDetails(
+            null,
+            dobDiscriminator,
+            null
+        );
+        
+        if (!dobMatched) {
+            return new AutoClearanceStatus(
+                "AUTO_CLEARED",
+                String.format("Date of birth mismatch (%d years difference)", yearsDifference),
+                discriminators
+            );
+        } else {
+            return new AutoClearanceStatus(
+                "PENDING",
+                String.format("Date of birth similar (%d years difference), requires manual review", yearsDifference),
+                discriminators
+            );
+        }
+    }
+
+    private AutoClearanceStatus applyGovIdClearance(io.moov.watchman.model.Entity entity,
+                                                     String queryGovId) {
+        // Collect government IDs from entity (check multiple sources)
+        java.util.List<io.moov.watchman.model.GovernmentId> entityGovIds = new java.util.ArrayList<>();
+        
+        // From entity-level governmentIds field
+        if (entity.governmentIds() != null && !entity.governmentIds().isEmpty()) {
+            entityGovIds.addAll(entity.governmentIds());
+        }
+        
+        // From person.governmentIds (if person entity)
+        if (entity.person() != null && entity.person().governmentIds() != null) {
+            entityGovIds.addAll(entity.person().governmentIds());
+        }
+        
+        // From business.governmentIds (if business entity)
+        if (entity.business() != null && entity.business().governmentIds() != null) {
+            entityGovIds.addAll(entity.business().governmentIds());
+        }
+        
+        // From organization.governmentIds (if organization entity)
+        if (entity.organization() != null && entity.organization().governmentIds() != null) {
+            entityGovIds.addAll(entity.organization().governmentIds());
+        }
+        
+        if (entityGovIds.isEmpty()) {
+            return new AutoClearanceStatus(
+                "PENDING",
+                "No entity government ID available for comparison",
+                new DiscriminatorDetails(null, null, null)
+            );
+        }
+        
+        // Check if query government ID matches any entity government ID (case-insensitive)
+        String normalizedQueryId = queryGovId.trim().toLowerCase();
+        boolean matched = entityGovIds.stream()
+            .anyMatch(govId -> govId.identifier() != null && 
+                              govId.identifier().trim().toLowerCase().equals(normalizedQueryId));
+        
+        DiscriminatorScore govIdDiscriminator = DiscriminatorScore.exact(matched);
+        
+        DiscriminatorDetails discriminators = new DiscriminatorDetails(
+            null,
+            null,
+            govIdDiscriminator
+        );
+        
+        if (!matched) {
+            return new AutoClearanceStatus(
+                "AUTO_CLEARED",
+                "Government ID mismatch",
+                discriminators
+            );
+        } else {
+            return new AutoClearanceStatus(
+                "PENDING",
+                "Government ID matches, requires manual review",
+                discriminators
+            );
+        }
     }
 }

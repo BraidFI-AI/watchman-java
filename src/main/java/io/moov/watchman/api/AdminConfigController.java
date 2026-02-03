@@ -2,8 +2,10 @@ package io.moov.watchman.api;
 
 import io.moov.watchman.api.dto.AdminConfigResponse;
 import io.moov.watchman.api.dto.AdminMessageResponse;
+import io.moov.watchman.api.dto.AutoClearanceConfigDTO;
 import io.moov.watchman.api.dto.SimilarityConfigDTO;
 import io.moov.watchman.api.dto.WeightConfigDTO;
+import io.moov.watchman.config.AutoClearanceConfig;
 import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.config.WeightConfig;
 import org.slf4j.Logger;
@@ -29,24 +31,26 @@ public class AdminConfigController {
 
     private final SimilarityConfig similarityConfig;
     private final WeightConfig weightConfig;
+    private final AutoClearanceConfig autoClearanceConfig;
 
-    public AdminConfigController(SimilarityConfig similarityConfig, WeightConfig weightConfig) {
+    public AdminConfigController(SimilarityConfig similarityConfig, WeightConfig weightConfig, AutoClearanceConfig autoClearanceConfig) {
         this.similarityConfig = similarityConfig;
         this.weightConfig = weightConfig;
+        this.autoClearanceConfig = autoClearanceConfig;
     }
 
     /**
-     * Get all configuration values (23 parameters).
+     * Get all configuration values (26 parameters).
      * 
      * GET /api/admin/config
      * 
-     * @return combined similarity + weight config
+     * @return combined similarity + weight + auto-clearance config
      */
     @GetMapping
     public ResponseEntity<AdminConfigResponse> getAllConfig() {
         logger.info("Admin UI: fetching all configuration");
         
-        AdminConfigResponse response = AdminConfigResponse.from(similarityConfig, weightConfig);
+        AdminConfigResponse response = AdminConfigResponse.from(similarityConfig, weightConfig, autoClearanceConfig);
         
         return ResponseEntity.ok(response);
     }
@@ -124,6 +128,38 @@ public class AdminConfigController {
     }
 
     /**
+     * Update auto-clearance configuration (3 parameters).
+     * 
+     * PUT /api/admin/config/auto-clearance
+     * 
+     * @param dto updated auto-clearance config
+     * @return success message
+     */
+    @PutMapping("/auto-clearance")
+    public ResponseEntity<AdminMessageResponse> updateAutoClearanceConfig(@RequestBody AutoClearanceConfigDTO dto) {
+        logger.info("Admin UI: updating auto-clearance config");
+
+        // Validate
+        if (dto.phase1Threshold() < 0 || dto.phase1Threshold() > 1) {
+            throw new IllegalArgumentException("Invalid configuration: phase1Threshold must be 0-1");
+        }
+        if (dto.addressMismatchThreshold() < 0 || dto.addressMismatchThreshold() > 1) {
+            throw new IllegalArgumentException("Invalid configuration: addressMismatchThreshold must be 0-1");
+        }
+        if (dto.dobDifferenceThresholdYears() < 0) {
+            throw new IllegalArgumentException("Invalid configuration: dobDifferenceThresholdYears must be >= 0");
+        }
+
+        // Apply changes
+        autoClearanceConfig.setPhase1Threshold(dto.phase1Threshold());
+        autoClearanceConfig.setAddressMismatchThreshold(dto.addressMismatchThreshold());
+        autoClearanceConfig.setDobDifferenceThresholdYears(dto.dobDifferenceThresholdYears());
+
+        logger.info("Admin UI: auto-clearance config updated successfully");
+        return ResponseEntity.ok(new AdminMessageResponse("Auto-clearance configuration updated successfully"));
+    }
+
+    /**
      * Reset all configuration to default values from application.yml.
      * 
      * POST /api/admin/config/reset
@@ -160,6 +196,11 @@ public class AdminConfigController {
         weightConfig.setCryptoComparisonEnabled(true);
         weightConfig.setContactComparisonEnabled(true);
         weightConfig.setDateComparisonEnabled(true);
+
+        // Reset auto-clearance config to application.yml defaults
+        autoClearanceConfig.setPhase1Threshold(0.85);
+        autoClearanceConfig.setAddressMismatchThreshold(0.50);
+        autoClearanceConfig.setDobDifferenceThresholdYears(1);
 
         logger.info("Admin UI: configuration reset to defaults");
         return ResponseEntity.ok(new AdminMessageResponse("Configuration reset to defaults"));
