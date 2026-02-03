@@ -446,118 +446,8 @@
           ]
         },
         {
-          "name": "Auto-Clearance with Address",
+          "name": "Get Batch Config",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"John Smith\",\n  \"address\": \"123 Main Street, New York, NY 10001\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/search/autoclearance",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "search",
-                "autoclearance"
-              ]
-            },
-            "description": "Two-phase auto-clearance: Phase 1 detects name matches (85% threshold), Phase 2 auto-clears matches with different addresses (<50% similarity)"
-          },
-          "response": [
-            {
-              "name": "Auto-Cleared Results",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"query\": {\n    \"name\": \"John Smith\",\n    \"address\": {\n      \"line1\": \"123 Main Street\",\n      \"city\": \"New York\",\n      \"state\": \"NY\",\n      \"zip\": \"10001\"\n    }\n  },\n  \"phase1\": {\n    \"totalMatches\": 2,\n    \"threshold\": 0.85,\n    \"results\": [\n      {\n        \"entity\": {\n          \"id\": \"12345\",\n          \"name\": \"JOHN SMITH\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"addresses\": [\n            {\"line1\": \"456 Broadway\", \"city\": \"Los Angeles\", \"state\": \"CA\", \"zip\": \"90001\"}\n          ]\n        },\n        \"score\": 0.95,\n        \"detection\": \"INCLUDED\"\n      },\n      {\n        \"entity\": {\n          \"id\": \"12346\",\n          \"name\": \"JOHNATHAN SMITH\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"addresses\": [\n            {\"line1\": \"789 Oak Ave\", \"city\": \"Chicago\", \"state\": \"IL\", \"zip\": \"60601\"}\n          ]\n        },\n        \"score\": 0.87,\n        \"detection\": \"INCLUDED\"\n      }\n    ]\n  },\n  \"autoClearance\": {\n    \"autoClearedCount\": 2,\n    \"manualReviewCount\": 0,\n    \"results\": [\n      {\n        \"entityId\": \"12345\",\n        \"entityName\": \"JOHN SMITH\",\n        \"phase1Score\": 0.95,\n        \"status\": \"AUTO_CLEARED\",\n        \"reason\": \"Address mismatch\",\n        \"discriminators\": {\n          \"address\": {\n            \"score\": 0.15,\n            \"threshold\": 0.50,\n            \"matched\": false\n          }\n        }\n      },\n      {\n        \"entityId\": \"12346\",\n        \"entityName\": \"JOHNATHAN SMITH\",\n        \"phase1Score\": 0.87,\n        \"status\": \"AUTO_CLEARED\",\n        \"reason\": \"Address mismatch\",\n        \"discriminators\": {\n          \"address\": {\n            \"score\": 0.08,\n            \"threshold\": 0.50,\n            \"matched\": false\n          }\n        }\n      }\n    ]\n  },\n  \"summary\": {\n    \"phase1Matches\": 2,\n    \"autoClearedMatches\": 2,\n    \"manualReviewRequired\": 0\n  },\n  \"finalStatus\": \"AUTO_CLEARED\"\n}"
-            }
-          ]
-        },
-        {
-          "name": "Auto-Clearance - Manual Review Required",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Mohammad Hassan\",\n  \"address\": \"456 Market Street, Damascus, Syria\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/search/autoclearance",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "search",
-                "autoclearance"
-              ]
-            },
-            "description": "Example where address is similar enough (>=50%) to require manual review"
-          },
-          "response": [
-            {
-              "name": "Manual Review Result",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"query\": {\n    \"name\": \"Mohammad Hassan\",\n    \"address\": {\n      \"line1\": \"456 Market Street\",\n      \"city\": \"Damascus\",\n      \"state\": null,\n      \"zip\": null\n    }\n  },\n  \"phase1\": {\n    \"totalMatches\": 1,\n    \"threshold\": 0.85,\n    \"results\": [\n      {\n        \"entity\": {\n          \"id\": \"67890\",\n          \"name\": \"MOHAMMAD HASSAN\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"addresses\": [\n            {\"line1\": \"450 Market St\", \"city\": \"Damascus\", \"state\": null, \"zip\": null}\n          ]\n        },\n        \"score\": 1.0,\n        \"detection\": \"INCLUDED\"\n      }\n    ]\n  },\n  \"autoClearance\": {\n    \"autoClearedCount\": 0,\n    \"manualReviewCount\": 1,\n    \"results\": [\n      {\n        \"entityId\": \"67890\",\n        \"entityName\": \"MOHAMMAD HASSAN\",\n        \"phase1Score\": 1.0,\n        \"status\": \"MANUAL_REVIEW\",\n        \"reason\": \"Address similarity above threshold\",\n        \"discriminators\": {\n          \"address\": {\n            \"score\": 0.92,\n            \"threshold\": 0.50,\n            \"matched\": true\n          }\n        }\n      }\n    ]\n  },\n  \"summary\": {\n    \"phase1Matches\": 1,\n    \"autoClearedMatches\": 0,\n    \"manualReviewRequired\": 1\n  },\n  \"finalStatus\": \"MANUAL_REVIEW_REQUIRED\"\n}"
-            }
-          ]
-        },
-        {
-          "name": "Auto-Clearance - No Address (Pending)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Ahmad Khan\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/search/autoclearance",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "search",
-                "autoclearance"
-              ]
-            },
-            "description": "When no address provided, Phase 2 cannot auto-clear - status is PENDING"
-          },
-          "response": [
-            {
-              "name": "Pending Status",
-              "status": "OK",
-              "code": 200,
-              "body": "{\n  \"query\": {\n    \"name\": \"Ahmad Khan\",\n    \"address\": null\n  },\n  \"phase1\": {\n    \"totalMatches\": 3,\n    \"threshold\": 0.85,\n    \"results\": [\n      {\n        \"entity\": {\n          \"id\": \"11111\",\n          \"name\": \"AHMAD KHAN\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"addresses\": []\n        },\n        \"score\": 1.0,\n        \"detection\": \"INCLUDED\"\n      }\n    ]\n  },\n  \"autoClearance\": {\n    \"autoClearedCount\": 0,\n    \"manualReviewCount\": 3,\n    \"results\": [\n      {\n        \"entityId\": \"11111\",\n        \"entityName\": \"AHMAD KHAN\",\n        \"phase1Score\": 1.0,\n        \"status\": \"PENDING\",\n        \"reason\": \"No discriminators available for clearance\",\n        \"discriminators\": null\n      }\n    ]\n  },\n  \"summary\": {\n    \"phase1Matches\": 3,\n    \"autoClearedMatches\": 0,\n    \"manualReviewRequired\": 3\n  },\n  \"finalStatus\": \"MANUAL_REVIEW_REQUIRED\"\n}"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "ScoreTrace Reports",
-      "description": "## ScoreTrace Reports Workflow\n\n**3-step workflow** to understand match decisions with detailed scoring breakdowns.\n\n### How It Works\n\n1. **STEP 1**: Search with `trace=true` → Returns `sessionId` + breakdown in entities\n2. **STEP 2**: Use `sessionId` to get reports:\n   - **2a**: HTML report (visual, for humans)\n   - **2b**: JSON summary (stats, for automation)\n\n### Use Cases\n\n✅ **Compliance Review**: HTML reports explain why entity matched\n✅ **Developer Debugging**: JSON summaries show phase contributions\n✅ **Performance Analysis**: Identify slow phases in scoring pipeline\n✅ **Operator Insights**: Plain-English explanations of composite scores\n\n### Best Practices\n\n- Reports expire after 24 hours (in-memory storage)\n- HTML for customer/compliance explanations\n- JSON for dashboards and automated analysis\n- Each trace captures all entities scored in that search",
             "method": "GET",
             "header": [],
             "url": {
@@ -646,9 +536,7 @@
       ]
     },
     {
-      "name": "Auto-Clearance",
-      "description": "## Auto-Clearance Feature\n\nIntelligent two-phase OFAC screening that automatically identifies and clears false positive matches.\n\n### How It Works\n\n**Phase 1: Name Detection** (Always On)\n- Evaluates name similarity at 85% threshold\n- Ignores address, DOB, and government IDs\n- Returns all potential matches based on name alone\n\n**Phase 2: Discriminator-Based Clearance** (Selective)\n- Auto-clears matches with clear mismatches:\n  - **Address**: < 50% similarity = auto-clear\n  - **DOB**: > 1 year difference = auto-clear (pending)\n  - **Gov ID**: Different IDs = auto-clear (pending)\n- Requires manual review when discriminators match or unavailable\n\n### Endpoint\n\n**POST /v1/search/autoclearance**\n\n### Request Body\n\n```json\n{\n  \"name\": \"John Smith\",              // Required\n  \"address\": \"123 Main St, NY\",     // Optional - enables address clearance\n  \"dob\": \"1985-06-15\",              // Optional - enables DOB clearance (future)\n  \"governmentId\": \"123-45-6789\"     // Optional - enables ID clearance (future)\n}\n```\n\n### Response Structure\n\n```json\n{\n  \"query\": { ... },\n  \"phase1\": {\n    \"totalMatches\": 2,\n    \"threshold\": 0.85,\n    \"results\": [ ... ]\n  },\n  \"autoClearance\": {\n    \"autoClearedCount\": 1,\n    \"manualReviewCount\": 1,\n    \"results\": [\n      {\n        \"entityId\": \"12345\",\n        \"status\": \"AUTO_CLEARED\",\n        \"reason\": \"Address mismatch\",\n        \"discriminators\": {\n          \"address\": {\n            \"score\": 0.25,\n            \"threshold\": 0.50,\n            \"matched\": false\n          }\n        }\n      }\n    ]\n  },\n  \"finalStatus\": \"MANUAL_REVIEW_REQUIRED\"\n}\n```\n\n### Status Values\n\n- **AUTO_CLEARED**: Discriminator mismatch detected\n- **MANUAL_REVIEW**: Discriminators match or similar\n- **PENDING**: No discriminators available for comparison\n\n### Final Status\n\n- **NO_MATCH**: No Phase 1 matches found\n- **AUTO_CLEARED**: All matches auto-cleared\n- **MANUAL_REVIEW_REQUIRED**: At least one match needs review\n\n### Business Value\n\n✅ **40-70% reduction** in false positive manual reviews\n✅ **Consistent decisions** across all transactions\n✅ **Full audit trail** with clear reasons\n✅ **Compliance-safe** - maintains high detection standards\n\n### Use Cases\n\n**1. Customer Onboarding**\n- Provide name + address during KYC\n- Auto-clear non-matching addresses\n- Focus review on true positives only\n\n**2. Transaction Monitoring**\n- Screen payment recipients\n- Auto-clear obvious mismatches\n- Reduce alert fatigue\n\n**3. Periodic Screening**\n- Re-screen customer base with updated OFAC data\n- Auto-clear previously cleared customers\n- Flag new matches only\n\n### Best Practices\n\n✅ **Provide all available discriminators** - More data = more auto-clearances\n✅ **Review PENDING status** - These need manual attention\n✅ **Trust AUTO_CLEARED** - System uses conservative thresholds\n✅ **Audit summary counts** - phase1Matches should equal autoClearedMatches + manualReviewRequired\n\n### Implementation Status (v1.0)\n\n- ✅ Phase 1: Name Detection (85%)\n- ✅ Phase 2: Address Clearance (50%)\n- ⏳ Phase 2: DOB Clearance (pending)\n- ⏳ Phase 2: Gov ID Clearance (pending)\n- ⏳ Configuration API (thresholds hardcoded)\n\nSee [Auto-Clearance Product Overview](../docs/auto_clearance_product_overview.md) for complete documentation.",
-      "item": [
+      "name": "ScoreTrace Reports",
       "description": "## ScoreTrace Reports Workflow\n\n**3-step workflow** to understand match decisions with detailed scoring breakdowns.\n\n### How It Works\n\n1. **STEP 1**: Search with `trace=true` → Returns `sessionId` + breakdown in entities\n2. **STEP 2**: Use `sessionId` to get reports:\n   - **2a**: HTML report (visual, for humans)\n   - **2b**: JSON summary (stats, for automation)\n\n### Use Cases\n\n✅ **Compliance Review**: HTML reports explain why entity matched\n✅ **Developer Debugging**: JSON summaries show phase contributions\n✅ **Performance Analysis**: Identify slow phases in scoring pipeline\n✅ **Operator Insights**: Plain-English explanations of composite scores\n\n### Best Practices\n\n- Reports expire after 24 hours (in-memory storage)\n- HTML for customer/compliance explanations\n- JSON for dashboards and automated analysis\n- Each trace captures all entities scored in that search",
       "item": [
         {
@@ -955,7 +843,7 @@
                 "reset"
               ]
             },
-            "description": "Reset all configuration to application.yml defaults. Reloads SimilarityConfig, WeightConfig, and AutoClearanceConfig from the original Spring Boot configuration.\n\n**Use this when:**\n- Testing config changes went wrong\n- Need to return to known-good baseline\n- Starting fresh tuning session\n- Troubleshooting unexpected behavior\n- Auto-clearance thresholds need reset"
+            "description": "Reset all configuration to application.yml defaults. Reloads SimilarityConfig, WeightConfig, and AutoClearanceConfig from the original Spring Boot configuration.\n\n**Use this when:**\n- Testing config changes went wrong\n- Need to return to known-good baseline\n- Starting fresh tuning session\n- Troubleshooting unexpected behavior\n- Auto-clearance thresholds need to be restored"
           },
           "response": [
             {
