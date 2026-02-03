@@ -6,6 +6,60 @@
 
 ## Decision Log
 
+### 2026-02-02: "Configuration Management" Product Naming
+
+**Decision**: Use "Configuration Management" as umbrella term for admin configuration APIs while preserving "ScoreConfig" and "Auto-Clearance" as distinct feature names.
+
+**Rationale**: Provides unified product surface (26 parameters total) without conflating individual features. Maintains clarity for documentation and API structure. ScoreConfig remains relevant as collective term for similarity/weight parameters (23 total), while Auto-Clearance has dedicated configuration surface (3 parameters). Configuration Management encompasses both.
+
+**Implementation**: 
+- Postman collection folder renamed to "Configuration Management"
+- GET /api/admin/config returns unified response with 3 top-level objects: similarityConfig, weightConfig, autoClearance
+- Documentation maintains distinct feature terminology
+- Folder description documents all 26 parameters with clear grouping
+
+**Impact**: Clear product hierarchy without naming conflicts. Stakeholders understand "Configuration Management" as complete admin surface while recognizing ScoreConfig and Auto-Clearance as specific capabilities.
+
+---
+
+### 2026-02-02: Separate PUT Endpoints for Config Updates
+
+**Decision**: Maintain separate PUT endpoints (/api/admin/config/similarity, /weights, /auto-clearance) despite unified GET endpoint.
+
+**Rationale**: Preserves API granularity, backward compatibility, and domain-specific validation. Each configuration domain has distinct validation rules:
+- Similarity/Weight configs allow partial updates (individual parameter changes)
+- Auto-clearance requires all 3 fields (phase1Threshold, addressMismatchThreshold, dobDifferenceThresholdYears)
+- Different validation error messages and business logic per domain
+
+**Tradeoff**: Asymmetric API design (unified GET, separate PUTs) but practical benefits outweigh consistency concerns. Clients can fetch all config at once but update domains independently.
+
+**Alternative Considered**: Single PUT /api/admin/config endpoint accepting complete configuration object. Rejected due to:
+- Forces clients to send 26 parameters even for single-field changes
+- Complicates validation (which fields are required vs optional?)
+- Breaks backward compatibility with existing integrations
+
+**Impact**: Granular control for configuration updates, clear validation boundaries, maintains existing API contracts.
+
+---
+
+### 2026-02-02: Postman Collection Validation Workflow
+
+**Decision**: Validate JSON with `python3 -m json.tool` after each structural edit to Postman collection.
+
+**Rationale**: Prevents nesting corruption experienced in commit 1fe4bd9 where orphaned folder descriptions existed without proper JSON structure (missing "item": [] arrays and "request": {} objects). Postman collection format requires strict nesting: folder → item → name/request.
+
+**Context**: JSON corruption was discovered when Postman began rejecting the collection file. Investigation revealed missing structure after "ScoreTrace Reports" folder description at line 577. Error existed in multiple commits (1fe4bd9, 187cfd0) before detection.
+
+**Implementation**:
+- Run `python3 -m json.tool postman/*.json > /dev/null` after each edit
+- Restored from last known valid commit (72331c9) when corruption detected
+- Reapplied changes incrementally with validation gates
+- Lightweight validation without requiring Postman app installation
+
+**Impact**: Incremental validation catches errors immediately, preventing accumulation of broken commits. JSON tool provides fast syntax checking during development workflow.
+
+---
+
 ### 2026-02-01: BSA/AML Compliance Documentation Strategy
 
 **Decision**: Created comprehensive technical overview titled "OFAC Screening Technical Overview for BSA/AML Compliance" (docs/ofac_screening_technical_overview.md) targeting BSA officers and examiners.

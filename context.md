@@ -158,6 +158,20 @@ The Auto-Clearance feature has comprehensive product documentation in `docs/auto
   * PUT /api/admin/config/similarity - Update algorithm-level parameters
   * PUT /api/admin/config/weights - Update business-level parameters and phase toggles
   * POST /api/admin/config/reset - Reset to application.yml defaults
+
+### Configuration Management Expansion (February 2, 2026)
+- **Configuration Management API**: Unified product surface exposing 26 total parameters via single GET endpoint:
+  * 10 SimilarityConfig parameters (algorithm-level tuning)
+  * 13 WeightConfig parameters (business-level weights and phase toggles)
+  * 3 AutoClearanceConfig parameters (auto-clearance thresholds)
+- **API Architecture**: Single GET endpoint (/api/admin/config) with separate PUT endpoints for granular control:
+  * PUT /api/admin/config/similarity - Update algorithm parameters
+  * PUT /api/admin/config/weights - Update scoring weights
+  * PUT /api/admin/config/auto-clearance - Update auto-clearance thresholds
+  * POST /api/admin/config/reset - Reset all configurations to application.yml defaults
+- **Product Naming**: "Configuration Management" serves as umbrella term while preserving "ScoreConfig" and "Auto-Clearance" as distinct feature names
+- **Auto-Clearance Phase 2 Complete**: DOB and Government ID verification implemented with 25 integration tests covering all scenarios
+- **Postman Collection Maintenance**: JSON validation with `python3 -m json.tool` required after each structural edit to prevent nesting corruption (folder descriptions must be properly wrapped in "item": [] arrays with "request": {} objects)
 - **AdminConfigController.java**: Spring Boot REST controller with in-memory config updates (no persistence)
 - **AdminConfigControllerTest.java**: 7 integration tests (all passing) using @SpringBootTest and MockMvc
 - **DTO classes**: 4 Java Records for type-safe API responses (AdminConfigResponse, SimilarityConfigDTO, WeightConfigDTO, AdminMessageResponse)
