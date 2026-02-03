@@ -22,6 +22,35 @@
 
 ---
 
+### 2026-02-02: "List Management" Postman Folder Naming
+
+**Decision**: Renamed Postman folder from "Data Management" to "List Management".
+
+**Rationale**: "Data Management" was too broad and ambiguous. "List Management" precisely describes the feature surface: controlling which sanctions lists are downloaded, enabled, and screened against. Aligns with "Configuration Management" naming pattern (umbrella term for related admin functions).
+
+**Scope**: 
+- Current endpoints: POST /v2/download (trigger download), GET /v2/download/status (check status), GET /v1/listinfo (view entity counts)
+- Planned endpoints: Runtime enable/disable API for list control (GET /api/admin/lists, PUT /api/admin/lists/{listId}/enable, PUT /api/admin/lists/{listId}/disable, POST /api/admin/lists/reset)
+- Configuration currently in application.yml (watchman.download.sources array)
+
+**Future Work**: Implement full List Management API (estimated ~700 lines across 8-10 files):
+1. ListManagementConfig bean (~50 lines)
+2. AdminListController with 4 endpoints (~150 lines)
+3. DTOs for requests/responses (~40 lines)
+4. SearchService filtering by enabled lists (~30 lines)
+5. Unit tests (~200 lines)
+6. Integration tests (~150 lines)
+7. Postman examples (~80 lines)
+8. Documentation updates
+
+Follow Configuration Management pattern: in-memory changes, reset on restart, validation rules, audit logging.
+
+**Benefits**: Runtime control without redeployment, compliance tuning (test different list combinations), cost optimization (skip expensive downloads), reduce false positives by excluding specific lists.
+
+**Impact**: Clearer product hierarchy in Postman collection. Users understand they're managing sanctions list sources, not generic "data". Sets foundation for future API implementation.
+
+---
+
 ### 2026-02-02: Separate PUT Endpoints for Config Updates
 
 **Decision**: Maintain separate PUT endpoints (/api/admin/config/similarity, /weights, /auto-clearance) despite unified GET endpoint.

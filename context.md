@@ -172,17 +172,29 @@ The Auto-Clearance feature has comprehensive product documentation in `docs/auto
 - **Product Naming**: "Configuration Management" serves as umbrella term while preserving "ScoreConfig" and "Auto-Clearance" as distinct feature names
 - **Auto-Clearance Phase 2 Complete**: DOB and Government ID verification implemented with 25 integration tests covering all scenarios
 - **Postman Collection Maintenance**: JSON validation with `python3 -m json.tool` required after each structural edit to prevent nesting corruption (folder descriptions must be properly wrapped in "item": [] arrays with "request": {} objects)
+
+### List Management (February 2, 2026)
+- **Postman folder renamed**: "Data Management" → "List Management" for clearer product alignment
+- **Current capabilities**: Manual download/refresh via POST /v2/download and GET /v2/download/status endpoints
+- **List control**: Currently configured in application.yml (watchman.download.sources array), only US_OFAC enabled by default
+- **Future API planned**: Runtime enable/disable of sanctions lists without redeployment
+  * GET /api/admin/lists - View all lists with enabled/disabled status
+  * PUT /api/admin/lists/{listId}/enable - Enable specific list for screening
+  * PUT /api/admin/lists/{listId}/disable - Disable list from screening
+  * POST /api/admin/lists/reset - Reset to application.yml defaults
+- **Implementation pattern**: Follow Configuration Management approach (in-memory config, resets on restart)
+- **Benefits**: Runtime control, compliance tuning, cost optimization, test different list combinations
+
+### Admin UI Implementation (January 24, 2026)
+- **Admin UI complete**: Single-page application (SPA) at /admin.html with 4 tabs (ScoreConfig, ScoreTrace, Test Search, Documentation)
 - **AdminConfigController.java**: Spring Boot REST controller with in-memory config updates (no persistence)
 - **AdminConfigControllerTest.java**: 7 integration tests (all passing) using @SpringBootTest and MockMvc
 - **DTO classes**: 4 Java Records for type-safe API responses (AdminConfigResponse, SimilarityConfigDTO, WeightConfigDTO, AdminMessageResponse)
-- **Documentation tab**: Embedded static HTML with accordion sections covering Phase Scoring Mechanics, ScoreConfig parameters (23 total), and ScoreTrace usage guide
-- **Documentation approach**: Converted markdown to static HTML (no runtime dependencies, no markdown parser, works offline)
-- **Postman collection**: Updated with "Admin Config" folder containing all 4 endpoints with examples, validation errors, and parameter documentation
-- **Configuration changes**: Apply immediately to singleton Spring beans (SimilarityConfig, WeightConfig) but reset on service restart
-- **UI features**: Test Search integration, config reset functionality, success/error alerts, Braid blue branding (#002441)
+- **Documentation tab**: Embedded static HTML with accordion sections
+- **Postman collection**: Updated with "Admin Config" folder containing all 4 endpoints
+- **Configuration changes**: Apply immediately to singleton Spring beans but reset on service restart
+- **UI features**: Test Search integration, config reset functionality, success/error alerts
 - **TDD implementation**: Strict RED-GREEN cycle with 7 failing tests first, then implementation to pass all tests
-
-### Admin UI Deployment Verification (January 26, 2026)
 - **Admin UI verified accessible**: http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/admin.html
 - **Deployment automation**: GitHub Actions workflow (.github/workflows/deploy-ecs.yml) triggers on push to main
   * Builds Docker image (linux/amd64)
