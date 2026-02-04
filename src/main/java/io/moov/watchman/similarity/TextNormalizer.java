@@ -128,6 +128,18 @@ public class TextNormalizer {
         "此", "让", "给", "把", "被", "又", "将", "更", "已", "等", "些"
     );
     
+    // Personal honorifics to remove from names (BSA/AML Observation #7)
+    // These are title/honorific prefixes and suffixes that should not affect matching
+    private static final Set<String> PERSONAL_HONORIFICS = Set.of(
+        // English honorifics
+        "mr", "mrs", "ms", "miss", "dr", "prof", "professor", "sir", "dame",
+        "jr", "sr", "junior", "senior", "esq", "esquire",
+        // Arabic honorifics  
+        "sheikh", "shaikh", "sheik", "he", "excellency",
+        // Other common titles
+        "rev", "reverend", "fr", "father", "brother", "sister"
+    );
+
     // Legacy combined stopwords for backward compatibility with existing removeStopwords() method
     private static final Set<String> STOPWORDS = Set.of(
         "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
@@ -147,6 +159,7 @@ public class TextNormalizer {
      * - "ANGLO-CARIBBEAN CO., LTD." → "anglo caribbean co ltd"
      * - "Nicolás Maduro" → "nicolas maduro"
      * - "11,420.2-1 CORP." → "11 420 2 1 corp"
+     * - "H.E. Abdullah Ahmed" → "abdullah ahmed" (honorific removed)
      * 
      * @param input String to normalize
      * @return Normalized string, or empty string if input is null/blank
@@ -156,9 +169,15 @@ public class TextNormalizer {
             return "";
         }
 
+        // Pre-step: Handle special multi-letter honorifics with periods (e.g., "H.E.")
+        // Replace these before general punctuation removal so they become single tokens
+        String result = input
+            .replace("H.E.", " he ")      // His Excellency
+            .replace("h.e.", " he ");     // lowercase variant
+        
         // Step 1: Replace common punctuation with spaces (like Go's punctuationReplacer)
         // This handles: . , - becoming spaces
-        String result = input
+        result = result
             .replace('.', ' ')
             .replace(',', ' ')
             .replace('-', ' ');
@@ -203,7 +222,69 @@ public class TextNormalizer {
         }
 
         // Step 6: Trim trailing space
-        return cleaned.toString().trim();
+        String normalized = cleaned.toString().trim();
+        
+        // Step 7: Remove personal honorifics (BSA/AML Observation #7)
+        return removeHonorifics(normalized);
+    }
+    
+    /**
+     * Remove personal honorifics (Mr., Dr., Sheikh, etc.) from names.
+     * Addresses BSA/AML Observation #7: noise word sensitivity.
+     * 
+     * Removes honorific prefixes (Mr., Dr., Sheikh) and suffixes (Jr., Sr.)
+     * that should not affect name matching.
+     * 
+     * Examples:
+     * - "mr john smith" → "john smith"
+     * - "dr jane doe" → "jane doe"  
+     * - "martin luther king jr" → "martin luther king"
+     * - "sheikh muhammad bin rashid" → "muhammad bin rashid"
+     * 
+     * Note: "bin" and "ibn" are preserved as they're part of Arabic name structure,
+     * not honorifics.
+     * 
+     * @param normalized Pre-normalized string (lowercase, no punctuation)
+     * @return String with honorifics removed
+     */
+    private String removeHonorifics(String normalized) {
+        if (normalized == null || normalized.isEmpty()) {
+            return normalized;
+        }
+        
+        String[] tokens = normalized.split("\\s+");
+        if (tokens.length == 0) {
+            return normalized;
+        }
+        
+        int start = 0;
+        int end = tokens.length;
+        
+        // Remove leading honorifics
+        while (start < end && PERSONAL_HONORIFICS.contains(tokens[start])) {
+            start++;
+        }
+        
+        // Remove trailing honorifics
+        while (end > start && PERSONAL_HONORIFICS.contains(tokens[end - 1])) {
+            end--;
+        }
+        
+        // Rebuild string without honorifics
+        if (start >= end) {
+            // All tokens were honorifics, return original
+            return normalized;
+        }
+        
+        StringBuilder result = new StringBuilder();
+        for (int i = start; i < end; i++) {
+            if (i > start) {
+                result.append(' ');
+            }
+            result.append(tokens[i]);
+        }
+        
+        return result.toString();
     }
 
     /**
