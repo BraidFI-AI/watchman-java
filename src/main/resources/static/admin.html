@@ -1226,6 +1226,34 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                     data.entities.forEach(entity => {
                         html += `<div style="background: white; padding: 15px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #3498db;">`;
                         html += `<strong>${entity.name}</strong> - Match: ${(entity.score * 100).toFixed(1)}%<br>`;
+                        
+                        // Display matched alias if present (BSA Observation #5)
+                        if (entity.matchedAlias) {
+                            html += `<small style="color: #e67e22; font-weight: 600;">Matched Alias: ${entity.matchedAlias}</small><br>`;
+                        }
+                        
+                        // Display identifying attributes for triage (BSA Observation #3)
+                        let identifiers = [];
+                        if (entity.dateOfBirth) {
+                            identifiers.push(`DOB: ${entity.dateOfBirth}`);
+                        }
+                        if (entity.placeOfBirth) {
+                            identifiers.push(`POB: ${entity.placeOfBirth}`);
+                        }
+                        if (entity.nationality) {
+                            identifiers.push(`Nationality: ${entity.nationality}`);
+                        }
+                        if (entity.passportNumber) {
+                            let passport = `Passport: ${entity.passportNumber}`;
+                            if (entity.passportCountry) {
+                                passport += ` (${entity.passportCountry})`;
+                            }
+                            identifiers.push(passport);
+                        }
+                        if (identifiers.length > 0) {
+                            html += `<small style="color: #34495e; display: block; margin-top: 5px;">${identifiers.join(' | ')}</small>`;
+                        }
+                        
                         html += `<small>Type: ${entity.type || 'N/A'} | Source: ${entity.source || 'N/A'}</small>`;
                         html += `</div>`;
                     });
