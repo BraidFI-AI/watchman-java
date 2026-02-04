@@ -3,8 +3,11 @@ package io.moov.watchman.search;
 import io.moov.watchman.index.EntityIndex;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
+import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.model.SearchResult;
 import io.moov.watchman.model.SourceList;
+import io.moov.watchman.trace.ScoringContext;
+import io.moov.watchman.trace.ScoringTrace;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -78,19 +81,36 @@ public class SearchServiceImpl implements SearchService {
     private Stream<SearchResult> expandAliases(Entity entity, String query, double minMatch) {
         List<SearchResult> results = new ArrayList<>();
         
-        // Score primary name
-        double primaryScore = scoreEntity(query, entity);
+        // Create query entity
+        Entity queryEntity = Entity.of(null, query, null, null);
         
-        // Only expand if primary entity meets threshold
-        if (primaryScore >= minMatch) {
-            // Add primary result
-            results.add(SearchResult.of(entity, primaryScore));
+        // Score with context to capture matched alias
+        // Use lightweight enabled context just to capture matchedAlias metadata
+        ScoringContext ctx = ScoringContext.enabled("alias-search-" + System.nanoTime());
+        ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(queryEntity, entity, ctx);
+        double score = breakdown.totalWeightedScore();
+        
+        // Extract matchedAlias from context metadata
+        String matchedAlias = null;
+        ScoringTrace trace = ctx.toTrace();
+        if (trace != null && trace.metadata() != null) {
+            Object aliasObj = trace.metadata().get("matchedAlias");
+            if (aliasObj instanceof String) {
+                matchedAlias = (String) aliasObj;
+            }
+        }
+        
+        // Only include if score meets threshold
+        if (score >= minMatch) {
+            // Add single result with matched alias (if any)
+            results.add(new SearchResult(entity, score, breakdown, matchedAlias));
             
-            // Add result for each alias
+            // Phase 4: Also add separate result entries for each alias (OFAC.gov compatibility)
+            // These show the same entity but with different alias labels
             if (entity.altNames() != null && !entity.altNames().isEmpty()) {
                 for (String alias : entity.altNames()) {
-                    // Each alias gets its own result entry
-                    results.add(SearchResult.withAlias(entity, primaryScore, alias));
+                    // Each alias gets its own result entry with the same score
+                    results.add(SearchResult.withAlias(entity, score, alias));
                 }
             }
         }
