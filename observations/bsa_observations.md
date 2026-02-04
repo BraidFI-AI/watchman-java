@@ -311,7 +311,6 @@ This observation spawned 3 implementation fixes addressing different aspects of 
 1. What is acceptable false-negative rate for compliance?
 2. Do we need to match addresses separately? (Currently not exposed in API)
 3. Should we expose detailed scoring breakdown to analysts in UI?
-4. ~~Should we add phonetic matching (Soundex/Metaphone) for name normalization?~~ ✅ **IMPLEMENTED** - Soundex phonetic filtering already in use via PhoneticFilter.java
 
 ### Out of Scope (This Phase)
 - Performance tuning (address after functional fixes)
