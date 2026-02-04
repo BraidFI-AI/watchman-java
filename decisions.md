@@ -1296,3 +1296,22 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 **Analysis Commit**: 0dd3f32 (9/9 tests passing, scores documented)
 
 **Next Steps**: Document threshold parameter usage and provide tuning guidance for BSA consultant. Include in comprehensive observations overview document.
+---
+
+### 2026-02-03: BSA Observations Document Format Standards
+
+**Decision**: BSA observations document (`observations/bsa_observations.md`) must maintain declarative format without strikethrough or work-in-progress markers.
+
+**Rationale**: Document serves as primary communication vehicle with BSA consultant who will review all compliance claims. Requires professional, declarative format. Strikethrough formatting creates impression of working scratch pad rather than authoritative reference document. All content must be current state only—obsolete information should be deleted, not marked as deprecated.
+
+**Context**: During accuracy audit, strikethrough was used to mark resolved Open Questions item (~~phonetic matching~~). This violated document's purpose as consultant-facing deliverable requiring clean, professional presentation.
+
+**Implementation**: 
+- Remove all strikethrough formatting
+- Delete obsolete content entirely rather than marking deprecated
+- Keep only current, verified implementation status
+- Maintain 100% accuracy with code-level verification for all claims
+
+**Impact**: Document now presents clean, declarative view of current implementation state suitable for BSA consultant review and audit trail documentation.
+
+**References**: Commits a856c25 (accuracy fixes), b835caf (strikethrough removal)
