@@ -49,6 +49,13 @@ public class SearchServiceImpl implements SearchService {
             return List.of();
         }
 
+        // BSA/AML Observation #8: Common name threshold adjustment
+        // Short queries (≤2 tokens) use lower threshold for OFAC parity
+        // Rationale: "Muhammad Ali" matching "AHMAD, Muhammad Ali Sayid" gets
+        // penalized by token count difference. Lower threshold surfaces more
+        // matches, then Phase 2 auto-clearance filters via discriminators.
+        double effectiveMinMatch = adjustThresholdForQueryLength(query, minMatch);
+
         Stream<Entity> entityStream = entityIndex.getAll().stream();
 
         // Apply source list filter if specified
@@ -63,10 +70,49 @@ public class SearchServiceImpl implements SearchService {
 
         // Expand aliases: 1 entity with N aliases → N+1 results
         return entityStream
-            .flatMap(entity -> expandAliases(entity, query, minMatch))
+            .flatMap(entity -> expandAliases(entity, query, effectiveMinMatch))
             .sorted(Comparator.comparing(SearchResult::score).reversed())
             .limit(limit)
             .toList();
+    }
+
+    /**
+     * Adjust threshold based on query length to achieve OFAC portal parity.
+     * 
+     * <p>BSA/AML Context: Auditors compare results against OFAC.gov portal, which
+     * returns all possible matches (very permissive). Short common names like
+     * "Muhammad Ali" or "Abdul Rahman" need lower thresholds to surface multiple
+     * OFAC entities. Phase 2 auto-clearance then filters false positives using
+     * discriminators (DOB, address, government ID).
+     * 
+     * <p>Token-based thresholds:
+     * <ul>
+     *   <li>1-2 tokens (e.g., "Muhammad Ali"): Use 0.75 threshold (if requested >= 0.75)</li>
+     *   <li>3+ tokens (e.g., "Nicolas Maduro Moros"): Use caller-provided threshold</li>
+     * </ul>
+     * 
+     * <p>If caller explicitly sets minMatch below 0.75 OR above 0.88, respect their value.
+     * This preserves API contract for both permissive and strict searches.
+     * 
+     * @param query The search query
+     * @param requestedMinMatch The threshold requested by caller
+     * @return Effective threshold to use (may be lowered for short queries)
+     */
+    private double adjustThresholdForQueryLength(String query, double requestedMinMatch) {
+        // Count tokens in query
+        int tokenCount = query.trim().split("\\s+").length;
+        
+        // Short queries (1-2 tokens) benefit from lower threshold for OFAC parity
+        if (tokenCount <= 2) {
+            // Only adjust if user is using "normal" thresholds (0.75-0.88 range)
+            // Respect explicit low thresholds (<0.75) and high thresholds (>0.88)
+            if (requestedMinMatch >= 0.75 && requestedMinMatch <= 0.88) {
+                return 0.75;
+            }
+        }
+        
+        // Normal queries or explicit thresholds: use requested value
+        return requestedMinMatch;
     }
 
     /**
