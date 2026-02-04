@@ -27,6 +27,10 @@ public class RemarksParser {
     private static final Pattern NATIONALITY_PATTERN = Pattern.compile("nationality\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern PASSPORT_PATTERN = Pattern.compile("(?:alt\\.\\s+)?Passport\\s+([A-Z0-9]+)(?:\\s+\\(([^)]+)\\))?", Pattern.CASE_INSENSITIVE);
     
+    // Alias patterns - a.k.a. (also known as) and f.k.a. (formerly known as)
+    // Format: a.k.a. 'NAME' or f.k.a. 'NAME' with single quotes
+    private static final Pattern ALIAS_PATTERN = Pattern.compile("(?:a\\.k\\.a\\.|f\\.k\\.a\\.)\\s+'([^']+)'", Pattern.CASE_INSENSITIVE);
+    
     // Date formatters for various OFAC date patterns
     private static final DateTimeFormatter[] DATE_FORMATTERS = {
         DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH),
@@ -138,6 +142,39 @@ public class RemarksParser {
         }
 
         return ids;
+    }
+
+    /**
+     * Extract aliases from remarks field.
+     * 
+     * OFAC data contains aliases using patterns:
+     * - a.k.a. 'NAME' (also known as)
+     * - f.k.a. 'NAME' (formerly known as)
+     * 
+     * Examples:
+     * - "a.k.a. 'PACHO'; a.k.a. 'H7'" → ["PACHO", "H7"]
+     * - "f.k.a. 'ANSAR INSTITUTE'" → ["ANSAR INSTITUTE"]
+     * - "a.k.a. 'AL-MALIZI, Abu Sayyaf'" → ["AL-MALIZI, Abu Sayyaf"]
+     * 
+     * @param remarks The remarks field from OFAC SDN data
+     * @return List of extracted aliases (empty if none found)
+     */
+    public List<String> extractAliases(String remarks) {
+        if (remarks == null || remarks.isEmpty() || remarks.equals("-0-")) {
+            return List.of();
+        }
+
+        List<String> aliases = new ArrayList<>();
+        Matcher matcher = ALIAS_PATTERN.matcher(remarks);
+        
+        while (matcher.find()) {
+            String alias = matcher.group(1);
+            if (alias != null && !alias.isBlank()) {
+                aliases.add(alias.trim());
+            }
+        }
+
+        return aliases;
     }
 
     /**

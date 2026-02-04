@@ -130,11 +130,16 @@ public class OFACParserImpl implements OFACParser {
                 List<Address> addresses = addressesByEntity.getOrDefault(entityId, List.of());
                 List<String> altNames = altNamesByEntity.getOrDefault(entityId, List.of());
                 
+                // Extract aliases from remarks and merge with alt.csv names
+                List<String> remarksAliases = remarksParser.extractAliases(remarks);
+                List<String> allAltNames = new ArrayList<>(altNames);
+                allAltNames.addAll(remarksAliases);
+                
                 // Build the entity based on type
                 Entity entity = buildEntity(
                     entityId, name, type, program, title,
                     callSign, vesselType, tonnage, grt, vesselFlag, vesselOwner,
-                    remarks, addresses, altNames
+                    remarks, addresses, allAltNames
                 );
                 
                 entities.add(entity);
