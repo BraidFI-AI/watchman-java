@@ -255,48 +255,7 @@ This observation spawned 3 implementation fixes addressing different aspects of 
 | **Compliance Impact** | ✅ **Closes critical coverage gap:**<br>• Achieves parity with OFAC.gov screening<br>• Both organization and associated individuals now detected<br>• Prevents evasion by sanctioned persons using organization names<br>• 2,037 aliases extracted from remarks field (2,026 a.k.a. + 11 f.k.a.)<br>• Strengthens multi-entity screening |
 | **Analyst Training** | **Important screening principle:**<br>• Search may return BOTH organizations and individuals with similar names<br>• Review ALL results - don't assume first hit is only relevant match<br>• **Example:** "Abu Sayyaf" customer could match terrorist group OR individual terrorist<br>• Check `matchedAlias` field to understand WHY each entity matched<br>• Different record types (individual vs organization) require different due diligence |
 
----
-- ⏸️ **HYPOTHESIS**: Likely related to alias visibility (Observation #1)
-- Backend now indexes all aliases (alt.csv + remarks extraction)
-- Match counts may align once UI displays all matched alias records
-- Requires comprehensive validation after Observation #1 frontend work complete
 
-**Training Notes:**
-- Current behavior: May return fewer hits than OFAC website for same search
-- Root cause: Multiple OFAC entities with same/similar aliases may be consolidated
-- Impact: Could miss related entities (e.g., organization + key personnel)
-- Workaround: Use specific search terms; review related entities in OFAC source data
-
----
-
-### Observation #9: Entity vs Individual Record Coverage
-
-**Status:** ✅ FIXED - Commit 5f0be1b
-
-**Priority:** Critical
-
-**Original Finding (BSA Consultant):**
-- Searching "Abu Sayyaf" returned only entity record (ABU SAYYAF GROUP)
-- OFAC returns both entity AND individual record (Entity 21727: JEDI, Amilhamja Jumdail with alias "AL-MALIZI, Abu Sayyaf")
-- False-negative risk: Individuals with entity-name aliases may not be detected
-
-**BSA Consultant Recommendation:**
-- Surface both entity and individual records when searched name appears in multiple record types
-- Extract aliases from OFAC remarks field in addition to alt.csv
-
-**Implementation Progress:**
-- ✅ **FIXED** - Alias extraction from remarks field implemented
-- Pattern: `(?:a\.k\.a\.|f\.k\.a\.)\s+'([^']+)'` captures aliases in single quotes
-- Coverage: 2026 a.k.a. patterns, 11 f.k.a. patterns in OFAC data
-- Integration: Aliases merged with altNames from alt.csv during entity parsing
-- Test Coverage: 17 tests in `AliasExtractionTest.java` + 13 parser integration tests
-- Validation: "Abu Sayyaf" search now returns BOTH Entity 4688 (name match) AND Entity 21727 (alias match)
-
-**Training Notes:**
-- ✅ Achieves OFAC parity for alias-based matching
-- Search results may include both organizations and individuals with same/similar names
-- Analysts should review all returned entities, not just exact name matches
-- Alias field in results shows which alternate name triggered the match (once UI updated per Observation #1)
 
 ---
 
