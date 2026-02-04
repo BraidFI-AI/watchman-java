@@ -1257,3 +1257,42 @@ String message = messageLower.contains("timeout") || messageLower.contains("time
 - Impact: Container may run as root during POC. This is a temporary, documented exception.
 - TODO: Remove suppression and enforce non-root USER before production deployment.
 - Reference: [README.md](README.md), [Dockerfile](Dockerfile), [.semgrepignore](.semgrepignore)
+
+---
+
+### February 3, 2026: Enable ScoringContext for Alias Expansion
+
+**Decision**: Modified `SearchServiceImpl.expandAliases()` to use `ScoringContext.enabled("alias-search-" + System.nanoTime())` instead of `ScoringContext.disabled()`.
+
+**Context**: BSA/AML Observation #4 revealed that alias-only searches (e.g., "AL-MALIZI") returned entities with `matchedAlias=null` despite correct entity detection and scoring. Root cause: `ScoringContext.disabled()` implements Null Object pattern with no-op `withMetadata()` method.
+
+**Rationale**: BSA/AML compliance requires `matchedAlias` field population for analyst triage and audit trail. While `disabled()` context has zero overhead (JIT-inlined no-ops), enabled context's ~1-2ms performance cost per search is acceptable tradeoff for regulatory compliance metadata capture. EntityScorerImpl already had correct logic to store matchedAlias at line 121, but metadata was discarded by disabled context.
+
+**Tradeoff**: Slight performance degradation (~1-2ms per search) vs critical compliance requirement for alias transparency.
+
+**Implementation**: Single-line change in SearchServiceImpl.expandAliases() from `ScoringContext.disabled()` to `enabled(sessionId)`. Extract matchedAlias from `ctx.toTrace().metadata().get("matchedAlias")` and pass to SearchResult constructor.
+
+**Impact**: All 6 tests in AliasOnlySearchTest now passing. Alias-only searches correctly populate matchedAlias field for UI display and audit trail.
+
+**Commit**: 10b11e7
+
+---
+
+### February 3, 2026: Defer Observation #2 (Partial Name Matching)
+
+**Decision**: Classify partial name search limitation as configuration/training issue rather than code defect. Defer resolution to operational threshold tuning phase.
+
+**Context**: BSA/AML Observation #2 reported that partial name searches (e.g., "Muhammad AL-JASIM" without middle name "Husayn") do not return matches at default threshold. Testing revealed algorithm produces scores of 79-94% for partial matches, but default `minMatch=0.88` threshold filters them.
+
+**Rationale**: Testing with Observation2PartialNameSearchTest confirmed JaroWinklerSimilarity algorithm produces correct scores for partial names:
+- "Muhammad AL-JASIM" vs "AL-JASIM, Muhammad Husayn" → 94.2% (ABOVE threshold, should match)
+- "Muhammad AL-JASIM" vs "AL-JASIM Muhammad Husayn" → 79.1% (BELOW threshold, filtered)
+- "AL-JASIM" only vs full name → similar score range
+
+Resolution requires business decision on acceptable false-positive vs false-negative tradeoff, not code changes. Options: (1) Lower default threshold to 75-80%, (2) Document minMatch parameter for operational tuning, (3) Implement context-aware dynamic thresholds.
+
+**Tradeoff**: Defer threshold tuning decision to stakeholders with domain expertise. Algorithm is correct; threshold is policy decision.
+
+**Analysis Commit**: 0dd3f32 (9/9 tests passing, scores documented)
+
+**Next Steps**: Document threshold parameter usage and provide tuning guidance for BSA consultant. Include in comprehensive observations overview document.

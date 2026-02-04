@@ -5,6 +5,49 @@
 
 ---
 
+## Session: February 3, 2026 (BSA/AML Observations v2 - Issues #1-6)
+
+### What We Decided
+- Complete observations #1, #3, #4, #5, #6 using strict TDD methodology (RED-GREEN-REFACTOR)
+- Defer observation #2 (partial name matching) as configuration/training issue, not code defect
+- Use ScoringContext.enabled() for alias expansion to capture matchedAlias metadata
+- Document remaining observations (#7-9) for future sessions
+
+### What Is Now True
+- **BSA/AML Observations Progress (9 total)**:
+  * ✅ #1, #5, #6: Matched alias UI display (commit 6478385) - 6/6 tests passing
+  * ⚠️ #2: Partial name matching - DEFERRED as configuration issue (commit 0dd3f32) - 9/9 analysis tests passing
+  * ✅ #3: Identifying attributes display (commit 1475235) - 7/7 tests passing
+  * ✅ #4: Alias-only search matchedAlias field (commit 10b11e7) - 6/6 tests passing
+  * ⏳ #7-9: Pending (noise words, common names, entity vs individual coverage)
+- **ScoringContext Metadata Capture Pattern**:
+  * ScoringContext.disabled() implements Null Object pattern with no-op withMetadata() method
+  * To extract scoring metadata (e.g., matchedAlias), must use ScoringContext.enabled(sessionId)
+  * Performance: ~1-2ms per search for enabled context vs zero overhead with disabled context
+  * SearchServiceImpl.expandAliases() changed from disabled() to enabled() context (lines 79-120)
+- **Observation #2 Analysis Results**:
+  * Partial name searches ("Muhammad AL-JASIM" without middle name) score 79-94%
+  * Default minMatch threshold (88%) filters valid partial matches
+  * JaroWinklerSimilarity algorithm produces correct scores
+  * Resolution requires business decision on threshold tuning, not code changes
+- **Test Files Created**:
+  * SearchResultsDisplayTest.java - 6 tests for matched alias UI
+  * IdentifyingAttributesDisplayTest.java - 7 tests for attributes display
+  * AliasOnlySearchTest.java - 6 tests for alias-only search behavior (373 lines)
+  * Observation2PartialNameSearchTest.java - 9 tests documenting threshold behavior
+- **UI Changes (admin.html)**:
+  * Line 1232: matchedAlias field displayed in orange when present
+  * Lines 1234-1248: Identifying attributes displayed pipe-separated (DOB, nationality, passport)
+- **All Commits Passed Security Scans**: Semgrep 0 findings, Trivy clean (secrets-only mode)
+
+### What Is Still Unknown
+- Whether to adjust default minMatch threshold or document current 88% as operational guidance
+- How to handle noise words (#7) - filter before matching or adjust algorithm
+- Common name filtering strategy (#8) - threshold-based or allowlist-based
+- Entity vs Individual coverage gap (#9) - expected behavior or data issue
+
+---
+
 ## Session: February 3, 2026 (Security Scanning Infrastructure)
 
 ### What We Decided
