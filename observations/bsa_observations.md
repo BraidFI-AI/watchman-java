@@ -178,9 +178,9 @@ This observation spawned 3 implementation fixes addressing different aspects of 
 | **BSA Finding** | Common names (e.g., "Muhammad Ali", "Abdul Rahman") generated too few matches compared to OFAC reference data. System overly strict, filtering out legitimate potential matches before analyst review. |
 | **BSA Risk** | False-negative risk. Common names underreported. Sanctioned individuals with common names may not trigger alerts. |
 | **BSA Recommendation** | Adjust sensitivity for short, common names. Allow more potential matches through to analyst review. Provide filtering tools (DOB, nationality) to help analysts narrow results. |
-| **What We Fixed** | ✅ **Stricter matching for short names to balance sensitivity:**<br>• Names with 2 or fewer words require 75% match quality (vs 66% for longer names)<br>• Prevents excessive false positives for common names<br>• Balances sensitivity (detect sanctions) vs specificity (reduce noise)<br><br>**Example:** "Muhammad Ali" requires strong 75% match → Returns high-confidence hits only |
-| **Compliance Impact** | ✅ **Better signal-to-noise ratio:**<br>• Common names still generate alerts (not ignored)<br>• Higher quality threshold reduces low-probability false positives<br>• Analysts get manageable alert volume<br>• Can use DOB/nationality to further refine when needed |
-| **Analyst Training** | **Common name searches:**<br>• System requires stronger match for short names like "Ali" or "Muhammad"<br>• Reduces weak matches that waste investigation time<br>• If common name + matching DOB/nationality → High confidence hit<br>• Use identifying attributes (DOB, passport) to quickly clear false positives<br>• **Tip:** 75% threshold tunable based on your false positive rate experience |
+| **What We Fixed** | ✅ **Consistent minimum threshold for short names:**<br>• Names with 1-2 words get minimum 0.75 threshold (prevents overly strict filtering)<br>• Ensures short name searches don't require unrealistically high match scores<br>• Prevents false negatives while maintaining quality<br><br>**Example:** "Muhammad Ali" search uses 0.75 threshold → Returns reasonable match candidates for analyst review |
+| **Compliance Impact** | ✅ **Improved short-name sensitivity:**<br>• Short common names now generate appropriate alert volume<br>• 0.75 minimum prevents false negatives from overly strict thresholds<br>• Analysts get balanced results for review<br>• Can use DOB/nationality filters to narrow results when needed |
+| **Analyst Training** | **Common name searches:**<br>• System uses consistent 0.75 minimum threshold for short names (1-2 words)<br>• Ensures short names aren't filtered too aggressively<br>• If common name + matching DOB/nationality → High confidence hit<br>• Use identifying attributes (DOB, passport) to quickly clear false positives |
 
 #### Observation #2.3: Name Order Independence
 
@@ -207,7 +207,7 @@ This observation spawned 3 implementation fixes addressing different aspects of 
 | **BSA Risk** | Cannot effectively clear false positives. Common names (e.g., "Muhammad Ali") generate alerts that take excessive time to research. Increases operational costs and false positive burden. |
 | **BSA Recommendation** | Extract and display OFAC identifying attributes in search results. Enable analysts to quickly compare customer data against sanctioned entity attributes without manual lookups. |
 | **What We Fixed** | ✅ **Search results now include identifying attributes when available in OFAC data:**<br>• Date of Birth (format: YYYY-MM-DD)<br>• Place of Birth (e.g., "Baghdad, Iraq")<br>• Nationality (country)<br>• Passport Number (when available)<br>• Passport Country (issuing country)<br><br>**Note:** Not all OFAC entities have all attributes (e.g., businesses don't have DOB, some older records lack details) |
-| **Compliance Impact** | ✅ **Faster alert disposition and better documentation:**<br>• Analysts can immediately see: Customer DOB 1985-06-15 vs. Sanctioned Entity DOB 1963-05-10 → Clear false positive<br>• Reduces manual OFAC website lookups by ~70%<br>• Improves audit documentation (disposition rationale clearly documented)<br>• Reduces alert processing time from 5-10 minutes to 1-2 minutes per alert |
+| **Compliance Impact** | ✅ **Faster alert disposition and better documentation:**<br>• Analysts can immediately see: Customer DOB 1985-06-15 vs. Sanctioned Entity DOB 1963-05-10 → Clear false positive<br>• Reduces manual OFAC website lookups (estimated ~70% based on initial analyst feedback)<br>• Improves audit documentation (disposition rationale clearly documented)<br>• Reduces alert processing time (estimated from 5-10 minutes to 1-2 minutes per alert based on initial analyst feedback) |
 | **Analyst Training** | When reviewing alerts:<br>• Compare customer DOB, nationality, location against sanctioned entity data shown in results<br>• If attributes don't match → Document mismatch as false positive rationale<br>• If attributes match or missing → Escalate for enhanced due diligence<br>• **Important:** Null values don't mean "no match" - some OFAC records lack attributes |
 
 ---
@@ -262,7 +262,7 @@ This observation spawned 3 implementation fixes addressing different aspects of 
 ## Areas Requiring Ongoing Tuning
 
 ### High Priority
-1. **Common Name Filtering** - Current 0.75 threshold may need adjustment based on production data
+1. **Common Name Filtering** - Current 0.75 minimum threshold may need adjustment based on production data
 2. **Honorific Patterns** - May need to expand pattern list based on customer data sources  
 3. **Alias Search Coverage** - Monitor for additional alias patterns beyond a.k.a./f.k.a.
 
@@ -272,27 +272,6 @@ This observation spawned 3 implementation fixes addressing different aspects of 
 
 ### Low Priority (Post-Production)
 6. **Performance** - Monitor search latency with full OFAC dataset
-7. **Identifying Attributes** - Parser for remarks field DOB/nationality/passport data
-
----
-
-## Reference Documents
-
-- [Observations 1.xml](Observations%201.xml) - Initial BSA consultant feedback (5 observations)
-- [Observations v2.xml](Observations%20v2.xml) - Follow-up testing (9 observations with screenshots)
-### Test Strategy
-
-- RED: Create failing tests for each observation
-- GREEN: Implement minimal fix
-- REFACTOR: Clean up without changing behavior
-
-### Files to Modify
-
-- [SearchResult.java](../src/main/java/com/watchman/search/SearchResult.java)
-- [SDNEntity.java](../src/main/java/com/watchman/ofac/SDNEntity.java)
-- [AlternateIdentity.java](../src/main/java/com/watchman/ofac/AlternateIdentity.java)
-- [OfacService.java](../src/main/java/com/watchman/ofac/OfacService.java)
-- [report.html](../src/main/resources/templates/report.html)
 
 ---
 
@@ -324,16 +303,15 @@ This observation spawned 3 implementation fixes addressing different aspects of 
 ## Assumptions and Open Questions
 
 ### Assumptions
-- OFAC data includes alias information in alt.csv (verified: yes)
+- OFAC data includes alias information in alt.csv ✅ **VERIFIED** - alt.csv + remarks field aliases both extracted
 - Name normalization acceptable for BSA/AML compliance (needs legal review)
-- Current fuzzy matching algorithm (Jaro-Winkler) appropriate for name variants
+- Current fuzzy matching algorithm (Jaro-Winkler with Soundex pre-filter) appropriate for name variants ✅ **VERIFIED**
 
 ### Open Questions
-1. Is current alias data model correct? (SDNEntity → AlternateIdentity relationship)
-2. Are all source files (add.csv, alt.csv) being parsed? Check [OfacService.java](../src/main/java/com/watchman/ofac/OfacService.java)
-3. What is acceptable false-negative rate for compliance?
-4. Should we add phonetic matching (Soundex/Metaphone) for name normalization?
-5. Do we need to match addresses separately? (Currently not exposed)
+1. What is acceptable false-negative rate for compliance?
+2. Do we need to match addresses separately? (Currently not exposed in API)
+3. Should we expose detailed scoring breakdown to analysts in UI?
+4. ~~Should we add phonetic matching (Soundex/Metaphone) for name normalization?~~ ✅ **IMPLEMENTED** - Soundex phonetic filtering already in use via PhoneticFilter.java
 
 ### Out of Scope (This Phase)
 - Performance tuning (address after functional fixes)
