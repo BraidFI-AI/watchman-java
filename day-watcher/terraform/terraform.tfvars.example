@@ -1,0 +1,43 @@
+# Day Watcher Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "prod"
+
+# Braid API Credentials
+braid_api_username = "randysandbox"
+braid_api_key      = "your-api-key-here"  # Get from Braid dashboard
+
+# Network Configuration
+# POC MODE: Auto-create VPC and subnets (recommended for quick start)
+create_vpc = true
+
+# PRODUCTION MODE: Use existing VPC (set create_vpc=false and uncomment below)
+# create_vpc = false
+# vpc_id     = "vpc-xxxxxxxxxxxxx"
+# subnet_ids = ["subnet-xxxxxxxxxxxxx", "subnet-yyyyyyyyyyyyy"]
+
+# S3 Buckets (defaults shown, customize if needed)
+input_bucket_name   = "watchman-input"
+results_bucket_name = "watchman-results"
+
+# ECR Repository
+ecr_repository_name = "day-watcher"
+
+# ECS Task Configuration
+ecs_task_cpu    = 4096  # 4 vCPU (increase to 8192 for faster processing)
+ecs_task_memory = 8192  # 8 GB RAM (increase to 16384 if OOM errors occur)
+
+# Schedule Configuration
+# Cron format: "cron(minute hour day-of-month month day-of-week year)"
+# Times are in UTC (EST = UTC - 5, so 1am EST = 6am UTC)
+schedule_expression = "cron(0 6 * * ? *)"  # Daily at 1am EST
+
+# Alerting
+alert_email = "your-email@example.com"  # Receives SNS notifications on failures
+
+# POC Mode (default: true for easy debugging)
+# Set to false in production and specify allowed_cidr_blocks
+enable_poc_mode      = true
+allowed_cidr_blocks  = ["0.0.0.0/0"]  # Only used if enable_poc_mode=false
