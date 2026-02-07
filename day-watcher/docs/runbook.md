@@ -7,13 +7,19 @@
 Query DynamoDB for last run:
 
 ```bash
-aws dynamodb query \
+aws dynamodb scan \
   --table-name day-watcher-runs \
-  --index-name RunDateIndex \
-  --key-condition-expression "runDate = :date" \
-  --expression-attribute-values "{\":date\":{\"S\":\"$(date +%Y-%m-%d)\"}}" \
-  --scan-index-forward false \
-  --limit 1
+  --limit 1 \
+  --query 'Items[0].{RunId:runId.S,Status:status.S,Fetched:entitiesFetchedFromBraid.N,Written:entitiesWrittenToDynamoDB.N,Screened:totalEntitiesScreened.N}'
+```
+
+Check for discrepancies:
+
+```bash
+aws dynamodb scan \
+  --table-name day-watcher-runs \
+  --filter-expression "hasDiscrepancy = :true" \
+  --expression-attribute-values '{":true":{"BOOL":true}}'
 ```
 
 ### Download Results
@@ -32,14 +38,23 @@ head -5 matches.ndjson | jq .
 ### Monitor Active Run
 
 ```bash
-RUN_ID="run-2026-02-05-06-00"
+RUN_ID="run-2026-02-07-03-08-38"
 
-watch -n 10 "aws dynamodb get-item \
+aws dynamodb get-item \
   --table-name day-watcher-runs \
-  --key '{\"runId\": {\"S\": \"$RUN_ID\"}}' \
-  --query 'Item.{Status:status.S,Progress:checkpoint.N,Total:totalCustomers.N}' \
-  --output table"
+  --key "{\"runId\": {\"S\": \"$RUN_ID\"}}"
 ```
+
+Watch CloudWatch logs in real-time:
+
+```bash
+aws logs tail /aws/lambda/day-watcher-orchestrator --follow
+```
+
+Look for progress logs:
+- "Fetched 15000 individuals so far..."
+- "✓ Batch write successful: 25 items written"
+- "✅ Total entities fetched: 120700"
 
 ### Check CloudWatch Logs
 

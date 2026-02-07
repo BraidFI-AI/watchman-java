@@ -10,25 +10,26 @@
 └─────────────────────────────────────────────────────────────────────┘
 
     ┌──────────────┐
-    │ EventBridge  │ Daily 1am EST (cron: 0 6 * * ? *)
+    │ EventBridge  │ Daily 1am EST (cron: 0 6 * * ? *) - Currently DISABLED
     └──────┬───────┘
            │ trigger
            ▼
     ┌──────────────────────────────────────────────────────────────┐
     │  Lambda Orchestrator (day-watcher-orchestrator)              │
+    │  Python 3.11, 512MB RAM, 900s timeout                        │
     │  ┌────────────────────────────────────────────────────────┐  │
     │  │ 1. Get Braid API credentials from Secrets Manager     │  │
-    │  │ 2. Get last run timestamp from DynamoDB               │  │
-    │  │ 3. Query Braid for NEW/CHANGED entities only:         │  │
-    │  │    - First run: Fetch ALL (~120k entities)            │  │
-    │  │    - Daily: Fetch only updatedAt > lastRunTime        │  │
-    │  │      (typically 100-500 entities/day)                 │  │
-    │  │ 4. Upsert entities to DynamoDB master list            │  │
-    │  │ 5. Export ALL entities from DynamoDB to NDJSON        │  │
+    │  │ 2. Fetch entities from Braid API (3 types):           │  │
+    │  │    - individuals (50,600 entities)                    │  │
+    │  │    - businesses (4,900 entities)                      │  │
+    │  │    - counterparties (65,200 entities)                 │  │
+    │  │    Total: 120,700 entities                            │  │
+    │  │ 3. Progress logging every 1000 entities               │  │
+    │  │ 4. Batch write to DynamoDB with error handling        │  │
+    │  │ 5. Export active entities to NDJSON                   │  │
     │  │ 6. Upload to S3 (day-watcher-input/{runId}/...)       │  │
-    │  │ 7. Create DynamoDB run record (status=SUBMITTED)      │  │
-    │  │ 8. Trigger ECS Fargate task                           │  │
-    │  │ 9. Update DynamoDB (status=RUNNING)                   │  │
+    │  │ 7. Create audit record in day-watcher-runs            │  │
+    │  │ 8. Trigger ECS Fargate screening task                 │  │
     │  └────────────────────────────────────────────────────────┘  │
     └──────────────────────┬───────────────────────────────────────┘
                            │ run_task
@@ -36,22 +37,11 @@
     ┌──────────────────────────────────────────────────────────────┐
     │  ECS Fargate Task (4 vCPU, 8 GB RAM, Spot pricing)          │
     │  ┌────────────────────────────────────────────────────────┐  │
-    │  │  Java Watchman (Spring Boot on localhost:8084)        │  │
+    │  │  Java Watchman (Spring Boot)                          │  │
     │  │  - Loads OFAC SDN/CSL lists at startup (~60 sec)      │  │
-    │  │  - Exposes POST /v1/search/batch endpoint             │  │
-    │  └────────────────────────────────────────────────────────┘  │
-    │           ▲                                                   │
-    │           │ HTTP calls (localhost)                            │
-    │           │                                                   │
-    │  ┌────────┴───────────────────────────────────────────────┐  │
-    │  │  Python Worker (batch_worker.py)                       │  │
-    │  │  1. Download NDJSON from S3                            │  │
-    │  │  2. Split into chunks (1000 entities each)             │  │
-    │  │  3. Call Java Watchman POST /v1/search/batch           │  │
-    │  │  4. Enrich matches with alertMetadata                  │  │
-    │  │  5. Update DynamoDB checkpoint after each chunk        │  │
-    │  │  6. Upload results to S3 (watchman-results/{runId}/...) │  │
-    │  │  7. Update DynamoDB (status=COMPLETED, totalMatches)   │  │
+    │  │  - Reads NDJSON from S3                                │  │
+    │  │  - Screens entities in batches                         │  │
+    │  │  - Writes results to S3                                │  │
     │  └────────────────────────────────────────────────────────┘  │
     └──────────────────────────────────────────────────────────────┘
                            │
@@ -59,7 +49,7 @@
            ▼               ▼               ▼
     ┌────────────┐  ┌────────────┐  ┌──────────────┐
     │ DynamoDB   │  │ S3 Results │  │ CloudWatch   │
-    │ (runs)     │  │ (NDJSON)   │  │ (logs/metrics)│
+    │ (2 tables) │  │ (NDJSON)   │  │ (logs/metrics)│
     └────────────┘  └────────────┘  └──────────────┘
 ```
 
@@ -84,40 +74,36 @@
 - Trigger ECS Fargate task with environment overrides
 
 **API Optimization**:
-- First run: ~9,500 Braid API calls (120k entities / 20 per page)
-- Daily runs: ~50 API calls (500 entities / 20 per page)
+- First run: ~9,500 Braid API calls (120,700 entities / ~13 per page average)
+- Daily runs: ~50 API calls (updated entities only with `updated_after` filter)
 - **Savings: 99.5% reduction in daily API calls**
 
+**Performance**:
+- First run: ~15 minutes (361s individuals, 31s businesses, 134s counterparties)
+- Daily incremental: <1 minute
+
 **Key Files**:
-- `orchestrator/handler.py` - Lambda entry point
-- `orchestrator/braid_client.py` - Braid API wrapper with rate limiting
-- `orchestrator/entity_manager.py` - DynamoDB master list operations
-- `orchestrator/ndjson_exporter.py` - Entity transformation logic
+- `orchestrator/handler.py` - Lambda entry point, entity fetching, DynamoDB writes
+- `orchestrator/braid_client.py` - Braid API wrapper with pagination
+- `orchestrator/entity_manager.py` - DynamoDB operations with error handling
+- `orchestrator/ndjson_exporter.py` - Entity export to S3
 
 ### 2. ECS Container
 
 **Base Image**: eclipse-temurin:21-jre  
-**Processes**: Java Watchman (PID 1) + Python worker (subprocess)
+**Process**: Java Watchman only (single process)
 
 #### Java Watchman
-- Spring Boot application on port 8084 (internal only)
-- Loads OFAC SDN/CSL lists at startup (~4 GB memory)
-- Exposes `/v1/search/batch` endpoint for bulk screening
-- No external network access required (called by Python worker via localhost)
-
-#### Python Worker
-- Downloads NDJSON from S3
-- Splits into 1000-entity chunks
-- Screens each chunk via Java Watchman batch API
-- Enriches matches with `alertMetadata` (entityId, tenantId, description)
-- Uploads results to S3
-- Updates DynamoDB progress (checkpoint mechanism)
+- Spring Boot application
+- Loads OFAC SDN/CSL lists at startup (~4 GB memory, ~60 seconds)
+- Reads NDJSON from S3 (input path provided via environment variables)
+- Screens entities in batches (typically 1000 per batch)
+- Writes screening results to S3 (enriched NDJSON with match metadata)
+- Exits when complete
 
 **Key Files**:
-- `container/Dockerfile` - Multi-process container build
-- `container/start.sh` - Startup orchestration (Java → Python)
-- `container/batch_worker.py` - Screening loop and S3 I/O
-- `container/enrichment.py` - Alert metadata generation
+- `container/Dockerfile` - Java Watchman container
+- Java Watchman source (in main watchman-java repository)
 
 ### 3. DynamoDB Tables
 
@@ -130,24 +116,26 @@
 **Purpose**: Master list of all entities for screening
 
 **Attributes**:
-- `entityId` - Braid UUID (PK)
-- `entityType` - Entity type (SK)
-- `name` - Entity name
-- `addresses` - List of address objects
-- `dob` - Date of birth (individuals only)
-- `incorporationDate` - Incorporation date (businesses only)
-- `braidUpdatedAt` - ISO timestamp from Braid API
-- `lastScreenedAt` - ISO timestamp of last screening
-- `lastScreeningResult` - match|no-match|error
-- `braidTenantId` - Braid tenant/customer ID
-- `braidStatus` - ACTIVE|INACTIVE|etc
+- `entityId` - Braid UUID (PK) - format: `ind_*`, `bus_*`, `cou_*`
+- `entityType` - Entity type (SK) - values: `individual`, `business`, `counterparty`
+- `name` - Entity full name
+- `addresses` - List of address objects (can be empty array if null from Braid)
+- `dateOfBirth` - ISO date string (individuals only)
+- `status` - ACTIVE|INACTIVE from Braid
+- `createdAt` - ISO timestamp from Braid
+- `updatedAt` - ISO timestamp from Braid
+- `lastSynced` - Unix timestamp when entity was last fetched from Braid
 
-**GSIs**:
-- `TypeIndex` on `entityType` (for bulk exports by type)
-- `UpdatedAtIndex` on `braidUpdatedAt` (for finding recently changed)
+**Current Item Count**: ~120,700 entities
+- 50,600 individuals
+- 4,900 businesses
+- 65,200 counterparties
+
+**No GSIs currently** - simple PK/SK access pattern
 
 **Access Patterns**:
-- Upsert entity by entityId (Lambda writes)
+- Batch write entities (Lambda, 25 items per batch)
+- Scan all entities for NDJSON export (Lambda)
 - Query all entities for screening (Lambda reads)
 - Query entities updated since timestamp (Lambda reads)
 
@@ -165,18 +153,23 @@
 **Purpose**: Audit trail and operational tracking
 
 **Attributes**:
-- `runId` - run-YYYY-MM-DD-HH-MM
+- `runId` - run-YYYY-MM-DD-HH-MM-SS
 - `runDate` - YYYY-MM-DD
 - `status` - SUBMITTED|RUNNING|COMPLETED|FAILED
 - `startTime` - Unix timestamp
 - `endTime` - Unix timestamp
-- `entitiesFetchedFromBraid` - Count of new/changed entities pulled
-- `totalEntitiesScreened` - Total entities in master list
-- `totalMatches` - Count of OFAC matches
+- `entitiesFetchedFromBraid` - Count fetched from Braid API
+- `entitiesWrittenToDynamoDB` - Confirmed write count (with error handling)
+- `totalEntitiesScreened` - Total entities screened by ECS
+- `fetchBreakdown` - Map: `{individual: N, business: N, counterparty: N}`
+- `writeBreakdown` - Map: Per-type write confirmations
+- `hasDiscrepancy` - Boolean: true if fetch ≠ write counts
+- `writeDiscrepancy` - Number: difference between fetch and write
 - `s3InputPath` - S3 URI of input NDJSON
 - `s3OutputPath` - S3 URI of results NDJSON
-- `checkpoint` - Last processed entity index (for resume)
 - `errorMessage` - Error details if failed
+
+**No checkpoint field** - screening is all-or-nothing per run
 
 ### 4. S3 Buckets
 
@@ -220,17 +213,24 @@ Accessed by Lambda at runtime (IAM permission required).
 
 **First Run (Initial Load)**:
 1. Lambda checks DynamoDB entities table → empty
-2. Fetch ALL entities from Braid (individuals, businesses, counterparties with status=ACTIVE)
-3. Batch write ~120,600 entities to DynamoDB
+2. Fetch ALL entities from Braid (3 types, 120,700 total)
+   - 50,600 individuals (~361 seconds with progress logs)
+   - 4,900 businesses (~31 seconds)
+   - 65,200 counterparties (~134 seconds)
+3. Batch write to DynamoDB with explicit error handling
+   - 25 items per batch (boto3 limit)
+   - Success confirmation per batch: "✓ Batch write successful: 25 items written"
+   - Returns item count for reconciliation
 4. Export all from DynamoDB to S3 as NDJSON
-5. Screen all 120,600 entities
+5. Record audit trail with fetch/write breakdown and discrepancy detection
+6. Trigger ECS to screen all entities
 
-**Daily Run (Incremental)**:
+**Daily Run (Incremental)** - NOT YET IMPLEMENTED:
 1. Lambda gets last run timestamp from DynamoDB: `2026-02-05T06:00:00Z`
-2. Query Braid: `GET /individuals?updatedAt>2026-02-05T06:00:00Z`
-3. Fetch only NEW/CHANGED entities (~100-500 typical)
+2. Query Braid with `updated_after` filter: `GET /individuals?updated_after=2026-02-05T06:00:00Z`
+3. Fetch only NEW/CHANGED entities (~50 typical)
 4. Upsert to DynamoDB (insert new, update existing)
-5. Export ALL ~120,600+ entities from DynamoDB to S3
+5. Export ALL ~120,700+ entities from DynamoDB to S3
 6. Screen entire population (OFAC lists change daily)
 
 **Why Screen Everyone Daily**:
@@ -238,6 +238,8 @@ Accessed by Lambda at runtime (IAM permission required).
 - A "clean" entity yesterday may match today's list
 - Compliance requirement: full population screening
 - Optimization is on the Braid API fetch, not screening
+
+**Current Status**: First run working, incremental updates pending implementation
 
 ### Input: Braid Customer → NDJSON
 
