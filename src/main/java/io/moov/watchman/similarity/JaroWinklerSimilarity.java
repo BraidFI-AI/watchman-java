@@ -169,16 +169,48 @@ public class JaroWinklerSimilarity implements SimilarityService {
      * Check if two token arrays are phonetically equivalent sets.
      * Uses Soundex to handle spelling variations like Muhammad/Mohammad, Husayn/Hussein.
      * 
+     * BSA CRITICAL FIX (S.I. 5): Added length validation to prevent false positive phonetic matches.
+     * Soundex is too permissive - CECOEX and CHACHAJEE both produce C220, causing false positive.
+     * Now requires length similarity in addition to phonetic match.
+     * 
      * This fixes the BSA consultant observation that name order sensitivity still occurs
      * due to spelling variations not being treated as equivalent by exact string matching.
      * 
      * @param tokens1 First array of tokens
      * @param tokens2 Second array of tokens
      * @return true if both arrays contain phonetically equivalent tokens (order-independent)
+     *         AND token lengths are similar (within 30%)
      */
     private boolean phoneticSetsMatch(String[] tokens1, String[] tokens2) {
         if (tokens1.length != tokens2.length) {
             return false;
+        }
+        
+        // BSA CRITICAL FIX (S.I. 5): Validate length similarity before phonetic matching
+        // Prevents false positives like "CECOEX" (6 chars) matching "CHACHAJEE" (9 chars)
+        // Both produce Soundex C220 but are completely unrelated entities.
+        // 
+        // Length validation: For each token pair, require <= 30% length difference
+        // This preserves spelling variations (Muhammad/Mohammad = 0% diff)
+        // While blocking unrelated strings (CECOEX/CHACHAJEE = 50% diff)
+        for (int i = 0; i < tokens1.length; i++) {
+            String token1 = tokens1[i];
+            String token2 = tokens2[i];
+            
+            int len1 = token1.length();
+            int len2 = token2.length();
+            int maxLen = Math.max(len1, len2);
+            int minLen = Math.min(len1, len2);
+            
+            // Calculate length difference ratio
+            double lengthDiffRatio = (maxLen - minLen) / (double) maxLen;
+            
+            // If length difference > 30%, don't consider phonetic match
+            // Example: CECOEX (6) vs CHACHAJEE (9) = (9-6)/9 = 33% → REJECT
+            // Example: Muhammad (8) vs Mohammad (8) = (8-8)/8 = 0% → ALLOW
+            if (lengthDiffRatio > 0.30) {
+                return false;
+            }
         }
         
         Set<String> soundexSet1 = new HashSet<>();
