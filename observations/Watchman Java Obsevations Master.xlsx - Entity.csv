@@ -1,0 +1,76 @@
+,S.I,Entity / Organization Name,Baseline Name Matching ,Partial / Close Name Handling,Alias-Based Matching,Observations,Implementation Status,Implementation Notes
+,1,AEROCARIBBEAN AIRLINES,Pass,"Partial-name handling resulted in unrelated alias matches in Score Trace Report. AEROCARIBBEAN matched with AIR KORYO and CARIBBEAN AIRLINES matched with CASPIAN AIRLINES, though the correct entity was also listed in search result.","Pass
+(AERO-CARIBBEAN)","It appears close-name matching is broad, causing unrelated entities to appear in results.",,
+,2,"ANGLO-CARIBBEAN CO., LTD.",Pass,Pass,"Pass
+(AVIA IMPORT)",-,,
+,3,BANCO NACIONAL DE CUBA,Pass,Pass,"Pass
+(BNC / NATIONAL BANK OF CUBA)",-,,
+,4,BOUTIQUE LA MAISON,Pass,Pass,N/A,-,,
+,5,"CECOEX, S.A.",Pass,Screening using CECOEX (without “S.A.”) failed to list the entity. A hit was instead generated on an unrelated individual with alias “CHACHAJEE.”,N/A,Partial-name suppression increases the risk of missed entity-level sanctions hits.,,
+,6,CIMEX,"Direct name and aliases detected; however, multiple other OFAC-listed entities were omitted (e.g., CIMEX IBERICA, COMERCIAL CIMEX S.A., FINANCIERA CIMEX S.A.).",N/A,N/A,Related sanctioned entities listed by OFAC are not fully reflected in the results.,,
+,7,"COMERCIAL DE RODAJES Y MAQUINARIA, S.A.",Pass,Pass,"Pass 
+(CRYMSA)",-,,
+,8,COTEI,Pass,Pass,N/A,-,,
+,9,"EDYJU, S.A.",Pass,Pass,N/A,-,,
+,10,TROPIC TOURS GMBH,Pass,Pass,"Pass
+(TROPICANA TOURS GMBH)",-,,
+,11,BANK MARKAZI JOMHOURI ISLAMI IRAN,Pass,Pass,"Pass
+(CENTRAL BANK OF THE ISLAMIC REPUBLIC OF IRAN / BANK MARKAZI IRAN / CENTRAL BANK OF IRAN)",-,,
+,12,BANK MASKAN,Pass,"Screening using MASKAN did not list the sanctioned entity. Also, watchman listed a different set of hits compared to OFAC.","Pass
+(HOUSING BANK - OF IRAN)",Partial-name handling gap resulting in potential false negatives.,,
+,13,AUM SHINRIKYO,Pass,"Partial-name handling resulted in unrelated alias matches in Score Trace Report. Score Trace showed SHINRIKYO matched with SUNRISE & SOMERSET, though the correct entity was also listed in search result.","Pass
+(AUM SUPREME TRUTH / A.I.C. SOGO KENKYUSHO / A.I.C. COMPREHENSIVE RESEARCH INSTITUTE / ALEPH)","It appears close-name matching is broad, causing unrelated entities to appear in results.",,
+,14,GAMA'A AL-ISLAMIYYA,Pass,"Partial-name search (AL-ISLAMIYYA) listed only the primary entity, while OFAC lists multiple related names.","Alias search (ISLAMIC GROUP) listed only the primary entity, unlike OFAC, which listed multiple related names.",Incomplete alias and entity name coverage compared to OFAC reference data.,,
+,15,HIZBALLAH,Pass,Pass,Pass (multiple aliases),-,,
+,16,PALESTINE ISLAMIC JIHAD - SHAQAQI FACTION,Pass,"Partial-name search (ISLAMIC JIHAD) listed a different entity (HIZBALLAH), while OFAC lists several matching records, including the main entity.","Alias ""PIJ"" was not detected for the main entity instead matched against an unrelated alias ""PKK"". ",Using partial names or acronyms shows unrelated results while missing valid OFAC records.,,
+,17,AL-QUDS BRIGADES,Pass,"Partial-name search (AL-QUDS) listed a different entity (IRGC-QODS FORCE), while OFAC lists several matching names, including the main entity.",N/A,Partial-name searches prioritize unrelated entities and missed valid OFAC records.,,
+,18,SAYARA AL-QUDS,Pass,"Partial-name search (SAYARA) listed a different entity (SANABEL RELIEF AGENCY LIMITED with alias SRA), while OFAC lists the main entity.",N/A,Partial-name searches create unrelated matches and miss valid entity results.,,
+,19,ABU GHUNAYM SQUAD OF THE HIZBALLAH BAYT AL-MAQDIS,Pass,"Partial-name search on ""THE HIZBALLAH BAYT AL-MAQDIS"" didn’t give any results and ""HIZBALLAH BAYT AL-MAQDIS"" listed ""HIZBALLAH"" and omitted the main entity.",N/A,"It appears multiple sanctioned groups are treated as one broader entity, reducing accuracy.",,
+,20,SHINING PATH,Pass,Pass,"Pass (aliases including short names SPP, EGP, PCP, EPL,SL)",-,,
+,21,AL QA'IDA,"Direct name and aliases detected; however, several other OFAC-listed entities were omitted (e.g., 
+AL-QA'IDA KURDISH BATTALIONS;
+AL-QAIDA GROUP OF JIHAD IN IRAQ;
+AL-QA'IDA IN YEMEN;
+AL-QAIDA IN SYRIA).",Pass,Pass,Not all related OFAC-listed entities are shown in the results.,,
+,22,TALIBAN,"Direct name and aliases detected; however, several other OFAC-listed entities were omitted (e.g., 
+KURDISH TALIBAN;
+TEHREEK-E-TALIBAN;
+TEHRIK-E-TALIBAN-TARIQ GIDAR GROUP).",Pass,Pass,Not all related OFAC-listed entities are shown in the results.,,
+,23,GALAPAGOS S.A,Pass,"Screening using GALAPAGOS (without “S.A.”) failed to list the entity. Hits were instead generated on unrelated enities with aliases “GLBC” and ""GLAVGOSEKSPERTIZA"".",N/A,Partial-name suppression increases the risk of missed entity-level sanctions hits.,,
+,24,CONTINUITY IRA,Pass,"Partial-name search (IRA) listed different entities (IARA, ISLAMIC RELIEF AGENCY, etc.), while OFAC lists a different set of names, including the main entity.","Pass
+(CONTINUITY ARMY COUNCIL / CONTINUITY IRISH REPUBLICAN ARMY / REPUBLICAN SINN FEIN / CIRA)",Using partial names or acronyms shows unrelated results while missing valid OFAC records.,,
+,25,ORANGE VOLUNTEERS,Pass,Pass,N/A,-,,
+,26,ACCESOS ELECTRONICOS S.A.DE C.V.,Full name without punctuation (ACCESOS ELECTRONICOS SADE CV) didn’t return the entity.,Pass,N/A,Sensitivity to punctuation and formatting may suppress valid entity matches.,,
+,27,GEX EXPLORE S. DE R.L. DE C.V.,Pass,Name order variation (EXPLORE GEX) didn’t return the main entity.,N/A,Entity name-order handling remains inconsistent.,,
+,28,ASKATASUNA,Pass,Pass,"Pass (aliases including short names EKIN, XAKI, ETA, K.A.S.)",-,,
+,29,"FORPRES, S.C.",Pass,Pass,N/A,-,,
+,30,"ADP, S.C.",Pass,Screening using ADP (without “S.C.”) failed to list the entity. Hits were instead generated on unrelated enities with alias “ADF”.,N/A,Partial-name suppression increases the risk of missed entity-level sanctions hits.,,
+,31,T.E.G. LIMITED,Full name without punctuation (TEG LIMITED) didn’t return the entity.,Pass,N/A,Sensitivity to punctuation and formatting may suppress valid entity matches.,,
+,32,ZDRAVO,Pass,Pass,N/A,-,,
+,33,INVERSIONES MACARNIC PATINO Y CIA S.C.S.,Pass,Pass,N/A,-,,
+,34,LAKOKRASKA OAO,Pass,Pass,"Pass
+(LAKOKRASKA OPEN JOINT-STOCK COMPANY)",-,,
+,35,OFFICE 39,"Direct name and aliases detected; however, several other OFAC-listed entities were omitted.",Pass,"Pass
+(OFFICE #39 / OFFICE NO. 39 / BUREAU 39 / CENTRAL COMMITTEE BUREAU 39 / DIVISION 39 / THIRD FLOOR)",Not all related OFAC-listed entities are shown in the results.,,
+,36,YAKUZA,Pass,Pass,"Pass
+(BORYOKUDAN / GOKUDO)",-,,
+,37,KPD S.A.,Pass,Pass,N/A,-,,
+,38,BANK ROSSIYA,Pass,"Screening using ROSSIYA (without “BANK”) failed to list the entity. Hits were instead generated on unrelated enity with aliases “RIHS"" while OFAC lists several matching records, including the main entity.","Pass
+(AKTSIONERNY BANK RUSSIAN FEDERATION / AB ROSSIYA, OAO / OTKRYTOE AKTSIONERNOE OBSHCHESTVO AKTSIONERNY BANK ROSSIYA)",Using partial names shows unrelated results while missing valid OFAC records.,,
+,39,STROYTRANSGAZ OJSC,Pass,Screening using STROYTRANSGAZ failed to list several matching records compared to OFAC list.,"Pass
+(OAO STROYTRANSGAZ)",Using partial names shows unrelated results while missing valid OFAC records.,,
+,40,DONBASS PEOPLE'S MILITIA,Pass,Pass,"Pass
+(PEOPLE'S MILITIA OF DONBASS)",-,,
+,41,DAWNLIGHT,Pass,Pass,N/A,-,,
+,42,NPK TEKHMASH OAO,Pass,"Screening using TEKHMASH failed to list the entity and istead listed an entity with alias ""TSNIIAG"".","Pass
+(Multiple aliases)",Using partial names shows unrelated results while missing valid OFAC records.,,
+,43,RA NAM 2 (Vessel),Pass,Pass,N/A,-,,
+,44,TONG HUNG 1 (Vessel),Pass,Pass,N/A,-,,
+,45,P-672 (Aircraft),Score Trace Report matched the name with another aircraft (P-632) though P-672 was listed in search results.,Pass,N/A,Wrong name matching in Score Trace Report.,,
+,46,P-813 (Aircraft),Pass,Pass,N/A,-,,
+,47,STALINGRAD (Vessel),Pass,Pass,N/A,-,,
+,48,KUM SONG 3 (Vessel),Pass,Pass,N/A,-,,
+,49,EP-MOQ (Aircraft),"The hit was not correctly identified. The matched aliases were EP-MNG, EP-MNJ, EP-MNK, EP-MNQ,EP-MHG)",The hit was not correctly identified.,N/A,The true sanctioned match was not correctly identified in the results.,,
+,50,AAJ (Vessel),"The hit was not correctly identified. The matched aliases were AUC, AUTODEFENSAS UNIDAS DE COLOMBIA, JAMIAT IHIA AL-TURATH AL-ISLAMIYA)",The hit was not correctly identified.,N/A,The true sanctioned match was not correctly identified in the results.,,
+,51,EP-IBT (Aircraft),Pass,Pass,N/A,-,,
+,52,OOO OTKRITIE CAPITAL,Pass,Screening using OTKRITIE failed to list several matching records compared to OFAC list.,Pass,Not all related OFAC-listed entities are shown in the results with partial name.,,

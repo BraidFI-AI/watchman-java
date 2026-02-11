@@ -48,30 +48,40 @@ def screen_batch(entities: List[Dict]) -> List[Dict]:
     
     Request format:
     {
-        "searches": [
-            {"name": "AL-BAGHDADI, Ibrahim", "entityType": "INDIVIDUAL", ...},
-            {"name": "Smith, John", "entityType": "INDIVIDUAL", ...}
+        "items": [
+            {"name": "AL-BAGHDADI, Ibrahim", "type": "PERSON", ...},
+            {"name": "Smith, John", "type": "PERSON", ...}
         ]
     }
     
     Response format:
     {
-        "searches": [
+        "batchId": "batch-abc-123",
+        "results": [
             {
-                "search": {"name": "AL-BAGHDADI, Ibrahim", ...},
-                "matches": [{"match": 0.94, "name": "AL-BAGHDADI...", ...}]
-            },
-            ...
+                "requestId": "...",
+                "query": "AL-BAGHDADI, Ibrahim",
+                "matches": [{"score": 0.94, "name": "AL-BAGHDADI...", ...}],
+                ...
+            }
         ]
     }
     """
     # Remove metadata before sending to Watchman (Watchman doesn't expect it)
-    searches = []
+    # Also map entityType to type (Java API expects 'type' not 'entityType')
+    items = []
     for entity in entities:
-        search = {k: v for k, v in entity.items() if k != 'metadata'}
-        searches.append(search)
+        item = {}
+        for k, v in entity.items():
+            if k == 'metadata':
+                continue
+            elif k == 'entityType':
+                item['type'] = v  # Map entityType -> type
+            else:
+                item[k] = v
+        items.append(item)
     
-    payload = {'searches': searches}
+    payload = {'items': items}
     
     try:
         response = requests.post(
@@ -80,7 +90,7 @@ def screen_batch(entities: List[Dict]) -> List[Dict]:
             timeout=300  # 5 min timeout for large batches
         )
         response.raise_for_status()
-        return response.json()['searches']
+        return response.json()['results']
     except requests.exceptions.RequestException as e:
         print(f"ERROR: Batch screening failed: {e}")
         raise

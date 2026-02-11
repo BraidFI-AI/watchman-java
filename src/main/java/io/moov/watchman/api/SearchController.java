@@ -33,6 +33,13 @@ public class SearchController {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchController.class);
 
+    /**
+     * Minimum confidence threshold for including entities in Score Trace.
+     * Entities scoring below this threshold are excluded from the trace to reduce
+     * noise in BSA audit trails while maintaining complete search results.
+     */
+    private static final double TRACE_CONFIDENCE_THRESHOLD = 0.85;
+
     private final SearchService searchService;
     private final EntityIndex entityIndex;
     private final EntityScorer entityScorer;
@@ -103,10 +110,19 @@ public class SearchController {
         if (Boolean.TRUE.equals(trace) && !results.isEmpty()) {
             String sessionId = UUID.randomUUID().toString();
             
+            // Filter to high-confidence results for trace (exclude low-confidence noise)
+            List<SearchResult> highConfidenceResults = results.stream()
+                .filter(result -> result.score() >= TRACE_CONFIDENCE_THRESHOLD)
+                .toList();
+            
             // Re-score each filtered result with tracing (each entity gets its own context)
+            // High-confidence: trace enabled, Low-confidence: trace disabled
             results = results.stream()
                 .map(result -> {
-                    ScoringContext ctx = ScoringContext.enabled(sessionId);
+                    boolean isHighConfidence = result.score() >= TRACE_CONFIDENCE_THRESHOLD;
+                    ScoringContext ctx = isHighConfidence 
+                        ? ScoringContext.enabled(sessionId)
+                        : ScoringContext.disabled();
                     
                     ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(
                         Entity.of(null, request.name(), null, null),
@@ -128,10 +144,12 @@ public class SearchController {
                 })
                 .toList();
             
-            // Save trace for the first result (for report generation)
-            if (!results.isEmpty()) {
-                Entity firstEntity = results.get(0).entity();
-                ScoringContext reportCtx = ScoringContext.enabled(sessionId);
+            // Save trace only for high-confidence results (for report generation)
+            // Always create a trace session, even if no high-confidence results exist
+            ScoringContext reportCtx = ScoringContext.enabled(sessionId);
+            
+            if (!highConfidenceResults.isEmpty()) {
+                Entity firstEntity = highConfidenceResults.get(0).entity();
                 
                 // Add entity name and aliases to metadata for report
                 reportCtx.withMetadata("entityName", firstEntity.name());
@@ -144,10 +162,20 @@ public class SearchController {
                     firstEntity,
                     reportCtx
                 );
-                traceData = reportCtx.toTrace();
-                traceRepository.save(traceData);
-                logger.debug("Trace saved: sessionId={}, entitiesTraced={}", traceData.sessionId(), results.size());
+                logger.debug("Trace saved: sessionId={}, highConfidenceCount={}, totalResults={}", 
+                    sessionId, highConfidenceResults.size(), results.size());
+            } else {
+                // No high-confidence results - save minimal trace showing filtering occurred
+                reportCtx.withMetadata("searchName", request.name());
+                reportCtx.withMetadata("totalResults", results.size());
+                reportCtx.withMetadata("highConfidenceThreshold", TRACE_CONFIDENCE_THRESHOLD);
+                reportCtx.withMetadata("filterReason", "All results below confidence threshold");
+                logger.debug("Trace saved (empty): sessionId={}, totalResults={}, allBelowThreshold={}",
+                    sessionId, results.size(), TRACE_CONFIDENCE_THRESHOLD);
             }
+            
+            traceData = reportCtx.toTrace();
+            traceRepository.save(traceData);
         }
         
         SearchResponse response = SearchResponse.from(results, requestID, Boolean.TRUE.equals(debug), traceData);
