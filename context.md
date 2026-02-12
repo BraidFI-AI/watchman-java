@@ -5,6 +5,37 @@
 
 ---
 
+## Session: February 12, 2026 (Admin UI Modernization & Product Positioning)
+
+### What We Decided
+- Modernize Admin UI to align with contemporary React design patterns
+- Reduce border-radius values from early-2000s style (10-16px) to modern standards (3-8px)
+- Update page header from "🔧 Watchman Admin UI" to "Watchman Java Admin"
+- Detach product positioning from Go parity narrative
+- Position Watchman Java as standalone sanctions screening platform with credit to Moov
+
+### What Is Now True
+- **Admin UI Styling (commit 4b421e4)**:
+  * Border-radius values follow modern React conventions (3-8px range)
+  * Page header displays "Watchman Java Admin" (no emoji)
+  * Visual design aligns with Material-UI, Chakra UI, Tailwind CSS
+- **Postman Collection Coverage**:
+  * ~95% of functional API endpoints documented
+  * Missing: POST /api/admin/config/reset endpoint
+  * Admin UI (/admin.html) is internal tooling, not customer-facing product
+  * Collection sufficient for building customer-facing screening service
+- **README Architecture**:
+  * Non-existent /search?q= endpoint documented but not implemented
+  * Go porting guide (134-396 lines) should be removed
+  * Three-system comparison architecture no longer relevant
+  * Credit to Moov Watchman as original inspiration maintained
+
+### What Is Still Unknown
+- Whether to implement /search?q= endpoint or remove from documentation
+- Whether Admin UI will be rebuilt for customer-facing use
+
+---
+
 ## Session: February 3, 2026 (BSA/AML Observations v2 - Issues #1-6)
 
 ### What We Decided

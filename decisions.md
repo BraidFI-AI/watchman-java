@@ -6,6 +6,56 @@
 
 ## Decision Log
 
+### 2026-02-12: Admin UI Modernization - Border Radius Standards
+
+**Decision**: Reduce all border-radius values in admin.html from 10-16px range to 3-8px range.
+
+**Rationale**: Original UI used early-2000s styling with excessive rounding. Modern React frameworks (Material-UI, Chakra UI, Tailwind CSS) use subtler values (3-8px) for cleaner, professional appearance.
+
+**Implementation**: 
+- Large containers: 16px → 8px
+- Medium elements: 12px → 6px  
+- Buttons/alerts/cards: 10px → 4px
+- Input fields: 8px → 4px
+- Small elements: 5-6px → 3px
+
+**Impact**: Visual refresh without functionality changes. Admin UI now matches modern React aesthetics.
+
+**References**: [admin.html](../src/main/resources/static/admin.html), commit 4b421e4
+
+---
+
+### 2026-02-12: Admin UI Page Header Simplification
+
+**Decision**: Change admin UI header from "🔧 Watchman Admin UI" to "Watchman Java Admin".
+
+**Rationale**: Cleaner branding without emoji. Emphasizes Java implementation for clarity.
+
+**Impact**: Header text only, no functional changes.
+
+**References**: [admin.html](../src/main/resources/static/admin.html), commit 4b421e4
+
+---
+
+### 2026-02-12: Product Positioning - Detach from Go Parity Narrative
+
+**Decision**: Reposition Watchman Java as standalone sanctions screening platform with attribution to Moov Watchman as original inspiration.
+
+**Rationale**: Project has evolved beyond strict parity goals. Maintaining extensive Go porting documentation creates false expectations. Credit to Moov acknowledges foundational work while establishing independent product identity.
+
+**Implementation**: 
+- Remove Go-to-Java porting guide (134-396 lines from README)
+- Remove three-system comparison architecture section
+- Remove non-existent /search?q= "Go-compatible" endpoint
+- Add "Credits" section acknowledging Moov Watchman inspiration
+- Update positioning: "inspired by" vs "complete port of"
+
+**Impact**: Clear standalone product positioning. Timeless documentation not tied to historical parity efforts. Appropriate attribution maintained.
+
+**References**: README.md proposed updates (not yet implemented)
+
+---
+
 ### 2026-02-03: Security Scanning Infrastructure Setup
 
 **Decision**: Implement automated security scanning with Semgrep (static analysis) and Trivy (dependency/container vulnerabilities) enforced on every commit and push.
