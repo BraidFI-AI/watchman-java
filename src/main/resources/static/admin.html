@@ -50,7 +50,7 @@
         header {
             background: var(--surface);
             padding: 32px 40px;
-            border-radius: 16px;
+            border-radius: 8px;
             margin-bottom: 24px;
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--border);
@@ -82,7 +82,7 @@
             background: rgba(255, 255, 255, 0.85);
             border: 1px solid var(--border);
             padding: 14px 28px;
-            border-radius: 12px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 15px;
             font-weight: 600;
@@ -127,7 +127,7 @@
             display: none;
             background: var(--surface);
             padding: 32px;
-            border-radius: 16px;
+            border-radius: 8px;
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--border);
             animation: fadeIn 0.3s ease-in-out;
@@ -152,7 +152,7 @@
         .config-section {
             background: var(--surface-elevated);
             padding: 24px;
-            border-radius: 12px;
+            border-radius: 6px;
             border: 1px solid var(--border);
             transition: all 0.2s;
         }
@@ -189,7 +189,7 @@
             width: 100%;
             padding: 10px 14px;
             border: 2px solid var(--border);
-            border-radius: 8px;
+            border-radius: 4px;
             font-size: 15px;
             transition: all 0.2s;
             background: var(--surface);
@@ -215,7 +215,7 @@
             gap: 12px;
             cursor: pointer;
             padding: 8px;
-            border-radius: 6px;
+            border-radius: 3px;
             transition: background 0.2s;
         }
         
@@ -233,7 +233,7 @@
         .btn {
             padding: 12px 24px;
             border: none;
-            border-radius: 10px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 15px;
             font-weight: 600;
@@ -280,7 +280,7 @@
         
         .alert {
             padding: 16px 20px;
-            border-radius: 10px;
+            border-radius: 4px;
             margin-bottom: 24px;
             font-size: 15px;
             font-weight: 500;
@@ -320,7 +320,7 @@
             background: var(--surface-elevated);
             padding: 18px 20px;
             margin-bottom: 12px;
-            border-radius: 10px;
+            border-radius: 4px;
             border-left: 4px solid var(--primary);
             transition: all 0.2s;
             cursor: pointer;
@@ -341,7 +341,7 @@
             color: white;
             padding: 18px 24px;
             cursor: pointer;
-            border-radius: 10px;
+            border-radius: 4px;
             font-weight: 600;
             font-size: 16px;
             display: flex;
@@ -358,7 +358,7 @@
         }
         
         .doc-accordion-header.active {
-            border-radius: 10px 10px 0 0;
+            border-radius: 4px 4px 0 0;
         }
         
         .doc-accordion-content {
@@ -367,7 +367,7 @@
             padding: 24px;
             border: 2px solid var(--primary-light);
             border-top: none;
-            border-radius: 0 0 10px 10px;
+            border-radius: 0 0 4px 4px;
             max-height: 600px;
             overflow-y: auto;
         }
@@ -411,7 +411,7 @@
         .doc-accordion-content code {
             background: var(--surface-elevated);
             padding: 3px 8px;
-            border-radius: 5px;
+            border-radius: 3px;
             font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
             font-size: 13px;
             color: var(--primary);
@@ -421,7 +421,7 @@
         .doc-accordion-content pre {
             background: var(--surface-elevated);
             padding: 18px;
-            border-radius: 10px;
+            border-radius: 4px;
             overflow-x: auto;
             margin: 14px 0;
             border: 1px solid var(--border);
@@ -451,12 +451,12 @@
         
         ::-webkit-scrollbar-track {
             background: var(--surface-elevated);
-            border-radius: 10px;
+            border-radius: 6px;
         }
         
         ::-webkit-scrollbar-thumb {
             background: var(--text-secondary);
-            border-radius: 10px;
+            border-radius: 6px;
         }
         
         ::-webkit-scrollbar-thumb:hover {
@@ -467,7 +467,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🔧 Watchman Admin UI</h1>
+            <h1>Watchman Java Admin</h1>
             <p class="subtitle">Configuration Management • ScoreTrace Inspection • Testing</p>
         </header>
         
@@ -483,7 +483,7 @@
             <div id="config-alert"></div>
             
             <!-- MATCH THRESHOLD - Prominent Section -->
-            <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); padding: 32px; border-radius: 16px; margin-bottom: 32px; box-shadow: var(--shadow-xl); border: 1px solid var(--primary-light);">
+            <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); padding: 32px; border-radius: 8px; margin-bottom: 32px; box-shadow: var(--shadow-xl); border: 1px solid var(--primary-light);">
                 <h2 style="color: #fff; margin: 0 0 12px 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">🎯 Match Threshold</h2>
                 <p style="color: rgba(255, 255, 255, 0.85); margin: 0 0 24px 0; font-size: 15px; line-height: 1.6;">Primary control: Sets the minimum score for returning matches. Higher = stricter (fewer matches), Lower = lenient (more matches)</p>
                 
@@ -491,7 +491,7 @@
                     <div style="flex: 0 0 auto;">
                         <label style="color: #fff; font-weight: 600; display: block; margin-bottom: 8px; font-size: 15px;">Minimum Score</label>
                         <input type="number" id="minimumScore" step="0.01" min="0" max="1" 
-                               style="width: 140px; padding: 12px 16px; font-size: 18px; font-weight: 700; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; background: rgba(255,255,255,0.95); transition: all 0.2s;">
+                               style="width: 140px; padding: 12px 16px; font-size: 18px; font-weight: 700; border: 2px solid rgba(255,255,255,0.3); border-radius: 4px; background: rgba(255,255,255,0.95); transition: all 0.2s;">
                     </div>
                     <div style="flex: 1; color: rgba(255, 255, 255, 0.9); font-size: 14px; line-height: 1.7; min-width: 280px;">
                         <strong style="color: #fff; font-size: 16px;">Current: <span id="currentThreshold" style="color: #fbbf24;">0.88</span></strong><br>
@@ -500,7 +500,7 @@
                     </div>
                     <div style="flex: 0 0 auto;">
                         <button class="btn" onclick="saveThreshold()" 
-                                style="padding: 14px 32px; font-size: 16px; font-weight: 700; background: #fff; color: var(--primary); border: none; border-radius: 10px; box-shadow: var(--shadow-md); transition: all 0.2s;">
+                                style="padding: 14px 32px; font-size: 16px; font-weight: 700; background: #fff; color: var(--primary); border: none; border-radius: 4px; box-shadow: var(--shadow-md); transition: all 0.2s;">
                             Update Threshold
                         </button>
                     </div>
@@ -1215,7 +1215,7 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                let html = '<div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">';
+                let html = '<div style="background: #f8f9fa; padding: 20px; border-radius: 4px;">';
                 html += `<h3>Results: ${data.entities ? data.entities.length : 0} matches</h3>`;
                 
                 if (trace && data.reportUrl) {
