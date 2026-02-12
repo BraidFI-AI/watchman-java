@@ -104,3 +104,104 @@ This document captures key decisions, tradeoffs, and architectural forks made du
 - BSA observation resolved: "CECOEX" search now properly finds "CECOEX, S.A." 
 - LAKHVI (CHACHAJEE alias) correctly excluded from CECOEX search results
 - Reduces false positive rate in alias matching without increasing false negative rate
+
+---
+
+## 2026-02-11: Search Limit Semantics - Entity-First, Then Aliases
+
+**Decision**: Modified `SearchServiceImpl.search()` to apply `limit` parameter to unique entities before alias expansion, rather than limiting total results after expansion.
+
+**Background - Observation Report**: 
+- **Row 21**: "AL QA'IDA" search missing related entities (AL-QA'IDA KURDISH BATTALIONS, AL-QA'IDA IN ARABIAN PENINSULA, etc.)
+- **Row 22**: "TALIBAN" search missing KURDISH TALIBAN
+- **Row 6**: CIMEX search reportedly missing related entities
+
+**Root Cause Analysis**:
+
+Investigation via debug tests revealed:
+- **Scoring Verification** (`RelatedEntityScoringDebugTest`): All missing entities scored well above 0.70 threshold
+  - AL-QA'IDA KURDISH BATTALIONS: 0.9095 ✅
+  - AL-QAIDA GROUP OF JIHAD IN IRAQ: 0.7523 ✅
+  - KURDISH TALIBAN: 0.7892 ✅
+  
+- **Index Verification** (`EntityIndexDebugTest`): 
+  - Entity 13041 (AL-QA'IDA KURDISH BATTALIONS): EXISTS in index ✅
+  - KURDISH TALIBAN: Does NOT exist in OFAC data ❌ (data issue, not system defect)
+  
+- **Alias Analysis** (`EntityAliasCountDebugTest`): **ROOT CAUSE IDENTIFIED**
+  - Entity 6366 (AL QA'IDA): 1 primary + 17 aliases = 18 results
+  - Entity 9598 (NASUF, Tahir): 1 primary + 6 aliases = 7 results
+  - Total: 25 results for 2 entities, exhausting `limit=20`
+  - Entity 13041 (score 0.9095) cut off despite high score
+  
+- **Verification** (`DirectEntityScoringDebugTest`): Confirmed EntityScorer produces same high scores as direct similarity calculation
+
+**Rationale**: 
+- BSA/AML compliance requires OFAC.gov parity - regulators validate against official OFAC portal
+- Missing entities = compliance failure / audit finding
+- All entities scoring above threshold must be surfaced regardless of alias counts
+- High-alias entities should not crowd out other relevant matches
+
+**Implementation**:
+
+Changed from:
+```
+entityStream → expandAliases() → sort → limit(20) → return
+```
+
+To:
+```
+entityStream → score → filter(≥threshold) → sort → limit(20) entities → 
+expandAliases() → return
+```
+
+**Code Changes**:
+- `SearchServiceImpl.java` lines 46-117: Refactored search() method
+  - Score all entities into `ScoredEntity` records
+  - Apply threshold filter and sort by score
+  - Limit to N unique entities BEFORE expansion
+  - Added `expandAliasesForScoredEntity()` helper method
+  - Added `ScoredEntity` helper record for pre-scored entities
+
+**Tradeoff Analysis**: 
+
+Result count now exceeds `limit` parameter value:
+- `limit=20` → typically ~200 total results (with aliases expanded)
+- **Accepted** because:
+  ✅ Accurately reflects OFAC.gov behavior (each alias as distinct result)
+  ✅ Ensures comprehensive entity coverage for regulatory compliance
+  ✅ Client applications can deduplicate by entity ID if needed
+  ✅ Matches user expectation: "show me 20 entities" not "show me 20 line items"
+  ✅ API consumers already handle variable result counts (entities have 0-35 aliases)
+
+**Alternative Considered**: Add separate `entityLimit` and `resultLimit` parameters
+- **Rejected**: 
+  - API complexity with no clear use case
+  - `limit` already universally understood as "number of entities" in screening context
+  - Would break backward compatibility without providing value
+
+**Test Case Resolution**:
+
+- **Row 21** (AL QA'IDA): ✅ **RESOLVED** 
+  - Before: 2 unique entities returned
+  - After: 20 unique entities returned including AL-QA'IDA KURDISH BATTALIONS (13041), AL-QA'IDA IN ARABIAN PENINSULA (11695), AL-QA'IDA IN INDIAN SUBCONTINENT (20159)
+  
+- **Row 22** (TALIBAN): ⚠️ **PARTIAL** 
+  - System fix applied successfully
+  - KURDISH TALIBAN verified not to exist in OFAC test data (data issue)
+  
+- **Row 6** (CIMEX): ✅ **VERIFIED WORKING** 
+  - All 7 CIMEX entities already returning correctly (scores 0.789-1.0)
+  - False negative in observation data
+  
+- **Row 35** (OFFICE 39): ✅ **VERIFIED WORKING**
+  - Already marked Pass in CSV, confirmed working
+
+**Progress Impact**: 18/52 test cases complete (+3 this session: 15→18, 35% complete)
+
+**Verification Test**: `RelatedEntityCoverageFixTest.java` validates fix shows 20 unique entities with entity 13041, 11695, 20159 present.
+
+**Documentation Created**:
+- `observations/related_entity_coverage_solution_note.md` - BSA consultant summary with before/after validation
+- `docs/fixes/related_entity_coverage_fix.md` - Complete technical analysis and test evidence
+

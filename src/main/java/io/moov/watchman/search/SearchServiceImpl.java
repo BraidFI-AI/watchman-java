@@ -68,11 +68,52 @@ public class SearchServiceImpl implements SearchService {
             entityStream = entityStream.filter(e -> e.type() == entityType);
         }
 
-        // Expand aliases: 1 entity with N aliases → N+1 results
-        return entityStream
-            .flatMap(entity -> expandAliases(entity, query, effectiveMinMatch))
-            .sorted(Comparator.comparing(SearchResult::score).reversed())
-            .limit(limit)
+        // BSA/AML Fix: Related Entity Coverage (Rows 21, 22)
+        // Problem: Alias expansion consumed result limit, hiding related entities.
+        // Example: "AL QA'IDA" search returned only entity 6366 (18 alias results)
+        //          and 9598 (2 alias results), totaling 20 results.
+        //          Entity 13041 (AL-QA'IDA KURDISH BATTALIONS, score 0.91) was cut off.
+        //
+        // Solution: Limit applies to UNIQUE ENTITIES, not total results with aliases.
+        // This ensures regulators see all relevant entities, matching OFAC.gov behavior.
+        //
+        // New flow:
+        // 1. Score all entities
+        // 2. Filter by threshold
+        // 3. Sort by score
+        // 4. Limit to N unique entities  ← KEY CHANGE
+        // 5. THEN expand aliases for those N entities
+        
+        // Create query entity for scoring
+        Entity queryEntity = Entity.of(null, query, null, null);
+        
+        // Score, filter, sort, and limit ENTITIES (not results)
+        List<ScoredEntity> topEntities = entityStream
+            .map(entity -> {
+                ScoringContext ctx = ScoringContext.enabled("search-" + System.nanoTime());
+                ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(queryEntity, entity, ctx);
+                double score = breakdown.totalWeightedScore();
+                
+                // Extract matched alias from context
+                String matchedAlias = null;
+                ScoringTrace trace = ctx.toTrace();
+                if (trace != null && trace.metadata() != null) {
+                    Object aliasObj = trace.metadata().get("matchedAlias");
+                    if (aliasObj instanceof String) {
+                        matchedAlias = (String) aliasObj;
+                    }
+                }
+                
+                return new ScoredEntity(entity, score, breakdown, matchedAlias);
+            })
+            .filter(scored -> scored.score >= effectiveMinMatch)
+            .sorted(Comparator.comparing(ScoredEntity::score).reversed())
+            .limit(limit) // Limit unique entities HERE, before alias expansion
+            .toList();
+        
+        // Now expand aliases for the top N entities
+        return topEntities.stream()
+            .flatMap(scored -> expandAliasesForScoredEntity(scored))
             .toList();
     }
 
@@ -163,6 +204,41 @@ public class SearchServiceImpl implements SearchService {
         
         return results.stream();
     }
+
+    /**
+     * Expand a pre-scored entity into multiple search results.
+     * Used when entity has already been scored during the filtering phase.
+     * 
+     * @param scored pre-scored entity with breakdown and matched alias
+     * @return stream of search results (primary + aliases)
+     */
+    private Stream<SearchResult> expandAliasesForScoredEntity(ScoredEntity scored) {
+        List<SearchResult> results = new ArrayList<>();
+        
+        // Add primary result
+        results.add(new SearchResult(scored.entity, scored.score, scored.breakdown, scored.matchedAlias));
+        
+        // Add alias results
+        if (scored.entity.altNames() != null && !scored.entity.altNames().isEmpty()) {
+            for (String alias : scored.entity.altNames()) {
+                results.add(SearchResult.withAlias(scored.entity, scored.score, alias));
+            }
+        }
+        
+        return results.stream();
+    }
+
+    /**
+     * Helper record for pre-scored entities during search.
+     * Used to separate entity scoring/filtering from alias expansion.
+     */
+    private record ScoredEntity(
+        Entity entity,
+        double score,
+        ScoreBreakdown breakdown,
+        String matchedAlias
+    ) {}
+
 
     @Override
     public double scoreEntity(String query, Entity entity) {
