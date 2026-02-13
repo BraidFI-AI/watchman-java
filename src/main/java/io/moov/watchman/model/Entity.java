@@ -133,6 +133,14 @@ public record Entity(
             .distinct()
             .collect(Collectors.toList());
         
+        // Remove company titles BEFORE stopwords (matches Go pipeline order)
+        // This prevents "S.A." → "s a" → stopword removes "a" → " s" (doesn't match " s a")
+        List<String> namesWithoutCompanyTitles = allNamesBeforeStopwords.stream()
+            .map(this::removeCompanyTitles)
+            .filter(s -> !s.isEmpty())
+            .distinct()
+            .collect(Collectors.toList());
+        
         // Collect stopword-removed names for other uses
         List<String> allNormalizedNames = new ArrayList<>();
         if (!normalizedPrimary.isEmpty()) {
@@ -143,13 +151,6 @@ public record Entity(
         // Remove stopwords (use detected language)
         List<String> namesWithoutStopwords = allNormalizedNames.stream()
             .map(n -> normalizer.removeStopwords(n, detectedLanguage))
-            .filter(s -> !s.isEmpty())
-            .distinct()
-            .collect(Collectors.toList());
-        
-        // Remove company titles
-        List<String> namesWithoutCompanyTitles = allNormalizedNames.stream()
-            .map(this::removeCompanyTitles)
             .filter(s -> !s.isEmpty())
             .distinct()
             .collect(Collectors.toList());
@@ -317,9 +318,42 @@ public record Entity(
         boolean changed = true;
         
         // Common company suffixes to remove (check most specific/longest first)
+        // After punctuation removal: "S.A." → "s a", "OJSC" → "ojsc", etc.
         String[] titles = {
-            " incorporated", " corporation", " l l c", " limited", " company",
-            " llc", " inc", " corp", " ltd", " co", " sa", " srl", " gmbh"
+            // Longer compound suffixes first
+            " s de r l de c v",  // S. DE R.L. DE C.V. (after punctuation removal)
+            " sa de c v",        // SA DE CV (Mexican)
+            " de c v",           // DE C.V. (after punctuation removal)
+            " incorporated",     // Full form
+            " corporation",      // Full form
+            " l l c",            // L.L.C. (after punctuation removal)
+            " limited",          // Full form
+            " company",          // Full form
+            " open joint stock company",  // Russian OJSC full form
+            " s c s",            // S.C.S. (after punctuation removal)
+            " ltda",             // Brazilian Limitada
+            " corp",             // Corporation abbreviation
+            " inc",              // Incorporated abbreviation
+            " ltd",              // Limited abbreviation
+            " llc",              // LLC without periods
+            " gmbh",             // German
+            " ojsc",             // Open Joint Stock Company (Russian)
+            " oao",              // Open Joint-Stock Company (Russian)
+            " ooo",              // OOO (Russian)
+            " jsc",              // Joint Stock Company
+            " pjsc",             // Public JSC
+            " srl",              // Italian limited
+            " s a",              // S.A. (after punctuation removal)
+            " s c",              // S.C. (after punctuation removal)
+            " sa",               // S.A. (no periods)
+            " sc",               // S.C. (no periods)
+            " co",               // Company abbreviation
+            " ag",               // German Aktiengesellschaft
+            " se",               // European company
+            " bv",               // Dutch
+            " pt",               // Indonesian
+            " plc",              // Public Limited Company
+            " d o o"             // D.O.O. (after punctuation removal)
         };
         
         // Keep removing suffixes until no more matches found

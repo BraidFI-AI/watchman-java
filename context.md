@@ -5,6 +5,52 @@
 
 ---
 
+## Session: February 13, 2026 (Individual Observations - Name Order Independence)
+
+### What We Decided
+- Analyze Individual observations CSV to determine if name order issues already resolved by token-based matching
+- Create comprehensive test suite for Individual observations Rows 1-20
+- Test existing implementation before adding new code
+- Document remaining edge cases (ARELLANO FELIX ranking, unusual aliases) for future work
+
+### What Is Now True
+- **Individual Observations Analysis Complete** ✅ (Feb 13, 2026)
+  * Created IndividualNameOrderTest.java with 24 test cases covering Rows 1-20
+  * 21/24 tests passing - name order issues resolved by existing token-based matching
+  * Only 3 failures: Row 6-7 (ranking tie-breaker), Row 15 (unusual aliases)
+- **Name Order Resolution Mechanism** ✅
+  * Entity.reorderSDNName() converts OFAC "LAST, FIRST" → "FIRST LAST" during normalization (lines 84, 102)
+  * JaroWinklerSimilarity.bestPairJaro() performs token-based matching regardless of order
+  * Examples verified: "Hasan NASRALLAH" → "NASRALLAH, Hasan", "Abu ABBAS" → "ABBAS, Abu"
+  * Same mechanism as Entity Row 27 (GEX EXPLORE) - token order independence working system-wide
+- **Token Sequence Tie-Breaker** ⚠️ Partial Implementation (Feb 13, 2026)
+  * Problem: ARELLANO FELIX Row 6/7 - both individuals score 1.0, wrong person ranks first
+  * Root cause: "Ramon Eduardo" and "Eduardo Ramon" both match perfectly via token matching
+  * Solution attempted: SearchServiceImpl.hasTokenSequenceMatch() to prefer exact token order
+  * Status: Method implemented but needs debugging - unit tests failing
+  * File: SearchServiceImpl.java lines 565-632
+- **Unusual Alias Investigation** (Row 15: GHAILANI)
+  * Aliases "FOOPIE" and "FUPI" not matching entity
+  * Short tokens (≤4 chars) require exact matching per phonetic restrictions
+  * Needs verification: Do these aliases exist in current OFAC data?
+- **Individual CSV Updated** ✅
+  * Rows 1-20: Implementation notes added with "Ready To Test" status
+  * Token-based matching explanation provided for name order cases
+  * Edge cases documented (Row 6-7, Row 15)
+
+### What Is Still Unknown
+- How to properly implement token sequence matching for tie-breaker (debugging required)
+- Whether FOOPIE/FUPI aliases exist in current OFAC data
+- Individual observations Rows 21-50 assessment pending BSA consultant feedback
+- Whether partial name searches (last name only) should have lower thresholds
+
+### Test Files Created
+- IndividualNameOrderTest.java - 24 comprehensive tests for Rows 1-20
+- ArellanoFelixRankingTest.java - Investigation tests for Row 6 ranking issue
+- TokenSequenceMatchTest.java - Unit tests for sequence matching logic (compilation errors)
+
+---
+
 ## Session: February 12, 2026 (Admin UI Modernization & Product Positioning)
 
 ### What We Decided

@@ -110,6 +110,13 @@ public class SearchServiceImpl implements SearchService {
             .sorted(Comparator
                 .comparing(ScoredEntity::score).reversed()
                 // BSA CRITICAL FIX (Row 14 & 19): Tie-breaker for equal scores
+                // Individual Observation Row 6: Token sequence match
+                // When scores are tied, prefer names where tokens appear in query order
+                .thenComparing(scored -> {
+                    // Return false (sorts first) if tokens match query sequence
+                    String matchedName = scored.matchedAlias != null ? scored.matchedAlias : scored.entity.name();
+                    return !hasTokenSequenceMatch(query, matchedName);
+                })
                 // Primary tiebreaker: Prefer longer matched aliases (more tokens = more specific substring match)
                 // Secondary tiebreaker: Group by primary entity name to ensure stability
                 .thenComparing(scored -> {
@@ -553,5 +560,73 @@ public class SearchServiceImpl implements SearchService {
                 discriminators
             );
         }
+    }
+
+    /**
+     * Checks if entity/alias name tokens appear in the same sequence as query tokens.
+     * 
+     * <p><strong>Purpose</strong>: Tie-breaker for Individual Observation Row 6 (ARELLANO FELIX).
+     * When two entities have identical scores (e.g., 1.0), prefer the one where name
+     * tokens match query token order.
+     * 
+     * <p><strong>Example</strong>:
+     * Query: "Ramon Eduardo ARELLANO FELIX"
+     * - "ARELLANO FELIX, Ramon Eduardo" → tokens match query sequence ✅
+     * - "ARELLANO FELIX, Eduardo Ramon" → tokens are permuted ❌
+     * 
+     * <p><strong>Algorithm</strong>:
+     * 1. Normalize both strings (lowercase, remove punctuation, remove commas)
+     * 2. Extract tokens
+     * 3. Check if entity tokens appear in same order as query tokens
+     * 4. Allow entity to have extra tokens (e.g., aliases, middle names)
+     * 
+     * @param query The search query string
+     * @param entityName The entity or alias name to check
+     * @return true if entity name tokens match query token sequence, false otherwise
+     */
+    private boolean hasTokenSequenceMatch(String query, String entityName) {
+        if (query == null || query.isBlank() || entityName == null || entityName.isBlank()) {
+            return false;
+        }
+        
+        // Normalize: lowercase, remove punctuation, split on whitespace
+        String normalizedQuery = query.toLowerCase()
+            .replaceAll("[^a-z0-9\\s]", " ")
+            .replaceAll("\\s+", " ")
+            .trim();
+        String normalizedEntity = entityName.toLowerCase()
+            .replaceAll("[^a-z0-9\\s]", " ")
+            .replaceAll("\\s+", " ")
+            .trim();
+        
+        String[] queryTokens = normalizedQuery.split("\\s+");
+        String[] entityTokens = normalizedEntity.split("\\s+");
+        
+        // Find if query tokens appear in entity tokens in same order
+        int entityIdx = 0;
+        for (String queryToken : queryTokens) {
+            // Skip empty tokens
+            if (queryToken.isEmpty()) {
+                continue;
+            }
+            
+            // Find this query token in remaining entity tokens
+            boolean found = false;
+            while (entityIdx < entityTokens.length) {
+                if (entityTokens[entityIdx].equals(queryToken)) {
+                    found = true;
+                    entityIdx++;
+                    break;
+                }
+                entityIdx++;
+            }
+            
+            // If any query token not found in sequence, no match
+            if (!found) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 }

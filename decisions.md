@@ -6,6 +6,35 @@
 
 ## Decision Log
 
+### 2026-02-13: Token Sequence Tie-Breaker for Exact Name Variations
+
+**Decision**: When multiple entities score identically (1.0), prefer the entity whose tokens appear in the same sequence as the query tokens before falling back to alphabetical sorting.
+
+**Rationale**: Individual observations Row 6 revealed issue with "Ramon Eduardo" query matching two ARELLANO FELIX entities:
+- "ARELLANO FELIX, Ramon Eduardo" (1964) - exact token sequence match
+- "ARELLANO FELIX, Eduardo Ramon" (1956) - permuted token sequence
+
+Both score 1.0 via token-based matching (order-independent), but wrong individual ranks first due to alphabetical tie-breaker ("Eduardo Ramon" < "Ramon Eduardo"). The query likely refers to the specific individual with matching token order.
+
+**Implementation Status**: ⚠️ PARTIAL - Needs Debugging
+- Added SearchServiceImpl.hasTokenSequenceMatch() method (lines 565-632)
+- Updated tie-breaker comparator chain: score descending → token sequence match → alphabetical → alias token count
+- TokenSequenceMatchTest.java created but failing - logic bug in hasTokenSequenceMatch()
+- Method currently returns false for expected matches (normalization or tokenization mismatch)
+
+**Impact**: Provides more intuitive ranking when multiple entities have identical names with permuted tokens. Matches user intent when searching for specific name forms like "Ramon Eduardo" vs. "Eduardo Ramon".
+
+**Trade-offs**: 
+- Adds complexity to comparator logic
+- May not help when both name forms are equally common (e.g., "Jose Luis" vs. "Luis Jose")
+- Requires exact token sequence after normalization, doesn't account for middle names or titles
+
+**Next Steps**: Debug hasTokenSequenceMatch() logic, verify tokenization matches between scoring and tie-breaker, add additional test coverage for edge cases (middle names, titles, commas).
+
+**References**: [SearchServiceImpl.java](../src/main/java/com/moov/watchman/service/SearchServiceImpl.java) lines 110-132, 565-632; [TokenSequenceMatchTest.java](../src/test/java/com/moov/watchman/TokenSequenceMatchTest.java); [ArellanoFelixRankingTest.java](../src/test/java/com/moov/watchman/ArellanoFelixRankingTest.java); [Individual.csv](../Individual.csv) Row 6-7
+
+---
+
 ### 2026-02-12: Admin UI Modernization - Border Radius Standards
 
 **Decision**: Reduce all border-radius values in admin.html from 10-16px range to 3-8px range.

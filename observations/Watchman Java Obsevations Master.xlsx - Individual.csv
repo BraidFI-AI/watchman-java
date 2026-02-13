@@ -1,0 +1,77 @@
+,S.I,Individual Name,Baseline Name Matching ,Partial / Close Name Handling,Alias-Based Matching,Observations,Implementation Status,Implementation Notes
+,1,"ABBAS, Abu","Direct name and aliases detected; however, multiple other OFAC-listed Individual and entities were omitted (e.g., ABU AL-ABBAS; PLF-ABU ABBAS; KHALED ABU AL-ABBAS BRIGADE; FAWWAZ, 'Abbas Abu-Ahmad ).",The FN–LN name order variation (Abu ABBAS) did not return the sanctioned individual.,"Pass
+(ZAYDAN, Muhammad)","The system is sensitive to name order, and similar OFAC-listed names are not always shown.",Ready To Test,"Name order resolved via token-based matching. Query ""Abu ABBAS"" finds ""ABBAS, Abu"" correctly. Related entities (PLF-ABU ABBAS, etc.) are different entity types that rank lower in results - expected behavior."
+,2,"AL ZAWAHIRI, Dr. Ayman",Pass,Pass,"Pass
+(AL-ZAWAHIRI, Ayman / SALIM, Ahmad Fuad / AL-ZAWAHIRI, Aiman Muhammad Rabi)",-,Pass,
+,3,"JABRIL, Ahmad",Pass,Pass,"Pass
+(JIBRIL, Ahmad)",-,Pass,
+,4,"NASRALLAH, Hasan",Pass,The FN–LN name order variation (Hasan NASRALLAH) did not return the sanctioned individual.,"Partial name ""Abd-al-Karim NASRALLAH"" missed to list the sanctioned individual.
+(NASRALLAH, Hasan Abd-al-Karim)",Name order and some aliases are not consistently detected.,Ready To Test,"Name order resolved. Query ""Hasan NASRALLAH"" finds ""NASRALLAH, Hasan"" via token order independence in bestPairJaro() matching algorithm."
+,5,"AMEZCUA CONTRERAS, Jose de Jesus",Pass,Pass,"Name order variation for Chuy AMEZCUA missed to list the true match.
+(AMESCUA, Chuey / AMEZCUA, Chuy / AMEZCUA CONTRERAS, Jesus / AMEZCUA, Jose de Jesus / HERNANDEZ, Adan)",Alias name variations are not always handled consistently.,Ready To Test,"Alias matching works. Query ""Chuy AMEZCUA"" matches entity via alias expansion in SearchServiceImpl (lines 64-93)."
+,6,"ARELLANO FELIX, Ramon Eduardo (YOB 1964)",Pass,"Name order variation for Ramon Eduardo ARELLANO FELIX missed to list the true match and listed another close match ARELLANO FELIX, Eduardo Ramon (YOB 1956).
+ 
+ Last name (ARELLANO FELIX) search only listed one different individual and multiple other OFAC-listed hits were omitted.","Partial name ""Gilberto RODRIGUES"" (FN-LN) missed to list the sanctioned individual.
+(TORRES MENDEZ, Ramon / COMACHO RODRIGUES, Gilberto)",Similar names can return the wrong person or miss the correct one.,Ready To Test,"Both individuals score 1.0 correctly but wrong person ranks first. Requires token sequence tie-breaker to prefer exact order matches (""Ramon Eduardo"" vs ""Eduardo Ramon""). Partially implemented, needs debugging."
+,7,"ARELLANO FELIX, Eduardo Ramon (YOB 1956)",Pass,Rep: Last name (ARELLANO FELIX) search only listed one different individual and multiple other OFAC-listed hits were omitted.,"Partial name ""Javier FELIX"" (FN-LN) missed to list the sanctioned individual.
+(ARELLANO FELIX, Javier Eduardo)",Searches using only the last name may miss relevant sanctioned individuals.,Ready To Test,Same issue as Row 6 - ranking tie-breaker needed for identical scores.
+,8,"CHANG, Chi Fu",Pass,"Name order variation for Chi Fu CHANG (FN-LN) missed to list the true match and listed another individual CHU, Kyu-Chang","Name order variation for Shi-Fu CHANG missed to list the true match.
+(KHUN SA / CHAN, Changtrakul / CHANG, Shi-Fu / CHANG, Xifu / CHANGTRAKUL, Chan)",Name order variations are not always handled consistently.,Ready To Test,"Name order resolved. Query ""Chi Fu CHANG"" finds ""CHANG, Chi Fu"" via reorderSDNName() in Entity.normalize()."
+,9,"WEI, Hsueh Kang",Pass,Pass,"Pass
+(Multiple aliases)",-,Pass,
+,10,"AFGHAN, Sher",Pass,Pass,"Pass
+(AFGHAN, Shir / KHAN, Abdullah / AZIZ, Mohammad / AFGHAN, Shear)",-,Pass,
+,11,"GILBOA, Joseph",Pass,Pass,"Name order variation for Josef GIL missed to list the true match.
+(GILBOA, Yosef / GILBOA, Joseph Papzian / GILBERT, Joseph / GIL, Josef)",Certain name-order and shortened name variations do not consistently return the correct match.,Ready To Test,"Alias matching works. Query ""Josef GIL"" matches entity via alias ""GIL, Josef"" through alias expansion."
+,12,"CHANG, Ping Yun",Pass,Name order variation for Ping Yun CHANG (FN-LN) missed to list the true match and listed a vessel PING AN.,"Pass
+(KHUN, Saeng)",Name-order variations may miss the correct person and return unrelated results.,Ready To Test,"Name order resolved. Token-based matching handles ""Ping Yun CHANG"" → ""CHANG, Ping Yun"" correctly."
+,13,"AL-ADL, Sayf",Pass,Name order variation for Sayf AL ADL (FN-LN) missed to list any hits.,"Pass
+(AL-'ADIL, Saif)",Name-order variations may miss the correct person.,Ready To Test,"Name order resolved. Query ""Sayf AL ADL"" matches ""AL-ADL, Sayf"" via token order independence."
+,14,"ATWA, Ali",Pass,Pass,"Pass
+(BOUSLIM, Ammar Mansour / SALIM, Hassan Rostom)",-,Pass,
+,15,"GHAILANI, Ahmed Khalfan",Pass,Pass,"Aliases ""FOOPIE"" ""FUPI"" missed to list the true match.
+(Multiple aliases)",Not all listed aliases consistently return the correct match.,Ready To Test,"Unusual aliases ""FOOPIE"" and ""FUPI"" not matching. Short tokens (≤4 chars) require exact matching per phonetic restrictions. Needs verification if aliases exist in current OFAC data."
+,16,"AL-HAQ, Amin",Pass,Name order variation for Amin AL HAQ (FN-LN) missed to list the true match.,"Name order variation for Amin AH HAQ & Amin UL HAQ missed to list the true match.
+(AMIN, Muhammad / AH HAQ, Dr. Amin / UL-HAQ, Dr. Amin)",Name-order and similar spelling variations are not consistently detected.,Ready To Test,"Name order resolved. Query ""Amin AL HAQ"" finds ""AL-HAQ, Amin"" via token-based matching."
+,17,"LI, Shangfu",Pass,Pass,N/A,-,Pass,
+,18,"SIVAKOV, Yury",Pass,Pass,N/A,-,Pass,
+,19,"DEMIR, Ismail",Pass,Pass,N/A,-,Pass,
+,20,"CHURO, Leanid Mikalaevich",Pass,Name order variation for Leanid Mikalaevich CHURO (FN-LN) missed to list any hits.,"(CHURO, Leonid Nikolaevich)",Name-order variation did not consistently return the sanctioned individual.,Ready To Test,"Name order resolved. Query ""Leanid Mikalaevich CHURO"" finds entity via token order independence."
+,21,"FREGOSO AMEZQUITA, Maria Antonieta",Pass,Partial name Maria Antonieta FREGOSO missed to list the true match.,N/A,Partial-name searches may miss the correct sanctioned person.,,
+,22,"ALBISU IRIARTE, Miguel",Pass,Pass,N/A,-,Pass,
+,23,"ANTONOV, Boris Alekseyevich",Pass,Pass,N/A,-,Pass,
+,24,"MININ, Alexey Valerevich",Pass,Name order variation for Alexey Valerevich MININ (FN-MN-LN) missed to list the true match.,N/A,Name-order variation did not consistently return the correct match.,,
+,25,"LYASHENKO, Igor Vasilyevich",Pass,Pass,N/A,-,Pass,
+,26,"ZAMBADA GARCIA, Ismael",Pass,Pass,"Pass
+ (ZAMBADA, El Mayo / El Mayo / Mayo / LOPEZ LANDEROS, Geronimo / HERNANDEZ GARCIA, Javier / ZAMBADA GARCIA, Ismael Mario)",-,Pass,
+,27,"FUSTAR, Dusan",Pass,Pass,N/A,-,Pass,
+,28,"DALIPI, Tahir",Pass,Pass,N/A,-,Pass,
+,29,"HAXHIREXHA, Kastriot",Pass,Pass,N/A,-,Pass,
+,30,"LUKIC, Milan",Pass,Partial name LUKIC (LN / un-common name) missed to list the sanctioned individual.,N/A,Searching using only the last name may miss the correct sanctioned person.,,
+,31,"MISHAAL, Khalid",Pass,Pass,N/A,-,Pass,
+,32,"AL-DAGMA, Aschraf",Pass,Name order variation for Aschraf AL DAGMA & Aschraf ALDAGMA (FN-LN) missed to list the hit.,"Pass
+ (Noor - Common name)",Name-order and spacing variations are not always detected consistently.,,
+,33,"LOUNICI, Djamel",Pass,Pass,N/A,-,Pass,
+,34,"TRABELSI, Mourad",Pass,Pass,"Pass
+ (ABOU DJARRAH / AL-TRABELSI, Mourad Ben Ali Ben Al-Basheer)",-,Pass,
+,35,"ATIA, Hachim K.","There are 3 distinct SDN hits for the name. Though search results listed three hits, the Score Trace report matched only one.",Pass,N/A,"Score Trace reporting does not fully reflect all returned matches, which may affect explainability (could be an internal testing scenario)",,
+,36,"GIVARI, Akbar",Pass,Pass,N/A,-,Pass,
+,37,"SINGH, Ranveer",Pass,Pass,N/A,-,Pass,
+,38,"MALPICA FLORES, Iriamni",Pass,Pass,N/A,-,Pass,
+,39,"DIANA, Cristian",Pass,Pass,N/A,-,Pass,
+,40,"BAKU, Eselda",Pass,Partial name BAKU (LN / un-common name) missed to list the sanctioned individual.,"Partial name BAKU (LN / un-common name) missed to list the sanctioned individual.
+(HYSA, Eselda)",Searching using only the last name may miss the correct sanctioned person.,,
+,41,"HYSA, Arben",Pass,Partial name HYSA (LN / un-common name) missed to list the sanctioned individual.,N/A,Searching using only the last name may miss the correct sanctioned person.,,
+,42,"MA, Jie",Pass,Name order variation for Jie MA (FN-LN) missed to list the hit.,N/A,Name-order and spacing variations are not always detected consistently.,,
+,43,"U, Yong Su",Pass,Pass,N/A,-,Pass,
+,44,"RANI, Indu",Pass,Pass,N/A,-,Pass,
+,45,"AUNG, Saw San",Pass,Pass,"Pass
+ (AUNG, Saw Sang / AUNG, San)",-,Pass,
+,46,"HLA, Sai Kyaw",Pass,Pass,"Name order variation for Ko SAI missed to list the true match.
+(SAI, Ko)",Name-order and similar spelling variations are not consistently detected.,,
+,47,"CHEN, Xiao'er",Pass,Pass,N/A,-,Pass,
+,48,"PULA, Varun",Pass,Pass,N/A,-,Pass,
+,49,"KARIMI, Leila",Pass,Partial name KARIMI (LN / un-common name) missed to list the sanctioned individual.,"Pass
+ (KARIMI, Leyla)",Searching using only the last name may miss the correct sanctioned person.,,
+,50,"KIM, Yong Ju",Pass,Name order variation for Yong Ju KIM & Yong KIM (FN-MN-LN) missed to list the hit.,"Name order variation for Yong chu KIM, Yong-chu KIM & Yo'ng chu KIM missed to list the true match.
+(KIM, Yo'ng-chu)",Name-order and spacing variations are not always detected consistently.,,

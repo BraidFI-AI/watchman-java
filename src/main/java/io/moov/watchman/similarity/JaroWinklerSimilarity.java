@@ -31,6 +31,11 @@ public class JaroWinklerSimilarity implements SimilarityService {
     // Jaro-Winkler fixed parameters (not configurable)
     private static final double WINKLER_PREFIX_WEIGHT = 0.1;
     
+    // BSA FIX (Row 17): Minimum token length for matching
+    // Prevents matching on ultra-short tokens like "AL-", "ABU-" that appear as standalone aliases
+    // Aligned with Go implementation which combines short tokens (<=3 chars) with neighbors
+    private static final int MIN_TOKEN_LENGTH = 3;
+    
     // Stopwords to ignore when calculating penalties
     private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
         "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
@@ -118,6 +123,12 @@ public class JaroWinklerSimilarity implements SimilarityService {
         tokens1 = collapseAcronymTokens(tokens1);
         tokens2 = collapseAcronymTokens(tokens2);
         
+        // BSA FIX (Row 17): Filter ultra-short tokens to prevent false positives
+        // "AL-" (2 chars) should not match "AL-QUDS" queries
+        // This happens AFTER acronym collapsing, so "T.E.G." → "teg" is retained
+        tokens1 = filterShortTokens(tokens1);
+        tokens2 = filterShortTokens(tokens2);
+        
         // For tokenized similarity, check if all tokens match (possibly reordered)
         // Use phonetic matching to handle spelling variations like Muhammad/Mohammad
         if (tokens1.length == tokens2.length && phoneticSetsMatch(tokens1, tokens2)) {
@@ -145,6 +156,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
         // BSA FIX (Rows 26, 31): Collapse adjacent single-letter tokens to handle acronyms
         queryTokens = collapseAcronymTokens(queryTokens);
         
+        // BSA FIX (Row 17): Filter ultra-short tokens to prevent false positives
+        queryTokens = filterShortTokens(queryTokens);
+        
         // Compare against each pre-normalized name and take the best score
         double maxScore = 0.0;
         for (String preparedName : preparedNames) {
@@ -157,6 +171,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
             
             // BSA FIX (Rows 26, 31): Collapse adjacent single-letter tokens to handle acronyms
             candidateTokens = collapseAcronymTokens(candidateTokens);
+            
+            // BSA FIX (Row 17): Filter ultra-short tokens to prevent false positives
+            candidateTokens = filterShortTokens(candidateTokens);
             
             // Check for phonetic match (reordered)
             // Use phonetic matching to handle spelling variations
@@ -310,6 +327,47 @@ public class JaroWinklerSimilarity implements SimilarityService {
         // Flush any remaining acronym
         if (acronym.length() > 0) {
             result.add(acronym.toString());
+        }
+        
+        return result.toArray(new String[0]);
+    }
+    
+    /**
+     * Filter out tokens that are too short to be meaningful for matching.
+     * 
+     * BSA FIX (Row 17): Prevent matching on ultra-short tokens like "AL-", "ABU-".
+     * 
+     * Problem: Entity 18596 has "AL-" (2 characters) as an alias. When searching "AL-QUDS",
+     * this matches perfectly (score 1.0), blocking legitimate matches like "AL-QUDS BRIGADES".
+     * 
+     * Solution: Filter tokens shorter than MIN_TOKEN_LENGTH (3 characters) to prevent
+     * false positives on Arabic name prefixes and other ultra-short standalone aliases.
+     * 
+     * Note: This filtering happens AFTER acronym collapsing, so "T.E.G." → "teg" (3 chars)
+     * is retained, but standalone "AL-" → "al" (2 chars) is filtered out.
+     * 
+     * Aligned with Go implementation which handles short tokens (<=3 chars) by combining
+     * them with neighbors rather than matching them standalone.
+     * 
+     * @param tokens Array of tokens
+     * @return Array with short tokens filtered out
+     */
+    private String[] filterShortTokens(String[] tokens) {
+        if (tokens == null || tokens.length == 0) {
+            return tokens;
+        }
+        
+        List<String> result = new ArrayList<>();
+        for (String token : tokens) {
+            if (token.length() >= MIN_TOKEN_LENGTH) {
+                result.add(token);
+            }
+        }
+        
+        // If ALL tokens were filtered out, return original array
+        // This prevents returning empty array which would cause match failures
+        if (result.isEmpty()) {
+            return tokens;
         }
         
         return result.toArray(new String[0]);

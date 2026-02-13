@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -149,17 +150,19 @@ public class SearchController {
             ScoringContext reportCtx = ScoringContext.enabled(sessionId);
             
             if (!highConfidenceResults.isEmpty()) {
-                Entity firstEntity = highConfidenceResults.get(0).entity();
+                // BSA Row 45 FIX: Use best-matching entity for trace report, not just first result
+                // Prefer entities with exact or near-exact name matches over alphabetically-first results
+                Entity bestMatchEntity = selectBestMatchForReport(request.name(), highConfidenceResults);
                 
                 // Add entity name and aliases to metadata for report
-                reportCtx.withMetadata("entityName", firstEntity.name());
-                if (firstEntity.altNames() != null && !firstEntity.altNames().isEmpty()) {
-                    reportCtx.withMetadata("aliases", firstEntity.altNames());
+                reportCtx.withMetadata("entityName", bestMatchEntity.name());
+                if (bestMatchEntity.altNames() != null && !bestMatchEntity.altNames().isEmpty()) {
+                    reportCtx.withMetadata("aliases", bestMatchEntity.altNames());
                 }
                 
                 entityScorer.scoreWithBreakdown(
                     Entity.of(null, request.name(), null, null),
-                    firstEntity,
+                    bestMatchEntity,
                     reportCtx
                 );
                 logger.debug("Trace saved: sessionId={}, highConfidenceCount={}, totalResults={}", 
@@ -239,6 +242,61 @@ public class SearchController {
         }
 
         return candidates;
+    }
+
+    /**
+     * BSA Row 45: Select the best-matching entity for trace report generation.
+     * <p>
+     * Problem: Using highConfidenceResults.get(0) blindly picks the first result, 
+     * which may not be the entity the user searched for. With alphabetical tie-breaking,
+     * P-632 would appear before P-672 when both score 1.0, causing trace reports to 
+     * show the wrong entity.
+     * <p>
+     * Solution: Prefer entities whose primary name exactly or closely matches the query.
+     * 
+     * @param queryName the user's search query
+     * @param highConfidenceResults list of results with score >= 0.85
+     * @return the entity most likely to be the user's intended match
+     */
+    private Entity selectBestMatchForReport(String queryName, List<SearchResult> highConfidenceResults) {
+        if (highConfidenceResults.isEmpty()) {
+            throw new IllegalArgumentException("Cannot select best match from empty results");
+        }
+        
+        if (highConfidenceResults.size() == 1) {
+            return highConfidenceResults.get(0).entity();
+        }
+        
+        String normalizedQuery = queryName.toLowerCase().trim();
+        
+        // Strategy 1: Exact case-insensitive name match
+        for (SearchResult result : highConfidenceResults) {
+            if (result.entity().name().equalsIgnoreCase(queryName)) {
+                return result.entity();
+            }
+        }
+        
+        // Strategy 2: Highest score entity
+        SearchResult highestScoreResult = highConfidenceResults.stream()
+            .max(Comparator.comparing(SearchResult::score))
+            .orElse(highConfidenceResults.get(0));
+        
+        double maxScore = highestScoreResult.score();
+        
+        // Strategy 3: Among entities with max score, prefer one whose name closely matches query
+        // Use normalized string contains as a proximity heuristic
+        for (SearchResult result : highConfidenceResults) {
+            if (result.score() == maxScore) {
+                String normalizedEntityName = result.entity().name().toLowerCase().trim();
+                // Prefer if query is a substring of entity name or vice versa
+                if (normalizedEntityName.contains(normalizedQuery) || normalizedQuery.contains(normalizedEntityName)) {
+                    return result.entity();
+                }
+            }
+        }
+        
+        // Strategy 4: Return highest-scoring entity (first one if ties)
+        return highestScoreResult.entity();
     }
 
     /**
