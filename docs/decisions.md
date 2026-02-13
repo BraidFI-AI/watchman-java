@@ -205,3 +205,73 @@ Result count now exceeds `limit` parameter value:
 - `observations/related_entity_coverage_solution_note.md` - BSA consultant summary with before/after validation
 - `docs/fixes/related_entity_coverage_fix.md` - Complete technical analysis and test evidence
 
+---
+
+## 2026-02-13: Acronym Token Collapsing for Punctuation Handling
+
+**Decision**: Collapse adjacent single-letter tokens into acronyms after normalization removes periods.
+
+**Problem**: BSA Rows 26 & 31 - "T.E.G. LIMITED" fails to match "TEG LIMITED", "ACCESOS S.A.DE C.V." fails to match "ACCESOS SADE CV". Period removal creates separate single-letter tokens ["t","e","g"] instead of acronym ["teg"].
+
+**Solution**: After tokenization, scan for adjacent single-letter tokens and merge them. Applied in both `tokenizedSimilarity()` and `tokenizedSimilarityWithPrepared()`.
+
+**Location**: `JaroWinklerSimilarity.collapseAcronymTokens()` lines 274-310
+
+**Tradeoff**: May incorrectly merge unrelated single letters (e.g., "A B C COMPANY" → "abc company"). Acceptable because: (1) legitimate single-letter words are stop words, (2) false merges still match correctly when both query and index undergo same transformation.
+
+---
+
+## 2026-02-13: Query Coverage Boost for Alias Substring Matches
+
+**Decision**: Apply 8% score boost when 100% of query tokens match with individual scores ≥0.95.
+
+**Problem**: BSA Row 19 - PIJ entity with exact alias substring "HIZBALLAH BAYT AL-MAQDIS" scored 0.836 while generic "HIZBALLAH" entity scored 0.917. Unmatched index token penalty penalized PIJ for having longer alias despite 100% query coverage.
+
+**Solution**: Detect complete query coverage with high-quality matches. Boost score to indicate stronger match than partial token matches.
+
+**Location**: `JaroWinklerSimilarity.bestPairJaro()` lines 545-557
+
+**Tradeoff**: May elevate entities with verbose aliases that contain all query tokens by chance. Mitigated by requiring high individual token scores (≥0.95) indicating genuine matches, not coincidental token overlap.
+
+---
+
+## 2026-02-13: Multi-level Tie-breaker for Score Equality
+
+**Decision**: Sort tied scores by (1) entity name alphabetically, (2) matched alias token count descending.
+
+**Problem**: BSA Rows 14 & 19 - When multiple entities score 1.0, arbitrary ordering makes results non-deterministic. Row 19: HIZBALLAH and PIJ both score 1.0, need consistent ranking that prefers specific alias matches.
+
+**Solution**: Alphabetical grouping by entity name ensures stable ordering. Secondary sort by alias token count prioritizes longer, more specific substring matches.
+
+**Location**: `SearchServiceImpl` lines 111-122
+
+**Tradeoff**: Alphabetical ordering may not reflect relevance in all cases. However, at score 1.0, all entities are perfect matches—deterministic ordering aids debugging and compliance review.
+
+**Alternative Considered**: Query/name token ratio. Rejected because it deprioritized entities with longer, more specific aliases (Row 14: GAMA'A AL-ISLAMIYYA dropped out of top 10).
+
+---
+
+## 2026-02-13: TDD Methodology for BSA Observations
+
+**Decision**: Use strict RED-GREEN-REFACTOR cycle for BSA/AML observation fixes. Write failing tests (RED), implement minimal fix (GREEN), refactor if needed, run full regression suite.
+
+**Rationale**: BSA observations document regulatory compliance gaps. TDD ensures: (1) observed behavior is reproducible, (2) fix actually resolves the issue, (3) regression tests prevent future breakage, (4) audit trail of expected behavior for compliance review.
+
+**Example**: Groups 1, 3, 4 verification tests confirmed issues already resolved by previous work (limit semantics, phonetic restrictions). Tests remain as regression protection.
+
+**Location**: `src/test/java/io/moov/watchman/observations/*.java`
+
+**Tradeoff**: Higher upfront cost per fix. Justified by regulatory context—untested fixes risk compliance failures in production.
+
+---
+
+## 2026-02-13: Observation CSV Analysis Before Implementation
+
+**Decision**: Investigate actual system behavior before implementing fixes. BSA CSV descriptions may describe symptoms rather than root causes.
+
+**Finding**: Rows 14 & 19 initially appeared to be "entity coverage" issues. Investigation revealed they are ranking/prioritization issues—entities exist in OFAC data but rank poorly for specific queries.
+
+**Lesson**: "Incomplete coverage" may mean poor ranking, not absent entities. "Entity omitted" may mean low ranking, not missing data. Always verify with live system before accepting CSV description as root cause.
+
+**Impact**: Saved implementation effort on non-existent problems. Focused fixes on actual ranking algorithms rather than data loading logic.
+

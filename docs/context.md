@@ -344,3 +344,86 @@ When investigating missing entity reports, follow this sequence:
 5. **Integration Test**: Create test using `SearchService` to verify end-to-end behavior (e.g., `RelatedEntityCoverageFixTest.java`)
 
 This pattern distinguishes between: algorithm issues, data issues, limit issues, and false negatives.
+
+## Session: February 13, 2026 (Group 5: Rows 14 & 19 - Acronym Collapsing and Query Coverage)
+
+### What We Decided
+- Target BSA observation Group 2 (Rows 26, 31) - punctuation sensitivity and Group 5 (Rows 14, 19) - entity grouping and alias ranking
+- Root causes: (1) Periods in abbreviations create separate single-letter tokens, (2) Alias substring matches penalized for extra tokens, (3) Tied scores sorted arbitrarily
+- Solutions: (1) Collapse adjacent single-letter tokens into acronyms, (2) Boost scores for 100% query coverage, (3) Add tie-breaker for deterministic ranking
+
+### What We Did
+- Created `collapseAcronymTokens()` method in `JaroWinklerSimilarity` to merge adjacent single-letter tokens after normalization
+- Added query coverage detection: when ALL query tokens match with individual scores ≥0.95, apply 8% boost (capped at 1.0)
+- Implemented three-level tie-breaker: (1) score descending, (2) entity name alphabetically, (3) matched alias token count descending
+- Created `PunctuationSensitivityTest` (6 tests), `EntityGroupingTest` (7 tests), `ShortCodeMatchingTest` (6 tests), `PartialNamePrioritizationTest` (6 tests)
+- Verified Groups 1, 3, 4 already resolved by previous work (limit semantics, phonetic restrictions)
+
+### What Is Now True
+- **Acronym Token Collapsing** ✅ (Feb 13, 2026)
+  * File: `src/main/java/io/moov/watchman/similarity/JaroWinklerSimilarity.java` lines 274-310
+  * Applied in `tokenizedSimilarity()` and `tokenizedSimilarityWithPrepared()`
+  * "T.E.G. LIMITED" → normalize → ["t","e","g","limited"] → collapse → ["teg","limited"]
+  * "ACCESOS S.A.DE C.V." → normalize → ["accesos","s","a","de","c","v"] → collapse → ["accesos","sade","cv"]
+  * Handles queries without periods matching entities with periods
+  * PunctuationSensitivityTest: 6/6 passing
+
+- **Query Coverage Boost** ✅ (Feb 13, 2026)
+  * File: `src/main/java/io/moov/watchman/similarity/JaroWinklerSimilarity.java` lines 545-557
+  * Detects 100% query token coverage with high-quality matches (tokenAvg ≥ 0.95)
+  * Applies 8% boost: `Math.min(1.0, tokenAvg * 1.08)`
+  * Row 19 fix: PIJ entity with alias "ABU GHUNAYM SQUAD OF THE HIZBALLAH BAYT AL-MAQDIS" now scores 1.0
+  * Prioritizes complete substring matches over partial token matches
+
+- **Tie-breaker Precedence** ✅ (Feb 13, 2026)
+  * File: `src/main/java/io/moov/watchman/search/SearchServiceImpl.java` lines 111-122
+  * Three-level sort: (1) score descending, (2) entity name alphabetically, (3) alias token count descending
+  * Ensures deterministic ordering when multiple entities score 1.0
+  * Balances Row 14 (multiple valid entities) with Row 19 (specific alias priority)
+
+- **BSA Observation Test Organization**:
+  * Tests organized by observation groups in `src/test/java/io/moov/watchman/observations/`
+  * Each test file corresponds to specific CSV rows for traceability
+  * Test names reference row numbers for cross-referencing
+  * Enables targeted regression testing for compliance review
+
+### BSA Test Case Progress Update
+- S.I. 26 (TEG LIMITED): ✅ Fixed (acronym collapsing)
+- S.I. 31 (ACCESOS SADE): ✅ Fixed (acronym collapsing)
+- S.I. 6 (CIMEX entities): ✅ Verified (already working)
+- S.I. 35 (OFFICE 39): ✅ Verified (already working)
+- S.I. 49 (EP-MOQ aircraft): ✅ Verified (already working)
+- S.I. 50 (AAJ vessel): ✅ Verified (already working)
+- S.I. 17 (AL-QUDS BRIGADES): ✅ Verified (already working)
+- S.I. 14 (AL-ISLAMIYYA): ✅ Addressed (multiple entities score 1.0, tie-breaker applied)
+- S.I. 19 (HIZBALLAH BAYT AL-MAQDIS): ✅ Fixed (query coverage boost + tie-breaker)
+- **Total: 24/52 complete (46%), 28 remaining**
+
+### Key Insights
+- BSA CSV descriptions may describe symptoms rather than root causes ("incomplete coverage" vs "poor ranking")
+- "Entity omitted" may mean low ranking, not missing data - always verify with live system
+- Token collapsing must happen after normalization but before similarity calculation
+- Unmatched index token penalty needed adjustment for alias substring matches
+- Alphabetical tie-breaker provides stability for audit review at score 1.0
+- Query coverage indicates match strength better than token count ratios
+
+## Normalization & Tokenization
+
+### Acronym Token Collapsing
+The tokenizer collapses adjacent single-letter tokens into acronyms after period removal. "T.E.G. LIMITED" normalizes to ["t","e","g","limited"], then collapses to ["teg","limited"]. This ensures abbreviations with/without periods match correctly (e.g., "TEG LIMITED" matches "T.E.G. LIMITED").
+
+## Scoring & Ranking
+
+### Query Coverage Boost
+The system detects when ALL query tokens match with individual scores ≥0.95 and applies an 8% boost (capped at 1.0). This prioritizes entities where the query forms a complete substring in an alias over entities with only partial token matches.
+
+### Tie-breaker Precedence
+When entities have equal scores, ranking uses three levels: (1) score descending, (2) entity primary name alphabetically, (3) matched alias token count descending. This ensures consistent ordering across searches and prioritizes more specific alias matches when scores are tied.
+
+### Phonetic Matching Restrictions
+Tokens ≤4 characters use exact/near-exact Jaro-Winkler matching instead of phonetic (Soundex) matching. This prevents false positives where acronyms like "PIJ" (P200) incorrectly match "PKK" (P200), or "IRA" (I600) matches "IARA" (I600). Only tokens ≥5 characters are phonetically equivalent when Soundex codes match.
+
+## Testing
+
+### BSA Observation Test Organization
+Tests are organized by BSA/AML observation groups in `src/test/java/io/moov/watchman/observations/`. Each test file corresponds to specific audit observation rows, maintaining direct traceability for compliance review. Test names reference CSV row numbers for cross-referencing.
