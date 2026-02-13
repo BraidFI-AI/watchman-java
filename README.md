@@ -62,9 +62,10 @@ This project was built using **Test-Driven Development (TDD)**, with tests ensur
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/admin.html` | Web-based Admin UI for config management |
-| `GET` | `/api/admin/config` | Get all configuration (23 parameters) |
+| `GET` | `/api/admin/config` | Get all configuration (26 parameters) |
 | `PUT` | `/api/admin/config/similarity` | Update similarity config (10 params) |
 | `PUT` | `/api/admin/config/weights` | Update weight config (13 params) |
+| `PUT` | `/api/admin/config/auto-clearance` | Update auto-clearance config (3 params) |
 | `POST` | `/api/admin/config/reset` | Reset config to defaults |
 
 See [docs/admin_ui.md](docs/admin_ui.md) for details.
