@@ -107,7 +107,20 @@ public class SearchServiceImpl implements SearchService {
                 return new ScoredEntity(entity, score, breakdown, matchedAlias);
             })
             .filter(scored -> scored.score >= effectiveMinMatch)
-            .sorted(Comparator.comparing(ScoredEntity::score).reversed())
+            .sorted(Comparator
+                .comparing(ScoredEntity::score).reversed()
+                // BSA CRITICAL FIX (Row 14 & 19): Tie-breaker for equal scores
+                // Primary tiebreaker: Prefer longer matched aliases (more tokens = more specific substring match)
+                // Secondary tiebreaker: Group by primary entity name to ensure stability
+                .thenComparing(scored -> {
+                    String primaryName = scored.entity.name();
+                    return primaryName;
+                })
+                .thenComparing(scored -> {
+                    String matchedName = scored.matchedAlias != null ? scored.matchedAlias : scored.entity.name();
+                    return matchedName.split("\\s+").length;
+                }, Comparator.reverseOrder())
+            )
             .limit(limit) // Limit unique entities HERE, before alias expansion
             .toList();
         

@@ -112,6 +112,12 @@ public class JaroWinklerSimilarity implements SimilarityService {
         String[] tokens1 = normalizer.tokenize(norm1);
         String[] tokens2 = normalizer.tokenize(norm2);
         
+        // BSA FIX (Rows 26, 31): Collapse adjacent single-letter tokens to handle acronyms
+        // "T.E.G." → "t e g" → "teg", "S.A.DE" → "s a de" → "sade"
+        // This ensures "TEG LIMITED" matches "T.E.G. LIMITED"
+        tokens1 = collapseAcronymTokens(tokens1);
+        tokens2 = collapseAcronymTokens(tokens2);
+        
         // For tokenized similarity, check if all tokens match (possibly reordered)
         // Use phonetic matching to handle spelling variations like Muhammad/Mohammad
         if (tokens1.length == tokens2.length && phoneticSetsMatch(tokens1, tokens2)) {
@@ -136,6 +142,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
         String normalizedQuery = normalizer.lowerAndRemovePunctuation(query);
         String[] queryTokens = normalizer.tokenize(normalizedQuery);
         
+        // BSA FIX (Rows 26, 31): Collapse adjacent single-letter tokens to handle acronyms
+        queryTokens = collapseAcronymTokens(queryTokens);
+        
         // Compare against each pre-normalized name and take the best score
         double maxScore = 0.0;
         for (String preparedName : preparedNames) {
@@ -145,6 +154,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
             
             // PreparedName is already normalized, just tokenize
             String[] candidateTokens = normalizer.tokenize(preparedName);
+            
+            // BSA FIX (Rows 26, 31): Collapse adjacent single-letter tokens to handle acronyms
+            candidateTokens = collapseAcronymTokens(candidateTokens);
             
             // Check for phonetic match (reordered)
             // Use phonetic matching to handle spelling variations
@@ -173,17 +185,45 @@ public class JaroWinklerSimilarity implements SimilarityService {
      * Soundex is too permissive - CECOEX and CHACHAJEE both produce C220, causing false positive.
      * Now requires length similarity in addition to phonetic match.
      * 
+     * BSA CRITICAL FIX (Rows 13, 16, 18, 24): Added minimum length requirement for phonetic matching.
+     * Soundex is too coarse for short strings/acronyms (≤4 chars):
+     * - SHINRIKYO (S562) matches SUNRISE (S562) and SOMERSET (S562)
+     * - PIJ (P200) matches PKK (P200)
+     * - IRA (I600) matches IARA (I600)
+     * - SAYARA (S600) matches SRA (S600)
+     * 
+     * Short tokens must use exact/near-exact Jaro-Winkler match instead.
+     * 
      * This fixes the BSA consultant observation that name order sensitivity still occurs
      * due to spelling variations not being treated as equivalent by exact string matching.
      * 
      * @param tokens1 First array of tokens
      * @param tokens2 Second array of tokens
      * @return true if both arrays contain phonetically equivalent tokens (order-independent)
-     *         AND token lengths are similar (within 30%)
+     *         AND token lengths are similar (within 30%) AND all tokens are ≥5 characters
      */
     private boolean phoneticSetsMatch(String[] tokens1, String[] tokens2) {
         if (tokens1.length != tokens2.length) {
             return false;
+        }
+        
+        // BSA CRITICAL FIX (Rows 13, 16, 18, 24): Minimum length requirement for phonetic matching
+        // Soundex is unreliable for short strings. Examples:
+        // - PIJ → P200, PKK → P200 (unrelated, but identical Soundex)
+        // - IRA → I600, IARA → I600 (different entities)
+        // - SHINRIKYO → S562, SUNRISE → S562, SOMERSET → S562 (completely unrelated)
+        //
+        // Require ALL tokens to be ≥ 5 characters for phonetic matching.
+        // Short tokens/acronyms (≤ 4 chars) must match exactly or near-exactly via Jaro-Winkler.
+        for (String token : tokens1) {
+            if (token.length() <= 4) {
+                return false;
+            }
+        }
+        for (String token : tokens2) {
+            if (token.length() <= 4) {
+                return false;
+            }
         }
         
         // BSA CRITICAL FIX (S.I. 5): Validate length similarity before phonetic matching
@@ -205,10 +245,16 @@ public class JaroWinklerSimilarity implements SimilarityService {
             // Calculate length difference ratio
             double lengthDiffRatio = (maxLen - minLen) / (double) maxLen;
             
-            // If length difference > 30%, don't consider phonetic match
-            // Example: CECOEX (6) vs CHACHAJEE (9) = (9-6)/9 = 33% → REJECT
-            // Example: Muhammad (8) vs Mohammad (8) = (8-8)/8 = 0% → ALLOW
-            if (lengthDiffRatio > 0.30) {
+            // BSA CRITICAL FIX (Rows 13, 16, 18, 24): Tightened length threshold from 30% to 10%
+            // Additional cases blocked:
+            // - SHINRIKYO (9) vs SUNRISE (7) = 22% diff → REJECT
+            // - SHINRIKYO (9) vs SOMERSET (8) = 11% diff → REJECT
+            // - CECOEX (6) vs CHACHAJEE (9) = 33% diff → REJECT
+            // Cases that rely on Jaro-Winkler instead of phonetic:
+            // - MOHAMMED (8) vs MOHAMED (7) = 12.5% diff → phonetic blocked, but Jaro-Winkler handles it
+            // Still allows via phonetic:
+            // - MUHAMMAD (8) vs MOHAMMAD (8) = 0% diff → ALLOW
+            if (lengthDiffRatio > 0.10) {
                 return false;
             }
         }
@@ -224,6 +270,49 @@ public class JaroWinklerSimilarity implements SimilarityService {
         }
         
         return soundexSet1.equals(soundexSet2);
+    }
+    
+    /**
+     * Collapse adjacent single-letter tokens into acronyms.
+     * 
+     * BSA FIX (Rows 26, 31): Handle punctuation in abbreviations/acronyms.
+     * When periods are removed from "T.E.G." or "S.A.DE", they become separate single-letter tokens:
+     * - "T.E.G. LIMITED" → normalize → "t e g limited" → collapse → ["teg", "limited"]
+     * - "ACCESOS S.A.DE C.V." → normalize → "accesos s a de c v" → collapse → ["accesos", "sade", "cv"]
+     * 
+     * This ensures queries without periods ("TEG LIMITED", "ACCESOS SADE CV") match correctly.
+     * 
+     * @param tokens Array of tokens
+     * @return Array with adjacent single-letter tokens collapsed into acronyms
+     */
+    private String[] collapseAcronymTokens(String[] tokens) {
+        if (tokens == null || tokens.length == 0) {
+            return tokens;
+        }
+        
+        List<String> result = new ArrayList<>();
+        StringBuilder acronym = new StringBuilder();
+        
+        for (String token : tokens) {
+            if (token.length() == 1) {
+                // Single letter - accumulate into acronym
+                acronym.append(token);
+            } else {
+                // Multi-letter token - flush any accumulated acronym first
+                if (acronym.length() > 0) {
+                    result.add(acronym.toString());
+                    acronym.setLength(0);
+                }
+                result.add(token);
+            }
+        }
+        
+        // Flush any remaining acronym
+        if (acronym.length() > 0) {
+            result.add(acronym.toString());
+        }
+        
+        return result.toArray(new String[0]);
     }
     
     /**
@@ -373,6 +462,21 @@ public class JaroWinklerSimilarity implements SimilarityService {
      * 
      * Package-private for use by NameScorer.
      */
+    /**
+     * BSA CRITICAL FIX (Row 19): Added query coverage boost for alias substring matches.
+     * 
+     * Problem: When searching "HIZBALLAH BAYT AL-MAQDIS":
+     * - HIZBALLAH (1 token) scores 0.917 - partial match
+     * - PIJ alias "ABU GHUNAYM SQUAD OF THE HIZBALLAH BAYT AL-MAQDIS" scores 0.836 - full query match
+     * - PIJ has ALL query tokens matched perfectly but gets penalized for extra tokens
+     * 
+     * Root Cause: Algorithm applies unmatched index token penalty without considering query coverage.
+     * When ALL query tokens are matched with high scores (100% query coverage), this indicates
+     * a strong match - likely a substring/alias match that should rank higher.
+     * 
+     * Solution: Detect 100% query coverage with high-quality matches (avg ≥ 0.95) and apply boost.
+     * This prioritizes entities where the query is a complete substring in an alias.
+     */
     double bestPairJaro(String[] tokens1, String[] tokens2) {
         if (tokens1.length == 0 || tokens2.length == 0) {
             return 0.0;
@@ -390,6 +494,14 @@ public class JaroWinklerSimilarity implements SimilarityService {
         // Use the smaller set as the "index" tokens
         String[] indexTokens = tokens1.length <= tokens2.length ? tokens1 : tokens2;
         String[] queryTokens = tokens1.length <= tokens2.length ? tokens2 : tokens1;
+        
+        // Track non-stopword token counts for query coverage calculation
+        int nonStopwordIndexTokens = 0;
+        for (String token : indexTokens) {
+            if (!isStopword(token)) {
+                nonStopwordIndexTokens++;
+            }
+        }
         
         boolean[] usedQuery = new boolean[queryTokens.length];
         
@@ -430,6 +542,19 @@ public class JaroWinklerSimilarity implements SimilarityService {
         }
         
         double tokenAvg = totalScore / comparisons;
+        
+        // BSA CRITICAL FIX (Row 19): Query coverage boost
+        // If ALL tokens from the smaller set are matched with high scores,
+        // this is a strong substring match - boost the score
+        boolean allTokensMatched = (comparisons == nonStopwordIndexTokens);
+        boolean highQualityMatches = tokenAvg >= 0.95;
+        
+        if (allTokensMatched && highQualityMatches) {
+            // 100% query coverage with high-quality matches
+            // This is likely an alias substring match - boost heavily
+            // Cap at 1.0
+            return Math.min(1.0, tokenAvg * 1.08);
+        }
         
         // Blend token-based and full-string scores
         // Weight towards token-based for multi-word, full-string for similar lengths
