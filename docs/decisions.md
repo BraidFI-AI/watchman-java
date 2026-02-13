@@ -275,3 +275,60 @@ Result count now exceeds `limit` parameter value:
 
 **Impact**: Saved implementation effort on non-existent problems. Focused fixes on actual ranking algorithms rather than data loading logic.
 
+---
+
+## 2026-02-13: Minimum Token Length Filtering (3 Characters)
+
+**Decision**: Filter tokens shorter than 3 characters AFTER acronym collapsing, with safety fallback to original array if all tokens filtered.
+
+**Context**: BSA observation Row 17 - Search for "AL-QUDS" returned unrelated entity (AL-KARMUSH) with alias "AL-" scoring 1.0, blocking legitimate matches from ranking high.
+
+**Root Cause Investigation**:
+- Entity 18596 (AL-KARMUSH, Muwaffaq Mustafa Muhammad) has 2-character alias "AL-"
+- Tokenized comparison: compare(["al"], ["al", "quds"]) → token "al" matches perfectly → score 1.0
+- OFAC data quality issue: Arabic name prefixes stored as standalone aliases ("AL-", "ABU-", "AL-AQSA")
+- Ultra-short prefixes create false positives when matching longer names starting with same prefix
+
+**Rationale**: 
+- Go implementation reference: `watchman/internal/stringscore/jaro_winkler.go` lines 294, 313 combines short tokens (≤3 chars) with neighbors
+- Java approach: Filter short tokens instead of combining (simpler implementation, same outcome)
+- 3-character threshold eliminates prefix false positives while preserving legitimate short codes
+- Applied AFTER acronym collapsing: "T.E.G." → "teg" (3 chars, kept) vs "AL-" → "al" (2 chars, filtered)
+
+**Implementation**:
+- Added `MIN_TOKEN_LENGTH = 3` constant in `JaroWinklerSimilarity.java`
+- Created `filterShortTokens()` method (lines ~365-390)
+- Applied in both `tokenizedSimilarity()` and `tokenizedSimilarityWithPrepared()` after acronym collapsing
+- Safety mechanism: Returns original array if all tokens filtered (prevents match failures)
+
+**Tradeoff Analysis**:
+
+✅ **Benefits**:
+- Eliminates false positives from ultra-short prefix aliases ("AL-", "ABU-")
+- Aligns with Go implementation approach (cross-validation)
+- Preserves acronym matching: "T.E.G." → "teg" still matches correctly
+- Safety fallback prevents catastrophic match failures
+
+❌ **Risks**:
+- 2-character codes (country codes, abbreviations) won't match standalone
+- Examples: "US", "UK", "EU", "UN"
+- Mitigation: OFAC data typically includes full names alongside abbreviations
+- Acceptable tradeoff: Better to miss edge-case 2-char code than include unrelated entities
+
+**Alternative Considered**: Combine short tokens with neighbors (Go approach)
+- **Rejected**: More complex implementation, same outcome for false positive prevention
+- Java filtering approach simpler to understand and maintain
+
+**Test Results**:
+- BEFORE: "AL-QUDS" vs "AL-" = 1.0 (false positive blocks legitimate matches)
+- AFTER: "AL-QUDS" vs "AL-" = no match after filtering
+- PartialNamePrioritizationTest: 6/6 passing ✅
+- Row 17: RESOLVED - AL-QUDS INTERNATIONAL FOUNDATION ranks first, PALESTINE ISLAMIC JIHAD appears in results
+
+**Side Effects**:
+- EntityGroupingTest: 2/7 failures introduced (Row 19 query coverage boost tests)
+- Root cause under investigation: Token filtering may affect query coverage detection logic
+- Overall: 25/28 observation tests passing (89%)
+
+**BSA Progress**: Row 17 RESOLVED - 25/52 complete (48%)
+
