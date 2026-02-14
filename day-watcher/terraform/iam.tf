@@ -36,29 +36,23 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Effect = "Allow"
         Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "s3:PutObject",
           "s3:GetObject"
         ]
         Resource = [
           "${aws_s3_bucket.input.arn}/*",
           "${aws_s3_bucket.results.arn}/*"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:GetItem",
-          "dynamodb:Query",
-          "dynamodb:Scan",
-          "dynamodb:BatchWriteItem"
-        ]
-        Resource = [
-          aws_dynamodb_table.entities.arn,
-          "${aws_dynamodb_table.entities.arn}/index/*",
-          aws_dynamodb_table.runs.arn,
-          "${aws_dynamodb_table.runs.arn}/index/*"
         ]
       },
       {
@@ -87,7 +81,10 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = aws_secretsmanager_secret.braid_api_key.arn
+        Resource = [
+          aws_secretsmanager_secret.braid_api_key.arn,
+          aws_secretsmanager_secret.db_credentials.arn
+        ]
       }
     ]
   })
@@ -154,10 +151,11 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
       {
         Effect = "Allow"
         Action = [
-          "dynamodb:UpdateItem",
-          "dynamodb:GetItem"
+          "secretsmanager:GetSecretValue"
         ]
-        Resource = aws_dynamodb_table.runs.arn
+        Resource = [
+          aws_secretsmanager_secret.db_credentials.arn
+        ]
       },
       {
         Effect = "Allow"

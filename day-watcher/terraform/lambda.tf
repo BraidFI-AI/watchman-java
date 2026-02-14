@@ -25,6 +25,13 @@ resource "aws_lambda_function" "orchestrator" {
   timeout         = 900  # 15 minutes
   memory_size     = 512
   
+  # VPC configuration disabled for POC mode (RDS is publicly accessible)
+  # Enables Lambda to access both AWS services and external APIs (Braid)
+  # vpc_config {
+  #   subnet_ids         = var.create_vpc ? [aws_subnet.public_1.id, aws_subnet.public_2.id] : var.subnet_ids
+  #   security_group_ids = [aws_security_group.lambda.id]
+  # }
+  
   environment {
     variables = {
       INPUT_BUCKET           = aws_s3_bucket.input.bucket
@@ -33,10 +40,11 @@ resource "aws_lambda_function" "orchestrator" {
       ECS_TASK_DEFINITION    = aws_ecs_task_definition.day_watcher.arn
       ECS_SUBNET_IDS         = var.create_vpc ? join(",", [aws_subnet.public_1.id, aws_subnet.public_2.id]) : join(",", var.subnet_ids)
       ECS_SECURITY_GROUP     = aws_security_group.ecs_tasks.id
-      ENTITIES_TABLE         = aws_dynamodb_table.entities.name
-      DYNAMODB_TABLE         = aws_dynamodb_table.runs.name
+      DB_SECRET_ARN          = aws_secretsmanager_secret.db_credentials.arn
       BRAID_API_SECRET_ARN   = aws_secretsmanager_secret.braid_api_key.arn
-      TEST_MODE_LIMIT        = 1000
+      TEST_MODE_LIMIT        = 1000  # 0 = no limit, pull entire database
+      ENTITY_TYPES           = "individual,business"  # Comma-separated: individual,business,counterparty
+      PRODUCT_NAME           = ""            # Braid product name to filter by specific product (empty = all products)
     }
   }
   

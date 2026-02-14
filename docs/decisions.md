@@ -332,3 +332,55 @@ Result count now exceeds `limit` parameter value:
 
 **BSA Progress**: Row 17 RESOLVED - 25/52 complete (48%)
 
+---
+
+## 2026-02-14: Braid API Pagination Parameters - Query String vs Request Body
+
+**Decision**: Changed Braid API client to send `pageNumber` and `pageSize` as query parameters instead of in the JSON request body.
+
+**Context**: Initial implementation observed 90% duplicate entity rate when fetching from Braid API. In test run, 56,800 entities fetched but only 5,800 unique entities written to PostgreSQL. Investigation revealed pagination parameters were not working correctly - every page request was returning the same first page of results.
+
+**Root Cause**: Agent code was sending pagination parameters in request body:
+```python
+json={'pageNumber': page_number, 'pageSize': self.PAGE_SIZE, ...filters...}
+```
+
+OpenAPI specification (braid-integration/braid-open-api-1.8.json) clearly defines these as query parameters:
+```json
+{"name": "pageNumber", "in": "query", "required": false, ...}
+{"name": "pageSize", "in": "query", "required": false, ...}
+```
+
+**Solution**: Modified `day-watcher/orchestrator/braid_client.py` to use correct parameter location:
+```python
+response = self.session.post(
+    f"{self.BASE_URL}{endpoint}",
+    params={'pageNumber': page_number, 'pageSize': self.PAGE_SIZE},
+    json=filter_params,  # Filters stay in body
+    timeout=30
+)
+```
+
+**Verification**: 
+- curl tests confirmed different entity IDs returned across pages
+- Test run run-20260214-073137: 2,000 entities fetched, 2,000 unique written (100% success, 0% duplicates)
+- S3 NDJSON export: 424KB file with 2,000 properly formatted entities
+- Full pipeline tested successfully: Braid → PostgreSQL → NDJSON → S3 → ECS
+
+**Rationale**: API specifications must be followed exactly. Query parameters and request body parameters are handled differently by web frameworks. Braid API ignored parameters in request body, returning same page repeatedly.
+
+**Impact**: Eliminated all duplicate entities in database. Pipeline now correctly fetches complete entity set from Braid across multiple pages. Critical fix for data integrity and compliance - cannot screen entities properly if fetching duplicates instead of full population.
+
+**Lesson Learned**: When observing impossible data patterns (90% duplicates in production banking system), verify API integration against specification before concluding data quality issues. User domain knowledge was correct to question the duplicate rate.
+
+---
+
+## 2026-02-14: RDS PostgreSQL Public Accessibility for POC
+
+**Decision**: Configured RDS PostgreSQL instance with public accessibility (0.0.0.0/0 security group) for POC/development phase.
+
+**Rationale**: Simplifies development workflow - team members can connect directly via DataGrip, DBeaver, or psql without VPN or bastion host. Enables rapid iteration and debugging during POC phase.
+
+**Tradeoff**: Security vs convenience. Public database access is acceptable for POC with test data but must be restricted before production deployment.
+
+**Future Action Required**: Before production launch, restrict security group to VPC-only access or specific IP ranges. Update Lambda and ECS task security groups accordingly.

@@ -138,6 +138,22 @@
 - DynamoDB runs table: Stores `entitiesFetchedFromBraid`, `totalEntitiesInNDJSON`, `totalEntitiesScreened`
 - Per-type breakdowns stored: `fetchBreakdown` (individuals/businesses/counterparties)
 
+### Database Access & Connectivity
+- RDS PostgreSQL is publicly accessible (0.0.0.0/0) for POC/development purposes
+- Database password contains special characters requiring URL encoding for JDBC connections:
+  * Raw password: `nb188H5A{CPJlkHf]ET1SEpIq[F51)D5`
+  * URL-encoded: `nb188H5A%7BCPJlkHf%5DET1SEpIq%5BF51%29D5`
+  * Use URL-encoded version in JDBC connection strings
+  * Use raw password when connecting via psql or using separate password field in database tools
+- JetBrains DataGrip and DBeaver confirmed working with proper authentication
+- Current database state: 2,100 entities from successful Braid sync (run-20260214-073137)
+
+### Braid API Integration
+- Braid API pagination parameters (`pageNumber`, `pageSize`) must be sent as query parameters, not in request body
+- Correct format: `POST /individual/search?pageNumber=0&pageSize=100` with filter criteria in JSON body
+- OpenAPI specification: braid-integration/braid-open-api-1.8.json documents pagination params as `in: "query"`
+- File: day-watcher/orchestrator/braid_client.py lines 36-55 implements correct pagination
+
 ## Session: February 10, 2026 (S.I. 5 Critical Bug Fix - Phonetic Matching False Positive)
 
 ### What We Decided

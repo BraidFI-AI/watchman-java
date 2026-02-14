@@ -37,82 +37,110 @@ class BraidClient:
         """
         Execute POST request with pagination
         Yields pages of results to avoid loading everything into memory
+        
+        NOTE: Braid API requires pageNumber and pageSize as QUERY PARAMETERS, not in request body
         """
-        page = 0
+        page_number = 0
         
         while True:
             self._rate_limit()
             
-            payload = {
-                **filter_params,
-                'page': page,
-                'pageSize': self.PAGE_SIZE
-            }
-            
+            # Pagination params go in query string, filters in body
             response = self.session.post(
                 f"{self.BASE_URL}{endpoint}",
-                json=payload,
+                params={
+                    'pageNumber': page_number,
+                    'pageSize': self.PAGE_SIZE
+                },
+                json=filter_params,
                 timeout=30
             )
             response.raise_for_status()
             
             data = response.json()
             results = data.get('content', [])
+            total_count = data.get('totalElements', 0)
+            total_pages = data.get('totalPages', 0)
+            current_page = data.get('number', page_number)
+            
+            # Log pagination details on first page
+            if page_number == 0:
+                print(f"  📊 Braid API reports: {total_count} totalElements, {total_pages} totalPages, pageSize={self.PAGE_SIZE}", flush=True)
             
             if not results:
+                print(f"  ⚠️  Empty page at pageNumber={page_number}, stopping pagination", flush=True)
                 break
+            
+            # Log sample IDs from first page
+            if page_number == 0 and results:
+                sample_ids = [r.get('id') for r in results[:3]]
+                print(f"  📋 First page sample IDs: {sample_ids}", flush=True)
             
             yield results
             
             # Check if more pages exist
-            total_count = data.get('totalElements', 0)
-            total_fetched = (page + 1) * self.PAGE_SIZE
+            total_fetched = (page_number + 1) * self.PAGE_SIZE
             if total_fetched >= total_count:
+                print(f"  ✓ Reached end: fetched {total_fetched} >= {total_count} totalElements", flush=True)
                 break
             
-            page += 1
+            page_number += 1
     
-    def fetch_individuals(self, status: str = 'ACTIVE', updated_after: Optional[str] = None):
+    def fetch_individuals(self, status: str = 'ACTIVE', updated_after: Optional[str] = None, product_name: Optional[str] = None):
         """
-        Fetch individuals with given status, optionally filtered by update time
+        Fetch individuals with given status, optionally filtered by update time and product
         POST /individual/search
         Yields pages of results
         
         Args:
             status: Entity status filter (default: ACTIVE)
             updated_after: ISO timestamp - fetch only entities updated after this time
+            product_name: Braid product name - fetch only entities for this product
         """
         filters = {'status': status}
         if updated_after:
             filters['updatedAt'] = updated_after
-            print(f"Fetching individuals with status={status}, updatedAt>{updated_after}")
-        else:
-            print(f"Fetching ALL individuals with status={status}")
+        if product_name:
+            filters['productName'] = product_name
+        
+        filter_desc = f"status={status}"
+        if updated_after:
+            filter_desc += f", updatedAt>{updated_after}"
+        if product_name:
+            filter_desc += f", productName={product_name}"
+        print(f"Fetching individuals with {filter_desc}")
         
         yield from self._post_with_pagination('/individual/search', filters)
     
-    def fetch_businesses(self, status: str = 'ACTIVE', updated_after: Optional[str] = None):
+    def fetch_businesses(self, status: str = 'ACTIVE', updated_after: Optional[str] = None, product_name: Optional[str] = None):
         """
-        Fetch businesses with given status, optionally filtered by update time
+        Fetch businesses with given status, optionally filtered by update time and product
         POST /business/search
         Yields pages of results
         
         Args:
             status: Entity status filter (default: ACTIVE)
             updated_after: ISO timestamp - fetch only entities updated after this time
+            product_name: Braid product name - fetch only entities for this product
         """
         filters = {'status': status}
         if updated_after:
             filters['updatedAt'] = updated_after
-            print(f"Fetching businesses with status={status}, updatedAt>{updated_after}")
-        else:
-            print(f"Fetching ALL businesses with status={status}")
+        if product_name:
+            filters['productName'] = product_name
+        
+        filter_desc = f"status={status}"
+        if updated_after:
+            filter_desc += f", updatedAt>{updated_after}"
+        if product_name:
+            filter_desc += f", productName={product_name}"
+        print(f"Fetching businesses with {filter_desc}")
         
         yield from self._post_with_pagination('/business/search', filters)
     
-    def fetch_counterparties(self, status: str = 'ACTIVE', updated_after: Optional[str] = None):
+    def fetch_counterparties(self, status: str = 'ACTIVE', updated_after: Optional[str] = None, product_name: Optional[str] = None):
         """
-        Fetch counterparties with given status, optionally filtered by update time
+        Fetch counterparties with given status, optionally filtered by update time and product
         POST /counterparty/search
         Yields pages of results
         
@@ -122,13 +150,20 @@ class BraidClient:
         Args:
             status: Entity status filter (default: ACTIVE)
             updated_after: ISO timestamp - fetch only entities updated after this time
+            product_name: Braid product name - fetch only entities for this product
         """
         filters = {'status': status}
         if updated_after:
             filters['updatedAt'] = updated_after
-            print(f"Fetching counterparties with status={status}, updatedAt>{updated_after}")
-        else:
-            print(f"Fetching ALL counterparties with status={status}")
+        if product_name:
+            filters['productName'] = product_name
+        
+        filter_desc = f"status={status}"
+        if updated_after:
+            filter_desc += f", updatedAt>{updated_after}"
+        if product_name:
+            filter_desc += f", productName={product_name}"
+        print(f"Fetching counterparties with {filter_desc}")
         
         try:
             yield from self._post_with_pagination('/counterparty/search', filters)

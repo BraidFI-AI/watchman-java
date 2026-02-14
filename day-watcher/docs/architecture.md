@@ -2,7 +2,7 @@
 
 ## System Overview
 
-**Core Principle**: Minimize Braid API calls by maintaining a master entity list in DynamoDB. Fetch only NEW/CHANGED entities daily, but screen the ENTIRE population (OFAC lists change daily).
+**Core Principle**: Minimize Braid API calls by maintaining a master entity list in RDS PostgreSQL. Fetch only NEW/CHANGED entities daily, but screen the ENTIRE population (OFAC lists change daily).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -16,20 +16,21 @@
            ▼
     ┌──────────────────────────────────────────────────────────────┐
     │  Lambda Orchestrator (day-watcher-orchestrator)              │
-    │  Python 3.11, 512MB RAM, 900s timeout                        │
+    │  Python 3.11, 512MB RAM, 900s timeout, VPC-enabled          │
     │  ┌────────────────────────────────────────────────────────┐  │
-    │  │ 1. Get Braid API credentials from Secrets Manager     │  │
-    │  │ 2. Fetch entities from Braid API (3 types):           │  │
+    │  │ 1. Get credentials from Secrets Manager (Braid + RDS) │  │
+    │  │ 2. Connect to PostgreSQL via VPC                       │  │
+    │  │ 3. Fetch entities from Braid API (3 types):           │  │
     │  │    - individuals (50,600 entities)                    │  │
     │  │    - businesses (4,900 entities)                      │  │
     │  │    - counterparties (65,200 entities)                 │  │
     │  │    Total: 120,700 entities                            │  │
-    │  │ 3. Progress logging every 1000 entities               │  │
-    │  │ 4. Batch write to DynamoDB with error handling        │  │
-    │  │ 5. Export active entities to NDJSON                   │  │
-    │  │ 6. Upload to S3 (day-watcher-input/{runId}/...)       │  │
-    │  │ 7. Create audit record in day-watcher-runs            │  │
-    │  │ 8. Trigger ECS Fargate screening task                 │  │
+    │  │ 4. Progress logging every 1000 entities               │  │
+    │  │ 5. Batch write to PostgreSQL (1000/batch)             │  │
+    │  │ 6. Export active entities to NDJSON from PostgreSQL   │  │
+    │  │ 7. Upload to S3 (day-watcher-input/{runId}/...)       │  │
+    │  │ 8. Create audit record in DynamoDB runs table         │  │
+    │  │ 9. Trigger ECS Fargate screening task                 │  │
     │  └────────────────────────────────────────────────────────┘  │
     └──────────────────────┬───────────────────────────────────────┘
                            │ run_task
@@ -45,11 +46,13 @@
     │  └────────────────────────────────────────────────────────┘  │
     └──────────────────────────────────────────────────────────────┘
                            │
-           ┌───────────────┼───────────────┐
-           ▼               ▼               ▼
+           ┌───────────────┼─────────────────┐
+           ▼               ▼                 ▼
     ┌────────────┐  ┌────────────┐  ┌──────────────┐
-    │ DynamoDB   │  │ S3 Results │  │ CloudWatch   │
-    │ (2 tables) │  │ (NDJSON)   │  │ (logs/metrics)│
+    │ PostgreSQL │  │ S3 Results │  │ CloudWatch   │
+    │ (entities) │  │ (NDJSON)   │  │ (logs/metrics)│
+    │ DynamoDB   │  │            │  │              │
+    │ (runs)     │  │            │  │              │
     └────────────┘  └────────────┘  └──────────────┘
 ```
 
@@ -61,14 +64,15 @@
 **Memory**: 512 MB  
 **Timeout**: 15 minutes  
 **Concurrency**: 1 (single daily run)
+**VPC**: Enabled (for RDS PostgreSQL access)
 
 **Responsibilities**:
 - Determine if this is initial load or incremental update
 - Query Braid REST APIs with pagination (20 RPS rate limit)
   - Initial: Fetch ALL entities with status=ACTIVE (~120k)
   - Incremental: Fetch only entities where updatedAt > lastRunTimestamp (~100-500/day)
-- Upsert entities to DynamoDB master list (entities table)
-- Export ALL entities from DynamoDB to NDJSON format
+- Upsert entities to PostgreSQL master list (entities table)
+- Export ALL entities from PostgreSQL to NDJSON format
 - Upload input file to S3
 - Initialize DynamoDB run tracking (runs table)
 - Trigger ECS Fargate task with environment overrides
@@ -79,13 +83,13 @@
 - **Savings: 99.5% reduction in daily API calls**
 
 **Performance**:
-- First run: ~15 minutes (361s individuals, 31s businesses, 134s counterparties)
-- Daily incremental: <1 minute
+- First run: ~15 minutes (361s individuals, 31s businesses, 134s counterparties, ~3min PostgreSQL writes, ~1min NDJSON export)
+- Daily incremental: <2 minutes
 
 **Key Files**:
-- `orchestrator/handler.py` - Lambda entry point, entity fetching, DynamoDB writes
+- `orchestrator/handler.py` - Lambda entry point, entity fetching, PostgreSQL writes
 - `orchestrator/braid_client.py` - Braid API wrapper with pagination
-- `orchestrator/entity_manager.py` - DynamoDB operations with error handling
+- `orchestrator/entity_manager.py` - PostgreSQL operations with psycopg2
 - `orchestrator/ndjson_exporter.py` - Entity export to S3
 
 ### 2. ECS Container
@@ -104,46 +108,58 @@
 **Key Files**:
 - `container/Dockerfile` - Java Watchman container
 - Java Watchman source (in main watchman-java repository)
+ata Storage
 
-### 3. DynamoDB Tables
+#### PostgreSQL Database (RDS)
 
-#### Entities Table
+**Instance**: db.t4g.micro (2 vCPU, 1 GB RAM)  
+**Engine**: PostgreSQL 16.1  
+**Storage**: 20 GB GP3 (autoscaling to 100 GB)  
+**Encryption**: Enabled (at rest)  
+**Backups**: 7-day retention, automated daily backups  
+**Multi-AZ**: No (POC mode - single AZ deployment)
 
-**Name**: `day-watcher-entities`  
-**Partition Key**: `entityId` (String) - Braid entity UUID  
-**Sort Key**: `entityType` (String) - individual|business|counterparty
+**Table: entities** (master entity list for incremental sync)
 
-**Purpose**: Master list of all entities for screening
+| Column | Type | Description |
+|--------|------|-------------|
+| entity_id | VARCHAR(100) PK | Braid entity UUID (ind_*, bus_*, cou_*) |
+| entity_type | VARCHAR(20) | individual\|business\|counterparty |
+| name | VARCHAR(500) | Entity full name |
+| addresses | JSONB | Array of address objects from Braid |
+| dob | DATE | Date of birth (individuals only) |
+| incorporation_date | DATE | Incorporation date (businesses only) |
+| alt_names | JSONB | Array of alternate names |
+| braid_updated_at | TIMESTAMP WITH TIME ZONE | Last updated timestamp from Braid |
+| braid_tenant_id | VARCHAR(100) | Braid tenant identifier |
+| braid_status | VARCHAR(20) | ACTIVE\|INACTIVE from Braid |
+| last_screened_at | TIMESTAMP WITH TIME ZONE | Last OFAC screening timestamp |
+| last_screening_result | VARCHAR(50) | match\|no-match |
+| created_at | TIMESTAMP WITH TIME ZONE | Record creation timestamp |
+| updated_at | TIMESTAMP WITH TIME ZONE | Record update timestamp (auto-updated via trigger) |
 
-**Attributes**:
-- `entityId` - Braid UUID (PK) - format: `ind_*`, `bus_*`, `cou_*`
-- `entityType` - Entity type (SK) - values: `individual`, `business`, `counterparty`
-- `name` - Entity full name
-- `addresses` - List of address objects (can be empty array if null from Braid)
-- `dateOfBirth` - ISO date string (individuals only)
-- `status` - ACTIVE|INACTIVE from Braid
-- `createdAt` - ISO timestamp from Braid
-- `updatedAt` - ISO timestamp from Braid
-- `lastSynced` - Unix timestamp when entity was last fetched from Braid
+**Indices**:
+- `idx_entities_type` - entity_type (for bulk export by type)
+- `idx_entities_status` - braid_status (for filtering ACTIVE entities)
+- `idx_entities_updated` - braid_updated_at (for incremental fetch)
+- `idx_entities_addresses` - GIN index on addresses JSONB (for address queries)
 
 **Current Item Count**: ~120,700 entities
 - 50,600 individuals
 - 4,900 businesses
 - 65,200 counterparties
 
-**No GSIs currently** - simple PK/SK access pattern
-
 **Access Patterns**:
-- Batch write entities (Lambda, 25 items per batch)
-- Scan all entities for NDJSON export (Lambda)
-- Query all entities for screening (Lambda reads)
-- Query entities updated since timestamp (Lambda reads)
+- Batch upsert entities (Lambda, 1000 items per batch via execute_values)
+- Scan all active entities for NDJSON export (server-side cursor, itersize=1000)
+- Query entities updated since timestamp (for incremental fetch)
 
 **Data Volume**:
 - Initial: ~120,600 entities
-- Growth: ~100-500 new entities/day
-- Storage: ~100 MB (assuming ~1 KB per entity)
+- Growth: ~100-500 new/updated entities/day
+- Storage: ~120 MB (assuming ~1 KB per entity with JSONB)
 
+#### DynamoDB Table: runs (audit trail)
 #### Runs Table
 
 **Name**: `day-watcher-runs`  

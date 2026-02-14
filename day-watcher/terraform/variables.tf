@@ -100,3 +100,34 @@ variable "allowed_cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+# RDS PostgreSQL variables
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t4g.micro"  # Cheapest option for POC
+}
+
+variable "db_engine_version" {
+  description = "PostgreSQL engine version"
+  type        = string
+  default     = "16.12"
+}
+
+variable "db_allocated_storage" {
+  description = "Initial allocated storage in GB"
+  type        = number
+  default     = 20
+}
+
+variable "db_max_allocated_storage" {
+  description = "Maximum storage for autoscaling in GB"
+  type        = number
+  default     = 100
+}
+
+variable "db_backup_retention_days" {
+  description = "Number of days to retain automated backups"
+  type        = number
+  default     = 7
+}

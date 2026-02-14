@@ -25,14 +25,14 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.day_watcher.repository_url
 }
 
-output "dynamodb_entities_table" {
-  description = "DynamoDB table name for entity master list"
-  value       = aws_dynamodb_table.entities.name
+output "rds_endpoint" {
+  description = "RDS PostgreSQL endpoint"
+  value       = aws_db_instance.postgres.endpoint
 }
 
-output "dynamodb_table_name" {
-  description = "DynamoDB table name for run tracking"
-  value       = aws_dynamodb_table.runs.name
+output "rds_database_name" {
+  description = "RDS database name"
+  value       = aws_db_instance.postgres.db_name
 }
 
 output "input_bucket_name" {

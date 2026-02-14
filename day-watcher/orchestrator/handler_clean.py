@@ -58,8 +58,8 @@ def get_db_config():
     return {
         'host': secret['host'],
         'port': secret.get('port', 5432),
-        'database': secret['database'],
-        'username': secret['username'],
+        'database': secret['dbname'],
+        'user': secret['username'],
         'password': secret['password']
     }
 
@@ -140,8 +140,7 @@ def lambda_handler(event, context):
                         'dob': individual.get('dateOfBirth'),
                         'braidUpdatedAt': individual.get('updatedAt'),
                         'braidTenantId': str(individual.get('tenantId', '')),
-                        'braidStatus': 'ACTIVE',
-                        'originalData': individual
+                        'braidStatus': 'ACTIVE'
                     }
                     entity_batch.append(entity_data)
                     entities_fetched += 1
@@ -184,8 +183,7 @@ def lambda_handler(event, context):
                         'altNames': [business.get('dba')] if business.get('dba') else [],
                         'braidUpdatedAt': business.get('updatedAt'),
                         'braidTenantId': str(business.get('tenantId', '')),
-                        'braidStatus': 'ACTIVE',
-                        'originalData': business
+                        'braidStatus': 'ACTIVE'
                     }
                     entity_batch.append(entity_data)
                     entities_fetched += 1
@@ -228,35 +226,7 @@ def lambda_handler(event, context):
         # Upload to S3
         input_key = f"{run_id}/{run_id}.ndjson"
         exporter = NDJSONExporter()
-        
-        # Convert entities to NDJSON format
-        ndjson_lines = []
-        for entity in all_entities:
-            # Use original_data if available, otherwise skip
-            original_data = entity.get('originalData')
-            if not original_data:
-                print(f"⚠️  No originalData for entity {entity.get('entityId')}, skipping", flush=True)
-                continue
-            
-            # Convert from JSONB string to dict if needed
-            if isinstance(original_data, str):
-                original_data = json.loads(original_data)
-            
-            entity_type = entity.get('entityType', '').lower()
-            if entity_type == 'individual':
-                ndjson_line = exporter.export_individual(original_data)
-            elif entity_type == 'business':
-                ndjson_line = exporter.export_business(original_data)
-            elif entity_type == 'counterparty':
-                ndjson_line = exporter.export_counterparty(original_data)
-            else:
-                print(f"⚠️  Unknown entity type: {entity_type}", flush=True)
-                continue
-            ndjson_lines.append(ndjson_line)
-        
-        ndjson_content = '\n'.join(ndjson_lines)
-        if ndjson_content:
-            ndjson_content += '\n'  # Add trailing newline
+        ndjson_content = exporter.entities_to_ndjson(all_entities)
         
         s3_client.put_object(
             Bucket=INPUT_BUCKET,
@@ -270,8 +240,8 @@ def lambda_handler(event, context):
         # Initialize run in PostgreSQL
         entity_manager.initialize_run(
             run_id=run_id,
-            entities_fetched=entities_fetched,
-            entities_written=entities_written,
+            entities_fetched_from_braid=entities_fetched,
+            entities_written_to_db=entities_written,
             entities_in_ndjson=ndjson_count,
             s3_input_path=s3_path,
             fetch_breakdown=fetch_counts

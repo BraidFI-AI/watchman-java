@@ -1,0 +1,452 @@
+"""
+Day Watcher Orchestrator Lambda Handler - RDS PostgreSQL Storage
+Fetch entities from Braid → Store in PostgreSQL → Export NDJSON to S3 → Trigger ECS screening
+"""
+import os
+import json
+import boto3
+from datetime import datetime, timezone, timedelta
+from braid_client import BraidClient
+from ndjson_exporter import NDJSONExporter
+from entity_manager import EntityManager
+
+
+# AWS clients
+s3_client = boto3.client('s3')
+ecs_client = boto3.client('ecs')
+secrets_client = boto3.client('secretsmanager')
+
+# Environment variables
+INPUT_BUCKET = os.environ['INPUT_BUCKET']
+RESULTS_BUCKET = os.environ['RESULTS_BUCKET']
+ECS_CLUSTER = os.environ['ECS_CLUSTER']
+ECS_TASK_DEFINITION = os.environ['ECS_TASK_DEFINITION']
+ECS_SUBNET_IDS = os.environ['ECS_SUBNET_IDS'].split(',')
+ECS_SECURITY_GROUP = os.environ['ECS_SECURITY_GROUP']
+DB_SECRET_ARN = os.environ['DB_SECRET_ARN']
+BRAID_API_SECRET_ARN = os.environ['BRAID_API_SECRET_ARN']
+
+# TEST MODE: Limit entities per type for quick testing cycles (set to 0 or omit for full run)
+TEST_MODE_LIMIT = int(os.environ.get('TEST_MODE_LIMIT', '0'))  # 0 = no limit
+if TEST_MODE_LIMIT > 0:
+    print(f"🧪 TEST MODE ACTIVE: Limiting to {TEST_MODE_LIMIT} entities per type", flush=True)
+
+# ENTITY TYPE FILTER: Comma-separated list of types to fetch (default: all)
+# Valid values: individual, business, counterparty
+ENTITY_TYPES = os.environ.get('ENTITY_TYPES', 'individual,business,counterparty').lower().split(',')
+ENTITY_TYPES = [t.strip() for t in ENTITY_TYPES]  # Clean whitespace
+print(f"📋 Entity types to fetch: {', '.join(ENTITY_TYPES)}", flush=True)
+
+# TENANT/PRODUCT FILTER: Filter entities by specific Braid product name (optional)
+PRODUCT_NAME = os.environ.get('PRODUCT_NAME', '').strip()
+if PRODUCT_NAME:
+    print(f"🏢 Filtering by product: {PRODUCT_NAME}", flush=True)
+else:
+    print(f"🌐 Fetching entities from ALL products", flush=True)
+
+
+def get_braid_credentials():
+    """Fetch Braid API credentials from Secrets Manager"""
+    response = secrets_client.get_secret_value(SecretId=BRAID_API_SECRET_ARN)
+    secret = json.loads(response['SecretString'])
+    return secret['username'], secret['api_key']
+
+
+def get_db_credentials():
+    """Fetch RDS PostgreSQL credentials from Secrets Manager"""
+    response = secrets_client.get_secret_value(SecretId=DB_SECRET_ARN)
+    secret = json.loads(response['SecretString'])
+    return {
+        'host': secret['host'],
+        'port': secret.get('port', 5432),
+        'database': secret['database'],
+        'username': secret['username'],
+        'password': secret['password']
+    }
+
+
+def create_run_id():
+    """Generate unique run ID"""
+    return f"run-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+
+
+
+
+
+def trigger_ecs_task(run_id, input_key):
+    """Trigger ECS Fargate task for screening"""
+    response = ecs_client.run_task(
+        cluster=ECS_CLUSTER,
+        taskDefinition=ECS_TASK_DEFINITION,
+        launchType='FARGATE',
+        networkConfiguration={
+            'awsvpcConfiguration': {
+                'subnets': ECS_SUBNET_IDS,
+                'securityGroups': [ECS_SECURITY_GROUP],
+                'assignPublicIp': 'ENABLED'
+            }
+        },
+        overrides={
+            'containerOverrides': [{
+                'name': 'day-watcher',
+                'environment': [
+                    {'name': 'RUN_ID', 'value': run_id},
+                    {'name': 'INPUT_BUCKET', 'value': INPUT_BUCKET},
+                    {'name': 'INPUT_KEY', 'value': input_key},
+                    {'name': 'RESULTS_BUCKET', 'value': RESULTS_BUCKET},
+                    {'name': 'DB_SECRET_ARN', 'value': DB_SECRET_ARN},
+                    {'name': 'CHUNK_SIZE', 'value': '1000'}
+                ]
+            }]
+        },
+        tags=[
+            {'key': 'RunId', 'value': run_id},
+            {'key': 'Service', 'value': 'day-watcher'}
+        ]
+    )
+    
+    task_arn = response['tasks'][0]['taskArn']
+    return task_arn
+
+
+def lambda_handler(event, context):
+    """
+    Main Lambda handler - RDS PostgreSQL Storage Flow
+    
+    1. Fetch entities from Braid (with TEST_MODE_LIMIT if set)
+    2. Write entities to PostgreSQL (batch upsert)
+    3. Export all entities from PostgreSQL to NDJSON
+    4. Upload NDJSON to S3
+    5. Trigger ECS screening task
+    """
+    entity_manager = None
+    
+    try:
+        run_id = create_run_id()
+        print(f"Starting Day Watcher run: {run_id}")
+        print(f"📝 Fetching from Braid → PostgreSQL → NDJSON → S3 → ECS")
+        
+        # Get credentials
+        username, api_key = get_braid_credentials()
+        db_config = get_db_credentials()
+        
+        # Initialize clients
+        braid_client = BraidClient(username, api_key)
+        entity_manager = EntityManager(db_config)
+        exporter = NDJSONExporter()
+        
+        # Track counts for audit
+        entities_fetched = 0
+        entities_written = 0
+        fetch_counts = {'individual': 0, 'business': 0, 'counterparty': 0}
+        write_counts = {'individual': 0, 'business': 0, 'counterparty': 0}
+        
+        # Batch accumulator for PostgreSQL writes
+        entity_batch = []
+        BATCH_SIZE = 1000
+        
+        # Batch accumulator for PostgreSQL writes
+        entity_batch = []
+        BATCH_SIZE = 1000
+        
+        # Fetch individuals
+        if 'individual' in ENTITY_TYPES:
+            print("Processing individuals...", flush=True)
+            page_num = 0
+            for page in braid_client.fetch_individuals(status='ACTIVE', product_name=PRODUCT_NAME if PRODUCT_NAME else None):
+                page_num += 1
+                page_size = len(page)
+                print(f"  📄 Page {page_num}: Received {page_size} individuals from Braid", flush=True)
+                
+                for individual in page:
+                # TEST MODE: Stop at limit
+                    if TEST_MODE_LIMIT > 0 and fetch_counts['individual'] >= TEST_MODE_LIMIT:
+                        print(f"  🧪 TEST MODE: Reached limit of {TEST_MODE_LIMIT} individuals", flush=True)
+                        break
+                    
+                    # Convert to entity_data format for PostgreSQL
+                    entity_data = {
+                        'entityId': f"ind_{individual['id']}",
+                        'entityType': 'individual',
+                        'name': f"{individual.get('firstName', '')} {individual.get('lastName', '')}".strip(),
+                        'addresses': [individual.get('address')] if individual.get('address') else [],
+                        'dob': individual.get('dateOfBirth'),
+                        'braidUpdatedAt': individual.get('updatedAt'),
+                        'braidTenantId': str(individual.get('tenantId', '')),
+                        'braidStatus': 'ACTIVE'
+                    }
+                    entity_batch.append(entity_data)
+                    entities_fetched += 1
+                    fetch_counts['individual'] += 1
+                    
+                    # Write batch when full
+                    if len(entity_batch) >= BATCH_SIZE:
+                        written = entity_manager.batch_upsert_entities(entity_batch)
+                        entities_written += written
+                        write_counts['individual'] += written
+                        entity_batch = []
+                    
+                    # Log progress every 1000 entities
+                    if entities_fetched % 1000 == 0:
+                        print(f"  ✅ Fetched {entities_fetched} entities, written {entities_written} to PostgreSQL...", flush=True)
+            
+            # Break outer loop if test limit reached
+            if TEST_MODE_LIMIT > 0 and fetch_counts['individual'] >= TEST_MODE_LIMIT:
+                break
+        
+            # Write remaining individuals batch
+            if entity_batch:
+                written = entity_manager.batch_upsert_entities(entity_batch)
+                entities_written += written
+                write_counts['individual'] += written
+                entity_batch = []
+            
+            print(f"✅ Processed {fetch_counts['individual']} individuals, written {write_counts['individual']} to PostgreSQL", flush=True)
+        else:
+            print("⏭️  Skipping individuals (not in ENTITY_TYPES filter)", flush=True)
+        
+        # Fetch businesses
+        if 'business' in ENTITY_TYPES:
+            print("Processing businesses...", flush=True)
+            page_num = 0
+            for page in braid_client.fetch_businesses(status='ACTIVE', product_name=PRODUCT_NAME if PRODUCT_NAME else None):
+                page_num += 1
+                page_size = len(page)
+                print(f"  📄 Page {page_num}: Received {page_size} businesses from Braid", flush=True)
+                
+                for business in page:
+                # TEST MODE: Stop at limit
+                if TEST_MODE_LIMIT > 0 and fetch_counts['business'] >= TEST_MODE_LIMIT:
+                    print(f"  🧪 TEST MODE: Reached limit of {TEST_MODE_LIMIT} businesses", flush=True)
+                    break
+                
+                # Convert to entity_data format for PostgreSQL
+                entity_data = {
+                    'entityId': f"bus_{business['id']}",
+                    'entityType': 'business',
+                    'name': business.get('name', ''),
+                    'addresses': [business.get('address')] if business.get('address') else [],
+                    'incorporationDate': business.get('incorporationDate'),
+                    'altNames': [business.get('dba')] if business.get('dba') else [],
+                    'braidUpdatedAt': business.get('updatedAt'),
+                    'braidTenantId': str(business.get('tenantId', '')),
+                    'braidStatus': 'ACTIVE'
+                }
+                entity_batch.append(entity_data)
+                entities_fetched += 1
+                fetch_counts['business'] += 1
+                
+                # Write batch when full
+                if len(entity_batch) >= BATCH_SIZE:
+                    written = entity_manager.batch_upsert_entities(entity_batch)
+                    entities_written += written
+                    write_counts['business'] += written
+                    entity_batch = []
+                
+                # Log progress every 1000 entities
+                if entities_fetched % 1000 == 0:
+                    print(f"  ✅ Fetched {entities_fetched} entities, written {entities_written} to PostgreSQL...", flush=True)
+            
+            # Break outer loop if test limit reached
+            if TEST_MODE_LIMIT > 0 and fetch_counts['business'] >= TEST_MODE_LIMIT:
+                break
+        
+            # Write remaining businesses batch
+            if entity_batch:
+                written = entity_manager.batch_upsert_entities(entity_batch)
+                entities_written += written
+                write_counts['business'] += written
+                entity_batch = []
+            
+            print(f"✅ Processed {fetch_counts['business']} businesses, written {write_counts['business']} to PostgreSQL", flush=True)
+        else:
+            print("⏭️  Skipping businesses (not in ENTITY_TYPES filter)", flush=True)
+        
+        # Fetch counterparties
+        if 'counterparty' in ENTITY_TYPES:
+            print("Processing counterparties...", flush=True)
+            page_num = 0
+            for page in braid_client.fetch_counterparties(status='ACTIVE', product_name=PRODUCT_NAME if PRODUCT_NAME else None):
+                page_num += 1
+                page_size = len(page)
+                print(f"  📄 Page {page_num}: Received {page_size} counterparties from Braid", flush=True)
+                
+                for counterparty in page:
+                # TEST MODE: Stop at limit
+                if TEST_MODE_LIMIT > 0 and fetch_counts['counterparty'] >= TEST_MODE_LIMIT:
+                    print(f"  🧪 TEST MODE: Reached limit of {TEST_MODE_LIMIT} counterparties", flush=True)
+                    break
+                
+                # Convert to entity_data format for PostgreSQL
+                entity_data = {
+                    'entityId': f"cou_{counterparty['id']}",
+                    'entityType': 'counterparty',
+                    'name': counterparty.get('name', ''),
+                    'addresses': [counterparty.get('address')] if counterparty.get('address') else [],
+                    'braidUpdatedAt': counterparty.get('updatedAt'),
+                    'braidTenantId': str(counterparty.get('tenantId', '')),
+                    'braidStatus': 'ACTIVE'
+                }
+                entity_batch.append(entity_data)
+                entities_fetched += 1
+                fetch_counts['counterparty'] += 1
+                
+                # Write batch when full
+                if len(entity_batch) >= BATCH_SIZE:
+                    written = entity_manager.batch_upsert_entities(entity_batch)
+                    entities_written += written
+                    write_counts['counterparty'] += written
+                    entity_batch = []
+                
+                # Log progress every 1000 entities
+                if entities_fetched % 1000 == 0:
+                    print(f"  ✅ Fetched {entities_fetched} entities, written {entities_written} to PostgreSQL...", flush=True)
+            
+            # Break outer loop if test limit reached
+            if TEST_MODE_LIMIT > 0 and fetch_counts['counterparty'] >= TEST_MODE_LIMIT:
+                break
+        
+            # Write remaining counterparties batch
+            if entity_batch:
+                written = entity_manager.batch_upsert_entities(entity_batch)
+                entities_written += written
+                write_counts['counterparty'] += written
+                entity_batch = []
+            
+            print(f"✅ Processed {fetch_counts['counterparty']} counterparties, written {write_counts['counterparty']} to PostgreSQL", flush=True)
+        else:
+            print("⏭️  Skipping counterparties (not in ENTITY_TYPES filter)", flush=True)
+        
+        # PostgreSQL write audit
+        print("\n=== BRAID FETCH & POSTGRESQL WRITE SUMMARY ===", flush=True)
+        print(f"✅ Total entities fetched from Braid: {entities_fetched}", flush=True)
+        print(f"   - Individuals: {fetch_counts['individual']}", flush=True)
+        print(f"   - Businesses: {fetch_counts['business']}", flush=True)
+        print(f"   - Counterparties: {fetch_counts['counterparty']}", flush=True)
+        print(f"✅ Total entities written to PostgreSQL: {entities_written}", flush=True)
+        print(f"   - Individuals: {write_counts['individual']}", flush=True)
+        print(f"   - Businesses: {write_counts['business']}", flush=True)
+        print(f"   - Counterparties: {write_counts['counterparty']}", flush=True)
+        
+        # Check for write discrepancies
+        has_discrepancy = entities_fetched != entities_written
+        if has_discrepancy:
+            print(f"⚠️  DISCREPANCY: Fetched {entities_fetched} but wrote {entities_written} (diff: {entities_fetched - entities_written})", flush=True)
+        print("===============================================\n", flush=True)
+        
+        # Export all entities from PostgreSQL to NDJSON
+        print("📤 Exporting entities from PostgreSQL to NDJSON...", flush=True)
+        ndjson_lines = []
+        export_count = 0
+        
+        for entity in entity_manager.get_all_entities():
+            # Convert PostgreSQL entity to NDJSON format based on type
+            if entity['entityType'] == 'individual':
+                # Extract first/last name from full name
+                name_parts = entity['name'].split(' ', 1)
+                entity_dict = {
+                    'individualId': entity['entityId'].replace('ind_', ''),
+                    'firstName': name_parts[0] if name_parts else '',
+                    'lastName': name_parts[1] if len(name_parts) > 1 else '',
+                    'dateOfBirth': entity.get('dob'),
+                    'address': entity.get('addresses', [])[0] if entity.get('addresses') else {},
+                    'tenantId': entity.get('braidTenantId', '')
+                }
+                ndjson_line = exporter.export_individual(entity_dict)
+            elif entity['entityType'] == 'business':
+                entity_dict = {
+                    'businessId': entity['entityId'].replace('bus_', ''),
+                    'name': entity['name'],
+                    'legalName': entity['name'],
+                    'dba': entity.get('altNames', [])[0] if entity.get('altNames') else '',
+                    'incorporationDate': entity.get('incorporationDate'),
+                    'address': entity.get('addresses', [])[0] if entity.get('addresses') else {},
+                    'tenantId': entity.get('braidTenantId', '')
+                }
+                ndjson_line = exporter.export_business(entity_dict)
+            else:  # counterparty
+                entity_dict = {
+                    'counterpartyId': entity['entityId'].replace('cou_', ''),
+                    'name': entity['name'],
+                    'address': entity.get('addresses', [])[0] if entity.get('addresses') else {},
+                    'tenantId': entity.get('braidTenantId', '')
+                }
+                ndjson_line = exporter.export_counterparty(entity_dict)
+            
+            ndjson_lines.append(ndjson_line)
+            export_count += 1
+            
+            # Log progress every 10000 entities
+            if export_count % 10000 == 0:
+                print(f"  ✅ Exported {export_count} entities from PostgreSQL...", flush=True)
+        
+        print(f"✅ Exported {export_count} entities from PostgreSQL to NDJSON", flush=True)
+        
+        # Create filename with run ID in both folder and filename
+        input_key = f"{run_id}/{run_id}.ndjson"
+        
+        # Upload NDJSON to S3
+        print(f"📤 Uploading {len(ndjson_lines)} entities to S3...", flush=True)
+        ndjson_content = '\n'.join(ndjson_lines) + '\n'
+        s3_client.put_object(
+            Bucket=INPUT_BUCKET,
+            Key=input_key,
+            Body=ndjson_content.encode('utf-8')
+        )
+        
+        print(f"✅ Uploaded to s3://{INPUT_BUCKET}/{input_key}")
+        
+        s3_input_path = f's3://{INPUT_BUCKET}/{input_key}'
+        
+        # Initialize PostgreSQL runs table with comprehensive audit
+        entity_manager.initialize_run(
+            run_id, 
+            entities_fetched, 
+            entities_written,
+            len(ndjson_lines), 
+            s3_input_path, 
+            fetch_counts
+        )
+        
+        # Trigger ECS task
+        print("🚀 Triggering ECS Fargate task...", flush=True)
+        task_arn = trigger_ecs_task(run_id, input_key)
+        print(f"✅ ECS task started: {task_arn}")
+        
+        # Update status to RUNNING
+        entity_manager.update_run_status(run_id, 'RUNNING', ecsTaskArn=task_arn)
+        
+        # Close database connection after all operations complete
+        entity_manager.close()
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'runId': run_id,
+                'entitiesFetchedFromBraid': entities_fetched,
+                'entitiesWrittenToPostgreSQL': entities_written,
+                'entitiesInNDJSON': len(ndjson_lines),
+                'hasDiscrepancy': has_discrepancy,
+                'ecsTaskArn': task_arn,
+                's3InputPath': s3_input_path
+            })
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in orchestrator: {str(e)}", flush=True)
+        import traceback
+        traceback.print_exc()
+        
+        # Clean up database connection
+        if entity_manager:
+            try:
+                entity_manager.close()
+            except:
+                pass
+        
+        if 'run_id' in locals() and entity_manager:
+            try:
+                entity_manager.update_run_status(run_id, 'FAILED', errorMessage=str(e))
+            except:
+                pass
+        raise

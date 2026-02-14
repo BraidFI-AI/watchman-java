@@ -123,8 +123,8 @@ resource "aws_ecs_task_definition" "day_watcher" {
         value = aws_s3_bucket.results.bucket
       },
       {
-        name  = "DYNAMODB_TABLE"
-        value = aws_dynamodb_table.runs.name
+        name  = "DB_SECRET_ARN"
+        value = aws_secretsmanager_secret.db_credentials.arn
       },
       {
         name  = "CHUNK_SIZE"
