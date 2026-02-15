@@ -720,10 +720,11 @@ public class SearchServiceImpl implements SearchService {
      * - "ARELLANO FELIX, Eduardo Ramon" → tokens are permuted ❌
      * 
      * <p><strong>Algorithm</strong>:
-     * 1. Normalize both strings (lowercase, remove punctuation, remove commas)
-     * 2. Extract tokens
-     * 3. Check if entity tokens appear in same order as query tokens
-     * 4. Allow entity to have extra tokens (e.g., aliases, middle names)
+     * 1. Reorder OFAC format names ("LAST, FIRST" → "FIRST LAST")
+     * 2. Normalize both strings (lowercase, remove punctuation)
+     * 3. Extract tokens
+     * 4. Check if entity tokens appear in same order as query tokens
+     * 5. Allow entity to have extra tokens (e.g., aliases, middle names)
      * 
      * @param query The search query string
      * @param entityName The entity or alias name to check
@@ -734,12 +735,18 @@ public class SearchServiceImpl implements SearchService {
             return false;
         }
         
+        // CRITICAL FIX (Row 6): Reorder OFAC format names before comparison
+        // "ARELLANO FELIX, Ramon Eduardo" → "Ramon Eduardo ARELLANO FELIX"
+        // This ensures we compare normalized names in same format
+        String reorderedQuery = reorderOFACName(query);
+        String reorderedEntity = reorderOFACName(entityName);
+        
         // Normalize: lowercase, remove punctuation, split on whitespace
-        String normalizedQuery = query.toLowerCase()
+        String normalizedQuery = reorderedQuery.toLowerCase()
             .replaceAll("[^a-z0-9\\s]", " ")
             .replaceAll("\\s+", " ")
             .trim();
-        String normalizedEntity = entityName.toLowerCase()
+        String normalizedEntity = reorderedEntity.toLowerCase()
             .replaceAll("[^a-z0-9\\s]", " ")
             .replaceAll("\\s+", " ")
             .trim();
@@ -773,5 +780,30 @@ public class SearchServiceImpl implements SearchService {
         }
         
         return true;
+    }
+    
+    /**
+     * Reorder OFAC-style names from "LAST, FIRST" to "FIRST LAST" format.
+     * Used by hasTokenSequenceMatch() to normalize names before comparison.
+     * 
+     * <p>Example: "ARELLANO FELIX, Ramon Eduardo" → "Ramon Eduardo ARELLANO FELIX"
+     * 
+     * @param name The name to reorder
+     * @return Reordered name, or original if no comma found
+     */
+    private String reorderOFACName(String name) {
+        if (name == null || !name.contains(",")) {
+            return name;
+        }
+        
+        String[] parts = name.split(",", 2);
+        if (parts.length != 2) {
+            return name;
+        }
+        
+        String lastName = parts[0].trim();
+        String firstName = parts[1].trim();
+        
+        return firstName + " " + lastName;
     }
 }
