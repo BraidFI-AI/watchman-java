@@ -436,6 +436,9 @@ The system detects when ALL query tokens match with individual scores ≥0.95 an
 ### Tie-breaker Precedence
 When entities have equal scores, ranking uses three levels: (1) score descending, (2) entity primary name alphabetically, (3) matched alias token count descending. This ensures consistent ordering across searches and prioritizes more specific alias matches when scores are tied.
 
+### Token Sequence Tie-Breaker
+When entities have identical scores, token sequence matching uses `reorderOFACName()` to normalize both query and entity names from "LAST, FIRST" to "FIRST LAST" format before comparison. This ensures queries like "Ramon Eduardo ARELLANO FELIX" correctly prioritize "ARELLANO FELIX, Ramon Eduardo" over "ARELLANO FELIX, Eduardo Ramon" based on token order.
+
 ### Phonetic Matching Restrictions
 Tokens ≤4 characters use exact/near-exact Jaro-Winkler matching instead of phonetic (Soundex) matching. This prevents false positives where acronyms like "PIJ" (P200) incorrectly match "PKK" (P200), or "IRA" (I600) matches "IARA" (I600). Only tokens ≥5 characters are phonetically equivalent when Soundex codes match.
 
@@ -546,6 +549,16 @@ All 18,637 entities must have preparedFields populated before entering the index
 - Access to pre-computed normalized variations (word combinations, etc.)
 
 The tie-breaking logic in `SearchServiceImpl.countQueryTokensMatched()` applies acronym collapsing to match the behavior of `JaroWinklerSimilarity.collapseAcronymTokens()`. This ensures entities like "T.E.G. LIMITED" (normalized to "t e g limited") rank correctly when multiple entities score 100%.
+
+## Text Normalization
+
+### Apostrophe Handling
+Apostrophes are removed entirely during text normalization (not converted to spaces). This prevents incorrect token splitting where "Yo'ng" becomes "yong" instead of ["yo", "ng"]. Applies to Korean romanization, Irish names (O'Brien → obrien), Arabic names (Sha'ban → shaban), and other apostrophe-containing names. Implementation in `TextNormalizer.lowerAndRemovePunctuation()` removes apostrophes before applying other punctuation rules.
+
+## OFAC Data Structure
+
+### Entity Alias Organization
+OFAC entities may have multiple name variations (primary name + aliases). The OFAC search interface displays each variation separately with the same entity ID. Example: Entity 23043 has primary name "AL-DHUBHANI, Adil Abduh Fari Uthman" with alias "ABU AL-ABBAS". The system stores aliases in `altNames` array. When verifying entity matches, check both primary name and all aliases under the same entity ID.
 
 ## BSA Compliance Testing
 

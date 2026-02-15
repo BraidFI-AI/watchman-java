@@ -433,3 +433,59 @@ response = self.session.post(
 **Implementation**: `ComprehensiveBSAValidationTest` with validateRow() and validateMultipleEntities() helpers. Uses standard BSA parameters (limit=20, minMatch=0.88).
 
 **Tradeoff**: Test takes ~60s to run (loads full entity index), but provides critical compliance coverage.
+
+---
+
+## 2026-02-15: Remove Apostrophes During Normalization
+
+**Decision**: Remove apostrophes entirely instead of converting to spaces in `TextNormalizer.lowerAndRemovePunctuation()`.
+
+**Context**: BSA Row 50 observation - Korean name "KIM, Yo'ng-chu" not matching query "Yong chu KIM". Converting apostrophes to spaces incorrectly splits tokens: "Yo'ng" → ["yo", "ng"] instead of "yong". Token comparison "yo" vs "yong" produces low similarity, preventing matches.
+
+**Rationale**: Punctuation within names should not create token boundaries. Apostrophes indicate romanization conventions (Korean), pronunciation guides (Arabic "Sha'ban"), or cultural naming patterns (Irish "O'Brien"). Removing apostrophes preserves token integrity while maintaining fuzzy matching capability. Users search without apostrophes ("OBrien", "Shaban"), so normalized form should match.
+
+**Implementation**: Modified `TextNormalizer.lowerAndRemovePunctuation()` line 177 to add `.replace("'", "")` before other punctuation replacements. Applied before space conversion to prevent "Yo'ng chu" → "Yo ng chu" (3 tokens) vs "Yongchu" (1 token).
+
+**Test Results**:
+- `ApostropheNormalizationTest`: 5/5 passing (TDD RED-GREEN-REFACTOR)
+- `Row50KimNameVariationsTest`: 6/6 passing
+- Impact: Korean romanization, Irish, and Arabic names now match correctly
+
+**Tradeoff**: Possessives become part of word ("John's" → "johns"), but this is acceptable for entity name matching where possessives rarely appear in official names.
+
+---
+
+## 2026-02-15: OFAC Name Format Normalization in Tie-Breakers
+
+**Decision**: Apply `reorderOFACName()` to both query and entity names before token sequence comparison in tie-breaker logic.
+
+**Context**: BSA Row 6-7 observation - Query "Ramon Eduardo ARELLANO FELIX" returned wrong person first. Target "ARELLANO FELIX, Ramon Eduardo" (YOB 1964) ranked lower than "ARELLANO FELIX, Eduardo Ramon" (YOB 1956) despite identical scores. Token sequence tie-breaker compared "ramon eduardo arellano felix" query against "arellano felix ramon eduardo" entity (from "ARELLANO FELIX, Ramon Eduardo"), detecting token order mismatch.
+
+**Rationale**: Token sequence matching requires consistent formatting. OFAC stores "LAST, FIRST" but queries use "FIRST LAST". Without normalization, identical token sets fail sequence matching due to comma-based reordering. The same `reorderSDNName()` logic used in scoring must apply to tie-breaking for consistency.
+
+**Implementation**: Added `SearchServiceImpl.reorderOFACName()` method (lines 775-798) that splits on comma and swaps parts. Applied in `hasTokenSequenceMatch()` to both query and entity name before tokenization. Example: "ARELLANO FELIX, Ramon Eduardo" → "Ramon Eduardo ARELLANO FELIX".
+
+**Test Results**:
+- `TokenSequenceMatchDebugTest`: 4/4 passing (reflection-based unit tests)
+- `Row50KimNameVariationsTest`: 6/6 passing (integration tests)
+- Impact: Correct person now ranks first for name-order queries
+
+**Tradeoff**: Additional string processing in tie-breaker, but necessary for OFAC format handling and minimal performance impact.
+
+---
+
+## 2026-02-15: Missing OFAC Data Classification
+
+**Decision**: Classify missing entities/aliases in official OFAC data as "not a defect" rather than system issues.
+
+**Context**: BSA Row 15 observation claimed aliases "FOOPIE" and "FUPI" for GHAILANI entity were not matching. Investigation revealed these aliases don't exist in current OFAC SDN data. GHAILANI entity (ID 6925) confirmed with 17 aliases, but FOOPIE/FUPI not present. Official OFAC website verification (sanctionssearch.ofac.treas.gov) confirmed aliases missing.
+
+**Rationale**: When reported entities don't exist in official OFAC downloads, this indicates outdated test data or OFAC data changes, not matching logic failures. System correctly matches what OFAC provides. Cannot fix "missing" data that was never in the source. Official OFAC website is the source of truth for data verification.
+
+**Verification Protocol**: 
+1. Search system with claimed entity/alias
+2. Check entity ID and full alias list in system
+3. Verify against official OFAC website search
+4. If absent from OFAC, classify as data issue, not defect
+
+**Impact**: Establishes clear distinction between system defects (incorrect matching logic) and data issues (missing/outdated source data). Prevents futile debugging of non-existent problems.
