@@ -175,7 +175,12 @@ public class TextNormalizer {
             .replace("H.E.", " he ")      // His Excellency
             .replace("h.e.", " he ");     // lowercase variant
         
-        // Step 1: Replace common punctuation with spaces (like Go's punctuationReplacer)
+        // Step 1a: Remove apostrophes entirely (Row 50 fix)
+        // Apostrophes should not create token boundaries
+        // "Yo'ng" → "Yong", "O'Brien" → "OBrien", "Sha'ban" → "Shaban"
+        result = result.replace("'", "");
+        
+        // Step 1b: Replace common punctuation with spaces (like Go's punctuationReplacer)
         // This handles: . , - becoming spaces
         result = result
             .replace('.', ' ')
