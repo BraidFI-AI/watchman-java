@@ -83,17 +83,32 @@ public class DataRefreshService {
             // Download and parse OFAC data
             List<Entity> entities = downloadService.downloadOFAC();
             
-            // Clear and reload index
+            // BSA CRITICAL FIX (Row 31 - T.E.G. LIMITED Regression):
+            // Normalize all entities BEFORE indexing to populate preparedFields.
+            // Root Cause: OFACParserImpl creates entities with preparedFields=NULL,
+            // expecting normalization "at index time" (per line 318 comment).
+            // Without this step, ALL entities remain unnormalized causing:
+            // 1. Slower search (on-the-fly normalization every time)
+            // 2. Missing PreparedFields optimizations (word combinations, etc.)
+            // This was causing T.E.G. LIMITED and potentially other entities to fail.
+            logger.info("Normalizing {} entities...", entities.size());
+            List<Entity> normalizedEntities = entities.stream()
+                .map(Entity::normalize)
+                .toList();
+            long normalizeTime = System.currentTimeMillis();
+            logger.info("Normalization complete in {}ms", normalizeTime - startTime);
+            
+            // Clear and reload index with normalized entities
             entityIndex.clear();
-            entityIndex.addAll(entities);
+            entityIndex.addAll(normalizedEntities);
             
             long duration = System.currentTimeMillis() - startTime;
             logger.info("Data refresh complete: {} entities loaded in {}ms", 
-                entities.size(), duration);
+                normalizedEntities.size(), duration);
             
             initialLoadComplete.set(true);
-            return new RefreshResult(true, entities.size(), 
-                "Loaded " + entities.size() + " entities in " + duration + "ms");
+            return new RefreshResult(true, normalizedEntities.size(), 
+                "Loaded " + normalizedEntities.size() + " entities in " + duration + "ms");
         } catch (Exception e) {
             logger.error("Data refresh failed: {}", e.getMessage(), e);
             return new RefreshResult(false, 0, "Refresh failed: " + e.getMessage());

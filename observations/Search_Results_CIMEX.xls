@@ -1,0 +1,25 @@
+<div>
+	<table cellspacing="0" id="gvSearchResults" style="width:900px;border-collapse:collapse;">
+		<tr>
+			<td style="width:36%;"><a href="Details.aspx?id=535">CIMEX</td><td style="width:30%;">Emerson No. 148 Piso 7</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr class="alternatingRowColor">
+			<td style="width:36%;"><a href="Details.aspx?id=559">CIMEX</td><td style="width:30%;">&nbsp;</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr>
+			<td style="width:36%;"><a href="Details.aspx?id=8125">CIMEX</td><td style="width:30%;">Edificio Sierra Maestra, Avenida Primera entre 0 y 2, Miramar Playa</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr class="alternatingRowColor">
+			<td style="width:36%;"><a href="Details.aspx?id=8125">CIMEX CUBA</td><td style="width:30%;">Edificio Sierra Maestra, Avenida Primera entre 0 y 2, Miramar Playa</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr>
+			<td style="width:36%;"><a href="Details.aspx?id=536">CIMEX IBERICA</td><td style="width:30%;">&nbsp;</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr class="alternatingRowColor">
+			<td style="width:36%;"><a href="Details.aspx?id=537">CIMEX, S.A.</td><td style="width:30%;">&nbsp;</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr>
+			<td style="width:36%;"><a href="Details.aspx?id=551">COMERCIAL CIMEX, S.A.</td><td style="width:30%;">&nbsp;</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr class="alternatingRowColor">
+			<td style="width:36%;"><a href="Details.aspx?id=8125">CORPORACION CIMEX S.A.</td><td style="width:30%;">Edificio Sierra Maestra, Avenida Primera entre 0 y 2, Miramar Playa</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr>
+			<td style="width:36%;"><a href="Details.aspx?id=576">CORPORACION CIMEX, S.A.</td><td style="width:30%;">&nbsp;</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr><tr class="alternatingRowColor">
+			<td style="width:36%;"><a href="Details.aspx?id=30630">FINANCIERA CIMEX S.A</td><td style="width:30%;">Calle 8; Entre 3ra Y 5ta Ave; 319 Playa</td><td style="width:10%;">Entity</td><td style="width:10%;">CUBA</td><td style="width:7%;">SDN</td><td style="width:7%;">100</td>
+		</tr>
+	</table>
+</div>

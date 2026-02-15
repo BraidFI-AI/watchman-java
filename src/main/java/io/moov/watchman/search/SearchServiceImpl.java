@@ -106,9 +106,54 @@ public class SearchServiceImpl implements SearchService {
                 
                 return new ScoredEntity(entity, score, breakdown, matchedAlias);
             })
-            .filter(scored -> scored.score >= effectiveMinMatch)
+            .filter(scored -> {
+                // BSA CRITICAL FIX (Entity Observation - AL-QAIDA SYRIA case):
+                // Use lower threshold for alias-matched entities
+                // Problem: "HURRAS AL-DIN" with alias "AL-QAIDA IN SYRIA" scores 81.8% (below 88%)
+                // Solution: Alias matches use 0.75 threshold (better sensitivity for BSA/AML)
+                // Rationale: False positives are acceptable (analyst reviews), false negatives are not
+                boolean meetsThreshold;
+                if (scored.matchedAlias != null) {
+                    // Entity matched via alias - use lower threshold for BSA sensitivity
+                    meetsThreshold = scored.score >= 0.75;
+                } else {
+                    // Entity matched via name - use requested threshold
+                    meetsThreshold = scored.score >= effectiveMinMatch;
+                }
+                
+                if (!meetsThreshold) {
+                    return false;
+                }
+                
+                // PRECISION FIX (Feb 14, 2026): Minimum token coverage for multi-token queries
+                // Problem: "Randy San Nicolas" returns 20x 100% matches from just "San"/"Hassan" substring
+                // Solution: For 3+ token queries scoring 100%, require at least 40% token coverage
+                // Rationale: Single-token matches (33% coverage) are too weak for customer name searches
+                // Exception: 1-2 token queries (common names) don't use coverage filter
+                int queryTokenCount = query.trim().split("\\s+").length;
+                if (queryTokenCount >= 3 && scored.score >= 0.95) {
+                    String matchedName = scored.matchedAlias != null ? scored.matchedAlias : scored.entity.name();
+                    int matchedTokens = countQueryTokensMatched(query, matchedName);
+                    double coverage = (double) matchedTokens / queryTokenCount;
+                    
+                    // Require at least 40% coverage (2/5 tokens, 2/3 tokens, etc.)
+                    // This filters "Randy San Nicolas" → "Hassan" (1/3 = 33%) but keeps strong matches
+                    return coverage >= 0.40;
+                }
+                
+                return true;
+            })
             .sorted(Comparator
                 .comparing(ScoredEntity::score).reversed()
+                // BSA CRITICAL FIX (Entity Observation - AL-QAIDA cases): Query token coverage tie-breaker
+                // Problem: "AL QA'IDA" search returns 22 entities scoring 100% from weak token matches
+                // - "AL BINALI" matches only "AL" (1/2 tokens = 50% coverage)
+                // - "ISLAMIC STATE" alias "AL-QAIDA GROUP OF JIHAD IN IRAQ" matches "AL-QAIDA" (2/2 tokens via substring = 100% coverage)
+                // Solution: When scores are equal, prioritize entities with higher query token coverage
+                .thenComparing(scored -> {
+                    String matchedName = scored.matchedAlias != null ? scored.matchedAlias : scored.entity.name();
+                    return -countQueryTokensMatched(query, matchedName); // Negative for descending order
+                })
                 // BSA CRITICAL FIX (Row 14 & 19): Tie-breaker for equal scores
                 // Individual Observation Row 6: Token sequence match
                 // When scores are tied, prefer names where tokens appear in query order
@@ -131,7 +176,10 @@ public class SearchServiceImpl implements SearchService {
             .limit(limit) // Limit unique entities HERE, before alias expansion
             .toList();
         
-        // Now expand aliases for the top N entities
+        // BSA FIX (Feb 14, 2026): Removed full alias expansion
+        // Problem: Expanding all aliases caused result explosion, hiding related entities
+        // Solution: Return one result per entity (with matched alias noted)
+        // This ensures consultant sees diverse entities, not 18 rows of same entity
         return topEntities.stream()
             .flatMap(scored -> expandAliasesForScoredEntity(scored))
             .toList();
@@ -233,17 +281,19 @@ public class SearchServiceImpl implements SearchService {
      * @return stream of search results (primary + aliases)
      */
     private Stream<SearchResult> expandAliasesForScoredEntity(ScoredEntity scored) {
+        // BSA FIX (Feb 14, 2026): Only expand MATCHED alias, not all aliases
+        // Problem: Entity with 17 aliases created 18 results, dominating search results
+        // Solution: Return primary result + matched alias only (if applicable)
+        // This maintains alias visibility while preventing result explosion
+        
         List<SearchResult> results = new ArrayList<>();
         
-        // Add primary result
+        // Add primary result (with matched alias if it was matched via alias)
         results.add(new SearchResult(scored.entity, scored.score, scored.breakdown, scored.matchedAlias));
         
-        // Add alias results
-        if (scored.entity.altNames() != null && !scored.entity.altNames().isEmpty()) {
-            for (String alias : scored.entity.altNames()) {
-                results.add(SearchResult.withAlias(scored.entity, scored.score, alias));
-            }
-        }
+        // DO NOT expand all aliases - causes result explosion
+        // Old behavior: 1 entity with 17 aliases = 18 results
+        // New behavior: 1 entity = 1 result (showing matched alias if relevant)
         
         return results.stream();
     }
@@ -560,6 +610,101 @@ public class SearchServiceImpl implements SearchService {
                 discriminators
             );
         }
+    }
+
+    /**
+     * Count how many query tokens appear in entity name (as exact matches or substrings).
+     * Used to prioritize multi-token matches over single-token matches when scores are equal.
+     * 
+     * Example:
+     * - Query "AL QA'IDA" → tokens ["al", "qa", "ida"]
+     * - "AL BINALI" contains "al" → 1 token matched (33%)
+     * - "AL-QAIDA GROUP" contains "al-qaida" which contains "al", "qa", "ida" → 3 tokens matched (100%)
+     * 
+     * BSA FIX (Row 31 - T.E.G. LIMITED): Apply acronym collapsing for tie-breaking.
+     * Problem: "T.E.G. LIMITED" normalized to "t e g limited" doesn't contain substring "teg",
+     * so entities with "INTEGRITY" (contains "teg") ranked higher despite lower relevance.
+     * Solution: Collapse acronyms in entity name before substring matching.
+     * "t e g limited" → "teg limited" → now contains "teg" substring ✓
+     * 
+     * @param query search query text
+     * @param entityName entity name to check
+     * @return count of query tokens found in entity name
+     */
+    private int countQueryTokensMatched(String query, String entityName) {
+        if (query == null || query.isBlank() || entityName == null || entityName.isBlank()) {
+            return 0;
+        }
+        
+        // Normalize both query and entity name
+        String normalizedQuery = query.toLowerCase()
+            .replaceAll("[^a-z0-9\\s]", " ")
+            .replaceAll("\\s+", " ")
+            .trim();
+        String normalizedEntity = entityName.toLowerCase()
+            .replaceAll("[^a-z0-9\\s]", " ")
+            .replaceAll("\\s+", " ")
+            .trim();
+        
+        // BSA FIX (Row 31): Collapse acronyms in entity name for matching
+        // Convert "t e g limited" → "teg limited" so substring "teg" is found
+        String entityWithCollapsedAcronyms = collapseAcronyms(normalizedEntity);
+        
+        String[] queryTokens = normalizedQuery.split("\\s+");
+        
+        // Count how many query tokens appear in entity name (exact or as substring)
+        int matchCount = 0;
+        for (String queryToken : queryTokens) {
+            if (queryToken.isEmpty()) {
+                continue;
+            }
+            
+            // Check if query token appears in entity (after acronym collapsing)
+            if (entityWithCollapsedAcronyms.contains(queryToken)) {
+                matchCount++;
+            }
+        }
+        
+        return matchCount;
+    }
+    
+    /**
+     * Collapse adjacent single-letter tokens into acronyms.
+     * Example: "t e g limited" → "teg limited"
+     * 
+     * BSA FIX (Row 31): Ensures tie-breaker can match acronyms properly.
+     */
+    private String collapseAcronyms(String text) {
+        if (text == null || text.isBlank()) {
+            return text;
+        }
+        
+        String[] tokens = text.split("\\s+");
+        List<String> result = new ArrayList<>();
+        StringBuilder acronym = new StringBuilder();
+        
+        for (String token : tokens) {
+            if (token.length() == 1 && Character.isLetter(token.charAt(0))) {
+                // Single letter - accumulate into acronym
+                acronym.append(token);
+            } else {
+                // Multi-letter or non-letter token - flush any accumulated acronym first
+                if (acronym.length() > 0) {
+                    result.add(acronym.toString());
+                    acronym.setLength(0);
+                }
+                if (!token.isEmpty()) {
+                    result.add(token);
+                }
+            }
+        }
+        
+        // Flush any remaining acronym
+        if (acronym.length() > 0) {
+            result.add(acronym.toString());
+        }
+        
+        return String.join(" ", result);
     }
 
     /**

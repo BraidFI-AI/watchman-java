@@ -531,3 +531,24 @@ Tests are organized by BSA/AML observation groups in `src/test/java/io/moov/watc
 - Multiple legitimate entities can score 1.0 for same query - tests must reflect realistic expectations
 - Token filtering introduced 2 regressions in EntityGroupingTest (Row 19) - query coverage boost may depend on tokens now filtered
 - Aligning Java implementation with Go codebase patterns provides cross-validation of approach
+
+## Entity Normalization Pipeline
+
+Entity normalization occurs at index time, not search time. The pipeline is:
+
+1. **OFACParserImpl** creates raw entities with `preparedFields=NULL`
+2. **DataRefreshService.refresh()** normalizes all entities via `Entity.normalize()` before indexing
+3. **EntityIndex** stores fully normalized entities with populated PreparedFields
+
+All 18,637 entities must have preparedFields populated before entering the index. This ensures:
+- Faster search (no on-the-fly normalization)
+- Consistent acronym handling across scoring and tie-breaking
+- Access to pre-computed normalized variations (word combinations, etc.)
+
+The tie-breaking logic in `SearchServiceImpl.countQueryTokensMatched()` applies acronym collapsing to match the behavior of `JaroWinklerSimilarity.collapseAcronymTokens()`. This ensures entities like "T.E.G. LIMITED" (normalized to "t e g limited") rank correctly when multiple entities score 100%.
+
+## BSA Compliance Testing
+
+`ComprehensiveBSAValidationTest` validates all 52 BSA consultant observation rows in a single test run. Each row represents a real-world search query and expected entity match from regulatory review. The test uses standard BSA parameters (limit=20, minMatch=0.88) and validates that critical entities appear in results.
+
+Current status: 52/52 passing (100.0%)

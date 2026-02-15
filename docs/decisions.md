@@ -384,3 +384,52 @@ response = self.session.post(
 **Tradeoff**: Security vs convenience. Public database access is acceptable for POC with test data but must be restricted before production deployment.
 
 **Future Action Required**: Before production launch, restrict security group to VPC-only access or specific IP ranges. Update Lambda and ECS task security groups accordingly.
+
+---
+
+## 2026-02-14: Entity Normalization at Index Time in DataRefreshService
+
+**Decision**: Entity normalization at index time in DataRefreshService
+
+**Context**: Discovered all 18,637 entities had `preparedFields=NULL` because OFACParserImpl creates unnormalized entities. The comment in Entity.java stated "preparedFields - computed at index time" but no code was calling `Entity.normalize()`.
+
+**Rationale**: 
+- Performance: Normalize once at load (1x cost) vs. on every search (Nx cost)
+- Accuracy: PreparedFields provides pre-computed word combinations and normalized variations
+- Consistency: All entities guaranteed normalized before entering search pipeline
+
+**Implementation**: DataRefreshService.refresh() now calls `.map(Entity::normalize)` on all entities before calling `entityIndex.addAll()`.
+
+---
+
+## 2026-02-14: Apply Acronym Collapsing in Tie-Breaking Logic
+
+**Decision**: Apply acronym collapsing in tie-breaking logic
+
+**Context**: Row 31 regression - T.E.G. LIMITED ranked #314 (not in top 20) despite scoring 100% and acronym collapsing working correctly. 300+ entities also scored 100% via alias matches, and tie-breaker used simple substring matching that didn't handle acronyms.
+
+**Rationale**:
+- Consistency: Tie-breaker must use same acronym logic as similarity scoring
+- Correctness: "t e g limited" doesn't contain substring "teg" but "INTEGRITY" does, causing wrong ranking
+- BSA compliance: Regulators expect acronym-based entities to rank highly
+
+**Implementation**: Added `SearchServiceImpl.collapseAcronyms()` helper that mirrors `JaroWinklerSimilarity.collapseAcronymTokens()` logic. Applied in `countQueryTokensMatched()` before substring matching.
+
+**Result**: T.E.G. LIMITED moved from #314 to #2, all 52 BSA observation rows passing.
+
+---
+
+## 2026-02-14: Create Comprehensive BSA Validation Test Suite
+
+**Decision**: Create comprehensive BSA validation test suite
+
+**Context**: BSA consultant observations provided 52 real-world test cases that required manual validation. Multiple regressions occurred (Row 31, Row 35, etc.) as features were added.
+
+**Rationale**:
+- Regression prevention: Single test validates all 52 observations
+- BSA compliance: Documents exact match expectations for regulatory review
+- CI/CD integration: Can gate deployments on BSA compliance
+
+**Implementation**: `ComprehensiveBSAValidationTest` with validateRow() and validateMultipleEntities() helpers. Uses standard BSA parameters (limit=20, minMatch=0.88).
+
+**Tradeoff**: Test takes ~60s to run (loads full entity index), but provides critical compliance coverage.

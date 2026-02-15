@@ -153,11 +153,11 @@ public class EntityScorerImpl implements EntityScorer {
             if (hasExactMatch) {
                 // Exact identifier match - heavily weight it
                 return calculateWithExactMatch(nameScore, altNamesScore, govIdScore, 
-                    cryptoScore, addressScore, contactScore, dateScore);
+                    cryptoScore, addressScore, contactScore, dateScore, index);
             } else {
                 // Normal weighted scoring (with sourceId mismatch penalty if applicable)
                 return calculateNormalScore(nameScore, altNamesScore, govIdScore, 
-                    cryptoScore, addressScore, contactScore, dateScore, sourceIdMismatch);
+                    cryptoScore, addressScore, contactScore, dateScore, sourceIdMismatch, index);
             }
         });
 
@@ -257,15 +257,52 @@ public class EntityScorerImpl implements EntityScorer {
         }
         
         // Find best matching alias
+        // BSA FIX (Feb 14, 2026): Prefer aliases with better query token coverage when scores are close
+        // Example: HURRAS AL-DIN has two aliases:
+        //   - "SHAM AL-RIBAT" scores 51.85% (1/3 query tokens)
+        //   - "AL-QAIDA IN SYRIA" scores 47.92% (3/3 query tokens)
+        // For BSA compliance, prefer "AL-QAIDA IN SYRIA" despite slightly lower score
         NameMatch bestMatch = NameMatch.noMatch();
         for (String altName : altNames) {
             if (altName != null && !altName.isBlank()) {
                 double score = similarityService.tokenizedSimilarity(queryName, altName);
                 NameMatch currentMatch = NameMatch.alias(score, altName);
-                bestMatch = bestMatch.best(currentMatch);
+                
+                // When scores are close (within 5%), prefer alias with more query token coverage
+                if (Math.abs(score - bestMatch.score()) < 0.05 && score > 0.45) {
+                    int currentCoverage = countQueryTokensInAlias(queryName, altName);
+                    int bestCoverage = countQueryTokensInAlias(queryName, bestMatch.matchedName());
+                    if (currentCoverage > bestCoverage) {
+                        bestMatch = currentMatch;
+                    }
+                } else {
+                    // Use standard best score logic
+                    bestMatch = bestMatch.best(currentMatch);
+                }
             }
         }
         return bestMatch;
+    }
+
+    /**
+     * Count how many query tokens appear in the alias (for BSA-aware alias selection).
+     */
+    private int countQueryTokensInAlias(String query, String alias) {
+        if (query == null || alias == null) {
+            return 0;
+        }
+        
+        String normalizedQuery = query.toLowerCase().replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+        String normalizedAlias = alias.toLowerCase().replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+        
+        String[] queryTokens = normalizedQuery.split("\\s+");
+        int count = 0;
+        for (String token : queryTokens) {
+            if (!token.isEmpty() && normalizedAlias.contains(token)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private double compareGovernmentIds(List<GovernmentId> queryIds, List<GovernmentId> indexIds) {
@@ -412,7 +449,7 @@ public class EntityScorerImpl implements EntityScorer {
     private double calculateWithExactMatch(double nameScore, double altNameScore,
                                            double govIdScore, double cryptoScore,
                                            double addressScore, double contactScore,
-                                           double dateScore) {
+                                           double dateScore, Entity entity) {
         // When we have an exact identifier match, give it maximum weight
         double criticalMax = Math.max(Math.max(govIdScore, cryptoScore), contactScore);
         double bestNameScore = Math.max(nameScore, altNameScore);
@@ -424,13 +461,14 @@ public class EntityScorerImpl implements EntityScorer {
         }
 
         return calculateNormalScore(nameScore, altNameScore, govIdScore, 
-            cryptoScore, addressScore, contactScore, dateScore, false);
+            cryptoScore, addressScore, contactScore, dateScore, false, entity);
     }
 
     private double calculateNormalScore(double nameScore, double altNameScore,
                                         double govIdScore, double cryptoScore,
                                         double addressScore, double contactScore,
-                                        double dateScore, boolean sourceIdMismatch) {
+                                        double dateScore, boolean sourceIdMismatch,
+                                        Entity entity) {
         double totalWeight = 0.0;
         double weightedSum = 0.0;
 
@@ -468,7 +506,30 @@ public class EntityScorerImpl implements EntityScorer {
             totalWeight += weightConfig.getSupportingInfoWeight();
         }
 
-        return totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+        double finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+
+        // BSA COMPLIANCE FIX (Feb 14, 2026): Alias match boost for OFAC parity
+        // When primary name doesn't match well but alias does, apply boost to ensure
+        // entities appear in top results for regulatory compliance.
+        // Example: "ISLAMIC STATE OF IRAQ AND THE LEVANT" with alias "AL-QAIDA GROUP OF JIHAD IN IRAQ"
+        //          should appear when searching "AL QA'IDA"
+        // Example: "HURRAS AL-DIN" with alias "AL-QAIDA IN SYRIA" scores 51.85% vs query "AL QA'IDA"
+        //          (lower due to extra words "IN SYRIA", but still needs boost for BSA compliance)
+        boolean matchedViaAlias = altNameScore > nameScore && altNameScore > 0.45;
+        boolean nameOnlyMatch = govIdScore == 0 && cryptoScore == 0 && contactScore == 0 
+            && addressScore == 0 && dateScore == 0;
+        
+        if (matchedViaAlias && nameOnlyMatch && finalScore < 0.88) {
+            // Alias-matched entities need significant boost to compete with token-matching individuals
+            // Examples:
+            // - "ISLAMIC STATE" with alias "AL-QAIDA GROUP OF JIHAD IN IRAQ": 73.5% → 100%
+            // - "HURRAS AL-DIN" with alias "AL-QAIDA IN SYRIA": 51.85% → 100%
+            // Token-matchers like "EP-IDA", "GHAEDI/QA'IDI" score 100% from pure token overlap
+            // BSA/AML compliance: Better to show +review than miss sanctioned entities
+            finalScore = Math.min(1.0, finalScore + 0.50);
+        }
+
+        return finalScore;
     }
 
     private String formatAddress(Address addr) {
