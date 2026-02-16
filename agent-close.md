@@ -2,10 +2,10 @@
 
 Review this session and do the following:
 
-1. Identify any **new facts, invariants, or truths** that should be reflected in `docs/context.md`.
+1. Identify any **new facts, invariants, or truths** that should be reflected in `agent-context.md`.
    - Propose concise updates written in present tense.
 
-2. Identify any **decisions, tradeoffs, or forks** that should be captured in `docs/decisions.md`.
+2. Identify any **decisions, tradeoffs, or forks** that should be captured in `agent-decisions.md`.
    - Draft short, append-only entries.
    - Include date, decision, and rationale.
 

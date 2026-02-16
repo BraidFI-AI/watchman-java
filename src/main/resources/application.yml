@@ -4,6 +4,14 @@ server:
 spring:
   application:
     name: watchman-java
+  datasource:
+    url: ${DAY_WATCHER_DB_URL:}
+    username: ${DAY_WATCHER_DB_USERNAME:}
+    password: ${DAY_WATCHER_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: never  # Don't auto-initialize schema
 
 watchman:
   download:

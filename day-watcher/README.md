@@ -9,13 +9,13 @@ EventBridge (daily 1am EST)
     ↓
 Lambda Orchestrator
   - Fetch entities from Braid API (3 types)
-  - Store/update in DynamoDB (incremental)
+  - Store/update in PostgreSQL RDS (incremental)
   - Export active entities to NDJSON
   - Trigger ECS screening task
     ↓
-DynamoDB Tables
-  - day-watcher-entities: 120,700 entities (PK: entityId, SK: entityType)
-  - day-watcher-runs: Audit trail with fetch/write/screen counts
+PostgreSQL RDS (db.t4g.micro)
+  - entities table: 120,700 entities (PK: entity_id, indexed: entity_type, braid_updated_at)
+  - runs table: Audit trail with fetch/write/screen counts
     ↓
 ECS Fargate Task
   - Java Watchman (OFAC screening engine)
@@ -31,9 +31,9 @@ S3 Results
 - **Result**: 99.5% reduction in Braid API load
 
 **Components:**
-- **Orchestrator Lambda**: Fetches entities from Braid, persists to DynamoDB, exports NDJSON to S3, triggers ECS screening
+- **Orchestrator Lambda**: Fetches entities from Braid, persists to PostgreSQL RDS, exports NDJSON to S3, triggers ECS screening
 - **ECS Container**: Java Watchman (Spring Boot on :8084) for bulk OFAC screening
-- **DynamoDB**: Entity storage (`day-watcher-entities`) and run audit trail (`day-watcher-runs`)
+- **PostgreSQL RDS**: Entity storage (`entities` table) and run audit trail (`runs` table)
 - **S3**: Input NDJSON (`day-watcher-input`) and screening results (`day-watcher-results`)
 - **CloudWatch**: Logs with progress tracking (every 1000 entities), metrics, alarms
 - **SNS**: Email alerts for failures
@@ -42,9 +42,9 @@ S3 Results
 
 - **First Run**: ~15 minutes Lambda + 2 hrs ECS = ~$0.30
 - **Daily Runs**: ~1 minute Lambda + 2 hrs ECS = ~$0.15/day = $4.50/month
-- **DynamoDB**: On-demand (120K entities) = ~$0.25/month
+- **PostgreSQL RDS**: db.t4g.micro (120K entities) = ~$12/month
 - **S3**: Negligible (NDJSON files < 100 MB)
-- **Total**: ~$5/month
+- **Total**: ~$17/month
 
 ## Quick Start
 
@@ -79,7 +79,7 @@ cd day-watcher/scripts
 This creates:
 - Lambda function (`day-watcher-orchestrator`)
 - ECS cluster and task definition
-- DynamoDB table (`day-watcher-runs`)
+- PostgreSQL RDS instance (`entities` and `runs` tables)
 - S3 buckets (`watchman-input`, `watchman-results`)
 - EventBridge daily schedule (1am EST)
 - CloudWatch alarms and dashboard
@@ -118,67 +118,72 @@ https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=
 
 ### First Run (Full Fetch)
 1. **Fetch all entities from Braid** → 50,600 individuals + 4,900 businesses + 65,200 counterparties = 120,700 total
-2. **Persist to DynamoDB** → `day-watcher-entities` table (PK=entityId, SK=entityType)
-3. **Export active entities to NDJSON** → Filter by status=ACTIVE, serialize to `s3://day-watcher-input/{runId}/entities.ndjson`
+2. **Persist to PostgreSQL** → `entities` table (PK=entity_id, indexed by entity_type, braid_updated_at)
+3. **Export active entities to NDJSON** → Filter by braid_status=ACTIVE, serialize to `s3://day-watcher-input/{runId}/entities.ndjson`
 4. **Trigger ECS screening** → Launch Fargate task with S3 input path
 5. **Screen entities** → Java Watchman POST /v1/search/batch (1000 entities per request)
 6. **Upload results** → Enriched NDJSON with match metadata to `s3://day-watcher-results/{runId}/matches.ndjson`
-7. **Update audit trail** → DynamoDB `day-watcher-runs` with fetch/write/screen counts
+7. **Update audit trail** → PostgreSQL `runs` table with fetch/write/screen counts
 
 ### Daily Runs (Incremental Updates)
-1. **Fetch only updated entities** → Use `updated_after` parameter with last run timestamp (~50 entities typically)
-2. **Update DynamoDB** → Upsert changed entities, preserving existing data
-3. **Export all active entities** → Full NDJSON export from DynamoDB (not Braid API)
+1. **Fetch only updated entities** → Query PostgreSQL for `MAX(braid_updated_at)`, fetch only newer entities from Braid (~50 entities typically)
+2. **Update PostgreSQL** → Batch upsert changed entities (ON CONFLICT DO UPDATE), preserving existing data
+3. **Export all active entities** → Full NDJSON export from PostgreSQL (not Braid API)
 4. **Screen as normal** → ECS task screens complete entity population
 
 ### Audit Trail
-Every run records comprehensive metrics in `day-watcher-runs`:
-- **entitiesFetchedFromBraid**: Count from API (120,700 first run, ~50 daily)
-- **entitiesWrittenToDynamoDB**: Confirmation of successful persistence
-- **totalEntitiesScreened**: Count screened by ECS
-- **fetchBreakdown**: Per-type counts (individuals, businesses, counterparties)
-- **writeBreakdown**: Per-type write confirmations
-- **hasDiscrepancy**: Auto-detected if fetch ≠ write counts
+Every run records comprehensive metrics in PostgreSQL `runs` table:
+- **entities_fetched_from_braid**: Count from API (120,700 first run, ~50 daily)
+- **entities_written_to_db**: Confirmation of successful persistence
+- **entities_in_ndjson**: Count exported to S3 for screening
+- **fetch_breakdown**: Per-type counts (individuals, businesses, counterparties) as JSONB
+- **has_discrepancy**: Auto-detected if fetch ≠ write counts
+- **s3_input_path**, **s3_output_path**: Full S3 URIs for audit trail
 
-## DynamoDB Schema
+## PostgreSQL Schema
 
-### Table: `day-watcher-entities`
+### Table: `entities`
 Entity storage with incremental updates.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| entityId | String (PK) | Braid entity ID (`ind_*`, `bus_*`, `cou_*`) |
-| entityType | String (SK) | `individual`, `business`, `counterparty` |
-| name | String | Full entity name |
-| addresses | List | Address objects with street, city, state, country, postalCode |
-| dateOfBirth | String | ISO date (individuals only) |
-| status | String | ACTIVE \| INACTIVE |
-| createdAt | String | ISO timestamp from Braid |
-| updatedAt | String | ISO timestamp from Braid |
-| lastSynced | Number | Unix timestamp when entity was last fetched |
+| entity_id | TEXT (PK) | Braid entity ID (`ind_*`, `bus_*`, `cou_*`) |
+| entity_type | TEXT | `individual`, `business`, `counterparty` (indexed) |
+| name | TEXT | Full entity name |
+| addresses | JSONB | Array of address objects with street, city, state, country, postalCode |
+| date_of_birth | DATE | Date of birth (individuals only) |
+| alt_names | JSONB | Array of alternate names |
+| braid_status | TEXT | ACTIVE \| INACTIVE |
+| braid_created_at | TIMESTAMPTZ | Creation timestamp from Braid |
+| braid_updated_at | TIMESTAMPTZ | Last update timestamp from Braid (indexed for incremental sync) |
+| last_synced_at | TIMESTAMPTZ | When entity was last fetched from Braid |
+| created_at | TIMESTAMPTZ | PostgreSQL record creation time (auto) |
+| updated_at | TIMESTAMPTZ | PostgreSQL record update time (auto-trigger) |
 
-**Total Items**: ~120,700 entities
+**Total Rows**: ~120,700 entities  
+**Indices**: entity_type, braid_updated_at, braid_status, addresses (GIN)
 
-### Table: `day-watcher-runs`
+### Table: `runs`
 Audit trail for each orchestrator execution.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| runId | String (PK) | `run-YYYY-MM-DD-HH-MM-SS` |
-| runDate | String | `YYYY-MM-DD` |
-| status | String | SUBMITTED \| RUNNING \| COMPLETED \| FAILED |
-| startTime | Number | Unix timestamp |
-| endTime | Number | Unix timestamp |
-| entitiesFetchedFromBraid | Number | Count fetched from Braid API |
-| entitiesWrittenToDynamoDB | Number | Confirmed write count |
-| totalEntitiesScreened | Number | Count screened by ECS |
-| fetchBreakdown | Map | `{individual: N, business: N, counterparty: N}` |
-| writeBreakdown | Map | Per-type write counts |
-| hasDiscrepancy | Boolean | True if fetch ≠ write counts |
-| writeDiscrepancy | Number | Difference between fetch and write |
-| s3InputPath | String | S3 URI for NDJSON export |
-| s3OutputPath | String | S3 URI for screening results |
-| errorMessage | String | Error details if failed |
+| run_id | TEXT (PK) | `run-YYYY-MM-DD-HH-MM-SS` |
+| run_date | DATE | `YYYY-MM-DD` (indexed) |
+| status | TEXT | SUBMITTED \| RUNNING \| COMPLETED \| FAILED |
+| start_time | TIMESTAMPTZ | Run start timestamp |
+| end_time | TIMESTAMPTZ | Run completion timestamp |
+| entities_fetched_from_braid | INTEGER | Count fetched from Braid API |
+| entities_written_to_db | INTEGER | Confirmed write count |
+| entities_in_ndjson | INTEGER | Count exported to S3 NDJSON |
+| fetch_breakdown | JSONB | `{"individual": N, "business": N, "counterparty": N}` |
+| has_discrepancy | BOOLEAN | True if fetch ≠ write counts |
+| s3_input_path | TEXT | S3 URI for NDJSON export |
+| s3_output_path | TEXT | S3 URI for screening results |
+| ecs_task_arn | TEXT | ARN of triggered ECS task |
+| error_message | TEXT | Error details if failed |
+| created_at | TIMESTAMPTZ | Record creation time (auto) |
+| updated_at | TIMESTAMPTZ | Record update time (auto-trigger) |
 
 ## Alert Metadata Format
 
@@ -205,13 +210,13 @@ Enriched results include `alertMetadata` for Braid alert creation (Part 2):
 **Key Metrics:**
 - Lambda invocations, duration (15 min first run, 1 min daily), errors
 - ECS task count and failures
-- DynamoDB read/write capacity (120K entities)
+- RDS connections and query performance (120K entities)
 - S3 object counts and sizes
 
 **Alarms:**
 - Lambda errors (triggers SNS email)
 - ECS task failures (triggers SNS email)
-- DynamoDB write failures (critical - data loss)
+- RDS connection failures (critical - data loss)
 
 **Logs:**
 - Lambda: `/aws/lambda/day-watcher-orchestrator`
@@ -223,24 +228,24 @@ Enriched results include `alertMetadata` for Braid alert creation (Part 2):
 
 **Audit Query Example**:
 ```bash
-aws dynamodb query \
-  --table-name day-watcher-runs \
-  --key-condition-expression "runId = :runId" \
-  --expression-attribute-values '{":runId":{"S":"run-2026-02-07-03-08-38"}}'
+# Query PostgreSQL runs table
+psql -h <rds-endpoint> -U watchman -d daywatcher \
+  -c "SELECT * FROM runs WHERE run_id = 'run-2026-02-07-03-08-38';"
 ```
 
 ## Troubleshooting
 
-### Silent DynamoDB Write Failures
-**Symptoms**: Lambda claims to fetch entities but DynamoDB shows low item count (e.g., 309 instead of 120,700)
+### Silent PostgreSQL Write Failures
+**Symptoms**: Lambda claims to fetch entities but PostgreSQL shows low row count (e.g., 309 instead of 120,700)
 
-**Root Cause**: boto3's `batch_writer()` context manager swallows exceptions by design
+**Root Cause**: psycopg2 transaction rollback without explicit error handling
 
 **Solution Implemented**:
-- Explicit try/catch blocks around all `batch.put_item()` calls
-- Success logging: "✓ Batch write successful: 25 items written"
+- Explicit try/catch blocks with connection rollback
+- Batch upserts using execute_values() with 1000-record batches
+- Success logging: "✓ Batch upsert successful: 1000 entities written"
 - Error logging with entity IDs for failed batches
-- Returns item count for reconciliation
+- Returns row count for reconciliation
 
 ### No Progress Visibility
 **Symptoms**: Lambda runs for 5+ minutes with no log output
@@ -259,14 +264,14 @@ aws dynamodb query \
 
 **Resolution**:
 1. Check Lambda logs for batch write errors
-2. Query DynamoDB for actual item count: `aws dynamodb scan --table-name day-watcher-entities --select COUNT`
+2. Query PostgreSQL for actual row count: `psql -h <rds-endpoint> -U watchman -d daywatcher -c "SELECT COUNT(*) FROM entities;"`
 3. Re-run Lambda to retry failed writes
-4. Review error messages in `day-watcher-runs` table
+4. Review error messages in `runs` table
 
-### Zero Addresses in DynamoDB
+### Zero Addresses in PostgreSQL
 **Expected Behavior**: Braid sandbox returns `"addresses": null` for most test entities
 
-**Not a Bug**: Code correctly handles null as empty array `[]`
+**Not a Bug**: Code correctly handles null as empty JSONB array `'[]'::jsonb`
 
 **Verification**: Query Braid API directly to confirm null addresses:
 ```bash
@@ -277,11 +282,11 @@ curl https://api.sandbox.braid.zone/individuals/8041588 \
 ## Scaling
 
 **Current Performance**:
-- **First run**: 15 minutes (fetch 120,700 entities + write to DynamoDB + export NDJSON)
+- **First run**: 15 minutes (fetch 120,700 entities + write to PostgreSQL + export NDJSON)
   - 361s individuals (50,600 entities)
   - 31s businesses (4,900 entities)
   - 134s counterparties (65,200 entities)
-- **Daily runs**: <1 minute (fetch ~50 updated entities + export from DynamoDB)
+- **Daily runs**: <1 minute (fetch ~50 updated entities + export from PostgreSQL)
 - **ECS screening**: 1-3 hours (depends on OFAC list size)
 
 **If Lambda timeout issues**:
@@ -295,35 +300,37 @@ curl https://api.sandbox.braid.zone/individuals/8041588 \
 - Option 2: Increase vCPU/memory allocation
 - Cost remains similar (parallel = faster, not more expensive)
 
-**DynamoDB auto-scales** with on-demand billing (no capacity planning needed)
+**PostgreSQL RDS** uses db.t4g.micro with auto-scaling storage (no capacity planning needed)
 
 ## Implementation Notes
 
 ### Error Handling
-All DynamoDB batch writes have explicit error handling:
+All PostgreSQL batch writes have explicit error handling:
 ```python
 try:
-    with self.table.batch_writer() as batch:
-        for item in items:
-            batch.put_item(Item=item)
-            written_count += 1
-    print(f"✓ Batch write successful: {written_count} items written", flush=True)
-    return written_count
+    with self.conn.cursor() as cur:
+        psycopg2.extras.execute_values(
+            cur, insert_query, entity_tuples, page_size=1000
+        )
+        self.conn.commit()
+    print(f"✓ Batch upsert successful: {len(entities)} entities written", flush=True)
+    return len(entities)
 except Exception as e:
-    print(f"ERROR: Batch write failed: {str(e)}", flush=True)
+    self.conn.rollback()
+    print(f"ERROR: Batch upsert failed: {str(e)}", flush=True)
     raise
 ```
 
-**Why this matters**: boto3's batch_writer() context manager silently swallows exceptions. During initial testing, Lambda claimed to fetch 120,700 entities but only 309 persisted (99.7% silent failure). Explicit error handling prevents data loss.
+**Why this matters**: psycopg2 transactions can fail silently without explicit rollback. During initial testing, Lambda claimed to fetch 120,700 entities but only 309 persisted (99.7% silent failure). Explicit error handling with rollback prevents data loss.
 
 ### Audit Trail Architecture
 Multi-layer reconciliation at each stage:
 1. **Fetch**: Count entities from Braid API
-2. **Write**: Confirm successful DynamoDB persistence
-3. **Export**: Verify NDJSON line count matches DynamoDB
-4. **Screen**: Record total entities screened by ECS
+2. **Write**: Confirm successful PostgreSQL persistence (batch upsert)
+3. **Export**: Verify NDJSON line count matches PostgreSQL query
+4. **Screen**: Record total entities screened by ECS (stored in runs table)
 
-**Automatic discrepancy detection**: If `entitiesFetchedFromBraid ≠ entitiesWrittenToDynamoDB`, sets `hasDiscrepancy=true` and calculates difference.
+**Automatic discrepancy detection**: If `entities_fetched_from_braid ≠ entities_written_to_db`, sets `has_discrepancy=true` in runs table.
 
 ### Address Handling
 Braid sandbox returns `"addresses": null` for most test entities. Code handles this gracefully:

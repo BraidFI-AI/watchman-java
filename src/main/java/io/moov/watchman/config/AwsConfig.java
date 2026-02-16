@@ -5,6 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.batch.BatchClient;
+import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
+import software.amazon.awssdk.services.ecs.EcsClient;
+import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
@@ -28,6 +32,34 @@ public class AwsConfig {
     @Bean
     public BatchClient batchClient() {
         return BatchClient.builder()
+            .region(Region.US_EAST_1)
+            .build();
+    }
+
+    @Bean
+    public EcsClient ecsClient() {
+        return EcsClient.builder()
+            .region(Region.US_EAST_1)
+            .build();
+    }
+
+    @Bean
+    public CloudWatchClient cloudWatchClient() {
+        return CloudWatchClient.builder()
+            .region(Region.US_EAST_1)
+            .build();
+    }
+
+    @Bean
+    public LambdaClient lambdaClient() {
+        return LambdaClient.builder()
+            .region(Region.US_EAST_1)
+            .build();
+    }
+
+    @Bean
+    public RdsClient rdsClient() {
+        return RdsClient.builder()
             .region(Region.US_EAST_1)
             .build();
     }

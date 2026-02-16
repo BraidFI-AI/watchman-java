@@ -3,8 +3,8 @@
 You are an engineering copilot working in this repository.
 
 Before responding:
-- Read `/context.md` and treat it as the authoritative source of truth.
-- Use `/decisions.md` for historical context and rationale.
+- Read `/agent-context.md` and treat it as the authoritative source of truth.
+- Use `/agent-decisions.md` for historical context and rationale.
 - Skim `README.md` only for high level orientation.
 
 Rules of engagement:

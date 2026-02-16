@@ -462,6 +462,61 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--primary);
         }
+        
+        /* Infrastructure Tab Styles */
+        .metric-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        
+        .metric-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        
+        .metric-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            color: var(--text-primary);
+            font-weight: 700;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        }
+        
+        .aws-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .aws-link:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -475,6 +530,8 @@
             <button class="tab active" onclick="showTab('config')">ScoreConfig</button>
             <button class="tab" onclick="showTab('traces')">ScoreTrace</button>
             <button class="tab" onclick="showTab('test')">Test Search</button>
+            <button class="tab" onclick="showTab('infrastructure')">Infrastructure</button>
+            <button class="tab" onclick="showTab('day-watcher')">Day Watcher</button>
             <button class="tab" onclick="showTab('docs')">Documentation</button>
         </div>
         
@@ -712,6 +769,259 @@
             </div>
             
             <div id="test-results" style="margin-top: 20px;"></div>
+        </div>
+        
+        <!-- Infrastructure Tab -->
+        <div id="infrastructure" class="tab-content">
+            <h2>Infrastructure Observability</h2>
+            <p style="margin-bottom: 24px;">Real-time monitoring of application health and AWS infrastructure metrics.</p>
+            
+            <button onclick="refreshInfrastructure()" style="margin-bottom: 20px; padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                🔄 Refresh Metrics
+            </button>
+            
+            <div id="infra-alert"></div>
+            
+            <!-- Application Metrics -->
+            <div class="section">
+                <h3>Application Metrics</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Entities Loaded</div>
+                        <div class="metric-value" id="metric-entities">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">JVM Heap Used</div>
+                        <div class="metric-value" id="metric-heap">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">JVM Uptime</div>
+                        <div class="metric-value" id="metric-uptime">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Thread Count</div>
+                        <div class="metric-value" id="metric-threads">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ECS Metrics -->
+            <div class="section" id="ecs-section">
+                <h3>ECS Service</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Running Tasks</div>
+                        <div class="metric-value" id="metric-ecs-running">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Service Status</div>
+                        <div class="metric-value" id="metric-ecs-status">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Task Revision</div>
+                        <div class="metric-value" id="metric-ecs-revision">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Last Deployment</div>
+                        <div class="metric-value" id="metric-ecs-deploy">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CloudWatch Metrics -->
+            <div class="section" id="cloudwatch-section">
+                <h3>Container Performance (Last 5 Minutes)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">CPU Utilization</div>
+                        <div class="metric-value" id="metric-cpu">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Memory Utilization</div>
+                        <div class="metric-value" id="metric-memory">-</div>
+                    </div>
+                </div>
+                
+                <h3 style="margin-top: 24px;">ALB Metrics (Last Hour)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Request Count</div>
+                        <div class="metric-value" id="metric-requests">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Response Time</div>
+                        <div class="metric-value" id="metric-response-time">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Healthy Hosts</div>
+                        <div class="metric-value" id="metric-healthy">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AWS Console Links -->
+            <div class="section">
+                <h3>AWS Console Links</h3>
+                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    <a id="link-cloudwatch" href="#" target="_blank" class="aws-link">📊 CloudWatch Logs</a>
+                    <a id="link-ecs" href="#" target="_blank" class="aws-link">🚀 ECS Service</a>
+                    <a id="link-alb" href="#" target="_blank" class="aws-link">⚖️ Load Balancer</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Day Watcher Tab -->
+        <div id="day-watcher" class="tab-content">
+            <h2>Day Watcher Observability</h2>
+            <p style="margin-bottom: 24px;">Real-time monitoring of Day Watcher scheduled screening infrastructure.</p>
+            
+            <button onclick="refreshDayWatcher()" style="margin-bottom: 20px; padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                🔄 Refresh Metrics
+            </button>
+            
+            <div id="day-watcher-alert"></div>
+            
+            <!-- Lambda Orchestrator -->
+            <div class="section">
+                <h3>Lambda Orchestrator</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Function Name</div>
+                        <div class="metric-value" id="dw-lambda-name" style="font-size: 14px;">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Invocations (24h)</div>
+                        <div class="metric-value" id="dw-lambda-invocations">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Duration</div>
+                        <div class="metric-value" id="dw-lambda-duration">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Errors (24h)</div>
+                        <div class="metric-value" id="dw-lambda-errors">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PostgreSQL RDS -->
+            <div class="section">
+                <h3>PostgreSQL RDS</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Instance ID</div>
+                        <div class="metric-value" id="dw-rds-id" style="font-size: 14px;">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Status</div>
+                        <div class="metric-value" id="dw-rds-status">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">CPU Utilization</div>
+                        <div class="metric-value" id="dw-rds-cpu">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">DB Connections</div>
+                        <div class="metric-value" id="dw-rds-connections">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Free Storage</div>
+                        <div class="metric-value" id="dw-rds-storage">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Read IOPS</div>
+                        <div class="metric-value" id="dw-rds-read">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ECS Screening Tasks -->
+            <div class="section">
+                <h3>ECS Screening Tasks</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Last Task Status</div>
+                        <div class="metric-value" id="dw-ecs-status">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Last Run Time</div>
+                        <div class="metric-value" id="dw-ecs-time" style="font-size: 14px;">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Running Tasks</div>
+                        <div class="metric-value" id="dw-ecs-running">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Stopped Tasks</div>
+                        <div class="metric-value" id="dw-ecs-stopped">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- S3 Buckets -->
+            <div class="section">
+                <h3>S3 Buckets</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Input Objects</div>
+                        <div class="metric-value" id="dw-s3-input-count">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Output Objects</div>
+                        <div class="metric-value" id="dw-s3-output-count">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Input Size</div>
+                        <div class="metric-value" id="dw-s3-input-size">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Output Size</div>
+                        <div class="metric-value" id="dw-s3-output-size">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AWS Console Links -->
+            <div class="section">
+                <h3>AWS Console Links</h3>
+                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    <a id="dw-link-lambda" href="#" target="_blank" class="aws-link">⚡ Lambda Function</a>
+                    <a id="dw-link-rds" href="#" target="_blank" class="aws-link">🗄️ RDS Instance</a>
+                    <a id="dw-link-ecs" href="#" target="_blank" class="aws-link">🚀 ECS Cluster</a>
+                    <a id="dw-link-s3-input" href="#" target="_blank" class="aws-link">📦 Input Bucket</a>
+                    <a id="dw-link-s3-output" href="#" target="_blank" class="aws-link">📦 Output Bucket</a>
+                    <a id="dw-link-logs" href="#" target="_blank" class="aws-link">📊 CloudWatch Logs</a>
+                </div>
+            </div>
+
+            <!-- Runs Audit Trail -->
+            <div class="section">
+                <h3>Recent Runs (PostgreSQL Audit Trail)</h3>
+                <div id="runs-table-error" style="color: var(--danger); margin: 16px 0;"></div>
+                <div style="overflow-x: auto; margin-top: 16px;">
+                    <table id="runs-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead style="background: var(--card-bg); border-bottom: 2px solid var(--border);">
+                            <tr>
+                                <th style="padding: 12px; text-align: left; font-weight: 600;">Run ID</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600;">Date</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+                                <th style="padding: 12px; text-align: right; font-weight: 600;">Fetched</th>
+                                <th style="padding: 12px; text-align: right; font-weight: 600;">Written</th>
+                                <th style="padding: 12px; text-align: right; font-weight: 600;">Screened</th>
+                                <th style="padding: 12px; text-align: center; font-weight: 600;">Discrepancy</th>
+                                <th style="padding: 12px; text-align: left; font-weight: 600;">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody id="runs-table-body">
+                            <tr>
+                                <td colspan="8" style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                                    Loading runs...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         
         <!-- Documentation Tab -->
@@ -1131,6 +1441,10 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
             
             if (tabName === 'config') {
                 loadConfig();
+            } else if (tabName === 'infrastructure') {
+                refreshInfrastructure();
+            } else if (tabName === 'day-watcher') {
+                refreshDayWatcher();
             }
         }
         
@@ -1437,6 +1751,306 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
             if (!isActive) {
                 content.classList.add('active');
                 header.classList.add('active');
+            }
+        }
+        
+        // Infrastructure observability
+        async function refreshInfrastructure() {
+            try {
+                showInfraAlert('Loading infrastructure metrics...', 'info');
+                
+                const response = await fetch('/api/admin/infrastructure');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Application Metrics
+                document.getElementById('metric-entities').textContent = 
+                    data.application.entityCount.toLocaleString();
+                document.getElementById('metric-heap').textContent = 
+                    `${Math.round(data.application.jvmHeapUsed / 1024 / 1024)} MB / ${Math.round(data.application.jvmHeapMax / 1024 / 1024)} MB`;
+                document.getElementById('metric-uptime').textContent = 
+                    formatUptime(data.application.jvmUptime);
+                document.getElementById('metric-threads').textContent = 
+                    data.application.threadCount;
+                
+                // AWS Console Links
+                document.getElementById('link-cloudwatch').href = data.links.cloudWatchLogs;
+                document.getElementById('link-ecs').href = data.links.ecsService;
+                document.getElementById('link-alb').href = data.links.alb;
+                
+                // ECS Metrics
+                if (data.ecs) {
+                    document.getElementById('ecs-section').style.display = 'block';
+                    document.getElementById('metric-ecs-running').textContent = 
+                        `${data.ecs.runningTasks} / ${data.ecs.desiredTasks}`;
+                    document.getElementById('metric-ecs-status').textContent = 
+                        data.ecs.status;
+                    document.getElementById('metric-ecs-revision').textContent = 
+                        data.ecs.taskRevision;
+                    document.getElementById('metric-ecs-deploy').textContent = 
+                        data.ecs.lastDeployment ? formatTimestamp(data.ecs.lastDeployment) : 'Unknown';
+                } else {
+                    document.getElementById('ecs-section').style.display = 'none';
+                }
+                
+                // CloudWatch Metrics
+                if (data.cloudwatch) {
+                    document.getElementById('cloudwatch-section').style.display = 'block';
+                    document.getElementById('metric-cpu').textContent = 
+                        data.cloudwatch.cpuUtilization != null ? 
+                        `${data.cloudwatch.cpuUtilization.toFixed(1)}%` : 'N/A';
+                    document.getElementById('metric-memory').textContent = 
+                        data.cloudwatch.memoryUtilization != null ? 
+                        `${data.cloudwatch.memoryUtilization.toFixed(1)}%` : 'N/A';
+                    document.getElementById('metric-requests').textContent = 
+                        data.cloudwatch.requestCount != null ? 
+                        Math.round(data.cloudwatch.requestCount).toLocaleString() : 'N/A';
+                    document.getElementById('metric-response-time').textContent = 
+                        data.cloudwatch.avgResponseTime != null ? 
+                        `${(data.cloudwatch.avgResponseTime * 1000).toFixed(0)}ms` : 'N/A';
+                    document.getElementById('metric-healthy').textContent = 
+                        data.cloudwatch.healthyHosts != null ? 
+                        Math.round(data.cloudwatch.healthyHosts) : 'N/A';
+                } else {
+                    document.getElementById('cloudwatch-section').style.display = 'none';
+                }
+                
+                showInfraAlert('Metrics refreshed successfully', 'success');
+            } catch (error) {
+                console.error('Infrastructure refresh failed:', error);
+                showInfraAlert(`Failed to load metrics: ${error.message}`, 'error');
+            }
+        }
+        
+        function formatUptime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days}d ${hours % 24}h`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+        
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+            
+            if (diffDays > 0) return `${diffDays}d ago`;
+            if (diffHours > 0) return `${diffHours}h ago`;
+            if (diffMins > 0) return `${diffMins}m ago`;
+            return 'Just now';
+        }
+        
+        function showInfraAlert(message, type) {
+            const alertDiv = document.getElementById('infra-alert');
+            const colors = {
+                success: 'var(--success)',
+                error: 'var(--danger)',
+                info: 'var(--primary)'
+            };
+            alertDiv.innerHTML = `
+                <div style="padding: 16px; background: ${colors[type]}; color: white; border-radius: 6px; margin-bottom: 16px; font-weight: 500;">
+                    ${message}
+                </div>
+            `;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => alertDiv.innerHTML = '', 3000);
+            }
+        }
+        
+        // Day Watcher observability
+        async function refreshDayWatcher() {
+            try {
+                showDayWatcherAlert('Loading Day Watcher metrics...', 'info');
+                
+                const response = await fetch('/api/admin/day-watcher');
+                if (!response.ok) throw new Error('Failed to fetch Day Watcher metrics');
+                
+                const data = await response.json();
+                
+                // Lambda metrics
+                if (data.lambda) {
+                    document.getElementById('dw-lambda-name').textContent = data.lambda.functionName || '-';
+                    document.getElementById('dw-lambda-invocations').textContent = data.lambda.invocationCount24h || '0';
+                    document.getElementById('dw-lambda-duration').textContent = data.lambda.averageDuration 
+                        ? `${Math.round(data.lambda.averageDuration)}ms` 
+                        : '-';
+                    document.getElementById('dw-lambda-errors').textContent = data.lambda.errorCount24h || '0';
+                }
+                
+                // RDS metrics
+                if (data.rds) {
+                    document.getElementById('dw-rds-id').textContent = data.rds.dbInstanceIdentifier || '-';
+                    document.getElementById('dw-rds-status').textContent = data.rds.status || '-';
+                    document.getElementById('dw-rds-cpu').textContent = data.rds.cpuUtilization 
+                        ? `${data.rds.cpuUtilization.toFixed(1)}%` 
+                        : '-';
+                    document.getElementById('dw-rds-connections').textContent = data.rds.databaseConnections || '0';
+                    document.getElementById('dw-rds-storage').textContent = data.rds.freeStorageSpace 
+                        ? `${data.rds.freeStorageSpace.toFixed(1)} GB` 
+                        : '-';
+                    document.getElementById('dw-rds-read').textContent = data.rds.readIops 
+                        ? `${data.rds.readIops.toFixed(1)}` 
+                        : '-';
+                }
+                
+                // ECS task metrics
+                if (data.ecsTask) {
+                    document.getElementById('dw-ecs-status').textContent = data.ecsTask.lastTaskStatus || '-';
+                    document.getElementById('dw-ecs-time').textContent = data.ecsTask.lastRunTime 
+                        ? formatTimestamp(data.ecsTask.lastRunTime) 
+                        : '-';
+                    document.getElementById('dw-ecs-running').textContent = data.ecsTask.runningTaskCount || '0';
+                    document.getElementById('dw-ecs-stopped').textContent = data.ecsTask.stoppedTaskCount || '0';
+                }
+                
+                // S3 metrics
+                if (data.s3) {
+                    document.getElementById('dw-s3-input-count').textContent = data.s3.inputObjectCount || '0';
+                    document.getElementById('dw-s3-output-count').textContent = data.s3.outputObjectCount || '0';
+                    document.getElementById('dw-s3-input-size').textContent = data.s3.inputBucketSizeMb 
+                        ? `${data.s3.inputBucketSizeMb} MB` 
+                        : '0 MB';
+                    document.getElementById('dw-s3-output-size').textContent = data.s3.outputBucketSizeMb 
+                        ? `${data.s3.outputBucketSizeMb} MB` 
+                        : '0 MB';
+                }
+                
+                // AWS console links
+                if (data.links) {
+                    document.getElementById('dw-link-lambda').href = data.links.lambdaFunction || '#';
+                    document.getElementById('dw-link-rds').href = data.links.rdsInstance || '#';
+                    document.getElementById('dw-link-ecs').href = data.links.ecsCluster || '#';
+                    document.getElementById('dw-link-s3-input').href = data.links.s3InputBucket || '#';
+                    document.getElementById('dw-link-s3-output').href = data.links.s3OutputBucket || '#';
+                    document.getElementById('dw-link-logs').href = data.links.cloudWatchLogs || '#';
+                }
+                
+                showDayWatcherAlert('✓ Day Watcher metrics updated successfully', 'success');
+            } catch (error) {
+                console.error('Day Watcher refresh failed:', error);
+                showDayWatcherAlert('Failed to load Day Watcher metrics. Check console for details.', 'error');
+            } finally {
+                // Always try to fetch runs, even if AWS metrics fail
+                fetchRuns();
+            }
+        }
+        
+        function showDayWatcherAlert(message, type) {
+            const alertDiv = document.getElementById('day-watcher-alert');
+            const colors = {
+                success: 'var(--success)',
+                error: 'var(--danger)',
+                info: 'var(--primary)'
+            };
+            alertDiv.innerHTML = `
+                <div style="padding: 16px; background: ${colors[type]}; color: white; border-radius: 6px; margin-bottom: 16px; font-weight: 500;">
+                    ${message}
+                </div>
+            `;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => alertDiv.innerHTML = '', 3000);
+            }
+        }
+        
+        // Fetch and display runs from PostgreSQL audit trail
+        async function fetchRuns(limit = 20) {
+            const tbody = document.getElementById('runs-table-body');
+            const errorDiv = document.getElementById('runs-table-error');
+            
+            try {
+                const response = await fetch(`/api/admin/day-watcher/runs?limit=${limit}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data || data.runs.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                                No runs found. Database may not be configured.
+                            </td>
+                        </tr>
+                    `;
+                    errorDiv.innerHTML = '';
+                    return;
+                }
+                
+                // Build table rows
+                let html = '';
+                data.runs.forEach(run => {
+                    const statusColor = {
+                        'COMPLETED': 'var(--success)',
+                        'FAILED': 'var(--danger)',
+                        'RUNNING': 'var(--warning)',
+                        'PENDING': 'var(--text-secondary)'
+                    }[run.status] || 'var(--text-secondary)';
+                    
+                    const discrepancy = run.hasDiscrepancy 
+                        ? '<span style="color: var(--danger); font-weight: 600;">⚠️ YES</span>'
+                        : '<span style="color: var(--text-secondary);">No</span>';
+                    
+                    // Calculate duration
+                    let duration = 'N/A';
+                    if (run.startTime && run.endTime) {
+                        const start = new Date(run.startTime);
+                        const end = new Date(run.endTime);
+                        const diffMs = end - start;
+                        const diffMins = Math.floor(diffMs / 60000);
+                        const diffSecs = Math.floor((diffMs % 60000) / 1000);
+                        duration = `${diffMins}m ${diffSecs}s`;
+                    }
+                    
+                    html += `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px; font-family: monospace; font-size: 13px;">${run.runId}</td>
+                            <td style="padding: 12px;">${run.runDate || 'N/A'}</td>
+                            <td style="padding: 12px;">
+                                <span style="color: ${statusColor}; font-weight: 600;">${run.status}</span>
+                            </td>
+                            <td style="padding: 12px; text-align: right;">${run.entitiesFetchedFromBraid?.toLocaleString() || 0}</td>
+                            <td style="padding: 12px; text-align: right;">${run.entitiesWrittenToDb?.toLocaleString() || 0}</td>
+                            <td style="padding: 12px; text-align: right;">${run.entitiesInNdjson?.toLocaleString() || 0}</td>
+                            <td style="padding: 12px; text-align: center;">${discrepancy}</td>
+                            <td style="padding: 12px;">${duration}</td>
+                        </tr>
+                    `;
+                    
+                    if (run.errorMessage) {
+                        html += `
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td colspan="8" style="padding: 8px 12px; background: var(--card-bg); color: var(--danger); font-size: 13px;">
+                                    <strong>Error:</strong> ${run.errorMessage}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+                
+                tbody.innerHTML = html;
+                errorDiv.innerHTML = '';
+            } catch (error) {
+                console.error('Failed to fetch runs:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                            Database connection not configured. Set DAY_WATCHER_DB_URL environment variable.
+                        </td>
+                    </tr>
+                `;
+                errorDiv.innerHTML = `<strong>Database Unavailable:</strong> ${error.message}`;
             }
         }
         

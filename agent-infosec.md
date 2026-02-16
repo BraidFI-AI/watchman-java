@@ -3,8 +3,8 @@
 You are an infosec copilot working in this repository.
 
 Before responding:
-- Read `/context.md` and treat it as the authoritative source of truth for security requirements.
-- Use `/decisions.md` for historical context and rationale related to security.
+- Read `/agent-context.md` and treat it as the authoritative source of truth for security requirements.
+- Use `/agent-decisions.md` for historical context and rationale related to security.
 - Skim `README.md` only for high level orientation.
 
 Rules of engagement:

@@ -1,7 +1,7 @@
 # OFAC Screening Technical Overview for BSA/AML Compliance
 
-**Document Version:** 1.0  
-**Last Updated:** February 1, 2026  
+**Document Version:** 1.1  
+**Last Updated:** February 15, 2026  
 **Audience:** BSA Officers, AML Compliance Examiners, Risk Management Teams
 
 ---
@@ -102,33 +102,62 @@ Each screening response includes:
 
 ## Scoring Methodology
 
-### Multi-Phase Scoring Algorithm
+### Multi-Factor Scoring Algorithm
 
-The system uses a **four-phase scoring approach** to evaluate potential matches:
+The system uses a **weighted scoring approach** that evaluates multiple factors simultaneously and combines them into a final confidence score. Rather than sequential phases with pass/fail gates, all available data is analyzed in parallel and weighted according to its reliability.
 
-#### Phase 1: Exact and Strong Matches
-- Exact name matches
-- Strong phonetic matches
-- High-confidence identity matches
-- **Threshold:** Configurable (typically 0.95+)
+#### Scoring Formula
 
-#### Phase 2: Fuzzy Name Matching
-- Levenshtein distance-based similarity
-- Jaro-Winkler string matching
-- Handles typos and minor variations
-- **Threshold:** Configurable (typically 0.85-0.94)
+```
+Final Score = (Name Score × Weight + Address Score × Weight + ID Score × Weight + ...) / Total Active Weights
+```
 
-#### Phase 3: Geographic and Contextual Matching
-- Address matching with geolocation
-- Country and jurisdiction checks
-- Contextual data correlation
-- **Threshold:** Configurable (typically 0.70-0.84)
+**Note:** Only factors with available data contribute to scoring. Missing data doesn't penalize the score—weights adjust dynamically based on what information is present.
 
-#### Phase 4: Weak Signals and Alias Expansion
-- Alias name variations
-- Transliteration alternatives
-- Weak contextual matches
-- **Threshold:** Configurable (typically 0.50-0.69)
+#### Primary Scoring Factors
+
+**1. Name Matching (Weight: 35)**
+- Primary name comparison using Jaro-Winkler algorithm
+- Alternative name (alias) comparison
+- Phonetic filtering (Soundex-based) for performance
+- Stopword removal and tokenization
+- Handles name reordering ("LAST, FIRST" → "FIRST LAST")
+
+**2. Address Matching (Weight: 25)**
+- Geographic proximity using geocoding
+- Component matching (street, city, state, postal code)
+- Country and jurisdiction validation
+- Fuzzy matching for abbreviations and formatting
+
+**3. Critical Identifiers (Weight: 50)**
+- Government IDs (passport, national ID, tax ID)
+- Cryptocurrency addresses
+- Contact information (email, phone)
+- Highest weight due to uniqueness and reliability
+
+**4. Supporting Information (Weight: 15)**
+- Date of birth (exact and partial matching)
+- Nationality comparisons
+- Document type validation
+
+#### Technical Implementation Phases
+
+Under the hood, the system executes **12 implementation phases**:
+
+1. **Normalization** - Text cleanup and standardization
+2. **Tokenization** - Word combination generation
+3. **Phonetic Filter** - Soundex-based pre-filtering
+4. **Name Comparison** - Primary name scoring
+5. **Alt Name Comparison** - Alias scoring
+6. **Gov ID Comparison** - Government ID matching
+7. **Crypto Comparison** - Cryptocurrency address matching
+8. **Contact Comparison** - Email/phone matching
+9. **Address Comparison** - Geographic matching
+10. **Date Comparison** - Birth date matching
+11. **Aggregation** - Weighted score combination
+12. **Filtering** - Threshold application
+
+**For detailed technical specifications, see [phase_scoring_mechanics.md](phase_scoring_mechanics.md).**
 
 ### Score Interpretation
 
@@ -137,10 +166,10 @@ The system uses a **four-phase scoring approach** to evaluate potential matches:
 | 0.95 - 1.00 | Very High Confidence | Block transaction, escalate immediately |
 | 0.85 - 0.94 | High Confidence | Manual review required |
 | 0.70 - 0.84 | Moderate Confidence | Secondary screening, context review |
-| 0.50 - 0.69 | Low Confidence | Monitor, may be false positive |
+| 0.50 - 0.69 | Low Confidence | Monitor, likely false positive |
 | 0.00 - 0.49 | Very Low Confidence | Likely false positive, log for audit |
 
-**Note:** Thresholds are configurable per organizational risk appetite and should be tuned based on operational experience.
+**Note:** The system's default threshold is typically set to 0.85 for automated screening. Organizations should tune thresholds based on their risk appetite, transaction volume, and operational experience. Lower thresholds (0.70-0.80) may be appropriate for high-risk jurisdictions or enhanced due diligence scenarios.
 
 ---
 
@@ -152,9 +181,10 @@ The system employs multiple validation checks to determine match confidence:
 
 #### 1. Name Validation
 - **Exact Match:** Full name matches exactly (case-insensitive)
+- **Jaro-Winkler Similarity:** Primary fuzzy matching algorithm optimized for names
 - **Token Match:** Individual name components match (handles word order)
-- **Phonetic Match:** Sounds-like matching using Soundex/Metaphone algorithms
-- **Edit Distance:** Measures character-level similarity (Levenshtein distance)
+- **Phonetic Filter:** Soundex-based pre-filtering for performance optimization
+- **Favoritism Boost:** Bonus scoring for exact word matches within multi-word names
 
 #### 2. Address Validation
 - **Geographic Proximity:** Distance-based matching using geocoding
@@ -173,13 +203,23 @@ The system employs multiple validation checks to determine match confidence:
 - **Program Type:** Sanctions program relevance
 - **List Membership:** Which OFAC list(s) entity appears on
 
-### Match Decision Tree
+### Match Decision Process
 
 ```
-Input → Name Match? → Strong Match (0.85+) → Address Match? → High Confidence
-                   → Weak Match (0.50-0.84) → Context Match? → Moderate Confidence
-                   → No Name Match (< 0.50) → No Hit
+Input → Normalization → Parallel Scoring:
+                        ├─ Name Comparison (weight: 35)
+                        ├─ Address Comparison (weight: 25)
+                        ├─ ID Comparison (weight: 50)
+                        └─ Date Comparison (weight: 15)
+                        ↓
+                      Weighted Aggregation
+                        ↓
+                      Threshold Filter (default: 0.85)
+                        ↓
+                      Hit / No Hit + Confidence Score
 ```
+
+**Key Principle:** All available factors are evaluated simultaneously. More data = higher confidence. Missing data doesn't penalize; weights adjust dynamically.
 
 ---
 
@@ -386,19 +426,17 @@ When evaluating this screening system, examiners should assess:
 
 **Alias Expansion:** Feature that includes all known name variations in match results
 
-**Edit Distance:** Measure of string similarity based on character changes required
-
 **False Positive:** A screening hit that, upon review, is determined not to be a true match
 
 **Fuzzy Matching:** Approximate string matching that allows for variations and typos
 
 **Hit:** A screening result indicating a potential match to an SDN entry
 
-**Levenshtein Distance:** Specific edit distance algorithm measuring character-level changes
+**Jaro-Winkler Distance:** Similarity algorithm optimized for short strings like names, measuring character-level matches and transpositions
 
 **Match Confidence:** Numerical score (0.0 to 1.0) indicating likelihood of true match
 
-**Multi-Phase Scoring:** Algorithmic approach using sequential evaluation phases
+**Multi-Factor Scoring:** Algorithmic approach using weighted combination of multiple data points
 
 **Phonetic Matching:** Matching based on pronunciation rather than spelling
 
@@ -417,6 +455,7 @@ When evaluating this screening system, examiners should assess:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-01 | Initial | Initial document creation |
+| 1.1 | 2026-02-15 | Update | Corrected scoring methodology to reflect actual 12-phase implementation; updated from "four-phase" to "multi-factor weighted" scoring; clarified Jaro-Winkler as primary algorithm |
 
 **Review Schedule:** Annually or upon significant system changes
 

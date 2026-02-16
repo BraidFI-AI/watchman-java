@@ -4,16 +4,16 @@
 
 External scheduled service to screen all ACTIVE Braid customers/counterparties daily via ECS Fargate. Single self-contained task runs Java Watchman + Python worker to generate compliance audit trail with enriched NDJSON. POC stops before alert creation - Part 2 adds Braid alert integration if approved.
 
-**Cost:** $4/month with Fargate Spot, $13/month on-demand
+**Cost:** $17/month with Fargate Spot, $25/month on-demand
 **Processing Time:** 1-3 hours for 160-400k entities
-**Compliance:** Full audit trail via DynamoDB + S3
+**Compliance:** Full audit trail via PostgreSQL RDS + S3
 
 ## Scope
 
 **In scope:**
 - Orchestrator Lambda to query Braid REST APIs (POST /individual/search, POST /business/search, POST /counterparty/search)
 - ECS Fargate task with Java Watchman + Python worker (self-contained screening)
-- DynamoDB table for run metadata and audit trail
+- PostgreSQL RDS instance for entities storage and run audit trail
 - S3 storage for input NDJSON and enriched output NDJSON
 - Enrichment logic: add individualId/businessId/counterpartyId, tenantId, alert descriptions
 - Onboarding script for existing banks (one-time 160-400k entity migration)
@@ -50,28 +50,36 @@ External scheduled service to screen all ACTIVE Braid customers/counterparties d
 - Pull time: 1-3 minutes for 160-400k entities (1,600-4,000 API calls)
 
 **Data flow:**
-1. Lambda queries Braid APIs → NDJSON export ([WatchmanBulkScreeningService.java#L191-L212](../archive/WatchmanBulkScreeningService.java#L191-L212) format)
-2. Upload to s3://watchman-input/{runId}/customers.ndjson
-3. Trigger ECS task via run_task API
-4. Python worker downloads NDJSON, calls Java Watchman POST /v1/search/batch in 1000-item chunks
-5. Transform matches: add entityId, tenantId, alert description per [NachaService.java#L956-L967](NachaService.java#L956-L967)
-6. Upload enriched NDJSON to s3://watchman-results/{runId}/matches.ndjson
-7. Update DynamoDB run metadata (status=COMPLETED, matchCount, endTime)
+1. Lambda queries Braid APIs → Batch upsert to PostgreSQL entities table (incremental sync)
+2. Export active entities from PostgreSQL → NDJSON format ([WatchmanBulkScreeningService.java#L191-L212](../archive/WatchmanBulkScreeningService.java#L191-L212) format)
+3. Upload to s3://watchman-input/{runId}/customers.ndjson
+4. Trigger ECS task via run_task API
+5. Python worker downloads NDJSON, calls Java Watchman POST /v1/search/batch in 1000-item chunks
+6. Transform matches: add entityId, tenantId, alert description per [NachaService.java#L956-L967](NachaService.java#L956-L967)
+7. Upload enriched NDJSON to s3://watchman-results/{runId}/matches.ndjson
+8. Update PostgreSQL runs table (status=COMPLETED, matchCount, endTime)
 
-**DynamoDB schema:**
-- Table: day-watcher-runs
-- Partition Key: runId (String) - format: "run-YYYY-MM-DD-HH-MM"
-- Attributes:
-  - runDate (String) - "YYYY-MM-DD"
-  - status (String) - SUBMITTED | RUNNING | COMPLETED | FAILED
-  - startTime (Number) - Unix timestamp
-  - endTime (Number) - Unix timestamp
-  - totalCustomers (Number)
-  - totalMatches (Number)
-  - s3InputPath (String) - "s3://watchman-input/{runId}/customers.ndjson"
-  - s3OutputPath (String) - "s3://watchman-results/{runId}/matches.ndjson"
-  - errorMessage (String) - null if successful
-  - checkpoint (Number) - last processed index (for resume)
+**PostgreSQL schema:**
+- Table: entities (entity_id PK, entity_type, name, addresses JSONB, braid_updated_at, braid_status, timestamps)
+- Table: runs (run_id PK, run_date, status, start_time, end_time, entities_fetched_from_braid, entities_written_to_db, entities_in_ndjson, fetch_breakdown JSONB, s3_input_path, s3_output_path, ecs_task_arn, error_message)
+- Indices: entity_type, braid_updated_at, braid_status, addresses (GIN)
+- RDS: db.t4g.micro, PostgreSQL 16.1, 20GB auto-scaling storage
+
+**Runs table schema:**
+- run_id TEXT (PK) - format: "run-YYYY-MM-DD-HH-MM-SS"
+- run_date DATE - "YYYY-MM-DD"
+- status TEXT - SUBMITTED | RUNNING | COMPLETED | FAILED
+- start_time TIMESTAMPTZ
+- end_time TIMESTAMPTZ
+- entities_fetched_from_braid INTEGER
+- entities_written_to_db INTEGER
+- entities_in_ndjson INTEGER
+- fetch_breakdown JSONB - {"individual": N, "business": N, "counterparty": N}
+- has_discrepancy BOOLEAN
+- s3_input_path TEXT
+- s3_output_path TEXT
+- ecs_task_arn TEXT
+- error_message TEXT
 
 **Alert enrichment (POC Part 1 - metadata only):**
 - Customer Individual: individualId + tenantId + "INDIVIDUAL: {name} is flagged for OFAC"
@@ -88,9 +96,9 @@ External scheduled service to screen all ACTIVE Braid customers/counterparties d
 **Cost breakdown (monthly):**
 - ECS Fargate Spot (2 hrs/day): $3.60
 - Lambda (orchestrator): $0.01
-- DynamoDB (on-demand): $0.50
+- PostgreSQL RDS (db.t4g.micro): $12.00
 - S3 storage: $0.10
-- **Total: $4.21/month**
+- **Total: $16.71/month**
 
 ## How to validate
 
@@ -112,7 +120,7 @@ cd day-watcher/terraform
 terraform init
 terraform plan
 terraform apply
-# Expected: ECS cluster, task definition, Lambda, DynamoDB table, EventBridge rule created
+# Expected: ECS cluster, task definition, Lambda, PostgreSQL RDS, EventBridge rule created
 ```
 
 **Phase 3: Manual trigger test**
@@ -125,10 +133,10 @@ aws lambda invoke --function-name day-watcher-orchestrator \
 
 **Phase 4: Verify results**
 ```bash
-# Check DynamoDB
-aws dynamodb get-item --table-name day-watcher-runs \
-  --key '{"runId":{"S":"run-2026-02-05-14-30"}}'
-# Expected: status=COMPLETED, totalCustomers=1000, totalMatches>0
+# Check PostgreSQL runs table
+psql -h <rds-endpoint> -U watchman -d daywatcher \
+  -c "SELECT * FROM runs WHERE run_id = 'run-2026-02-05-14-30';"
+# Expected: status=COMPLETED, entities_in_ndjson=1000, entities_written_to_db=1000
 
 # Download enriched results
 aws s3 cp s3://watchman-results/run-2026-02-05-14-30/matches.ndjson ./
@@ -175,14 +183,15 @@ watchman-java/
 │   │
 │   ├── terraform/                              # NEW: Infrastructure as code
 │   │   ├── main.tf                             # ECS cluster, task definition
-│   │   ├── lambda.tf                           # Orchestrator Lambda
-│   │   ├── dynamodb.tf                         # day-watcher-runs table
+│   │   ├── lambda.tf                           # Orchestrator Lambda (VPC-enabled)
+│   │   ├── rds.tf                              # PostgreSQL RDS instance, security groups
+│   │   ├── schema.sql                          # PostgreSQL schema (entities + runs tables)
 │   │   ├── s3.tf                               # watchman-input/results buckets (reuse existing)
 │   │   ├── eventbridge.tf                      # Daily schedule rule
-│   │   ├── iam.tf                              # Lambda + ECS roles
+│   │   ├── iam.tf                              # Lambda + ECS roles (VPC ENI + RDS permissions)
 │   │   ├── cloudwatch.tf                       # Alarms, dashboard
 │   │   ├── variables.tf                        # Input variables
-│   │   └── outputs.tf                          # Resource ARNs
+│   │   └── outputs.tf                          # Resource ARNs (rds_endpoint, db_credentials_secret_arn)
 │   │
 │   ├── scripts/                                # NEW: Utilities
 │   │   ├── build-and-push.sh                   # Build container, push to ECR

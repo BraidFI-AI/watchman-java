@@ -12,17 +12,17 @@ Centralized type-safe configuration for Jaro-Winkler similarity parameters. Fixe
 ## Design notes
 **Key class:** src/main/java/io/moov/watchman/config/SimilarityConfig.java
 
-**10 parameters (with defaults matching Go):**
+**10 parameters (with defaults from application.yml):**
 - jaroWinklerBoostThreshold (0.7)
 - jaroWinklerPrefixSize (4)
 - lengthDifferencePenaltyWeight (0.3)
 - lengthDifferenceCutoffFactor (0.9)
 - differentLetterPenaltyWeight (0.9)
+- exactMatchFavoritism (0.0)
 - unmatchedIndexTokenWeight (0.15)
 - phoneticFilteringDisabled (false)
 - keepStopwords (false)
 - logStopwordDebugging (false)
-- logDebugScoring (false)
 
 **Constructor injection:**
 ```java
@@ -44,7 +44,7 @@ JaroWinklerSimilarity scorer = new JaroWinklerSimilarity(config);
 ## How to validate
 **Test 1:** Verify integration
 ```java
-// Run: src/test/java/io/moov/watchman/integration/SimilarityConfigIntegrationTest.java
+// Run: src/test/java/io/moov/watchman/similarity/SimilarityConfigIntegrationTest.java
 // 7 tests verify config controls actual scoring behavior
 ```
 
@@ -58,10 +58,12 @@ curl "http://localhost:8080/v1/search?name=TEST"
 
 **Test 3:** Verify all parameters functional
 ```bash
-./mvnw test -Dtest=SimilarityConfigTest
-# 12 tests validate getter/setter/default values
+./mvnw test -Dtest=ScoreConfigIntegrationTest
+# 5 tests validate config loading from YAML
+./mvnw test -Dtest=SimilarityConfigIntegrationTest  
+# 12 tests (config package) validate getter/setter/default values
 ./mvnw test -Dtest=JaroWinklerSimilarityTest  
-# 28 tests validate scoring algorithm with config
+# 14 tests validate scoring algorithm with config
 ```
 
 **Test 4:** Check config in ScoreTrace
@@ -79,14 +81,14 @@ curl "http://localhost:8080/v1/search?name=Maduro&trace=true"
 **13 parameters for scoring weights and phase toggles:**
 
 **Weights (4 parameters):**
-- nameWeight (0.4) - Weight for name comparison scores
-- addressWeight (0.3) - Weight for address comparison scores  
-- criticalIdWeight (0.2) - Weight for government ID matching
-- supportingInfoWeight (0.1) - Weight for additional data (crypto, contact, dates)
+- nameWeight (35.0) - Weight for name comparison scores
+- addressWeight (25.0) - Weight for address comparison scores  
+- criticalIdWeight (50.0) - Weight for government ID matching
+- supportingInfoWeight (15.0) - Weight for additional data (dates)
 
 **Thresholds (2 parameters):**
-- minimumScore (0.7) - Minimum score to return match
-- exactMatchThreshold (0.95) - Score considered exact match
+- minimumScore (0.88) - Minimum score to return match
+- exactMatchThreshold (0.99) - Score considered exact match
 
 **Phase Toggles (7 parameters - enable/disable comparison phases):**
 - nameComparisonEnabled (true)
@@ -106,8 +108,8 @@ EntityScorerImpl scorer = new EntityScorerImpl(similarityService, weightConfig);
 ```
 
 **Configuration sources (priority order):**
-1. Command-line: --watchman.weights.name-weight=0.5
-2. Environment: WATCHMAN_WEIGHTS_NAME_WEIGHT=0.5
+1. Command-line: --watchman.weights.name-weight=40.0
+2. Environment: WATCHMAN_WEIGHTS_NAME_WEIGHT=40.0
 3. YAML: application.yml
 4. No defaults in code - application.yml is single source of truth
 

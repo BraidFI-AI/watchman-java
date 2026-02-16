@@ -5,10 +5,16 @@ package io.moov.watchman.trace;
  * Used to categorize trace events by the stage in the scoring pipeline.
  * 
  * <p><b>Total Phases: 12</b></p>
- * <p><b>Traced Phases: 10</b> - These phases call ctx.record() or ctx.traced() in EntityScorerImpl</p>
+ * <p><b>Traced Phases: 9</b> - These phases call ctx.record() or ctx.traced() in EntityScorerImpl</p>
  * <p><b>Not Traced: 3</b> - These phases execute but don't write trace entries</p>
  * 
- * <h3>Why Some Phases Aren't Traced:</h3>
+ * <h3>Phases That Write Trace Entries (9):</h3>
+ * <ul>
+ *   <li>NORMALIZATION, NAME_COMPARISON, ALT_NAME_COMPARISON, GOV_ID_COMPARISON,
+ *       CRYPTO_COMPARISON, ADDRESS_COMPARISON, CONTACT_COMPARISON, DATE_COMPARISON, AGGREGATION</li>
+ * </ul>
+ * 
+ * <h3>Why Some Phases Aren't Traced (3):</h3>
  * <ul>
  *   <li><b>TOKENIZATION, PHONETIC_FILTER</b> - Child processes of NAME_COMPARISON and ALT_NAME_COMPARISON.
  *       They execute inside JaroWinklerSimilarity as implementation details.</li>

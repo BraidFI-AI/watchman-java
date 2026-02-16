@@ -28,12 +28,12 @@ Weights are only included when a factor is present and non-zero. This prevents d
 A **phase** represents a step in the scoring lifecycle - the sequential journey that entity data takes from raw input to final match decision.
 
 **Total: 12 phases** (defined in Phase.java enum)
-**Traced: 10 phases** (write debug entries when trace=true)
+**Traced: 9 phases** (write debug entries when trace=true)
 **Not Traced: 3 phases** (execute but don't write trace entries)
 
 ### Phase Hierarchy
 
-**Top-Level Phases (10 traced):**
+**Top-Level Phases (9 traced):**
 These call `ctx.record()` or `ctx.traced()` in EntityScorerImpl and appear in trace output:
 - NORMALIZATION - Text cleanup
 - NAME_COMPARISON - Primary name matching (includes TOKENIZATION + PHONETIC_FILTER as child processes)
@@ -44,7 +44,6 @@ These call `ctx.record()` or `ctx.traced()` in EntityScorerImpl and appear in tr
 - ADDRESS_COMPARISON - Geographic matching
 - DATE_COMPARISON - Birth date matching
 - AGGREGATION - Weighted score combination
-- FILTERING - Applied in SearchController post-scoring
 
 **Child Processes (2 not traced):**
 These execute inside parent phases as implementation details:
@@ -56,17 +55,17 @@ These execute inside parent phases as implementation details:
 
 ### Score Contributors
 
-**8 phases directly contribute numerical scores:**
+**7 phases directly contribute numerical scores:**
 - NAME_COMPARISON, ALT_NAME_COMPARISON (contribute to nameScore)
 - GOV_ID_COMPARISON, CRYPTO_COMPARISON, CONTACT_COMPARISON (contribute to criticalIdScore)
 - ADDRESS_COMPARISON (contributes to addressScore)
 - DATE_COMPARISON (contributes to supportingInfoScore)
-- AGGREGATION (combines weighted scores)
 
-**4 phases support scoring but don't generate scores:**
+**5 phases support scoring but don't generate scores:**
 - NORMALIZATION - Prepares text
 - TOKENIZATION - Generates combinations
 - PHONETIC_FILTER - Pre-filters candidates
+- AGGREGATION - Combines weighted scores from other phases
 - FILTERING - Filters final results
 
 **All 12 phases execute during scoring. Tracing affects observability, not functionality.**
@@ -289,11 +288,12 @@ finalScore = jaroWinklerScore - lengthPenalty - unmatchedTokenPenalty
 ```
 
 **Penalties**:
-- **Length difference penalty**: Applied when string lengths differ by >20%
-  - Formula: `(abs(len1 - len2) / max(len1, len2)) × lengthDifferencePenaltyWeight`
+- **Length difference penalty**: Applied when string lengths differ significantly
+  - Formula: `(1.0 - min(len1, len2) / max(len1, len2)) × lengthDifferencePenaltyWeight`
   - Default weight: 0.3 (configured via application.yml)
-- **Unmatched token penalty**: Applied per unmatched token
-  - Each unmatched token: -0.1 to final score
+- **Unmatched token penalty**: Applied proportionally based on unmatched tokens
+  - Formula: `(unmatched / max(count1, count2)) × unmatchedIndexTokenWeight`
+  - Default weight: 0.15 (configured via application.yml)
   - Stopwords excluded from penalty calculation
 
 **Impact on score**: DOMINANT factor (default weight 35)
@@ -320,8 +320,8 @@ watchman:
     name-weight: 35  # Weight in final score calculation
     name-comparison-enabled: true  # Enable/disable this phase
   similarity:
-    length-difference-penalty-weight: 0.3  # Penalty for length mismatch
-    unmatched-token-penalty-weight: 0.1    # Penalty per unmatched token
+    length-difference-penalty-weight: 0.3      # Penalty for length mismatch
+    unmatched-index-token-weight: 0.15         # Penalty for unmatched tokens
 ```
 
 **Score range**: 0.0 to 1.0
