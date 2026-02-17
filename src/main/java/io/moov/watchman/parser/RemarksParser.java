@@ -28,8 +28,9 @@ public class RemarksParser {
     private static final Pattern PASSPORT_PATTERN = Pattern.compile("(?:alt\\.\\s+)?Passport\\s+([A-Z0-9]+)(?:\\s+\\(([^)]+)\\))?", Pattern.CASE_INSENSITIVE);
     
     // Alias patterns - a.k.a. (also known as) and f.k.a. (formerly known as)
-    // Format: a.k.a. 'NAME' or f.k.a. 'NAME' with single quotes
-    private static final Pattern ALIAS_PATTERN = Pattern.compile("(?:a\\.k\\.a\\.|f\\.k\\.a\\.)\\s+'([^']+)'", Pattern.CASE_INSENSITIVE);
+    // Format: a.k.a. 'NAME' or a.k.a. ''NAME'' (single or double single quotes)
+    // Updated to handle GHAILANI case (Row 15): a.k.a. ''FOOPIE''
+    private static final Pattern ALIAS_PATTERN = Pattern.compile("(?:a\\.k\\.a\\.|f\\.k\\.a\\.)\\s+'+([^']+)'+", Pattern.CASE_INSENSITIVE);
     
     // Date formatters for various OFAC date patterns
     private static final DateTimeFormatter[] DATE_FORMATTERS = {

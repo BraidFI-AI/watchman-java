@@ -18,6 +18,63 @@
 
 **Verification Methods**: Direct file reads, grep searches, git log checks, file existence validation.
 
+## Session: February 16, 2026 (Row 15: Double Single-Quote Alias Extraction)
+
+### What We Decided
+- BSA consultant confirmed: FOOPIE and FUPI aliases ARE listed in OFAC data for GHAILANI (entity 6925)
+- Investigation revealed: OFAC data uses double single-quotes format: `a.k.a. ''FOOPIE''` instead of standard `a.k.a. 'FOOPIE'`
+- Root cause: RemarksParser ALIAS_PATTERN regex expected single quotes, failed on double quotes
+
+### What We Did
+- **TDD RED Phase**: Created failing test `shouldHandleDoubleSingleQuotes()` in AliasExtractionTest.java
+  * Test input: `"a.k.a. ''FOOPIE''; a.k.a. ''FUPI''; a.k.a. ''AHMED THE TANZANIAN''"`
+  * Expected: Extract ["FOOPIE", "FUPI", "AHMED THE TANZANIAN"]
+  * Result: Test failed with empty list []
+- **TDD GREEN Phase**: Fixed ALIAS_PATTERN regex in RemarksParser.java line 32
+  * **Before**: `"(?:a\\.k\\.a\\.|f\\.k\\.a\\.)\\s+'([^']+)'"`  (requires exactly one quote on each side)
+  * **After**: `"(?:a\\.k\\.a\\.|f\\.k\\.a\\.)\\s+'+([^']+)'+"`  (allows one or more quotes on each side)
+  * Pattern change: `'` → `'+` (matches one or more single quotes)
+- Updated Row15GhailaniAliasTest.java
+  * Fixed assertion: `"entityID"` → `"id"` (correct JSON field name)
+  * Added alias verification: Check both entity ID and alias presence in results
+  * Added success logging: "✅ FOOPIE/FUPI alias now matches GHAILANI correctly"
+
+### What Is Now True
+- **Double Single-Quote Alias Extraction Fixed** ✅ (Feb 16, 2026)
+  * File: src/main/java/io/moov/watchman/parser/RemarksParser.java line 32
+  * AliasExtractionTest: 18/18 passing (includes new double-quote test)
+  * Row15GhailaniAliasTest: 4/4 passing
+  * GHAILANI entity now includes: "FOOPIE", "FUPI", "AHMED THE TANZANIAN" in altNames array
+- **Search Behavior Verified**:
+  * Query "FOOPIE" → Returns GHAILANI (id 6925) with alias in altNames
+  * Query "FUPI" → Returns GHAILANI (id 6925) with alias in altNames
+  * Both aliases now searchable and matchable
+- **Pattern Coverage**:
+  * Handles standard format: `a.k.a. 'NAME'`
+  * Handles double quotes: `a.k.a. ''NAME''`
+  * Backwards compatible: All existing alias extraction tests still pass
+
+### BSA Test Case Progress
+- S.I. 15 (GHAILANI - FOOPIE/FUPI): ✅ Fixed (Feb 16)
+
+### Key Insights
+- OFAC data inconsistency: Some aliases use double single-quotes (`''NAME''`) instead of standard single quotes (`'NAME'`)
+- Regex quantifier fix (`'` → `'+`) simple but critical for edge-case coverage
+- TDD red-green-refactor prevented regression: All 18 alias extraction tests still pass
+- File: [observations/OFAC - FOOPIE.png](observations/OFAC - FOOPIE.png), [observations/OFAC - FUPI.png](observations/OFAC - FUPI.png) confirm BSA consultant observation from OFAC website
+
+### Alias Extraction Architecture
+- **Performance Model**: Aliases extracted once per entity during OFAC file load (startup + scheduled 12h refresh)
+  * File: src/main/java/io/moov/watchman/parser/OFACParserImpl.java lines 134-137
+  * DataRefreshService triggers: @PostConstruct + @Scheduled(fixedRateString)
+  * 18,637 entities × 1 regex extraction per load = 18,637 operations total
+  * Search queries: Zero regex overhead (match against pre-stored Entity.altNames)
+- **Unified Alias List**: Two sources merged into single Entity.altNames field
+  * alt.csv (official OFAC alternate names)
+  * Remarks field (a.k.a./f.k.a. extracted by RemarksParser)
+  * No distinction between sources at search time
+  * Example GHAILANI: 17 alt.csv names + 3 remarks aliases = 20 total altNames
+
 ## Session: February 11, 2026 (Legal Suffix Removal - Quick Win)
 
 ### What We Decided

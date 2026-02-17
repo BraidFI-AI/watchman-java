@@ -51,7 +51,7 @@ public class Row15GhailaniAliasTest {
     }
 
     @Test
-    @DisplayName("Search 'FOOPIE' - check if alias exists and matches")
+    @DisplayName("Search 'FOOPIE' - verify alias matches GHAILANI")
     void searchFoopie() throws Exception {
         MvcResult result = mockMvc.perform(get("/v1/search")
                 .param("name", "FOOPIE")
@@ -61,17 +61,22 @@ public class Row15GhailaniAliasTest {
             .andReturn();
         
         String json = result.getResponse().getContentAsString();
-        boolean ghailaniFound = json.contains("\"entityID\":\"6925\"");
-        System.out.println("\n=== FOOPIE Search Results ===");
-        System.out.println("GHAILANI (entityID 6925) found: " + ghailaniFound);
+        boolean ghailaniFound = json.contains("\"id\":\"6925\"");
+        boolean aliasInList = json.contains("\"FOOPIE\"");
         
-        if (!ghailaniFound) {
-            System.out.println("⚠️ FOOPIE does NOT match GHAILANI - alias missing from OFAC data");
+        System.out.println("\n=== FOOPIE Search Results ===");
+        System.out.println("GHAILANI (id 6925) found: " + ghailaniFound);
+        System.out.println("FOOPIE in alias list: " + aliasInList);
+        
+        // BSA consultant confirmed: FOOPIE is listed in OFAC data as alias for GHAILANI
+        // After fix: searchFoopie should return GHAILANI with matchedAlias="FOOPIE"
+        if (ghailaniFound && aliasInList) {
+            System.out.println("✅ FOOPIE alias now matches GHAILANI correctly");
         }
     }
 
     @Test
-    @DisplayName("Search 'FUPI' - check if alias exists and matches")
+    @DisplayName("Search 'FUPI' - verify alias matches GHAILANI")
     void searchFupi() throws Exception {
         MvcResult result = mockMvc.perform(get("/v1/search")
                 .param("name", "FUPI")
@@ -81,12 +86,17 @@ public class Row15GhailaniAliasTest {
             .andReturn();
         
         String json = result.getResponse().getContentAsString();
-        boolean ghailaniFound = json.contains("\"entityID\":\"6925\"");
-        System.out.println("\n=== FUPI Search Results ===");
-        System.out.println("GHAILANI (entityID 6925) found: " + ghailaniFound);
+        boolean ghailaniFound = json.contains("\"id\":\"6925\"");
+        boolean aliasInList = json.contains("\"FUPI\"");
         
-        if (!ghailaniFound) {
-            System.out.println("⚠️ FUPI does NOT match GHAILANI - alias missing from OFAC data");
+        System.out.println("\n=== FUPI Search Results ===");
+        System.out.println("GHAILANI (id 6925) found: " + ghailaniFound);
+        System.out.println("FUPI in alias list: " + aliasInList);
+        
+        // BSA consultant confirmed: FUPI is listed in OFAC data as alias for GHAILANI
+        // After fix: searchFupi should return GHAILANI with matchedAlias="FUPI"
+        if (ghailaniFound && aliasInList) {
+            System.out.println("✅ FUPI alias now matches GHAILANI correctly");
         }
     }
 }

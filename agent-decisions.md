@@ -1927,3 +1927,25 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 **Alternative Considered**: AWS RDS console read-only access. Rejected due to IAM complexity and limited query/visualization capabilities.
 
 **Implementation**: `RunRecord` DTO with 13 fields mapping to runs table schema. JavaScript `fetchRuns()` renders table with formatted timestamps, color-coded status, error message expansion.
+
+---
+
+## 2026-02-16: Regex Pattern Fix for Double Single-Quote Aliases
+
+**Decision**: Modified ALIAS_PATTERN regex to accept one or more quotes (`'+`) instead of exactly one quote (`'`).
+
+**Rationale**: OFAC data contains inconsistent quote formatting. Most aliases use single quotes `a.k.a. 'NAME'` but some entities (e.g., GHAILANI) use double single-quotes `a.k.a. ''NAME''`. Regex quantifier change (`'` → `'+`) handles both formats without data preprocessing or special-casing.
+
+**Alternative Considered**: Normalize OFAC data during download to standardize quote format. Rejected because:
+- Adds preprocessing complexity
+- Assumes all future OFAC data issues follow same pattern
+- Regex solution more maintainable (single location, handles variations)
+
+**Tradeoff**: Overly permissive pattern could match malformed data (e.g., `a.k.a. '''NAME'''`), but OFAC data quality makes this negligible risk.
+
+**Impact**: 
+- File: src/main/java/io/moov/watchman/parser/RemarksParser.java line 32
+- Test coverage: AliasExtractionTest (18/18 passing)
+- No regressions in 1,217-test suite
+
+**BSA Observation**: Row 15 (GHAILANI - FOOPIE/FUPI aliases) resolved. BSA consultant confirmed aliases exist in OFAC data via website screenshots.

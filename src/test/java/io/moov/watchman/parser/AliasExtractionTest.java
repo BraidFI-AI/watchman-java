@@ -91,6 +91,22 @@ class AliasExtractionTest {
                 "MiXeD"
             );
         }
+
+        @Test
+        @DisplayName("Should handle double single quotes (Row 15: GHAILANI case)")
+        void shouldHandleDoubleSingleQuotes() {
+            // Real OFAC data from Entity 6925 - GHAILANI, Ahmed Khalfan
+            // BSA observation: FOOPIE and FUPI aliases use double single quotes
+            String remarks = "DOB 14 Mar 1974; a.k.a. ''FOOPIE''; a.k.a. ''FUPI''; a.k.a. ''AHMED THE TANZANIAN''.";
+            
+            List<String> aliases = parser.extractAliases(remarks);
+            
+            assertThat(aliases).containsExactlyInAnyOrder(
+                "FOOPIE",
+                "FUPI",
+                "AHMED THE TANZANIAN"
+            );
+        }
     }
 
     @Nested
