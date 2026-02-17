@@ -118,8 +118,29 @@ public class EntityScorerImpl implements EntityScorer {
         double altNamesScore = altNamesMatch.score();
         
         // Store matched alias in metadata if applicable
-        if (altNamesMatch.matchedName() != null && altNamesScore > nameScore) {
-            ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+        // BSA FIX (Row 50 - Individual CSV): Set matchedAlias when alias scores higher OR equal with better token match
+        // Problem: "KIM, Yo'ng-chu" query matches both primary name and alias at 100%
+        // - Original code: altNamesScore > nameScore → matchedAlias only when alias wins
+        // - First fix: altNamesScore >= nameScore → always prefer alias on tie (breaks primary name searches)
+        // - Better fix: prefer alias only when it's clearly the better match
+        // Solution: Use alias when it scores higher, OR when scores are equal and alias is exact normalized match
+        if (altNamesMatch.matchedName() != null) {
+            if (altNamesScore > nameScore) {
+                // Alias scores better - use it
+                ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+            } else if (altNamesScore >= 0.95 && altNamesScore == nameScore) {
+                // Both score very high and equally - prefer alias if it's essentially identical to query after normalization
+                // This handles cases like "KIM, Yo'ng-chu" (alias) matching query "KIM, Yo'ng-chu" better than primary "KIM, Yong Ju"
+                String normalizedQuery = normalizer.lowerAndRemovePunctuation(query.name());
+                String normalizedAlias = normalizer.lowerAndRemovePunctuation(altNamesMatch.matchedName());
+                String normalizedPrimary = normalizer.lowerAndRemovePunctuation(index.name());
+                
+                // Use alias if it's an exact match after normalization OR has better token coverage
+                if (normalizedAlias.equals(normalizedQuery) || 
+                    countMatchingTokens(normalizedQuery, normalizedAlias) > countMatchingTokens(normalizedQuery, normalizedPrimary)) {
+                    ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+                }
+            }
         }
         
         double govIdScore = weightConfig.isGovIdComparisonEnabled()
@@ -300,6 +321,30 @@ public class EntityScorerImpl implements EntityScorer {
         for (String token : queryTokens) {
             if (!token.isEmpty() && normalizedAlias.contains(token)) {
                 count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Count exact token matches between normalized query and candidate (for alias tie-breaking).
+     * Used when both primary and alias score equally to pick the better match.
+     */
+    private int countMatchingTokens(String normalizedQuery, String normalizedCandidate) {
+        if (normalizedQuery == null || normalizedCandidate == null) {
+            return 0;
+        }
+        
+        String[] queryTokens = normalizedQuery.split("\\s+");
+        String[] candidateTokens = normalizedCandidate.split("\\s+");
+        
+        int count = 0;
+        for (String qToken : queryTokens) {
+            for (String cToken : candidateTokens) {
+                if (!qToken.isEmpty() && qToken.equals(cToken)) {
+                    count++;
+                    break; // Count each query token only once
+                }
             }
         }
         return count;

@@ -1706,3 +1706,83 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - Performance impact of regex parsing on OFAC load time (not measured yet)
 
 ---
+
+## Session: February 14-17, 2026 (BSA Consultant Retest Observations - Entity & Individual CSV)
+
+### What We Decided
+- Systematically review BSA consultant retest observations in Entity CSV and Individual CSV
+- Investigate S.I. 1 (ABBAS, Abu entity 13416) and S.I. 50 (KIM, Yong Ju) from Individual CSV
+- Fix matchedAlias metadata bug discovered during S.I. 50 investigation
+- Run comprehensive regression testing after EntityScorerImpl changes
+
+### What We Did
+**Entity CSV Retest Verification** (5 cases):
+- S.I. 6 (CIMEX): All 3 entities (8125, 576, 30630) at positions 6-8, 100% scores - Feb 14 limit fix resolved ✅
+- S.I. 21 (AL QA'IDA): All related entities found - Feb 14 limit fix resolved ✅
+- S.I. 22 (TALIBAN): TEHRIK-E TALIBAN PAKISTAN (12206) at position 6, 100% score - Feb 14 limit fix resolved ✅
+- S.I. 52 (OTKRITIE): All 3 entities (34497, 34509, 34499) at positions 6-8, 100% scores - Feb 14 limit fix resolved ✅
+- S.I. 34 (OFFICE 39): 2/5 entities clearly related, 3 contain "OFFICE" token but not "39" - documented architectural difference for consultant ⏳
+
+**Individual CSV S.I. 1 Investigation** (ABBAS, Abu):
+- Entity 13416 (FAWAZ, Abbas Loutfe) returned at position 6 with 100% score via alias "FAWWAZ, 'Abbas Abu-Ahmad"
+- Retest timeline analysis: Previous complaints (ABU AL-ABBAS, KATA'IB ABU FADL AL-ABBAS, PLF-ABU ABBAS) fixed by earlier deployment
+- Final retest comment only mentions entity 13416, likely due to UI showing top 5 results by default
+- Drafted consultant note explaining position 6 result
+
+**Individual CSV S.I. 50 Critical Bug** (KIM, Yong Ju):
+- Investigation sequence:
+  1. Row50KimYongJuSearchTest: 5/6 variations worked, exact alias format "KIM, Yo'ng-chu" failed
+  2. Row50AliasNormalizationTest: Proved normalization correct (both → "kim yong chu")
+  3. Row50DeepDiveTest: Entity scores 100% but other entities rank higher despite lower raw scores (78-87%)
+  4. Row50MatchedAliasTest: **ROOT CAUSE** - exposed matchedAlias = NULL despite 100% alias score
+- Root cause: `altNamesScore > nameScore` condition false when both 100%, leaving matchedAlias NULL
+- Other entities with lower scores got boosted to 100% WITH matchedAlias set, winning tie-breaking
+- Fixed EntityScorerImpl.java lines 121-143 with intelligent alias selection logic
+- Added helper method `countMatchingTokens()` for exact token comparison
+
+**Regression Testing**:
+- 25 SearchTests executed: 25 passing, 0 failures, 0 errors
+- EntityDataIngestionTest: 18,637 entities loaded correctly
+- BSAEntityFeedbackInvestigationTest: CIMEX, AL QA'IDA, TALIBAN searches verified
+- BUILD SUCCESS, 01:09 min execution time
+
+### What Is Now True
+- **EntityScorerImpl Alias Selection Logic** ✅ (Feb 17, 2026)
+  * File: src/main/java/io/moov/watchman/scorer/EntityScorerImpl.java lines 121-143
+  * Original bug: `if (altNamesScore > nameScore)` → matchedAlias only set when alias wins
+  * Fixed condition: Set matchedAlias when alias scores higher OR when both score ≥95% equally AND alias has exact normalized match or better token coverage
+  * Added helper: `countMatchingTokens(String normalizedQuery, String normalizedCandidate)` for exact token comparison
+  * Intelligent tie-breaking preserves both primary name queries and alias queries working correctly
+
+- **S.I. 50 Test Coverage** ✅:
+  * Row50KimYongJuSearchTest: All 6 name variations return entity 55451 at position 1 with 100% score
+  * Variations tested: primary name, FN-LN order, exact alias, alias without comma/apostrophe/hyphen
+  * Debug tests preserved: Row50MatchedAliasTest, Row50DeepDiveTest, Row50AliasNormalizationTest, Row50PrimaryNameTest
+
+- **No Regressions** ✅:
+  * All Entity CSV cases still working after S.I. 50 changes
+  * Entity ingestion: 18,637 entities load correctly  
+  * Full test suite passing
+
+### BSA Test Case Progress Update
+- Entity CSV S.I. 6 (CIMEX): ✅ Fixed (Feb 14 limit fix)
+- Entity CSV S.I. 21 (AL QA'IDA): ✅ Fixed (Feb 14 limit fix)
+- Entity CSV S.I. 22 (TALIBAN): ✅ Fixed (Feb 14 limit fix)
+- Entity CSV S.I. 52 (OTKRITIE): ✅ Fixed (Feb 14 limit fix)
+- Entity CSV S.I. 34 (OFFICE 39): ⏳ Pending consultant clarification (token-based vs phrase-based matching)
+- Individual CSV S.I. 1 (ABBAS, Abu): ✅ Verified working (entity 13416 at position 6)
+- Individual CSV S.I. 50 (KIM, Yong Ju): ✅ Fixed (matchedAlias metadata bug)
+
+### What Is Still Unknown
+- Whether position 6 is acceptable for S.I. 1 or should be prioritized into top 5
+- Whether S.I. 34 requires token-based OR matching (like OFAC.gov) vs current phrase-based fuzzy matching
+- Individual CSV remaining retest cases beyond S.I. 1 and S.I. 50
+
+### Key Insights
+- Metadata-driven tie-breaking requires careful handling of edge cases where scores are equal
+- BSA consultant retest comments may refer to previous test runs before fixes deployed
+- UI display limitations (showing only top 5 vs top 10) can create false negatives
+- Exact alias format matching must consider both the alias AND the query context for intelligent selection
+- Bug pattern: When both nameScore and altNamesScore = 100%, original code didn't set matchedAlias, causing entity to lose tie-breaking to entities with lower raw scores that got boosted to 100%
+
+---

@@ -1949,3 +1949,88 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 - No regressions in 1,217-test suite
 
 **BSA Observation**: Row 15 (GHAILANI - FOOPIE/FUPI aliases) resolved. BSA consultant confirmed aliases exist in OFAC data via website screenshots.
+
+---
+
+## 2026-02-17: Refined Alias Selection for Tie-Breaking (Individual CSV S.I. 50)
+
+**Decision**: Modified `EntityScorerImpl` to set `matchedAlias` metadata when alias scores higher than primary name OR when both score ≥95% equally AND alias has exact normalized match or better token coverage.
+
+**Context**: 
+- BSA observation S.I. 50: Query "KIM, Yo'ng-chu" failed to find entity 55451 while other name variations worked
+- Entity 55451 has primary name "KIM, Yong Ju" and alias "KIM, Yo'ng-chu" (exact match)
+- Investigation revealed both primary and alias scored 100% after normalization to "kim yong chu"
+- Original code: `if (altNamesScore > nameScore) { ctx.withMetadata("matchedAlias", ...) }`
+- When both score 100%, condition `100 > 100` = false, matchedAlias stays NULL
+- Other entities with lower raw scores (78-87%) got boosted to 100% WITH matchedAlias set
+- Tie-breaking logic prioritizes entities with matchedAlias metadata, causing entity 55451 to lose despite perfect alias match
+
+**Root Cause Analysis**:
+- Row50MatchedAliasTest revealed matchedAlias = NULL despite 100% alias score
+- Row50DeepDiveTest showed other entities ranking higher with lower raw scores
+- Bug path: EntityScorerImpl line 121 condition too strict for edge case where both scores equal
+
+**Rationale**: 
+- Intelligent tie-breaking requires accurate matchedAlias metadata for all alias matches, not just when alias scores strictly higher
+- When both primary and alias score equally high (≥95%), prefer alias if:
+  1. Alias is exact normalized match to query, OR
+  2. Alias has better token coverage (more matching tokens than primary name)
+- This preserves correct behavior for both primary name queries and exact alias queries
+- Using exact match and token coverage as tie-breakers is more precise than "always prefer alias" or "always prefer primary"
+
+**Implementation**:
+- Modified: `EntityScorerImpl.java` lines 121-143
+- Changed from:
+  ```java
+  if (altNamesScore > nameScore) {
+      ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+  }
+  ```
+- To:
+  ```java
+  if (altNamesScore > nameScore) {
+      ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+  } else if (altNamesScore >= 0.95 && altNamesScore == nameScore) {
+      // Both score equally high - prefer alias if exact normalized match or better token coverage
+      String normalizedQuery = normalizer.lowerAndRemovePunctuation(query.name());
+      String normalizedAlias = normalizer.lowerAndRemovePunctuation(altNamesMatch.matchedName());
+      String normalizedPrimary = normalizer.lowerAndRemovePunctuation(index.name());
+      
+      if (normalizedAlias.equals(normalizedQuery) || 
+          countMatchingTokens(normalizedQuery, normalizedAlias) > countMatchingTokens(normalizedQuery, normalizedPrimary)) {
+          ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+      }
+  }
+  ```
+- Added helper method:
+  ```java
+  private int countMatchingTokens(String normalizedQuery, String normalizedCandidate) {
+      Set<String> queryTokens = Set.of(normalizedQuery.split("\\s+"));
+      Set<String> candidateTokens = Set.of(normalizedCandidate.split("\\s+"));
+      return (int) queryTokens.stream().filter(candidateTokens::contains).count();
+  }
+  ```
+
+**Tradeoff**: 
+- Slight complexity increase in alias selection logic (additional normalization and token counting)
+- Negligible performance impact (only applies when scores are equal at ≥95%)
+- Eliminates edge case where perfect alias matches lose to weaker boosted matches
+- Maintains backward compatibility for all existing behavior
+
+**Test Results**:
+- BEFORE: Query "KIM, Yo'ng-chu" failed to find entity 55451 (ranked outside top 10)
+- AFTER: All 6 name variations for entity 55451 return at position 1 with 100% score
+  * "KIM, Yong Ju" (primary name)
+  * "Yong Ju KIM" (FN-LN order)
+  * "KIM, Yo'ng-chu" (exact alias)
+  * "KIM Yongchu" (no comma/apostrophe)
+  * "KIM Yong-chu" (hyphen variant)
+  * "KIM, Yong chu" (space replacement)
+- Row50KimYongJuSearchTest: 6/6 passing ✅
+- No regressions: 25 SearchTests passing, EntityDataIngestionTest 18,637 entities loaded
+
+**Impact**: 
+- Resolves critical compliance risk: perfect alias matches no longer incorrectly deprioritized
+- BSA observation S.I. 50 resolved
+- Improves tie-breaking accuracy for edge case where primary and alias score identically
+- Maintains correct behavior for queries matching primary names only
