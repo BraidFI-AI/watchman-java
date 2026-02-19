@@ -1,341 +1,441 @@
-# Scripts Reference
+# Scripts Inventory
 
-Automation scripts for testing, deployment, and operational tasks. All scripts located in `/scripts` directory unless otherwise noted.
+**Last Updated:** February 19, 2026  
+**Location:** `/scripts` directory
+
+This is a living document tracking all automation scripts in the project. Add entries as new scripts are created.
 
 ---
 
 ## Testing Scripts
 
-### test-all.sh
-
-Run complete test suite (1,032 tests).
-
-**Usage:**
-```bash
-./scripts/test-all.sh
-```
-
-**What it does:**
-- Runs all Maven tests via `./mvnw test`
-- Displays summary: tests run, passed, failed, skipped
-- Execution time: ~45 seconds
-
-**Output:**
-```
-[INFO] Tests run: 1,032, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS
-```
-
-**When to use:**
-- Before committing code changes
-- Before deployments
-- After pulling latest changes
-- CI/CD pipeline validation
-
----
-
-### test-similarity.sh
-
-Test similarity engine only (318 tests).
-
-**Usage:**
-```bash
-./scripts/test-similarity.sh
-```
-
-**What it tests:**
-- JaroWinklerSimilarity (28 tests)
-- Stopword removal (45 tests)
-- Phonetic encoding (32 tests)
-- Token matching (56 tests)
-- Language detection (18 tests)
-
-**Execution time:** ~8 seconds
-
----
-
-### test-api.sh
-
-Test REST API controllers (42 tests).
-
-**Usage:**
-```bash
-./scripts/test-api.sh
-```
-
-**What it tests:**
-- SearchController (18 tests)
-- BatchScreeningController (12 tests)
-- NemesisController (8 tests)
-- Error handling (4 tests)
-
-**Execution time:** ~5 seconds
-
----
-
-### test-integration.sh
-
-Run integration tests (130+ tests).
-
-**Usage:**
-```bash
-./scripts/test-integration.sh
-```
-
-**What it tests:**
-- End-to-end search pipeline
-- Batch screening workflows
-- Nemesis autonomous testing
-- ScoreTrace integration
-- Data loading and parsing
-
-**Execution time:** ~15 seconds
-
----
-
 ### test-live-api.sh
 
-Smoke test deployed ECS endpoint.
+**Type:** Bash  
+**Purpose:** Smoke test deployed API endpoints on AWS ECS
 
 **Usage:**
 ```bash
 ./scripts/test-live-api.sh
+
+# Override endpoint
+WATCHMAN_URL=http://custom-url:8080 ./scripts/test-live-api.sh
 ```
 
-**What it does:**
-1. Tests `/v1/health` endpoint
-2. Tests `/v1/search?name=Maduro`
-3. Tests `/v1/search/batch` with sample data
-4. Reports response times and success/failure
+**What it tests:**
+- `/health` endpoint - Health check
+- `/v1/search?name=<query>` - Single entity search
+- `/v1/search/batch` - Batch screening (multiple entities)
+- Response times and status codes
 
-**Example output:**
+**Output:**
 ```
-✓ Health check: 200 OK (45ms)
-✓ Single search: 200 OK (123ms) - 1 match found
-✓ Batch search: 200 OK (234ms) - 3/3 entities screened
+Testing: Health endpoint... PASS
+Testing: Single search... PASS
+Testing: Batch screening... PASS
+Total: 3 PASS, 0 FAIL
 ```
 
 **When to use:**
-- After ECS deployments
-- Smoke testing new releases
-- Verifying endpoint availability
+- After AWS ECS deployments
+- Post-release smoke testing
+- Verifying load balancer configuration
+
+**Environment variables:**
+- `WATCHMAN_URL` - Base URL (default: `http://54.209.239.50:8080`)
+
+---
+
+### test-summary-endpoint.sh
+
+**Type:** Bash  
+**Purpose:** Test TraceSummary JSON endpoint functionality
+
+**Usage:**
+```bash
+./scripts/test-summary-endpoint.sh
+```
+
+**What it tests:**
+1. Service health check
+2. Search with `trace=true` to generate session
+3. `/api/reports/{sessionId}/summary` - JSON summary endpoint
+4. `/api/reports/{sessionId}` - HTML report endpoint
+
+**Output:**
+```
+1️⃣ Health check... ✓
+2️⃣ Searching with trace... ✓
+3️⃣ Testing summary endpoint... ✓
+📊 Summary Response: { ... JSON ... }
+4️⃣ Testing HTML report... ✓
+```
+
+**Dependencies:** `jq` (JSON processor)
+
+---
+
+### test-agent-setup.sh
+
+**Type:** Bash  
+**Purpose:** Validate agent configuration for autonomous testing
+
+**Usage:**
+```bash
+./scripts/test-agent-setup.sh
+```
+
+**What it validates:**
+- Python dependencies installed
+- API keys configured
+- Report directories exist
+- Agent configuration is valid
 
 ---
 
 ## Load Testing Scripts
 
-### load-test-simple.sh
+### aws_load_test.py
 
-Sequential load testing with curl.
+**Type:** Python  
+**Purpose:** Comprehensive load testing against AWS ECS deployment
 
 **Usage:**
 ```bash
-./scripts/load-test-simple.sh [num_requests]
+# Search endpoint load test
+python3 scripts/aws_load_test.py --endpoint <AWS-ALB-URL> --test search --concurrent 10 --duration 60
 
-# Examples
-./scripts/load-test-simple.sh 100   # 100 requests
-./scripts/load-test-simple.sh 1000  # 1000 requests
+# Batch endpoint load test
+python3 scripts/aws_load_test.py --endpoint <AWS-ALB-URL> --test batch --requests 100
+
+# Full suite with JSON output
+python3 scripts/aws_load_test.py --endpoint <AWS-ALB-URL> --test all --output load_test_results.json
+```
+
+**Features:**
+- Concurrent requests with ThreadPoolExecutor
+- Latency statistics (min, max, mean, median, p95, p99)
+- Throughput measurement (RPS)
+- Error rate tracking
+- JSON and CSV output formats
+
+**Output:**
+- `load_test_results.json` - Structured test results
+- `load_test_results.csv` - Tabular results for analysis
+
+**Dependencies:** `requests`, `statistics`
+
+---
+
+### ofac_stress_test_script.py
+
+**Type:** Python (1,030 lines)  
+**Purpose:** Comprehensive OFAC sanctions screening validation suite
+
+**Usage:**
+```bash
+# Run with custom config
+python3 scripts/ofac_stress_test_script.py --config config.json --output test_results.csv
+
+# Specific test category
+python3 scripts/ofac_stress_test_script.py --test-type exact --threshold 85
+
+# Generate test data
+python3 scripts/ofac_stress_test_script.py --generate-test-data --format json --count 100
+```
+
+**Test categories:**
+- `exact_name` - Exact name match validation
+- `transliteration_arabic` - Arabic name variants
+- `transliteration_cyrillic` - Cyrillic transliteration
+- `transliteration_chinese` - Chinese name romanization
+- `fuzzy_matching` - Approximate matching
+- `weak_alias` - Alias detection
+
+**Output:**
+- `test_results.csv` - Detailed test case results
+- `screening_test.log` - Execution log
+
+**Dependencies:** See `requirements.txt`
+
+---
+
+## Security Scripts
+
+### pre-commit-security.sh
+
+**Type:** Bash  
+**Purpose:** Git pre-commit hook for security scanning
+
+**Usage:**
+```bash
+# Install as git hook
+ln -s ../../scripts/pre-commit-security.sh .git/hooks/pre-commit
+
+# Run manually
+./scripts/pre-commit-security.sh
+```
+
+**What it runs:**
+1. **Semgrep** - SAST (Static Application Security Testing)
+   - Auto-detects security issues in code
+   - Checks for common vulnerabilities
+2. **Trivy** - Secret scanning
+   - Scans for hardcoded credentials
+   - Checks for exposed API keys
+
+**Behavior:**
+- Blocks commit if HIGH or CRITICAL issues found
+- Auto-installs tools if missing
+
+---
+
+### pre-push-security.sh
+
+**Type:** Bash  
+**Purpose:** Git pre-push hook for pre-deployment security validation
+
+**Usage:**
+```bash
+# Install as git hook
+ln -s ../../scripts/pre-push-security.sh .git/hooks/pre-push
+
+# Run manually
+./scripts/pre-push-security.sh
+```
+
+**What it runs (assumed):**
+- Similar to pre-commit but more comprehensive
+- May include dependency vulnerability scanning
+
+---
+
+## Build & Deployment Scripts
+
+### generate_api_reference.py
+
+**Type:** Python (241 lines)  
+**Purpose:** Extract public API from compiled Java bytecode for AI documentation
+
+**Usage:**
+```bash
+# After Maven compilation
+python3 scripts/generate_api_reference.py
 ```
 
 **What it does:**
-1. Sends N sequential GET requests to /v1/search
-2. Measures response time for each
-3. Calculates statistics: min, max, avg, p95, p99
-4. Reports success/failure counts
+1. Finds all `.class` files in `target/classes/`
+2. Uses `javap` (Java disassembler) to extract public APIs
+3. Parses method signatures, fields, class definitions
+4. Generates structured documentation
 
-**Example output:**
-```
-Running 100 requests...
-Progress: [##########] 100/100
+**Output:**
+- `target/api-reference.json` - Structured API data
+- `target/API-REFERENCE.md` - Markdown for AI consumption
 
-Results:
-  Total requests: 100
-  Success: 100
-  Failures: 0
-  Min: 45ms
-  Max: 234ms
-  Avg: 89ms
-  P95: 156ms
-  P99: 201ms
-```
+**Use case:**
+- Prevents AI hallucination during code generation
+- Provides accurate method signatures to repair pipelines
+- Integrated into Docker build process
 
-**When to use:**
-- Quick performance checks
-- Baseline response time measurement
-- Post-deployment validation
+**Dependencies:** `javap` (included in JDK)
 
 ---
 
-### load-test-batch.js
+## Environment Setup Scripts
 
-Batch API stress testing with Artillery.
+### setup-local.sh
 
-**Prerequisites:**
-```bash
-npm install -g artillery
-```
+**Type:** Bash  
+**Purpose:** Quick setup for local agent testing (Nemesis/Analyzer)
 
 **Usage:**
 ```bash
-cd scripts
-artillery run load-test-batch.js
-
-# Custom configuration
-artillery run load-test-batch.js \
-  --target http://localhost:8080 \
-  --output report.json
-```
-
-**Configuration:**
-```yaml
-config:
-  target: http://localhost:8080
-  phases:
-    - duration: 60
-      arrivalRate: 10  # 10 requests/sec for 60 seconds
-scenarios:
-  - name: Batch screening
-    flow:
-      - post:
-          url: /v1/search/batch
-          json:
-            entities: [...]
-            minMatch: 0.88
-```
-
-**Metrics reported:**
-- Requests per second
-- Response time (min/max/median/p95/p99)
-- Error rate
-- Throughput
-
----
-
-## Deployment Scripts
-
-### deploy-ecs.sh
-
-Deploy to AWS ECS.
-
-**Prerequisites:**
-- AWS CLI configured
-- Docker installed
-- ECR repository created
-
-**Usage:**
-```bash
-./scripts/deploy-ecs.sh
+./scripts/setup-local.sh
 ```
 
 **What it does:**
-1. Builds Docker image for linux/amd64
-2. Tags image with git commit SHA
-3. Pushes to ECR
-4. Updates ECS task definition
-5. Forces new deployment
-6. Waits for deployment to stabilize
+1. Checks Python 3.11+ installation
+2. Installs Python dependencies from `requirements.txt`
+3. Creates `reports/` and `logs/` directories
+4. Validates AI API keys (Anthropic, OpenAI, or generic)
+5. Sets environment defaults
 
-**Example output:**
+**Environment variables set:**
+- `WATCHMAN_JAVA_API_URL` (default: `http://localhost:8080`)
+- `WATCHMAN_GO_API_URL` (default: `http://localhost:8081`)
+- `COMPARE_IMPLEMENTATIONS` (default: `true`)
+- `GO_IS_BASELINE` (default: `true`)
+- `AI_PROVIDER` (default: `anthropic`)
+- `REPORT_DIR`, `LOG_DIR`
+
+**Requirements:**
+- Python 3.11+
+- One of: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `AI_API_KEY`
+
+---
+
+## Configuration Files
+
+### requirements.txt
+
+**Type:** Python dependencies  
+**Purpose:** Python package dependencies for all Python scripts
+
+**Install:**
+```bash
+pip3 install -r scripts/requirements.txt
 ```
-Building Docker image...
-Successfully built a1b2c3d4
-Pushing to ECR...
-Pushed: watchman-java:abc123def
-Updating ECS task definition...
-Revision: 10
-Deploying to ECS service...
-Waiting for deployment to complete...
-✓ Deployment successful
+
+**Known dependencies:**
+- `requests` - HTTP client
+- `anthropic` - Claude API client
+- `openai` - OpenAI API client
+- `PyGithub` - GitHub API client
+- Standard library: `json`, `csv`, `argparse`, `logging`, `statistics`
+
+---
+
+### agent_config.py
+
+**Type:** Python module  
+**Purpose:** Configuration for autonomous testing agents
+
+**Usage:**
+```python
+from agent_config import AgentConfig
+
+config = AgentConfig.load()
+```
+
+**Configuration managed:**
+- API endpoints
+- Test parameters
+- Agent behavior settings
+
+---
+
+## Test Data Files
+
+### ofac_test_cases.csv
+
+**Type:** CSV data  
+**Purpose:** Test case definitions for OFAC stress testing
+
+**Format:**
+```csv
+test_id,name,expected_match,category,threshold
+1,Nicolas Maduro,true,exact_name,0.95
+...
 ```
 
 ---
 
-### build-and-push.sh
+### crontab
 
-Build and push Docker image (no deployment).
+**Type:** Cron configuration  
+**Purpose:** Scheduled task definitions (if any)
+
+---
+
+## Directory Structure
+
+```
+scripts/
+├── test-live-api.sh              # AWS ECS smoke tests
+├── test-summary-endpoint.sh      # TraceSummary endpoint validation
+├── test-agent-setup.sh           # Agent configuration validation
+├── setup-local.sh                # Local development setup
+├── pre-commit-security.sh        # Pre-commit security hooks
+├── pre-push-security.sh          # Pre-push security hooks
+├── generate_api_reference.py     # API documentation extraction
+├── aws_load_test.py              # Load testing suite
+├── ofac_stress_test_script.py    # OFAC compliance validation
+├── agent_config.py               # Agent configuration module
+├── requirements.txt              # Python dependencies
+├── ofac_test_cases.csv          # Test data
+├── crontab                       # Scheduled tasks
+└── tests/                        # Additional test resources
+    └── ...
+```
+
+---
+
+## Maven Test Commands
+
+While not scripts in `/scripts`, these are commonly used test commands:
+
+```bash
+# Run all tests (1,117 tests)
+./mvnw test
+
+# Run specific test class
+./mvnw test -Dtest=SearchServiceIntegrationTest
+
+# Run tests by package
+./mvnw test -Dtest="io.moov.watchman.search.*Test"
+
+# Run with coverage
+./mvnw clean verify jacoco:report
+
+# Skip tests during build
+./mvnw clean package -DskipTests
+```
+
+---
+
+## Adding New Scripts
+
+When adding a new script to this project:
+
+1. **Create the script** in `/scripts` directory
+2. **Make it executable:** `chmod +x scripts/your-script.sh`
+3. **Add documentation here** following the template:
+
+```markdown
+### script-name.sh
+
+**Type:** Bash/Python  
+**Purpose:** Brief description
 
 **Usage:**
 ```bash
-./scripts/build-and-push.sh [tag]
-
-# Examples
-./scripts/build-and-push.sh latest
-./scripts/build-and-push.sh v1.2.3
-./scripts/build-and-push.sh $(git rev-parse --short HEAD)
+./scripts/script-name.sh [args]
 ```
 
 **What it does:**
-1. Builds Docker image with specified tag
-2. Pushes to configured registry (ECR or Docker Hub)
-3. Verifies push success
+- Action 1
+- Action 2
+
+**Dependencies:** List any tools/packages required
+```
+
+4. **Update README.md** if the script is user-facing
+5. **Commit both the script and updated documentation**
 
 ---
 
-## Environment Setup
+## Environment Variables Reference
 
-### setup-dev.sh
+Common environment variables used across scripts:
 
-Install development dependencies.
-
-**Usage:**
-```bash
-./scripts/setup-dev.sh
-```
-
-**What it installs:**
-- Java 21 (via SDKMAN if not present)
-- Maven 3.8+ (via SDKMAN)
-- Python 3.9+
-- Python packages: requests, anthropic, openai, PyGithub
-- jq (JSON processor)
-
-**Platform support:** macOS, Linux
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `WATCHMAN_URL` | `http://54.209.239.50:8080` | AWS ECS endpoint |
+| `WATCHMAN_JAVA_API_URL` | `http://localhost:8080` | Local Java API |
+| `WATCHMAN_GO_API_URL` | `http://localhost:8081` | Local Go API |
+| `ANTHROPIC_API_KEY` | - | Claude API access |
+| `OPENAI_API_KEY` | - | OpenAI API access |
+| `AI_PROVIDER` | `anthropic` | AI provider selection |
+| `COMPARE_IMPLEMENTATIONS` | `true` | Enable Go/Java comparison |
+| `REPORT_DIR` | `./reports` | Test report output |
+| `LOG_DIR` | `./logs` | Log file location |
 
 ---
 
-### validate-setup.sh
+## Notes
 
-Check development prerequisites.
-
-**Usage:**
-```bash
-./scripts/validate-setup.sh
-```
-
-**What it checks:**
-- Java version (21+)
-- Maven version (3.8+)
-- Python version (3.9+)
-- Required Python packages
-- Docker installation
-- AWS CLI (if deploying)
-- jq installation
-
-**Example output:**
-```
-✓ Java 21.0.1 (required: 21+)
-✓ Maven 3.9.5 (required: 3.8+)
-✓ Python 3.11.4 (required: 3.9+)
-✓ Docker 24.0.6
-✗ AWS CLI not found (optional)
-✓ jq 1.6
-```
-
----
-
-## Script Conventions
-
-**Exit codes:**
-- 0: Success
-- 1: General error
-- 2: Missing prerequisites
-- 3: Configuration error
-
-**Environment variables:**
-- `WATCHMAN_URL`: Override API base URL (default: http://localhost:8080)
-- `SKIP_TESTS`: Set to "true" to skip test execution
-- `VERBOSE`: Set to "true" for debug output
-
-**Logging:**
-- Scripts log to stdout/stderr
-- Deployment scripts also log to `logs/deploy-YYYYMMDD.log`
+- **Security scans:** Semgrep and Trivy configurations are in `.semgrepignore` and Dockerfile
+- **Test data:** Large test data files may be gitignored, check `.gitignore`
+- **AWS credentials:** Scripts assume AWS CLI is configured (`aws configure`)
+- **Python version:** Most scripts require Python 3.9+, setup scripts check for 3.11+

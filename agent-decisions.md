@@ -2048,3 +2048,38 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 **Alternative Considered**: Keep limit=5 and improve ranking to push all relevant entities into top 5 positions. Rejected because: (1) ranking already correct (entities score 100% and appear in positions 6-9 based on valid tie-breaking logic), (2) arbitrary limit=5 provides no compliance benefit, (3) configurability gives users control for different use cases.
 
 **Impact**: Resolves all remaining BSA observation failures. 102 test cases (52 Entity + 50 Individual) now at 100% pass rate with real-world compliance consultant validation.
+
+---
+
+## 2026-02-19: Refactoring Proposal Formalized
+
+**Decision**: Created formal refactoring proposal in `docs/refactoring_proposal.md` for SearchServiceImpl (809 lines) and EntityScorerImpl (592 lines).
+
+**Phases**:
+1. Extract SearchService helpers (QueryProcessor, AliasExpander, ResultRanker)
+2. Apply strategy pattern to EntityScorer (scoring strategies per field type)
+3. Entity normalization dependency injection
+4. Package reorganization (search/impl/, search/model/)
+
+**Risk Level**: LOW
+- All changes internal to implementation classes
+- Public interfaces (SearchService, EntityScorer) unchanged
+- Zero test modifications required
+- Tests inject interfaces and verify behavior, not implementation
+
+**Effort**: 4-5 days
+
+**Rationale**: Complexity is concentrated in two large classes with inline "BSA CRITICAL FIX" comments. Architecture is solid (interface-driven, proper DI), making refactoring safe. Improves maintainability without breaking changes.
+
+---
+
+## 2026-02-19: Documentation Maintenance as Living Inventory
+
+**Decision**: Updated `docs/test_coverage.md` and `docs/scripts.md` to reflect actual current state, removing aspirational/non-existent content.
+
+**Changes**:
+- Test count corrected: 1,117 tests across 178 files (was incorrectly documented as 1,369)
+- Scripts: Documented only existing scripts in `/scripts`, removed references to non-existent scripts
+- Marked both documents with "Last Updated" dates and "living inventory" guidance
+
+**Rationale**: Documentation drift creates confusion. Living inventory approach means docs track reality and are updated incrementally as changes occur. Easier to maintain, more trustworthy for developers.

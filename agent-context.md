@@ -1823,3 +1823,31 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - Bug pattern: When both nameScore and altNamesScore = 100%, original code didn't set matchedAlias, causing entity to lose tie-breaking to entities with lower raw scores that got boosted to 100%
 
 ---
+
+## Test Architecture
+
+- **Test count**: 178 test files containing 1,117 tests (13 known failures as of Jan 2026)
+- **Test injection**: Tests inject interfaces (`SearchService`, `EntityScorer`) via `@Autowired`, not concrete implementations (`SearchServiceImpl`, `EntityScorerImpl`)
+- **Test layers**: Tests operate at multiple layers:
+  - Controller layer: MockMvc for HTTP endpoint testing
+  - Service layer: Direct interface injection (bypass controllers)
+  - Component layer: Specific component testing (bypass services)
+  - Only ~28% test through controllers; majority test services/components directly
+- **Test quality**: Tests verify behavior (outcomes), not implementation details. Tests would remain functional after internal refactoring because they depend on interfaces, not implementations.
+
+## Code Organization Assessment
+
+- **SearchServiceImpl**: 809 lines with complex inline logic (marked for refactoring)
+- **EntityScorerImpl**: 592 lines with overlapping scoring methods (marked for refactoring)
+- **Architecture strengths**: 
+  - Interface-driven design throughout (all major components abstracted)
+  - Proper constructor injection everywhere
+  - Type-safe configuration via `@ConfigurationProperties`
+  - Comprehensive test coverage (100%+ tests passing in most areas)
+- **Refactoring risk**: LOW - Proposed changes are internal to implementation classes. Public interfaces (`SearchService`, `EntityScorer`) remain unchanged. Zero test modifications required.
+
+## Scripts Inventory
+
+- **Actual scripts**: `test-live-api.sh`, `test-summary-endpoint.sh`, `setup-local.sh`, `pre-commit-security.sh`, `pre-push-security.sh`, `generate_api_reference.py`, `aws_load_test.py`, `ofac_stress_test_script.py`, `agent_config.py`
+- **Location**: `/scripts` directory
+- **Documentation**: `docs/scripts.md` maintained as living inventory of actual scripts (not aspirational)
