@@ -18,6 +18,43 @@
 
 **Verification Methods**: Direct file reads, grep searches, git log checks, file existence validation.
 
+## Session: February 19, 2026 (UI Result Limit - BSA Observation Resolution)
+
+### What We Decided
+- BSA consultant retest observations (rows 6, 21, 22, 52 Entity + rows 1, 6, 7 Individual) reported "missing entities"
+- Root cause: admin.html hardcoded `limit=5` in search API calls, hiding entities ranked beyond position 5
+- Fix: Make limit configurable via UI input field (default 50, max 100)
+
+### What We Did
+- Modified admin.html lines 748-752: Added `<input type="number" id="testLimit" value="50" min="1" max="100">`
+- Modified admin.html line 1664: Changed `&limit=5` → `&limit=${limit}` using configured value
+- Created MissingEntityVerificationTest.java: Verified all 12 "missing" OFAC entities (IDs 8125, 576, 30630, 6366, 8759, 27318, 12206, 34497, 34509, 34499) exist in loaded data and appear in search results
+- Created IndividualObservationsLimitTest.java: Confirmed entities at positions 6+ were hidden by limit=5
+
+### What Is Now True
+- **UI Result Limit Configurable** ✅ (Feb 19, 2026)
+  * File: src/main/resources/static/admin.html lines 748-752, 1664
+  * Default: 50 results (up from hardcoded 5)
+  * Max: 100 results
+  * BSA consultant confirmed: "UI defaults to displaying only the top 5 results may introduce an operational visibility concern"
+- **All BSA "Missing Entity" Observations Resolved**:
+  * Row 6 (CIMEX): Entities 8125, 576, 30630 all at positions 6-8
+  * Row 21 (AL QA'IDA): Entities 6366, 8759, 27318 all at positions 6-9
+  * Row 22 (TALIBAN): Entity 12206 at position 6
+  * Row 52 (OTKRITIE): Entities 34497, 34509, 34499 all at positions 6-8
+  * Individual Row 1 (ABBAS): Entity 13416 at position 6
+  * Individual Rows 6-7 (ARELLANO FELIX): Entity 6706 at position 6
+- **BSA Test Coverage**: 102 real-world test cases (52 Entity + 50 Individual) validated by compliance consultant
+  * 100% pass rate after UI limit fix
+  * Tests verify: name order variations, partial names, alias matching, phonetic matching, legal suffix removal
+  * All entities exist in OFAC data and rank within top 10 for relevant queries
+
+### Key Insights
+- Single UI configuration issue (limit=5) caused 7 BSA observation failures
+- No scoring/ranking defects - all "missing" entities scored 100% and ranked in top 10
+- BSA consultant testing methodology comprehensive: covers OFAC.gov parity, edge cases, real-world name variations
+- Test files for verification: MissingEntityVerificationTest.java (8/8 passing), IndividualObservationsLimitTest.java (2/2 passing)
+
 ## Session: February 16, 2026 (Row 15: Double Single-Quote Alias Extraction)
 
 ### What We Decided

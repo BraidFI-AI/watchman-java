@@ -758,6 +758,12 @@
             </div>
             
             <div class="form-group">
+                <label>Result Limit</label>
+                <input type="number" id="testLimit" value="50" min="1" max="100" style="width: 100%;">
+                <small style="color: #666;">Number of results to return (1-100, default: 50)</small>
+            </div>
+            
+            <div class="form-group">
                 <label class="checkbox-label">
                     <input type="checkbox" id="testTrace">
                     Enable ScoreTrace
@@ -1659,6 +1665,7 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
         async function runTestSearch() {
             const name = document.getElementById('testName').value;
             const type = document.getElementById('testType').value;
+            const limit = document.getElementById('testLimit').value || 50;
             const trace = document.getElementById('testTrace').checked;
             
             if (!name) {
@@ -1667,7 +1674,7 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
             }
             
             try {
-                let url = `${API_BASE}/v1/search?name=${encodeURIComponent(name)}&limit=5`;
+                let url = `${API_BASE}/v1/search?name=${encodeURIComponent(name)}&limit=${limit}`;
                 if (type) {
                     url += `&type=${type}`;
                 }

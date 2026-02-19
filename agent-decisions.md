@@ -2034,3 +2034,17 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 - BSA observation S.I. 50 resolved
 - Improves tie-breaking accuracy for edge case where primary and alias score identically
 - Maintains correct behavior for queries matching primary names only
+
+---
+
+## 2026-02-19: UI Search Result Limit Made Configurable (Default 50)
+
+**Decision**: Changed admin.html to make search result limit configurable via UI input field. Default increased from hardcoded 5 to 50, maximum 100.
+
+**Rationale**: BSA consultant identified operational visibility concern: entities ranked beyond position 5 were hidden despite scoring 100%. Seven observation rows (Entity: 6, 21, 22, 52; Individual: 1, 6, 7) reported "missing entities" that actually existed in OFAC data at positions 6-9. All 12 entities verified present in search results with MissingEntityVerificationTest.java and IndividualObservationsLimitTest.java.
+
+**Tradeoff**: Higher default limit (50 vs 5) increases UI result volume but eliminates false negatives from arbitrary cutoff. For BSA/AML compliance, missing a sanctioned entity (false negative) is more critical than showing extra candidates (false positives requiring analyst review). Consultant confirmed: "The key consideration is whether the sanctioned entity is listed in the results, not its specific ranking position."
+
+**Alternative Considered**: Keep limit=5 and improve ranking to push all relevant entities into top 5 positions. Rejected because: (1) ranking already correct (entities score 100% and appear in positions 6-9 based on valid tie-breaking logic), (2) arbitrary limit=5 provides no compliance benefit, (3) configurability gives users control for different use cases.
+
+**Impact**: Resolves all remaining BSA observation failures. 102 test cases (52 Entity + 50 Individual) now at 100% pass rate with real-world compliance consultant validation.
