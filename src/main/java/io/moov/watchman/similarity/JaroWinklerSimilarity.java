@@ -335,13 +335,20 @@ public class JaroWinklerSimilarity implements SimilarityService {
     /**
      * Filter out tokens that are too short to be meaningful for matching.
      * 
-     * BSA FIX (Row 17): Prevent matching on ultra-short tokens like "AL-", "ABU-".
+     * BSA FIX (Row 17 R1): Prevent matching on ultra-short tokens like "AL-", "ABU-".
      * 
      * Problem: Entity 18596 has "AL-" (2 characters) as an alias. When searching "AL-QUDS",
      * this matches perfectly (score 1.0), blocking legitimate matches like "AL-QUDS BRIGADES".
      * 
-     * Solution: Filter tokens shorter than MIN_TOKEN_LENGTH (3 characters) to prevent
-     * false positives on Arabic name prefixes and other ultra-short standalone aliases.
+     * BSA FIX (Row 17 R2, Row 24 R2): Preserve short tokens when they form majority of name.
+     * 
+     * Problem: Entity "CK ID CO. LTD" → ["ck", "id", "co", "ltd"] →  filters to ["ltd"] only,
+     * breaking match with query "CK ID" → ["ck", "id"]. Score 0.0 because ["ck", "id"] vs ["ltd"].
+     * 
+     * Solution: Only filter short tokens when they're the minority (< 60% of tokens).
+     * If >= 60% of tokens are short, it's likely a code/acronym entity - keep all tokens.
+     * This preserves Row 17 R1 fix (filters "AL-" from multi-token aliases) while allowing
+     * short-code entities like "CK ID CO. LTD" and "SMARTMET LLC" to match.
      * 
      * Note: This filtering happens AFTER acronym collapsing, so "T.E.G." → "teg" (3 chars)
      * is retained, but standalone "AL-" → "al" (2 chars) is filtered out.
@@ -350,13 +357,29 @@ public class JaroWinklerSimilarity implements SimilarityService {
      * them with neighbors rather than matching them standalone.
      * 
      * @param tokens Array of tokens
-     * @return Array with short tokens filtered out
+     * @return Array with short tokens filtered out (or original if mostly short tokens)
      */
     private String[] filterShortTokens(String[] tokens) {
         if (tokens == null || tokens.length == 0) {
             return tokens;
         }
         
+        // Count short tokens
+        int shortTokenCount = 0;
+        for (String token : tokens) {
+            if (token.length() < MIN_TOKEN_LENGTH) {
+                shortTokenCount++;
+            }
+        }
+        
+        // If >= 60% of tokens are short, this is likely a short-code entity (CK ID CO, LLC, etc.)
+        // Keep all tokens to allow matching
+        double shortTokenRatio = (double) shortTokenCount / tokens.length;
+        if (shortTokenRatio >= 0.60) {
+            return tokens;
+        }
+        
+        // Filter short tokens (minority case)
         List<String> result = new ArrayList<>();
         for (String token : tokens) {
             if (token.length() >= MIN_TOKEN_LENGTH) {

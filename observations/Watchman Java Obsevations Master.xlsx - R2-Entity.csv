@@ -1,0 +1,77 @@
+,S.I,Entity / Organization Name,Baseline Name Matching ,Partial / Close Name Handling,Alias-Based Matching,Observations,Implementation Status,Implementation Notes,Retest Comments
+,1,"GRUPO COMERCIAL SAN BLAS, S.A. DE C.V.",Pass,Pass,N/A,-,Pass,,
+,2,METALLURG-TULAMASH OOO,Pass,Pass,N/A,-,Pass,,
+,3,SB SECURITIES SA,Pass,Pass,N/A,-,Pass,,
+,4,JOINT STOCK COMPANY URAL SCIENTIFIC AND TECHNOLOGICAL COMPLEX,Pass,Pass,"Pass
+(AKTSIONERNOE OBSHCHESTVO URALSKII NAUCHNO TEKHNOLOGICHESKII KOMPLEKS / AO UNTK)",-,Pass,,
+,5,ARGON OOO,Pass,Pass,"Pass
+(OBSHCHESTVO S OGRANICHENNOI OTVETSTVENNOSTYU ARGON / ARGON)",-,Pass,,
+,6,JOINT STOCK COMPANY BLACK SEA BANK OF DEVELOPMENT AND RECONSTRUCTION,Pass,Pass,"Pass
+(BANK CHBRR, AO / JSC 'BLACK SEA BANK FOR DEVELOPMENT & RECONSTRUCTION' / OPEN JOINT STOCK COMPANY BLACK SEA DEVELOPMENT AND RECONSTRUCTION BANK / BANK CHBRR, PAO / 'CHERNOMORSKI BANK RAZVITIYA I REKONSTRUKTSII, OTKRYTOE AKTSIONERNOE OBSHCHESTVO' / AKTSIONERNOE OBSHCHESTVO CHERNOMORSKI BANK RAZVITIYA I REKONSTRUKTSII)",-,Pass,,
+,7,P.C.C. (SINGAPORE) PRIVATE LIMITED,Pass,Pass,"Pass
+(PCC SINGAPORE PTE LTD / P.C.C. SINGAPORE BRANCH)",-,Pass,,
+,8,"WUHAN XIAORUIZHI SCIENCE AND TECHNOLOGY COMPANY, LIMITED",Pass,Pass,N/A,-,Pass,,
+,9,"CORPORATIVO INTEGRAL DE LA COSTA, S.A. DE C.V.",Pass,Pass,N/A,-,Pass,,
+,10,DINA PETROKIMYA SANAYI TICARET ANONIM SIRKETI,Pass,Pass,N/A,-,Pass,,
+,11,LIMITED LIABILITY COMPANY EMERGENCY DIGITAL SOLUTIONS,Pass,Pass,"Pass
+(LLC EDS)",-,Pass,,
+,12,OBSHCHESTVO S OGRANICHENNOI OTVETSTVENNOSTYU KORPORATSIYA AIPI,Pass,Pass,N/A,-,Pass,,
+,13,"DESARROLLOS TURISTICOS FORTIA, S.A. DE C.V.",Pass,Pass,N/A,-,Pass,,
+,14,BAKHTAR RAAD SEPAHAN COMPANY,Pass,Pass,"Pass
+(BAKHTAR RAAD SEPAHAN CO. / BAKHTAR RAAD ENGINEERING COMPANY / RADSEPAHAN)",-,Pass,,
+,15,KHAYBAR COMPANY,Pass,Pass,"Pass
+(SHERKAT SAHAMI KHASS KHAYBAR / KHAYBARCO / KHEYBAR COMPANY)",-,Pass,,
+,16,OPEN JOINT STOCK COMPANY AMKODOR MANAGEMENT HOLDING COMPANY,Pass,Pass,"Pass
+(AMKODOR OAO / OTKRYTOE AKTSIONERNOE OBSHCHESTVO AMKODOR UPRAVLYAYUSHCHAYA KOMPANIYA KHOLDINGA)",-,Pass,,
+,17,CK ID CO. LTD,Pass,"Partial name ""CK ID"" didnt return any results.",N/A,Partial-name search missed valid entity result.,Pass - Fixed by alias boost threshold change (Row 24 fix). Entity now ranks #1 for 'CK ID' query.,,
+,18,JOINT STOCK COMPANY NEW HOLDING 3,Pass,Pass,N/A,-,Pass,,
+,19,EDGAR COMMERCIAL SOLUTIONS FZE,Pass,Pass,N/A,-,Pass,,
+,20,KOREA NAMGANG TRADING CORPORATION,Pass,Pass,"Pass
+(DPRK NAMGANG TRADING COMPANY)",-,Pass,,
+,21,EMPRESA CUBANA DE AVIACION,Pass,Pass,"Pass
+(CUBANA AIRLINES)",-,Pass,,
+,22,"RAPICOMBUSTIBLES DE VERACRUZ, S.A. DE C.V.",Pass,Pass,N/A,-,Pass,,
+,23,JOINT STOCK COMMERCIAL BANK NOVIKOMBANK,Pass,Pass,"Pass
+(AKTSIONERNY KOMMERCHESKI BANK NOVIKOMBANK AKTSIONERNOE OBSHCHESTVO / AO AKB NOVIKOMBANK / JOINT STOCK COMMERCIAL BANK NOVIKOMBANK JOINT STOCK COMPANY / NOVIKOMBANK JCSB / NOVIKOMBANK AO)",-,Pass,,
+,24,LIMITED LIABILITY COMPANY SMARTMET,Pass,"""SMARTMET LLC"" & ""LLC SMARTMET"" didn't return the main entity.",N/A,Name order / Close name variation didn't return the main entity.,Partial - Fixed alias boost bug (1.0 for all entities). SMARTMET LLC now works. LLC SMARTMET (reversed) still failing.,,
+,25,FAN PARDAZAN,Pass,Pass,N/A,-,Pass,,
+,26,MAMOUN DARKAZANLI IMPORT-EXPORT COMPANY,Pass,Pass,"Pass
+(DARKAZANLI COMPANY / DARKAZANLI EXPORT-IMPORT SONDERPOSTEN)",-,Pass,,
+,27,72ND AUTOMOTIVE AND ARMORED VEHICLE REPAIR PLANT FEDERAL STATE OWNED INSTITUTION OF THE RUSSIAN FEDERATION MINISTRY OF DEFENSE,Pass,Pass,N/A,-,Pass,,
+,28,"DIDZHITAL SEKYURITI SERVISIS, OOO",Pass,Pass,"Pass
+(DIGITAL SECURITY SERVICES)",-,Pass,,
+,29,"CORPORATIVO INMOBILIARIO UNIVERSAL, S.A. DE C.V.",Pass,Pass,N/A,-,Pass,,
+,30,COMERCIALIZADORA DE GANADO Y RENTAS DE CAPITAL S.A.,Pass,Pass,"Pass
+(GANARECA S.A.)",-,Pass,,
+,31,"ANHUI LAND GROUP CO., LIMITED",Pass,Pass,N/A,-,Pass,,
+,32,IRANIAN NOVIN INDUSTRY DEVELOPMENT,Pass,Pass,N/A,-,Pass,,
+,33,"DALIAN SUN MOON STAR INTERNATIONAL LOGISTICS TRADING CO., LTD",Pass,Pass,"Pass
+(DALIAN TIANBAO INTERNATIONAL LOGISTICS CO., LTD.)",-,Pass,,
+,34,VISCAYA LTDA.,Pass,Pass,"Pass
+(VIZCAYA LTDA.)",-,Pass,,
+,35,MIRA E.U.,Pass,Pass,N/A,-,Pass,,
+,36,CASA APOLLO,Pass,Pass,N/A,-,Pass,,
+,37,JARACO S.A.,Pass,Pass,"Pass
+(SOKTAR / TRADACO S.A.)",-,Pass,,
+,38,T.M.G. ENGINEERING LIMITED,Pass,Pass,N/A,-,Pass,,
+,39,7TH OF TIR,Pass,Pass,"Pass
+(7TH OF TIR INDUSTRIAL COMPLEX / 7TH OF TIR INDUSTRIES / MOJTAMAE SANATE HAFTOME TIR / SANAYE HAFTOME TIR / 7TH OF TIR INDUSTRIES OF ISFAHAN/ESFAHAN / 7TH OF TIR COMPLEX / SEVENTH OF TIR)",-,Pass,,
+,40,SINALOA CARTEL,Pass,Pass,"Pass
+(CARTEL DE SINALOA / MEXICAN FEDERATION / GUADALAJARA CARTEL)",-,Pass,,
+,41,PO THONG GANG (Vessel),Pass,Pass,N/A,-,Pass,,
+,42,DAN (Vessel),Pass,Pass,N/A,-,Pass,,
+,43,ALPHA HERMES (Vessel),Pass,Pass,N/A,-,Pass,,
+,44,CASSIOPEIA (Vessel),Pass,Pass,N/A,-,Pass,,
+,45,7-28 (Vessel),Pass,Pass,N/A,-,Pass,,
+,46,T7-OKY (Aircraft),Pass,Pass,N/A,-,Pass,,
+,47,P-537 (Aircraft),Pass,Pass,N/A,-,Pass,,
+,48,EP-VIP (Aircraft),Pass,Pass,N/A,-,Pass,,
+,49,EP-MNX (Aircraft),Pass,Pass,N/A,-,Pass,,
+,50,RA-78831 (Aircraft),Pass,Pass,N/A,-,Pass,,
+,,,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+,,,General Observations:,,,,,,
+,,,"1. Search results for tested names frequently returned a higher number of matches compared to OFAC reference search results. However, the true sanctioned matches are consistently listed and in most cases, ranked among the top results. No material suppression of relevant sanctioned parties was observed. The higher result volume reflects broader matching sensitivity rather than a recall deficiency. This represents a calibration consideration rather than a compliance gap.",,,,,,
+,,,"2. Hyphen and spacing normalization was tested across entities, vessels and aircraft identifiers. Matching behavior was observed to be consistent with OFAC reference search behavior. No material suppression of sanctioned names or identifiers was identified based on the tested formatting variations.",,,,,,
+,,,"3. The system has a configurable setting that allows users to limit the number of search results returned (range: 1–100, default: 50). While this provides flexibility for performance and usability, restricting the number of returned results may introduce an operational visibility risk. True matches could fall outside the configured result range, particularly in high-noise name searches.",,,,,,

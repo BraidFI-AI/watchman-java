@@ -1851,3 +1851,15 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - **Actual scripts**: `test-live-api.sh`, `test-summary-endpoint.sh`, `setup-local.sh`, `pre-commit-security.sh`, `pre-push-security.sh`, `generate_api_reference.py`, `aws_load_test.py`, `ofac_stress_test_script.py`, `agent_config.py`
 - **Location**: `/scripts` directory
 - **Documentation**: `docs/scripts.md` maintained as living inventory of actual scripts (not aspirational)
+
+## Configuration System Status (Feb 22, 2026)
+
+ScoreConfig implementation is 34% complete. Of 76+ total scoring parameters, 26 are in YAML configuration (13 weight, 10 similarity, 3 auto-clearance), while 50+ remain hard-coded across 10 Java files.
+
+Admin UI exists at `/api/admin/config` providing REST endpoints to view/edit configuration values. Currently exposes the 26 YAML-controlled parameters. Changes are in-memory only (not persisted to YAML on restart).
+
+Hard-coded values distribution: EntityScorerImpl (13), DateComparer (11+), AddressComparer (7), and 7 other files (19 total).
+
+Row 17/24 alias boost fix (Feb 14/22) added 4 hard-coded values (1.2 ratio, 0.45 threshold, 0.50 boost amount) bypassing WeightConfig. Fix resolved Row 17 fully (entity at position 1) and Row 24 partially (4/5 tests passing).
+
+BSA consultant's ~451 test cases (R1-Entity 280, R1-Ind 95, R2-Entity 76) remain valid. Values are correct, just not exposed via configuration. Test suite: 1574 passing, 47 failing (net +4 improvement from alias boost fix).

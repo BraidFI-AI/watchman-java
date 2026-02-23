@@ -232,19 +232,25 @@ public class EntityScorerImpl implements EntityScorer {
             return 0.0;
         }
         
+        // BSA FIX (Row 24): Normalize query with company suffix removal to match entity normalization
+        // Query: "SMARTMET LLC" → lowercase/punctuation → "smartmet llc" → remove suffix → "smartmet"
+        // Entity: "LIMITED LIABILITY COMPANY SMARTMET" → normalized → "smartmet"
+        String normalizedQuery = normalizer.lowerAndRemovePunctuation(queryName);
+        normalizedQuery = Entity.removeCompanyTitles(normalizedQuery);
+        
         // Use PreparedFields if available for optimized scoring
         // PreparedFields.normalizedPrimaryName contains ONLY the primary name
         if (candidate.preparedFields() != null && candidate.preparedFields().normalizedPrimaryName() != null 
                 && !candidate.preparedFields().normalizedPrimaryName().isEmpty()) {
             return similarityService.tokenizedSimilarityWithPrepared(
-                queryName, 
+                normalizedQuery, 
                 java.util.List.of(candidate.preparedFields().normalizedPrimaryName()),
                 ctx
             );
         }
         
         // Fallback to on-the-fly normalization
-        return similarityService.tokenizedSimilarity(queryName, candidate.name(), ctx);
+        return similarityService.tokenizedSimilarity(normalizedQuery, candidate.name(), ctx);
     }
 
     private double compareAltNames(String queryName, Entity candidate) {
@@ -263,6 +269,10 @@ public class EntityScorerImpl implements EntityScorer {
         if (queryName == null || queryName.isBlank() || candidate == null) {
             return NameMatch.noMatch();
         }
+        
+        // BSA FIX (Row 24): Normalize query with company suffix removal to match entity normalization
+        String normalizedQuery = normalizer.lowerAndRemovePunctuation(queryName);
+        normalizedQuery = Entity.removeCompanyTitles(normalizedQuery);
         
         List<String> altNames = candidate.altNames();
         if (altNames == null || altNames.isEmpty()) {
@@ -286,13 +296,13 @@ public class EntityScorerImpl implements EntityScorer {
         NameMatch bestMatch = NameMatch.noMatch();
         for (String altName : altNames) {
             if (altName != null && !altName.isBlank()) {
-                double score = similarityService.tokenizedSimilarity(queryName, altName);
+                double score = similarityService.tokenizedSimilarity(normalizedQuery, altName);
                 NameMatch currentMatch = NameMatch.alias(score, altName);
                 
                 // When scores are close (within 5%), prefer alias with more query token coverage
                 if (Math.abs(score - bestMatch.score()) < 0.05 && score > 0.45) {
-                    int currentCoverage = countQueryTokensInAlias(queryName, altName);
-                    int bestCoverage = countQueryTokensInAlias(queryName, bestMatch.matchedName());
+                    int currentCoverage = countQueryTokensInAlias(normalizedQuery, altName);
+                    int bestCoverage = countQueryTokensInAlias(normalizedQuery, bestMatch.matchedName());
                     if (currentCoverage > bestCoverage) {
                         bestMatch = currentMatch;
                     }
@@ -560,7 +570,10 @@ public class EntityScorerImpl implements EntityScorer {
         //          should appear when searching "AL QA'IDA"
         // Example: "HURRAS AL-DIN" with alias "AL-QAIDA IN SYRIA" scores 51.85% vs query "AL QA'IDA"
         //          (lower due to extra words "IN SYRIA", but still needs boost for BSA compliance)
-        boolean matchedViaAlias = altNameScore > nameScore && altNameScore > 0.45;
+        // ROW 24 FIX (Feb 22, 2026): Require alias to score 20% better than primary name to avoid
+        //          boosting random token overlap (e.g., "SMARTMET LLC" query matching "ACCENTURE"
+        //          with altNameScore=0.525 vs nameScore=0.513 - only 2% better, not a real alias match)
+        boolean matchedViaAlias = altNameScore > nameScore * 1.2 && altNameScore > 0.45;
         boolean nameOnlyMatch = govIdScore == 0 && cryptoScore == 0 && contactScore == 0 
             && addressScore == 0 && dateScore == 0;
         

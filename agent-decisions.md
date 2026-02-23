@@ -2083,3 +2083,35 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 - Marked both documents with "Last Updated" dates and "living inventory" guidance
 
 **Rationale**: Documentation drift creates confusion. Living inventory approach means docs track reality and are updated incrementally as changes occur. Easier to maintain, more trustworthy for developers.
+
+---
+
+## 2026-02-22: Treat Hard-Coded Values as Incomplete Migration
+
+**Decision**: Treat hard-coded values as incomplete migration, not system failure
+
+**Rationale**: Discovery of 50+ hard-coded scoring parameters initially appeared critical but analysis confirmed ScoreConfig architecture is sound and working for 26 values. BSA test results are valid. This is unfinished migration work, not broken functionality. Can proceed systematically without disrupting consultant testing.
+
+---
+
+## 2026-02-22: Prioritize EntityScorerImpl Migration
+
+**Decision**: Prioritize EntityScorerImpl migration (Phases 1-4), defer complex comparers
+
+**Rationale**: DateComparer (11+ values) and AddressComparer (7 values) require careful design decisions (possibly separate config classes). Start with EntityScorerImpl's 13 values to validate migration pattern with low risk. Target Milestone 1 (3-4 hours) this week, remaining phases next sprint.
+
+---
+
+## 2026-02-22: Continue BSA Testing During Migration
+
+**Decision**: Let BSA consultant continue testing during migration
+
+**Rationale**: Current system works correctly. Migration is internal refactoring moving exact same values to YAML without behavior changes. Consultant can test in parallel. Full configuration transparency handoff planned at migration completion. Test suite validates no regressions (expect 1574 passing, 47 failing throughout).
+
+---
+
+## 2026-02-22: Phase Migration with Safety Checkpoints
+
+**Decision**: Phase migration with git commit checkpoints and rollback safety
+
+**Rationale**: 12 phases sequenced by risk (low to high). Each phase includes clear deliverables, test validation, and git commit point. Can revert to any milestone if issues arise. Test suite provides continuous validation that behavior remains unchanged.

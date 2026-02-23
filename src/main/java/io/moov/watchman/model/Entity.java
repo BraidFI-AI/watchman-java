@@ -136,7 +136,7 @@ public record Entity(
         // Remove company titles BEFORE stopwords (matches Go pipeline order)
         // This prevents "S.A." → "s a" → stopword removes "a" → " s" (doesn't match " s a")
         List<String> namesWithoutCompanyTitles = allNamesBeforeStopwords.stream()
-            .map(this::removeCompanyTitles)
+            .map(Entity::removeCompanyTitles)
             .filter(s -> !s.isEmpty())
             .distinct()
             .collect(Collectors.toList());
@@ -313,7 +313,7 @@ public record Entity(
      * 
      * Ported from Go: internal/prepare/pipeline_company_name_cleanup.go RemoveCompanyTitles()
      */
-    private String removeCompanyTitles(String name) {
+    public static String removeCompanyTitles(String name) {
         String cleaned = name;
         boolean changed = true;
         
