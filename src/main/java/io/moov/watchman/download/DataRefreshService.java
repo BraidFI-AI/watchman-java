@@ -1,6 +1,7 @@
 package io.moov.watchman.download;
 
 import io.moov.watchman.model.Entity;
+import io.moov.watchman.model.SourceList;
 import io.moov.watchman.index.EntityIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -80,8 +82,29 @@ public class DataRefreshService {
         try {
             long startTime = System.currentTimeMillis();
             
-            // Download and parse OFAC data
-            List<Entity> entities = downloadService.downloadOFAC();
+            // Download and parse ALL data sources
+            // Required for production-equivalent testing vs Portage (which loads all sources)
+            logger.info("Downloading all data sources (OFAC, CSL, EU CSL, UK CSL)...");
+            
+            List<Entity> entities = new ArrayList<>();
+            
+            // US OFAC
+            logger.info("Downloading US OFAC...");
+            entities.addAll(downloadService.download(SourceList.US_OFAC));
+            
+            // US CSL (Consolidated Screening List)
+            logger.info("Downloading US CSL...");
+            entities.addAll(downloadService.download(SourceList.US_CSL));
+            
+            // EU CSL (European Union Consolidated Sanctions List)
+            logger.info("Downloading EU CSL...");
+            entities.addAll(downloadService.download(SourceList.EU_CSL));
+            
+            // UK CSL (UK Consolidated Financial Sanctions List)
+            logger.info("Downloading UK CSL...");
+            entities.addAll(downloadService.download(SourceList.UK_CSL));
+            
+            logger.info("All sources downloaded: {} total entities", entities.size());
             
             // BSA CRITICAL FIX (Row 31 - T.E.G. LIMITED Regression):
             // Normalize all entities BEFORE indexing to populate preparedFields.
