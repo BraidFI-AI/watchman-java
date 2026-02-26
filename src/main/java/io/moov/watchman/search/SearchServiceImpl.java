@@ -56,7 +56,8 @@ public class SearchServiceImpl implements SearchService {
         // matches, then Phase 2 auto-clearance filters via discriminators.
         double effectiveMinMatch = adjustThresholdForQueryLength(query, minMatch);
 
-        Stream<Entity> entityStream = entityIndex.getAll().stream();
+        // PERFORMANCE: Use parallelStream to utilize all CPU cores for scoring 50k entities
+        Stream<Entity> entityStream = entityIndex.getAll().parallelStream();
 
         // Apply source list filter if specified
         if (sourceList != null) {

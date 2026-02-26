@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import List, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
+from pathlib import Path
 import logging
 
 logging.basicConfig(
@@ -64,9 +65,8 @@ class WatchmanLoadTester:
         self.base_url = base_url.rstrip('/')
         self.results: List[TestResult] = []
         
-        # Test data sets - realistic 1-2% match rate
-        # SDN matches (for positive hits)
-        self.SDN_NAMES = [
+        # OFAC matches (for positive hits)
+        self.OFAC_NAMES = [
             "Vladimir Vladimirovich Putin",
             "Usama bin Muhammad bin Awad BIN LADIN",
             "Kim Jong Un",
@@ -83,45 +83,59 @@ class WatchmanLoadTester:
             "Rosneft"
         ]
         
-        # Clean names (should not match)
-        self.CLEAN_NAMES = [
-            "Sarah Johnson", "Michael Chen", "Emily Rodriguez", "James Williams",
-            "Jessica Martinez", "David Kim", "Ashley Thompson", "Christopher Lee",
-            "Amanda Garcia", "Matthew Brown", "Jennifer Davis", "Daniel Wilson",
-            "Michelle Anderson", "Ryan Taylor", "Laura Moore", "Kevin Jackson",
-            "Rachel White", "Brandon Harris", "Stephanie Clark", "Justin Lewis",
-            "Nicole Robinson", "Andrew Walker", "Rebecca Hall", "Timothy Allen",
-            "Melissa Young", "Jason King", "Karen Wright", "Brian Lopez",
-            "Lisa Scott", "Eric Green", "Angela Adams", "Patrick Baker",
-            "Samantha Nelson", "Jonathan Carter", "Christina Mitchell", "Nicholas Perez",
-            "Amy Roberts", "Tyler Turner", "Heather Phillips", "Benjamin Campbell",
-            "Maria Parker", "Alexander Evans", "Elizabeth Edwards", "Gregory Collins",
-            "Katherine Stewart", "Jordan Morris", "Christine Sanchez", "Aaron Murphy",
-            "Kimberly Rivera", "Adam Cooper", "Donna Reed", "Jacob Bailey",
-            "Patricia Bell", "Zachary Rivera", "Nancy Gray", "Austin Ramirez",
-            "Sharon James", "Nathan Bennett", "Deborah Wood", "Sean Barnes",
-            "Cynthia Ross", "Kyle Henderson", "Carolyn Coleman", "Carl Jenkins",
-            "Frances Perry", "Douglas Powell", "Julia Long", "Peter Patterson",
-            "Victoria Hughes", "Henry Flores", "Brittany Washington", "Samuel Butler",
-            "Evelyn Simmons", "Gabriel Foster", "Alice Gonzales", "Christian Bryant",
-            "Diana Alexander", "Isaac Russell", "Olivia Griffin", "Mason Hayes",
-            "Sophia Myers", "Ethan Ford", "Madison Hamilton", "Noah Graham",
-            "Emma Sullivan", "Logan Wallace", "Abigail Woods", "Lucas Cole",
-            "Mia West", "Aiden Jordan", "Grace Owens", "Jackson Reynolds",
-            "Lily Fisher", "Carter Ellis", "Chloe Gibson", "Caleb McDonald",
-            "Natalie Cruz", "Owen Marshall", "Hannah Ortiz", "Dylan Gomez",
-            "Avery Murray", "Wyatt Freeman", "Addison Wells", "Landon Webb",
-            "Aria Simpson", "Luke Stevens", "Ella Tucker", "Hunter Porter"
+        # Load 9000 clean names from static dataset
+        data_file = Path(__file__).parent.parent / "test-data" / "clean_names_9000.json"
+        if data_file.exists():
+            with open(data_file) as f:
+                self.CLEAN_NAMES_9000 = json.load(f)
+            logger.info(f"Loaded {len(self.CLEAN_NAMES_9000)} clean names from {data_file.name}")
+        else:
+            logger.warning(f"Static dataset not found at {data_file}. Using small fallback dataset.")
+            self.CLEAN_NAMES_9000 = [
+                "Sarah Johnson", "Michael Chen", "Emily Rodriguez", "James Williams",
+                "Jessica Martinez", "David Kim", "Ashley Thompson", "Christopher Lee"
+            ]
+        
+        # Generate fuzzy/typo variations of OFAC names (500 variations)
+        self.FUZZY_NAMES = self._generate_fuzzy_names(500)
+        
+        # Build 10k test dataset: 9000 clean + 500 OFAC matches + 500 fuzzy
+        self.TEST_DATASET_10K = (
+            self.CLEAN_NAMES_9000 +
+            [self.OFAC_NAMES[i % len(self.OFAC_NAMES)] for i in range(500)] +
+            self.FUZZY_NAMES
+        )
+        
+        logger.info(f"10k test dataset prepared: {len(self.CLEAN_NAMES_9000)} clean + 500 matches + {len(self.FUZZY_NAMES)} fuzzy")
+        
+        # Legacy datasets for duration-based testing
+        self.SEARCH_QUERIES = self.CLEAN_NAMES_9000[:99] + [self.OFAC_NAMES[0]]
+        self.BATCH_TEST_ITEMS = (
+            [{"name": name, "type": "individual"} for name in self.CLEAN_NAMES_9000[:985]] +
+            [{"name": self.OFAC_NAMES[i % len(self.OFAC_NAMES)], "type": "individual"} for i in range(15)]
+        )
+    
+    def _generate_fuzzy_names(self, count: int) -> List[str]:
+        """Generate fuzzy/typo variations of OFAC names"""
+        fuzzy_patterns = [
+            ("Vladimir Putin", "Vladmir Putin"),
+            ("Vladimir Putin", "Vladimir Puttin"),
+            ("Vladimir Putin", "Vlad Putin"),
+            ("Usama bin Laden", "Osama Bin Laden"),
+            ("Usama bin Laden", "Usama Bin Ladin"),
+            ("Bashar al-Assad", "Bashar Assad"),
+            ("Bashar al-Assad", "Bashar Asad"),
+            ("Nicolas Maduro", "Nicholas Maduro"),
+            ("Nicolas Maduro", "Nicolas Madoro"),
+            ("Kim Jong Un", "Kim Jong-Un"),
         ]
         
-        # Search queries: 1 match out of 100 (~1% match rate)
-        self.SEARCH_QUERIES = self.CLEAN_NAMES[:99] + [self.SDN_NAMES[0]]
+        fuzzy_names = []
+        for i in range(count):
+            base_name, fuzzy_version = fuzzy_patterns[i % len(fuzzy_patterns)]
+            fuzzy_names.append(fuzzy_version)
         
-        # Batch items: 15 matches out of 1000 (1.5% match rate)
-        self.BATCH_TEST_ITEMS = (
-            [{"name": name, "type": "individual"} for name in self.CLEAN_NAMES] +
-            [{"name": self.SDN_NAMES[i % len(self.SDN_NAMES)], "type": "individual"} for i in range(15)]
-        )
+        return fuzzy_names
 
     def test_search_endpoint(self, concurrent_users: int, duration_seconds: int) -> TestResult:
         """
@@ -240,6 +254,107 @@ class WatchmanLoadTester:
         self.results.append(result)
         return result
 
+    def test_search_fixed_requests(self, concurrent_users: int, total_requests: int) -> TestResult:
+        """
+        Load test with a fixed number of requests (e.g., 10k for production simulation).
+        Uses the 10k static dataset for repeatable testing.
+        
+        Args:
+            concurrent_users: Number of concurrent threads
+            total_requests: Exact number of requests to execute
+        """
+        logger.info(f"Starting fixed-request search test: {total_requests} requests with {concurrent_users} concurrent threads")
+        
+        latencies = []
+        successful = 0
+        failed = 0
+        errors: Dict[str, int] = {}
+        start_time = time.time()
+        
+        def make_search_request(query: str) -> Tuple[bool, float, str]:
+            """Make a single search request. Returns (success, latency_ms, error_msg)"""
+            url = f"{self.base_url}/v1/search"
+            params = {"name": query, "limit": 10}
+            
+            req_start = time.time()
+            try:
+                response = requests.get(url, params=params, timeout=90)
+                latency_ms = (time.time() - req_start) * 1000
+                
+                if response.status_code == 200:
+                    return True, latency_ms, ""
+                else:
+                    return False, latency_ms, f"HTTP {response.status_code}"
+            except requests.exceptions.Timeout:
+                latency_ms = (time.time() - req_start) * 1000
+                return False, latency_ms, "Timeout"
+            except Exception as e:
+                latency_ms = (time.time() - req_start) * 1000
+                return False, latency_ms, str(e)
+
+        # Submit all requests using thread pool
+        with ThreadPoolExecutor(max_workers=concurrent_users) as executor:
+            futures = []
+            last_progress_log = time.time()
+            
+            # Submit all requests from the 10k dataset
+            for i in range(total_requests):
+                query = self.TEST_DATASET_10K[i % len(self.TEST_DATASET_10K)]
+                future = executor.submit(make_search_request, query)
+                futures.append(future)
+                
+                # Progress logging every 10 seconds
+                if time.time() - last_progress_log >= 10:
+                    completed = sum(1 for f in futures if f.done())
+                    logger.info(f"Progress: {completed}/{total_requests} requests submitted ({successful} success, {failed} failed)")
+                    last_progress_log = time.time()
+            
+            logger.info(f"All {total_requests} requests submitted. Waiting for completion...")
+            
+            # Process results as they complete
+            for i, future in enumerate(as_completed(futures)):
+                success, latency, error = future.result()
+                latencies.append(latency)
+                
+                if success:
+                    successful += 1
+                else:
+                    failed += 1
+                    errors[error] = errors.get(error, 0) + 1
+                
+                # Progress updates every 500 requests
+                if (i + 1) % 500 == 0:
+                    elapsed = time.time() - start_time
+                    logger.info(f"Completed {i + 1}/{total_requests} requests ({successful} success, {failed} failed) - {elapsed:.1f}s elapsed")
+
+        actual_duration = time.time() - start_time
+        total_completed = successful + failed
+        
+        latency_stats = LatencyStats(
+            min=min(latencies) if latencies else 0,
+            max=max(latencies) if latencies else 0,
+            mean=statistics.mean(latencies) if latencies else 0,
+            median=statistics.median(latencies) if latencies else 0,
+            p95=statistics.quantiles(latencies, n=20)[18] if len(latencies) >= 20 else (max(latencies) if latencies else 0),
+            p99=statistics.quantiles(latencies, n=100)[98] if len(latencies) >= 100 else (max(latencies) if latencies else 0)
+        )
+        
+        result = TestResult(
+            test_name=f"Search Endpoint Fixed-Request Test ({total_requests} requests)",
+            endpoint=f"{self.base_url}/v1/search",
+            total_requests=total_completed,
+            successful_requests=successful,
+            failed_requests=failed,
+            duration_seconds=actual_duration,
+            requests_per_second=total_completed / actual_duration if actual_duration > 0 else 0,
+            latency_stats=latency_stats,
+            error_details=errors,
+            timestamp=datetime.now().isoformat()
+        )
+        
+        self.results.append(result)
+        return result
+
     def test_batch_endpoint(self, num_requests: int, batch_size: int = 10) -> TestResult:
         """
         Load test the /v1/search/batch endpoint.
@@ -289,17 +404,25 @@ class WatchmanLoadTester:
 
         # Execute batch requests sequentially (batch is already heavy)
         for i in range(num_requests):
+            logger.info(f"[{i+1}/{num_requests}] Sending batch request with {batch_size} names...")
+            req_start_time = time.time()
             success, latency, error = make_batch_request()
             latencies.append(latency)
             
             if success:
                 successful += 1
+                logger.info(f"[{i+1}/{num_requests}] ✓ Completed in {latency/1000:.1f}s ({batch_size} names processed)")
             else:
                 failed += 1
                 errors[error] = errors.get(error, 0) + 1
+                logger.error(f"[{i+1}/{num_requests}] ✗ Failed: {error} (took {latency/1000:.1f}s)")
             
-            if (i + 1) % 10 == 0:
-                logger.info(f"Progress: {i + 1}/{num_requests} batch requests completed")
+            # Show running statistics
+            elapsed = time.time() - start_time
+            completed = i + 1
+            names_processed = completed * batch_size
+            names_per_sec = names_processed / elapsed if elapsed > 0 else 0
+            logger.info(f"   Running stats: {names_processed} names in {elapsed:.1f}s = {names_per_sec:.1f} names/sec")
 
         actual_duration = time.time() - start_time
         total_requests = successful + failed
@@ -444,17 +567,11 @@ def main():
     
     parser.add_argument('--endpoint', required=True,
                         help='AWS ALB endpoint URL (e.g., http://watchman-java-alb-123.us-east-1.elb.amazonaws.com)')
-    parser.add_argument('--test', choices=['search', 'batch', 'all'], default='all',
-                        help='Test type to run')
-    parser.add_argument('--concurrent', type=int, default=10,
-                        help='Concurrent users for search test (default: 10)')
-    parser.add_argument('--duration', type=int, default=60,
-                        help='Search test duration in seconds (default: 60)')
     parser.add_argument('--requests', type=int, default=10,
                         help='Number of batch requests (default: 10)')
     parser.add_argument('--batch-size', type=int, default=1000,
-                        help='Items per batch request (default: 1000)')
-    parser.add_argument('--output', default='load_test_results',
+                        help='Items per batch request (default: 1000, max: 1000)')
+    parser.add_argument('--output', default='batch_load_test',
                         help='Output file for results (without extension)')
     parser.add_argument('--format', choices=['json', 'csv', 'both'], default='both',
                         help='Output format (default: both)')
@@ -472,12 +589,11 @@ def main():
         logger.error("Service is not healthy. Aborting load test.")
         return
     
-    # Run tests
-    if args.test in ['search', 'all']:
-        tester.test_search_endpoint(args.concurrent, args.duration)
-    
-    if args.test in ['batch', 'all']:
-        tester.test_batch_endpoint(args.requests, args.batch_size)
+    # Run BATCH test only (this is what we use in production)
+    logger.info("=" * 60)
+    logger.info("BATCH API LOAD TEST - Testing /v1/search/batch endpoint")
+    logger.info("=" * 60)
+    tester.test_batch_endpoint(args.requests, args.batch_size)
     
     # Generate report
     report = tester.generate_report()

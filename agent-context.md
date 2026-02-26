@@ -1043,6 +1043,28 @@ The Auto-Clearance feature has comprehensive product documentation in `docs/auto
   * Evidence: CloudWatch logs show successful batch completion (e.g., 577s processing time) followed by ClientAbortException during JSON serialization
 - **Load test infrastructure**: scripts/aws_load_test.py with progress logging, CSV/JSON export, realistic test data generation
 
+### AWS Load Testing Results (February 26, 2026)
+- **Current AWS deployment performance**: ~16.6 names/sec (batch API, 1000 names takes >60s)
+- **Historical baseline** (commit 8fe46a9, localhost): 41.9 names/sec (100k in 39m48s)
+- **Performance regression**: 2.5x slower than historical baseline
+- **Data size comparison**:
+  * Historical: 18.7k entities (OFAC-only)
+  * Current: 49.9k entities (all sources: US_OFAC, US_CSL, EU_CSL, UK_CSL)
+  * Data increase: 2.67x
+- **ALB timeout limitations**: 60-second timeout returns HTTP 504 for batch requests >1000 names
+- **Test dataset**: `test-data/clean_names_9000.json` (9000 clean + 500 OFAC + 500 fuzzy = 10k static, repeatable)
+- **Load test script modifications**:
+  * Removed all single-search testing code from `scripts/aws_load_test.py`
+  * Script now tests ONLY batch endpoint (`/v1/search/batch`)
+  * Added detailed per-request progress logging with running throughput stats
+- **Batch API specification**:
+  * Endpoint: `/v1/search/batch` (POST)
+  * Max batch size: 1000 names per request
+  * Request format: `{"items": [{"name": "John Smith"}, ...], "minMatch": 0.88, "limit": 10}`
+  * Response format: `{"batchId": "...", "results": [...], "processingTime": "PT..."}`
+  * Production use case: Batch processing 1k names per request (NOT individual single-search calls)
+- **Status**: Performance regression under investigation; shifted to local testing for validation
+
 ### Parameter Consolidation and UI Modernization (January 26, 2026)
 - **Parameter consolidation complete**: Eliminated duplicate/non-functional minimumScore parameter using TDD
   * RED phase: Created SearchControllerMinMatchIntegrationTest exposing unused weightConfig.minimumScore

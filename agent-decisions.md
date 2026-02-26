@@ -2115,3 +2115,40 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 **Decision**: Phase migration with git commit checkpoints and rollback safety
 
 **Rationale**: 12 phases sequenced by risk (low to high). Each phase includes clear deliverables, test validation, and git commit point. Can revert to any milestone if issues arise. Test suite provides continuous validation that behavior remains unchanged.
+---
+
+## 2026-02-26: Removed Single-Search Endpoint from Load Testing
+
+**Decision**: Modified `aws_load_test.py` to only test batch API endpoint (`/v1/search/batch`), removed all single-search testing code.
+
+**Rationale**: Production use case is batch processing with 1000 names per request, not individual searches. User corrected multiple times to focus exclusively on batch API testing. Single-search tests were misleading and not representative of production workload.
+
+**Impact**: Load tests now accurately reflect production workload patterns. Script defaults to batch size 1000 (max allowed), tests throughput in names/sec rather than requests/sec.
+
+---
+
+## 2026-02-26: Parked AWS Load Testing, Pivot to Local Validation
+
+**Decision**: Stopped AWS performance testing, shift to local unit/integration testing to validate batch API functionality.
+
+**Rationale**: 
+- Batch API timing out on AWS (HTTP 504 after 60 seconds)
+- Performance regression: 16.6 names/sec vs historical 41.9 names/sec (2.5x slower)
+- Low confidence in AWS deployment correctness after timeout failures
+- Need to validate batch API works locally before debugging AWS performance
+
+**Next Steps**: Run test suite locally, validate batch API from basics, establish local baseline before re-deploying to AWS.
+
+---
+
+## 2026-02-26: Identified 2.5x Batch API Performance Regression
+
+**Observation**: Current AWS deployment processes ~16.6 names/sec vs historical baseline of 41.9 names/sec.
+
+**Context**:
+- Historical test (commit 8fe46a9): localhost, OFAC-only (18.7k entities), 100k names in 39m48s
+- Current test: AWS Fargate 4 vCPU, all sources (49.9k entities), 1000 names in >60s
+- Data size increased 2.67x (18.7k → 49.9k entities)
+- Performance decreased 2.5x (41.9 → 16.6 names/sec)
+
+**Status**: Root cause under investigation. Data size increase does not fully explain slowdown. Parked AWS testing to validate batch API locally first.
