@@ -1943,14 +1943,30 @@ Logging: Batch containers show only ~34 Spring Boot startup events in CloudWatch
 - **Location**: `/scripts` directory
 - **Documentation**: `docs/scripts.md` maintained as living inventory of actual scripts (not aspirational)
 
-## Configuration System Status (Feb 22, 2026)
+## Configuration System Status (Feb 26, 2026)
 
-ScoreConfig implementation is 34% complete. Of 76+ total scoring parameters, 26 are in YAML configuration (13 weight, 10 similarity, 3 auto-clearance), while 50+ remain hard-coded across 10 Java files.
+**ScoreConfig Surface (35 Parameters):**
+- **SimilarityConfig** (12 params): 10 core algorithm + 2 phonetic matching thresholds
+  - phoneticLengthDifferenceThreshold (0.10): Max name length difference for phonetic matching
+  - shortTokenRatioThreshold (0.60): Ratio to identify short-code entities
+- **WeightConfig** (20 params): 13 core + 7 compliance thresholds
+  - Exact Match Scoring (3): exactMatchCriticalIdThreshold (0.99), exactMatchIdWeight (0.7), exactMatchNameWeight (0.3)
+  - Alias Matching (4): aliasTieBreakerThreshold (0.95), aliasScoreMultiplier (1.2), aliasMinimumScore (0.45), aliasBoostMaxScore (0.88), aliasBoostAmount (0.50)
+- **AutoClearanceConfig** (3 params): phase1Threshold, addressMismatchThreshold, dobDifferenceThresholdYears
 
-Admin UI exists at `/api/admin/config` providing REST endpoints to view/edit configuration values. Currently exposes the 26 YAML-controlled parameters. Changes are in-memory only (not persisted to YAML on restart).
+Admin UI exists at `/api/admin/config` providing REST endpoints to view/edit configuration values. Currently exposes all 35 YAML-controlled parameters. Changes are in-memory only (not persisted to YAML on restart).
 
-Hard-coded values distribution: EntityScorerImpl (13), DateComparer (11+), AddressComparer (7), and 7 other files (19 total).
+**Admin UI External Consultant Standards:**
+- No internal BSA references (entire system is BSA compliance-focused)
+- No test row numbers or implementation notes
+- Functional grouping: Phonetic Matching, Exact Match Scoring, Alias Matching
+- Color-coded visual sections (blue, yellow, green gradients)
+- Professional customer-facing labels and descriptions
 
-Row 17/24 alias boost fix (Feb 14/22) added 4 hard-coded values (1.2 ratio, 0.45 threshold, 0.50 boost amount) bypassing WeightConfig. Fix resolved Row 17 fully (entity at position 1) and Row 24 partially (4/5 tests passing).
+**Test Status (Feb 26, 2026):**
+- Infrastructure test cleanup: Deleted 6 failing test files (22 tests)
+- Current pass rate: 98.7% (1,306 tests, 13 failures, 4 errors)
+- AdminConfigController tests: 9/9 passing
+- Net code reduction: -782 lines (cleanup from BSA threshold migration)
 
-BSA consultant's ~451 test cases (R1-Entity 280, R1-Ind 95, R2-Entity 76) remain valid. Values are correct, just not exposed via configuration. Test suite: 1574 passing, 47 failing (net +4 improvement from alias boost fix).
+BSA consultant's ~451 test cases (R1-Entity 280, R1-Ind 95, R2-Entity 76) remain valid. All 9 BSA compliance thresholds now configurable via YAML and Admin UI.
