@@ -7,7 +7,8 @@ import io.moov.watchman.config.WeightConfig;
 /**
  * Admin UI response containing all configuration values.
  * 
- * Combines SimilarityConfig + WeightConfig + AutoClearanceConfig (26 total parameters).
+ * Combines SimilarityConfig + WeightConfig + AutoClearanceConfig (35 total parameters).
+ * 12 similarity + 20 weights + 3 auto-clearance = 35 BSA-approved configuration values.
  */
 public record AdminConfigResponse(
     SimilarityConfigDTO similarity,

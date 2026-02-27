@@ -82,9 +82,9 @@ public class DataRefreshService {
         try {
             long startTime = System.currentTimeMillis();
             
-            // Download and parse ALL data sources
-            // Required for production-equivalent testing vs Portage (which loads all sources)
-            logger.info("Downloading all data sources (OFAC, CSL, EU CSL, UK CSL)...");
+            // Download and parse OFAC ONLY for baseline performance testing
+            // Temporarily disabled other sources to match historical baseline conditions
+            logger.info("Downloading OFAC only for baseline test...");
             
             List<Entity> entities = new ArrayList<>();
             
@@ -92,19 +92,19 @@ public class DataRefreshService {
             logger.info("Downloading US OFAC...");
             entities.addAll(downloadService.download(SourceList.US_OFAC));
             
-            // US CSL (Consolidated Screening List)
-            logger.info("Downloading US CSL...");
-            entities.addAll(downloadService.download(SourceList.US_CSL));
+            // TEMPORARILY DISABLED - US CSL (Consolidated Screening List)
+            // logger.info("Downloading US CSL...");
+            // entities.addAll(downloadService.download(SourceList.US_CSL));
             
-            // EU CSL (European Union Consolidated Sanctions List)
-            logger.info("Downloading EU CSL...");
-            entities.addAll(downloadService.download(SourceList.EU_CSL));
+            // TEMPORARILY DISABLED - EU CSL (European Union Consolidated Sanctions List)
+            // logger.info("Downloading EU CSL...");
+            // entities.addAll(downloadService.download(SourceList.EU_CSL));
             
-            // UK CSL (UK Consolidated Financial Sanctions List)
-            logger.info("Downloading UK CSL...");
-            entities.addAll(downloadService.download(SourceList.UK_CSL));
+            // TEMPORARILY DISABLED - UK CSL (UK Consolidated Financial Sanctions List)
+            // logger.info("Downloading UK CSL...");
+            // entities.addAll(downloadService.download(SourceList.UK_CSL));
             
-            logger.info("All sources downloaded: {} total entities", entities.size());
+            logger.info("OFAC-only downloaded: {} total entities", entities.size());
             
             // BSA CRITICAL FIX (Row 31 - T.E.G. LIMITED Regression):
             // Normalize all entities BEFORE indexing to populate preparedFields.

@@ -1,6 +1,8 @@
 package io.moov.watchman.similarity;
 
 import io.moov.watchman.config.SimilarityConfig;
+import io.moov.watchman.performance.PerformanceTimer;
+import io.moov.watchman.performance.PerformanceTimers;
 import io.moov.watchman.trace.ScoringContext;
 
 import java.util.ArrayList;
@@ -27,14 +29,6 @@ public class JaroWinklerSimilarity implements SimilarityService {
     private final TextNormalizer normalizer;
     private final PhoneticFilter phoneticFilter;
     private final SimilarityConfig config;
-    
-    // Jaro-Winkler fixed parameters (not configurable)
-    private static final double WINKLER_PREFIX_WEIGHT = 0.1;
-    
-    // BSA FIX (Row 17): Minimum token length for matching
-    // Prevents matching on ultra-short tokens like "AL-", "ABU-" that appear as standalone aliases
-    // Aligned with Go implementation which combines short tokens (<=3 chars) with neighbors
-    private static final int MIN_TOKEN_LENGTH = 3;
     
     // Stopwords to ignore when calculating penalties
     private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
@@ -145,7 +139,11 @@ public class JaroWinklerSimilarity implements SimilarityService {
 
     @Override
     public double tokenizedSimilarityWithPrepared(String query, List<String> preparedNames, ScoringContext ctx) {
+        PerformanceTimer timer = PerformanceTimers.get("similarity.tokenizedSimilarity");
+        timer.start();
+        
         if (query == null || query.isEmpty() || preparedNames == null || preparedNames.isEmpty()) {
+            timer.stop();
             return 0.0;
         }
         
@@ -178,6 +176,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
             // Check for phonetic match (reordered)
             // Use phonetic matching to handle spelling variations
             if (queryTokens.length == candidateTokens.length && phoneticSetsMatch(queryTokens, candidateTokens)) {
+                timer.stop();
                 return 1.0; // Perfect match found
             }
             
@@ -186,12 +185,91 @@ public class JaroWinklerSimilarity implements SimilarityService {
             maxScore = Math.max(maxScore, score);
         }
         
+        timer.stop();
         return maxScore;
     }
 
     @Override
     public boolean phoneticallyCompatible(String s1, String s2) {
         return phoneticFilter.arePhonteticallyCompatible(s1, s2);
+    }
+    
+    /**
+     * Pre-process query string into normalized tokens for caching.
+     * Performance optimization: Process query once, reuse for all 18,708 entity comparisons.
+     * 
+     * @param query Raw query string
+     * @return Normalized and processed token array
+     */
+    public String[] preprocessQueryTokens(String query) {
+        if (query == null || query.isEmpty()) {
+            return new String[0];
+        }
+        
+        // Normalize the query
+        String normalizedQuery = normalizer.lowerAndRemovePunctuation(query);
+        String[] queryTokens = normalizer.tokenize(normalizedQuery);
+        
+        // BSA FIX (Rows 26, 31): Collapse adjacent single-letter tokens to handle acronyms
+        queryTokens = collapseAcronymTokens(queryTokens);
+        
+        // BSA FIX (Row 17): Filter ultra-short tokens to prevent false positives
+        queryTokens = filterShortTokens(queryTokens);
+        
+        return queryTokens;
+    }
+    
+    /**
+     * Optimized comparison using pre-processed query tokens.
+     * Avoids redundant query normalization when comparing against multiple entities.
+     * 
+     * @param preprocessedQueryTokens Query tokens from preprocessQueryTokens()
+     * @param preparedNames List of pre-normalized candidate names from PreparedFields
+     * @param ctx Scoring context for tracing
+     * @return Best similarity score
+     */
+    public double tokenizedSimilarityWithPreprocessedQuery(String[] preprocessedQueryTokens, 
+                                                            List<String> preparedNames, 
+                                                            ScoringContext ctx) {
+        PerformanceTimer timer = PerformanceTimers.get("similarity.tokenizedSimilarity");
+        timer.start();
+        
+        if (preprocessedQueryTokens == null || preprocessedQueryTokens.length == 0 
+            || preparedNames == null || preparedNames.isEmpty()) {
+            timer.stop();
+            return 0.0;
+        }
+        
+        // Query is already pre-processed, just compare against candidates
+        double maxScore = 0.0;
+        for (String preparedName : preparedNames) {
+            if (preparedName == null || preparedName.isEmpty()) {
+                continue;
+            }
+            
+            // PreparedName is already normalized, just tokenize
+            String[] candidateTokens = normalizer.tokenize(preparedName);
+            
+            // BSA FIX (Rows 26, 31): Collapse adjacent single-letter tokens to handle acronyms
+            candidateTokens = collapseAcronymTokens(candidateTokens);
+            
+            // BSA FIX (Row 17): Filter ultra-short tokens to prevent false positives
+            candidateTokens = filterShortTokens(candidateTokens);
+            
+            // Check for phonetic match
+            if (preprocessedQueryTokens.length == candidateTokens.length 
+                && phoneticSetsMatch(preprocessedQueryTokens, candidateTokens)) {
+                timer.stop();
+                return 1.0; // Perfect match found
+            }
+            
+            // Calculate similarity
+            double score = bestPairJaro(preprocessedQueryTokens, candidateTokens);
+            maxScore = Math.max(maxScore, score);
+        }
+        
+        timer.stop();
+        return maxScore;
     }
     
     /**
@@ -220,7 +298,11 @@ public class JaroWinklerSimilarity implements SimilarityService {
      *         AND token lengths are similar (within 30%) AND all tokens are ≥5 characters
      */
     private boolean phoneticSetsMatch(String[] tokens1, String[] tokens2) {
+        PerformanceTimer timer = PerformanceTimers.get("phonetic.phoneticSetsMatch");
+        timer.start();
+        
         if (tokens1.length != tokens2.length) {
+            timer.stop();
             return false;
         }
         
@@ -234,11 +316,13 @@ public class JaroWinklerSimilarity implements SimilarityService {
         // Short tokens/acronyms (≤ 4 chars) must match exactly or near-exactly via Jaro-Winkler.
         for (String token : tokens1) {
             if (token.length() <= 4) {
+                timer.stop();
                 return false;
             }
         }
         for (String token : tokens2) {
             if (token.length() <= 4) {
+                timer.stop();
                 return false;
             }
         }
@@ -271,7 +355,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
             // - MOHAMMED (8) vs MOHAMED (7) = 12.5% diff → phonetic blocked, but Jaro-Winkler handles it
             // Still allows via phonetic:
             // - MUHAMMAD (8) vs MOHAMMAD (8) = 0% diff → ALLOW
-            if (lengthDiffRatio > 0.10) {
+            // Threshold now configurable via config.phoneticLengthDifferenceThreshold (was hardcoded as 0.10)
+            if (lengthDiffRatio > config.getPhoneticLengthDifferenceThreshold()) {
+                timer.stop();
                 return false;
             }
         }
@@ -286,7 +372,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
             soundexSet2.add(phoneticFilter.soundex(token));
         }
         
-        return soundexSet1.equals(soundexSet2);
+        boolean result = soundexSet1.equals(soundexSet2);
+        timer.stop();
+        return result;
     }
     
     /**
@@ -364,25 +452,26 @@ public class JaroWinklerSimilarity implements SimilarityService {
             return tokens;
         }
         
-        // Count short tokens
+        // Count short tokens (BSA FIX Row 17: configurable minimum token length)
         int shortTokenCount = 0;
         for (String token : tokens) {
-            if (token.length() < MIN_TOKEN_LENGTH) {
+            if (token.length() < config.getMinimumTokenLength()) {
                 shortTokenCount++;
             }
         }
         
         // If >= 60% of tokens are short, this is likely a short-code entity (CK ID CO, LLC, etc.)
         // Keep all tokens to allow matching
+        // Threshold now configurable via config.shortTokenRatioThreshold (was hardcoded as 0.60)
         double shortTokenRatio = (double) shortTokenCount / tokens.length;
-        if (shortTokenRatio >= 0.60) {
+        if (shortTokenRatio >= config.getShortTokenRatioThreshold()) {
             return tokens;
         }
         
         // Filter short tokens (minority case)
         List<String> result = new ArrayList<>();
         for (String token : tokens) {
-            if (token.length() >= MIN_TOKEN_LENGTH) {
+            if (token.length() >= config.getMinimumTokenLength()) {
                 result.add(token);
             }
         }
@@ -534,7 +623,8 @@ public class JaroWinklerSimilarity implements SimilarityService {
         }
         
         // Winkler boost: score + (prefix_length * weight * (1 - score))
-        return jaroScore + (prefixLen * WINKLER_PREFIX_WEIGHT * (1.0 - jaroScore));
+        // Weight is now configurable via config.winklerPrefixWeight (previously hardcoded as 0.1)
+        return jaroScore + (prefixLen * config.getWinklerPrefixWeight() * (1.0 - jaroScore));
     }
     
     /**
@@ -559,7 +649,11 @@ public class JaroWinklerSimilarity implements SimilarityService {
      * This prioritizes entities where the query is a complete substring in an alias.
      */
     double bestPairJaro(String[] tokens1, String[] tokens2) {
+        PerformanceTimer timer = PerformanceTimers.get("similarity.bestPairJaro");
+        timer.start();
+        
         if (tokens1.length == 0 || tokens2.length == 0) {
+            timer.stop();
             return 0.0;
         }
         
@@ -619,6 +713,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
         double fullScore = jaro(full1, full2);
         
         if (comparisons == 0) {
+            timer.stop();
             return fullScore;
         }
         
@@ -634,6 +729,7 @@ public class JaroWinklerSimilarity implements SimilarityService {
             // 100% query coverage with high-quality matches
             // This is likely an alias substring match - boost heavily
             // Cap at 1.0
+            timer.stop();
             return Math.min(1.0, tokenAvg * 1.08);
         }
         
@@ -642,7 +738,9 @@ public class JaroWinklerSimilarity implements SimilarityService {
         double lengthRatio = (double) Math.min(tokens1.length, tokens2.length) / 
                            Math.max(tokens1.length, tokens2.length);
         
-        return tokenAvg * 0.6 + fullScore * 0.4;
+        double result = tokenAvg * 0.6 + fullScore * 0.4;
+        timer.stop();
+        return result;
     }
     
     /**
@@ -658,28 +756,6 @@ public class JaroWinklerSimilarity implements SimilarityService {
         
         double lengthRatio = (double) Math.min(len1, len2) / Math.max(len1, len2);
         double penalty = (1.0 - lengthRatio) * config.getLengthDifferencePenaltyWeight();
-        
-        return score - penalty;
-    }
-    
-    /**
-     * Apply penalty for unmatched tokens in the index.
-     */
-    private double applyUnmatchedTokenPenalty(double score, String[] tokens1, String[] tokens2) {
-        // Count non-stopword tokens
-        long count1 = Arrays.stream(tokens1).filter(t -> !isStopword(t)).count();
-        long count2 = Arrays.stream(tokens2).filter(t -> !isStopword(t)).count();
-        
-        if (count1 == 0 || count2 == 0) {
-            return score;
-        }
-        
-        long unmatched = Math.abs(count1 - count2);
-        if (unmatched == 0) {
-            return score;
-        }
-        
-        double penalty = (unmatched / (double) Math.max(count1, count2)) * config.getUnmatchedIndexTokenWeight();
         
         return score - penalty;
     }

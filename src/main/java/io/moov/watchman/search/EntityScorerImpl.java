@@ -2,6 +2,8 @@ package io.moov.watchman.search;
 
 import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.model.*;
+import io.moov.watchman.performance.PerformanceTimer;
+import io.moov.watchman.performance.PerformanceTimers;
 import io.moov.watchman.scoring.NameMatch;
 import io.moov.watchman.similarity.SimilarityService;
 import io.moov.watchman.similarity.TextNormalizer;
@@ -128,9 +130,10 @@ public class EntityScorerImpl implements EntityScorer {
             if (altNamesScore > nameScore) {
                 // Alias scores better - use it
                 ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
-            } else if (altNamesScore >= 0.95 && altNamesScore == nameScore) {
+            } else if (altNamesScore >= weightConfig.getAliasTieBreakerThreshold() && altNamesScore == nameScore) {
                 // Both score very high and equally - prefer alias if it's essentially identical to query after normalization
                 // This handles cases like "KIM, Yo'ng-chu" (alias) matching query "KIM, Yo'ng-chu" better than primary "KIM, Yong Ju"
+                // Threshold now configurable via weightConfig.aliasTieBreakerThreshold (was hardcoded as 0.95)
                 String normalizedQuery = normalizer.lowerAndRemovePunctuation(query.name());
                 String normalizedAlias = normalizer.lowerAndRemovePunctuation(altNamesMatch.matchedName());
                 String normalizedPrimary = normalizer.lowerAndRemovePunctuation(index.name());
@@ -198,6 +201,79 @@ public class EntityScorerImpl implements EntityScorer {
 
         return breakdown;
     }
+    
+    /**
+     * Score with breakdown using pre-processed query tokens (performance optimization).
+     * Avoids redundant query normalization when scoring multiple entities in a batch.
+     * 
+     * @param preprocessedQueryTokens Query tokens from JaroWinklerSimilarity.preprocessQueryTokens()
+     * @param index Entity to score against
+     * @param ctx Scoring context for tracing
+     * @return Score breakdown
+     */
+    public ScoreBreakdown scoreWithBreakdownCached(String[] preprocessedQueryTokens, Entity index, ScoringContext ctx) {
+        if (preprocessedQueryTokens == null || preprocessedQueryTokens.length == 0 || index == null) {
+            return new ScoreBreakdown(0, 0, 0, 0, 0, 0, 0, 0);
+        }
+
+        // Check for exact sourceId match (not applicable for cached query tokens path)
+        // This path is only used for name-only searches
+
+        // Calculate name score using cached query tokens
+        double nameScore = weightConfig.isNameComparisonEnabled()
+            ? ctx.traced(Phase.NAME_COMPARISON, "Compare names (cached)", () -> compareNamesWithCachedQuery(preprocessedQueryTokens, index, ctx))
+            : 0.0;
+        
+        // Compare alt names using cached query tokens
+        NameMatch altNamesMatch = weightConfig.isAltNameComparisonEnabled()
+            ? ctx.traced(Phase.ALT_NAME_COMPARISON, "Compare alt names (cached)", () -> compareAltNamesWithMatchCached(preprocessedQueryTokens, index, ctx))
+            : NameMatch.noMatch();
+        double altNamesScore = altNamesMatch.score();
+        
+        // Store matched alias in metadata if applicable (same logic as non-cached version)
+        if (altNamesMatch.matchedName() != null) {
+            if (altNamesScore > nameScore) {
+                ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+            } else if (altNamesScore >= 0.95 && altNamesScore == nameScore) {
+                // Both score very high and equally - use alias if better token coverage
+                String queryStr = String.join(" ", preprocessedQueryTokens);
+                String normalizedAlias = normalizer.lowerAndRemovePunctuation(altNamesMatch.matchedName());
+                String normalizedPrimary = normalizer.lowerAndRemovePunctuation(index.name());
+                
+                if (normalizedAlias.equals(queryStr) || 
+                    countMatchingTokens(queryStr, normalizedAlias) > countMatchingTokens(queryStr, normalizedPrimary)) {
+                    ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
+                }
+            }
+        }
+        
+        double govIdScore = 0.0;
+        double cryptoScore = 0.0;
+        double addressScore = 0.0;
+        double contactScore = 0.0;
+        double dateScore = 0.0;
+
+        // Combine name and alt names - take the best match (same as non-cached version)
+        double bestNameScore = Math.max(nameScore, altNamesScore);
+
+        // Calculate final weighted score
+        double totalWeight = weightConfig.getNameWeight();
+        double weightedSum = bestNameScore * weightConfig.getNameWeight();
+        double finalScore = weightedSum / totalWeight;
+
+        ScoreBreakdown breakdown = new ScoreBreakdown(
+            nameScore,
+            altNamesScore,
+            addressScore,
+            govIdScore,
+            cryptoScore,
+            contactScore,
+            dateScore,
+            finalScore
+        );
+
+        return breakdown;
+    }
 
     @Override
     public double score(String queryName, String queryAddress, Entity candidate) {
@@ -242,6 +318,7 @@ public class EntityScorerImpl implements EntityScorer {
         // PreparedFields.normalizedPrimaryName contains ONLY the primary name
         if (candidate.preparedFields() != null && candidate.preparedFields().normalizedPrimaryName() != null 
                 && !candidate.preparedFields().normalizedPrimaryName().isEmpty()) {
+            PerformanceTimers.get("scorer.compareName_preparedFields_hit").record(1);
             return similarityService.tokenizedSimilarityWithPrepared(
                 normalizedQuery, 
                 java.util.List.of(candidate.preparedFields().normalizedPrimaryName()),
@@ -250,7 +327,46 @@ public class EntityScorerImpl implements EntityScorer {
         }
         
         // Fallback to on-the-fly normalization
+        PerformanceTimers.get("scorer.compareName_preparedFields_miss").record(1);
         return similarityService.tokenizedSimilarity(normalizedQuery, candidate.name(), ctx);
+    }
+    
+    /**
+     * Compare names using pre-processed query tokens (performance optimization).
+     * Avoids redundant query normalization when scoring multiple entities.
+     */
+    private double compareNamesWithCachedQuery(String[] preprocessedQueryTokens, Entity candidate, ScoringContext ctx) {
+        if (preprocessedQueryTokens == null || preprocessedQueryTokens.length == 0 
+            || candidate == null || candidate.name() == null) {
+            return 0.0;
+        }
+        
+        // Use PreparedFields if available for optimized scoring
+        if (candidate.preparedFields() != null && candidate.preparedFields().normalizedPrimaryName() != null 
+                && !candidate.preparedFields().normalizedPrimaryName().isEmpty()) {
+            PerformanceTimers.get("scorer.compareName_preparedFields_hit").record(1);
+            
+            // Cast to JaroWinklerSimilarity to access optimized method
+            if (similarityService instanceof io.moov.watchman.similarity.JaroWinklerSimilarity jw) {
+                return jw.tokenizedSimilarityWithPreprocessedQuery(
+                    preprocessedQueryTokens,
+                    java.util.List.of(candidate.preparedFields().normalizedPrimaryName()),
+                    ctx
+                );
+            }
+            // Fallback if not JaroWinklerSimilarity (shouldn't happen)
+            String queryStr = String.join(" ", preprocessedQueryTokens);
+            return similarityService.tokenizedSimilarityWithPrepared(
+                queryStr,
+                java.util.List.of(candidate.preparedFields().normalizedPrimaryName()),
+                ctx
+            );
+        }
+        
+        // Fallback to on-the-fly normalization (shouldn't happen often with PreparedFields)
+        PerformanceTimers.get("scorer.compareName_preparedFields_miss").record(1);
+        String queryStr = String.join(" ", preprocessedQueryTokens);
+        return similarityService.tokenizedSimilarity(queryStr, candidate.name(), ctx);
     }
 
     private double compareAltNames(String queryName, Entity candidate) {
@@ -275,6 +391,7 @@ public class EntityScorerImpl implements EntityScorer {
         normalizedQuery = Entity.removeCompanyTitles(normalizedQuery);
         
         List<String> altNames = candidate.altNames();
+
         if (altNames == null || altNames.isEmpty()) {
             return NameMatch.noMatch();
         }
@@ -313,6 +430,61 @@ public class EntityScorerImpl implements EntityScorer {
             }
         }
         return bestMatch;
+    }
+    
+    /**
+     * Compare alt names using pre-processed query tokens (performance optimization).
+     */
+    private NameMatch compareAltNamesWithMatchCached(String[] preprocessedQueryTokens, Entity candidate, ScoringContext ctx) {
+        if (preprocessedQueryTokens == null || preprocessedQueryTokens.length == 0 || candidate == null) {
+            return NameMatch.noMatch();
+        }
+        
+        List<String> altNames = candidate.altNames();
+        if (altNames == null || altNames.isEmpty()) {
+            return NameMatch.noMatch();
+        }
+        
+        // Use PreparedFields if available (optimized path)
+        if (candidate.preparedFields() != null && candidate.preparedFields().normalizedAltNames() != null 
+                && !candidate.preparedFields().normalizedAltNames().isEmpty()
+                && similarityService instanceof io.moov.watchman.similarity.JaroWinklerSimilarity jw) {
+            
+            // Find best matching alt name using cached query tokens
+            NameMatch bestMatch = NameMatch.noMatch();
+            List<String> normalizedAltNames = candidate.preparedFields().normalizedAltNames();
+            
+            for (int i = 0; i < Math.min(altNames.size(), normalizedAltNames.size()); i++) {
+                String altName = altNames.get(i);
+                String normalizedAltName = normalizedAltNames.get(i);
+                
+                if (altName != null && !altName.isBlank()) {
+                    double score = jw.tokenizedSimilarityWithPreprocessedQuery(
+                        preprocessedQueryTokens,
+                        java.util.List.of(normalizedAltName),
+                        ctx
+                    );
+                    NameMatch currentMatch = NameMatch.alias(score, altName);
+                    
+                    // BSA-aware alias selection (same logic as non-cached version)
+                    if (Math.abs(score - bestMatch.score()) < 0.05 && score > 0.45) {
+                        String queryStr = String.join(" ", preprocessedQueryTokens);
+                        int currentCoverage = countQueryTokensInAlias(queryStr, altName);
+                        int bestCoverage = countQueryTokensInAlias(queryStr, bestMatch.matchedName());
+                        if (currentCoverage > bestCoverage) {
+                            bestMatch = currentMatch;
+                        }
+                    } else {
+                        bestMatch = bestMatch.best(currentMatch);
+                    }
+                }
+            }
+            return bestMatch;
+        }
+        
+        // Fallback to normal comparison (shouldn't happen with PreparedFields)
+        String queryStr = String.join(" ", preprocessedQueryTokens);
+        return compareAltNamesWithMatch(queryStr, candidate, ctx);
     }
 
     /**
@@ -510,9 +682,11 @@ public class EntityScorerImpl implements EntityScorer {
         double bestNameScore = Math.max(nameScore, altNameScore);
 
         // Critical match dominates
-        if (criticalMax >= 0.99) {
+        // Threshold and blend weights now configurable via weightConfig
+        if (criticalMax >= weightConfig.getExactMatchCriticalIdThreshold()) {
             // Even with exact ID match, consider name for final score
-            return 0.7 + (bestNameScore * 0.3);
+            // 70/30 blend: 70% from exact ID match, 30% from best name similarity
+            return weightConfig.getExactMatchIdWeight() + (bestNameScore * weightConfig.getExactMatchNameWeight());
         }
 
         return calculateNormalScore(nameScore, altNameScore, govIdScore, 
@@ -573,18 +747,21 @@ public class EntityScorerImpl implements EntityScorer {
         // ROW 24 FIX (Feb 22, 2026): Require alias to score 20% better than primary name to avoid
         //          boosting random token overlap (e.g., "SMARTMET LLC" query matching "ACCENTURE"
         //          with altNameScore=0.525 vs nameScore=0.513 - only 2% better, not a real alias match)
-        boolean matchedViaAlias = altNameScore > nameScore * 1.2 && altNameScore > 0.45;
+        // Thresholds now configurable via weightConfig
+        boolean matchedViaAlias = altNameScore > nameScore * weightConfig.getAliasScoreMultiplier() 
+            && altNameScore > weightConfig.getAliasMinimumScore();
         boolean nameOnlyMatch = govIdScore == 0 && cryptoScore == 0 && contactScore == 0 
             && addressScore == 0 && dateScore == 0;
         
-        if (matchedViaAlias && nameOnlyMatch && finalScore < 0.88) {
+        if (matchedViaAlias && nameOnlyMatch && finalScore < weightConfig.getAliasBoostMaxScore()) {
             // Alias-matched entities need significant boost to compete with token-matching individuals
             // Examples:
             // - "ISLAMIC STATE" with alias "AL-QAIDA GROUP OF JIHAD IN IRAQ": 73.5% → 100%
             // - "HURRAS AL-DIN" with alias "AL-QAIDA IN SYRIA": 51.85% → 100%
             // Token-matchers like "EP-IDA", "GHAEDI/QA'IDI" score 100% from pure token overlap
             // BSA/AML compliance: Better to show +review than miss sanctioned entities
-            finalScore = Math.min(1.0, finalScore + 0.50);
+            // Boost amount now configurable via weightConfig.aliasBoostAmount (was hardcoded as 0.50)
+            finalScore = Math.min(1.0, finalScore + weightConfig.getAliasBoostAmount());
         }
 
         return finalScore;

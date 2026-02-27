@@ -92,11 +92,11 @@ class AdminConfigControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/admin/config should include all 26 parameters")
-    void shouldReturnAll26Parameters() throws Exception {
+    @DisplayName("GET /api/admin/config should include all 35 BSA-approved parameters")
+    void shouldReturnAll35Parameters() throws Exception {
         mockMvc.perform(get("/api/admin/config"))
             .andExpect(status().isOk())
-            // SimilarityConfig - 10 parameters
+            // SimilarityConfig - 12 parameters (10 original + 2 BSA compliance thresholds)
             .andExpect(jsonPath("$.similarity.jaroWinklerBoostThreshold").exists())
             .andExpect(jsonPath("$.similarity.jaroWinklerPrefixSize").exists())
             .andExpect(jsonPath("$.similarity.lengthDifferencePenaltyWeight").exists())
@@ -107,7 +107,9 @@ class AdminConfigControllerTest {
             .andExpect(jsonPath("$.similarity.phoneticFilteringDisabled").exists())
             .andExpect(jsonPath("$.similarity.keepStopwords").exists())
             .andExpect(jsonPath("$.similarity.logStopwordDebugging").exists())
-            // WeightConfig - 13 parameters
+            .andExpect(jsonPath("$.similarity.phoneticLengthDifferenceThreshold").exists())
+            .andExpect(jsonPath("$.similarity.shortTokenRatioThreshold").exists())
+            // WeightConfig - 20 parameters (13 original + 7 BSA compliance thresholds)
             .andExpect(jsonPath("$.weights.nameWeight").exists())
             .andExpect(jsonPath("$.weights.addressWeight").exists())
             .andExpect(jsonPath("$.weights.criticalIdWeight").exists())
@@ -121,6 +123,14 @@ class AdminConfigControllerTest {
             .andExpect(jsonPath("$.weights.cryptoComparisonEnabled").exists())
             .andExpect(jsonPath("$.weights.contactComparisonEnabled").exists())
             .andExpect(jsonPath("$.weights.dateComparisonEnabled").exists())
+            .andExpect(jsonPath("$.weights.aliasTieBreakerThreshold").exists())
+            .andExpect(jsonPath("$.weights.exactMatchCriticalIdThreshold").exists())
+            .andExpect(jsonPath("$.weights.exactMatchIdWeight").exists())
+            .andExpect(jsonPath("$.weights.exactMatchNameWeight").exists())
+            .andExpect(jsonPath("$.weights.aliasScoreMultiplier").exists())
+            .andExpect(jsonPath("$.weights.aliasMinimumScore").exists())
+            .andExpect(jsonPath("$.weights.aliasBoostMaxScore").exists())
+            .andExpect(jsonPath("$.weights.aliasBoostAmount").exists())
             // AutoClearanceConfig - 3 parameters
             .andExpect(jsonPath("$.autoClearance.phase1Threshold").exists())
             .andExpect(jsonPath("$.autoClearance.addressMismatchThreshold").exists())
@@ -143,7 +153,9 @@ class AdminConfigControllerTest {
                 "unmatchedIndexTokenWeight": 0.2,
                 "phoneticFilteringDisabled": true,
                 "keepStopwords": true,
-                "logStopwordDebugging": true
+                "logStopwordDebugging": true,
+                "phoneticLengthDifferenceThreshold": 0.15,
+                "shortTokenRatioThreshold": 0.65
             }
             """;
 
@@ -157,7 +169,9 @@ class AdminConfigControllerTest {
         mockMvc.perform(get("/api/admin/config"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.similarity.jaroWinklerBoostThreshold").value(0.8))
-            .andExpect(jsonPath("$.similarity.jaroWinklerPrefixSize").value(5));
+            .andExpect(jsonPath("$.similarity.jaroWinklerPrefixSize").value(5))
+            .andExpect(jsonPath("$.similarity.phoneticLengthDifferenceThreshold").value(0.15))
+            .andExpect(jsonPath("$.similarity.shortTokenRatioThreshold").value(0.65));
     }
 
     @Test
@@ -197,7 +211,15 @@ class AdminConfigControllerTest {
                 "govIdComparisonEnabled": true,
                 "cryptoComparisonEnabled": true,
                 "contactComparisonEnabled": true,
-                "dateComparisonEnabled": false
+                "dateComparisonEnabled": false,
+                "aliasTieBreakerThreshold": 0.93,
+                "exactMatchCriticalIdThreshold": 0.98,
+                "exactMatchIdWeight": 0.6,
+                "exactMatchNameWeight": 0.4,
+                "aliasScoreMultiplier": 1.3,
+                "aliasMinimumScore": 0.50,
+                "aliasBoostMaxScore": 0.85,
+                "aliasBoostAmount": 0.45
             }
             """;
 
@@ -211,7 +233,9 @@ class AdminConfigControllerTest {
         mockMvc.perform(get("/api/admin/config"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.weights.nameWeight").value(40.0))
-            .andExpect(jsonPath("$.weights.addressComparisonEnabled").value(false));
+            .andExpect(jsonPath("$.weights.addressComparisonEnabled").value(false))
+            .andExpect(jsonPath("$.weights.aliasTieBreakerThreshold").value(0.93))
+            .andExpect(jsonPath("$.weights.aliasBoostAmount").value(0.45));
     }
 
     @Test

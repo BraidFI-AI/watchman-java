@@ -18,6 +18,75 @@
 
 **Verification Methods**: Direct file reads, grep searches, git log checks, file existence validation.
 
+## Session: February 26, 2026 (Performance Regression Analysis - BSA Scoring Impact)
+
+### What We Discovered
+- Production performance testing showed catastrophic 9x regression vs historical baseline
+- **Historical baseline** (commit 8fe46a9): 41.9 names/sec (100k names in 39m48s, localhost, OFAC-only 18,703 entities)
+- **Current performance (all sources)**: 4.65 names/sec (localhost, 49,958 entities) = 9x slower
+- Isolated regression through controlled testing:
+  * Modified code to download OFAC-only (18,708 entities) for apples-to-apples comparison
+  * **Current OFAC-only performance**: 11.40 names/sec (100 names in 8.8s)
+  * **Code regression factor**: 41.9 ÷ 11.40 = 3.68x slower (same dataset size)
+  * **Data size factor**: 11.40 ÷ 4.65 = 2.45x slower (18.7k → 49.9k entities)
+  * **Combined effect**: 3.68x × 2.45x ≈ 9x total regression ✓
+
+### Root Cause: BSA Scoring Complexity
+- The 3.68x code regression directly correlates with BSA consultant scoring enhancements
+- Each search now takes ~88ms per name (vs ~24ms historical) with OFAC-only data
+- BSA compliance work added sophisticated scoring algorithms for accuracy/precision improvements
+- Performance vs compliance tradeoff: More complex scoring = better matches but slower searches
+
+### What We Decided
+- **Pursue scoring algorithm optimization** (Option 1 of 3)
+  * Profile scoring code to identify computational hotspots
+  * Implement performance optimizations without sacrificing BSA compliance requirements
+  * Hybrid approach: Fast pre-filter, then detailed BSA scoring on candidates only
+- **Reject acceptance of slowdown**: 11.40 names/sec insufficient for production scale
+- **Reject pure rollback**: BSA scoring improvements provide critical compliance value
+
+### What We Did
+- Created test-data/clean_names_9000.json: 10,000 static test names (9000 clean + 500 OFAC + 500 fuzzy)
+- Created scripts/test_batch_local.py: Local batch performance testing tool
+- Modified DataRefreshService.java: Temporarily disabled CSL/EU/UK downloads for OFAC-only baseline
+- Executed controlled performance tests:
+  * Full sources (49,958 entities): 4.65 names/sec
+  * OFAC-only (18,708 entities): 11.40 names/sec
+  * Confirmed O(n) search complexity with entity count
+  * Confirmed linear batch scaling (parallelization working correctly)
+
+### Performance Test Results
+
+| Configuration | Entity Count | Performance | vs Historical | vs Current Full |
+|--------------|-------------|-------------|---------------|------------------|
+| Historical baseline (8fe46a9) | 18,703 OFAC | **41.9 names/sec** | baseline | 9.0x faster |
+| Current OFAC-only | 18,708 OFAC | **11.40 names/sec** | 3.68x slower | 2.45x faster |
+| Current all sources | 49,958 all | **4.65 names/sec** | 9.0x slower | baseline |
+
+### What Is Now True
+- **Performance regression quantified**: 3.68x from BSA scoring + 2.45x from data size = 9x total
+- **Root cause identified**: BSA consultant scoring enhancements (not infrastructure, not parallelization)
+- **Baseline established**: 11.40 names/sec with OFAC-only for optimization tracking
+- **Test infrastructure**: Repeatable local testing with static dataset
+- **Next phase**: Profile scoring algorithms, identify optimization opportunities, maintain BSA compliance
+
+### Key Insights
+- BSA compliance work improved accuracy but introduced significant performance cost
+- Search performance scales O(n) with entity count (expected for linear scan algorithms)
+- Batch API parallelization works correctly (8 threads processing simultaneously)
+- Individual search slowness is the bottleneck (~88ms per name vs ~24ms historical)
+- Optimization target: Reduce per-search time while preserving BSA scoring accuracy
+
+### Files Modified (Temporary - For Testing)
+- src/main/java/io/moov/watchman/download/DataRefreshService.java: OFAC-only mode (will revert after optimization)
+
+### Test Artifacts Created
+- test-data/clean_names_9000.json: 10,000 static test names
+- scripts/test_batch_local.py: Local batch performance testing tool
+- scripts/aws_load_test.py: Modified for batch-only testing
+
+---
+
 ## Session: February 19, 2026 (UI Result Limit - BSA Observation Resolution)
 
 ### What We Decided

@@ -37,6 +37,10 @@ watchman:
   similarity:
     jaro-winkler-boost-threshold: 0.7
     jaro-winkler-prefix-size: 4
+    winkler-prefix-weight: 0.1
+    minimum-token-length: 3
+    phonetic-length-difference-threshold: 0.10  # BSA Rows 13,16,18,24: Max length diff for phonetic match
+    short-token-ratio-threshold: 0.60           # BSA: If >=60% tokens short, keep all (CK ID CO case)
     length-difference-penalty-weight: 0.3
     length-difference-cutoff-factor: 0.9
     different-letter-penalty-weight: 0.9
@@ -45,6 +49,16 @@ watchman:
     phonetic-filtering-disabled: false
     keep-stopwords: false
     log-stopword-debugging: false
+  # SearchConfig: Search filtering and threshold configuration
+  # All BSA-critical thresholds previously hardcoded in SearchServiceImpl
+  search:
+    alias-match-threshold: 0.75        # BSA: Alias matches use lower threshold (AL-QAIDA SYRIA case)
+    high-score-threshold: 0.95          # Precision filter: High scores require token coverage
+    token-coverage-minimum: 0.40        # Precision filter: Minimum 40% token coverage for 3+ token queries
+    multi-token-query-threshold: 3      # Apply coverage filter for queries with 3+ tokens
+    normal-threshold-max: 0.88          # Upper bound for "normal" threshold range
+    normal-threshold-min: 0.75          # Lower bound for "normal" threshold range
+    short-query-token-threshold: 2      # Queries with <= 2 tokens are "short" (use adjusted threshold)
   weights:
     name-weight: 35.0
     address-weight: 25.0
@@ -52,6 +66,15 @@ watchman:
     supporting-info-weight: 15.0
     minimum-score: 0.88
     exact-match-threshold: 0.99
+    # BSA compliance thresholds moved from EntityScorerImpl
+    alias-tie-breaker-threshold: 0.95          # Row 50: Prefer alias when both score >=0.95
+    exact-match-critical-id-threshold: 0.99    # Exact ID match triggers 70/30 blend
+    exact-match-id-weight: 0.7                 # 70% weight from exact ID match
+    exact-match-name-weight: 0. 3               # 30% weight from name similarity
+    alias-score-multiplier: 1.2                # Row 24: Alias must score 20% better
+    alias-minimum-score: 0.45                  # Min alias score to qualify for boost
+    alias-boost-max-score: 0.88                # Max score before alias boost applies
+    alias-boost-amount: 0.50                   # BSA compliance: +0.50 boost for alias matches
     name-comparison-enabled: true
     alt-name-comparison-enabled: true
     address-comparison-enabled: true

@@ -6,6 +6,8 @@ import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.ScoreBreakdown;
 import io.moov.watchman.model.SearchResult;
 import io.moov.watchman.model.SourceList;
+import io.moov.watchman.performance.PerformanceTimer;
+import io.moov.watchman.performance.PerformanceTimers;
 import io.moov.watchman.trace.ScoringContext;
 import io.moov.watchman.trace.ScoringTrace;
 
@@ -30,11 +32,15 @@ public class SearchServiceImpl implements SearchService {
     private final EntityIndex entityIndex;
     private final EntityScorer entityScorer;
     private final io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig;
+    private final io.moov.watchman.config.SearchConfig searchConfig;
 
-    public SearchServiceImpl(EntityIndex entityIndex, EntityScorer entityScorer, io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig) {
+    public SearchServiceImpl(EntityIndex entityIndex, EntityScorer entityScorer, 
+                             io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig,
+                             io.moov.watchman.config.SearchConfig searchConfig) {
         this.entityIndex = entityIndex;
         this.entityScorer = entityScorer;
         this.autoClearanceConfig = autoClearanceConfig;
+        this.searchConfig = searchConfig;
     }
 
     @Override
@@ -45,7 +51,11 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public List<SearchResult> search(String query, SourceList sourceList, EntityType entityType, 
                                       int limit, double minMatch) {
+        PerformanceTimer searchTimer = PerformanceTimers.get("search.overall");
+        searchTimer.start();
+        
         if (query == null || query.isBlank()) {
+            searchTimer.stop();
             return List.of();
         }
 
@@ -88,11 +98,49 @@ public class SearchServiceImpl implements SearchService {
         // Create query entity for scoring
         Entity queryEntity = Entity.of(null, query, null, null);
         
+        // PERFORMANCE OPTIMIZATION: Pre-process query tokens once for reuse across all entities
+        // This avoids redundant query normalization (18,708 times → 1 time)
+        String[] preprocessedQueryTokens = null;
+        if (entityScorer instanceof EntityScorerImpl) {
+            // Access the similarity service to pre-process query
+            try {
+                var field = EntityScorerImpl.class.getDeclaredField("similarityService");
+                field.setAccessible(true);
+                var simService = field.get(entityScorer);
+                if (simService instanceof io.moov.watchman.similarity.JaroWinklerSimilarity jw) {
+                    // Normalize query with company suffix removal (matching EntityScorerImpl logic)
+                    var normalizerField = EntityScorerImpl.class.getDeclaredField("normalizer");
+                    normalizerField.setAccessible(true);
+                    var normalizer = (io.moov.watchman.similarity.TextNormalizer) normalizerField.get(entityScorer);
+                    
+                    String normalizedQuery = normalizer.lowerAndRemovePunctuation(query);
+                    normalizedQuery = Entity.removeCompanyTitles(normalizedQuery);
+                    
+                    preprocessedQueryTokens = jw.preprocessQueryTokens(normalizedQuery);
+                }
+            } catch (Exception e) {
+                // Reflection failed, fall back to normal path (no performance loss, just no gain)
+            }
+        }
+        
+        final String[] cachedQueryTokens = preprocessedQueryTokens;
+        
         // Score, filter, sort, and limit ENTITIES (not results)
+        PerformanceTimer scoringTimer = PerformanceTimers.get("search.entity_scoring_loop");
+        scoringTimer.start();
+        
         List<ScoredEntity> topEntities = entityStream
             .map(entity -> {
                 ScoringContext ctx = ScoringContext.enabled("search-" + System.nanoTime());
-                ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(queryEntity, entity, ctx);
+                
+                // Use cached query tokens if available for better performance
+                ScoreBreakdown breakdown;
+                if (cachedQueryTokens != null && entityScorer instanceof EntityScorerImpl scorer) {
+                    breakdown = scorer.scoreWithBreakdownCached(cachedQueryTokens, entity, ctx);
+                } else {
+                    breakdown = entityScorer.scoreWithBreakdown(queryEntity, entity, ctx);
+                }
+                
                 double score = breakdown.totalWeightedScore();
                 
                 // Extract matched alias from context
@@ -116,7 +164,8 @@ public class SearchServiceImpl implements SearchService {
                 boolean meetsThreshold;
                 if (scored.matchedAlias != null) {
                     // Entity matched via alias - use lower threshold for BSA sensitivity
-                    meetsThreshold = scored.score >= 0.75;
+                    // Threshold now configurable via searchConfig.aliasMatchThreshold (was hardcoded as 0.75)
+                    meetsThreshold = scored.score >= searchConfig.getAliasMatchThreshold();
                 } else {
                     // Entity matched via name - use requested threshold
                     meetsThreshold = scored.score >= effectiveMinMatch;
@@ -132,14 +181,17 @@ public class SearchServiceImpl implements SearchService {
                 // Rationale: Single-token matches (33% coverage) are too weak for customer name searches
                 // Exception: 1-2 token queries (common names) don't use coverage filter
                 int queryTokenCount = query.trim().split("\\s+").length;
-                if (queryTokenCount >= 3 && scored.score >= 0.95) {
+                // Thresholds now configurable: multiTokenQueryThreshold (was 3), highScoreThreshold (was 0.95)
+                if (queryTokenCount >= searchConfig.getMultiTokenQueryThreshold() && 
+                    scored.score >= searchConfig.getHighScoreThreshold()) {
                     String matchedName = scored.matchedAlias != null ? scored.matchedAlias : scored.entity.name();
                     int matchedTokens = countQueryTokensMatched(query, matchedName);
                     double coverage = (double) matchedTokens / queryTokenCount;
                     
                     // Require at least 40% coverage (2/5 tokens, 2/3 tokens, etc.)
                     // This filters "Randy San Nicolas" → "Hassan" (1/3 = 33%) but keeps strong matches
-                    return coverage >= 0.40;
+                    // Threshold now configurable via searchConfig.tokenCoverageMinimum (was 0.40)
+                    return coverage >= searchConfig.getTokenCoverageMinimum();
                 }
                 
                 return true;
@@ -177,13 +229,18 @@ public class SearchServiceImpl implements SearchService {
             .limit(limit) // Limit unique entities HERE, before alias expansion
             .toList();
         
+        scoringTimer.stop();
+        
         // BSA FIX (Feb 14, 2026): Removed full alias expansion
         // Problem: Expanding all aliases caused result explosion, hiding related entities
         // Solution: Return one result per entity (with matched alias noted)
         // This ensures consultant sees diverse entities, not 18 rows of same entity
-        return topEntities.stream()
+        List<SearchResult> results = topEntities.stream()
             .flatMap(scored -> expandAliasesForScoredEntity(scored))
             .toList();
+        
+        searchTimer.stop();
+        return results;
     }
 
     /**
@@ -197,12 +254,13 @@ public class SearchServiceImpl implements SearchService {
      * 
      * <p>Token-based thresholds:
      * <ul>
-     *   <li>1-2 tokens (e.g., "Muhammad Ali"): Use 0.75 threshold (if requested >= 0.75)</li>
+     *   <li>1-2 tokens (e.g., "Muhammad Ali"): Use adjusted threshold (if requested in normal range)</li>
      *   <li>3+ tokens (e.g., "Nicolas Maduro Moros"): Use caller-provided threshold</li>
      * </ul>
      * 
-     * <p>If caller explicitly sets minMatch below 0.75 OR above 0.88, respect their value.
+     * <p>If caller explicitly sets minMatch below or above normal range, respect their value.
      * This preserves API contract for both permissive and strict searches.
+     * Normal range and thresholds now configurable via SearchConfig.
      * 
      * @param query The search query
      * @param requestedMinMatch The threshold requested by caller
@@ -213,11 +271,15 @@ public class SearchServiceImpl implements SearchService {
         int tokenCount = query.trim().split("\\s+").length;
         
         // Short queries (1-2 tokens) benefit from lower threshold for OFAC parity
-        if (tokenCount <= 2) {
-            // Only adjust if user is using "normal" thresholds (0.75-0.88 range)
-            // Respect explicit low thresholds (<0.75) and high thresholds (>0.88)
-            if (requestedMinMatch >= 0.75 && requestedMinMatch <= 0.88) {
-                return 0.75;
+        // Threshold now configurable via searchConfig.shortQueryTokenThreshold (was 2)
+        if (tokenCount <= searchConfig.getShortQueryTokenThreshold()) {
+            // Only adjust if user is using "normal" thresholds
+            // Respect explicit low thresholds and high thresholds
+            // Thresholds now configurable: normalThresholdMin (was 0.75), normalThresholdMax (was 0.88)
+            if (requestedMinMatch >= searchConfig.getNormalThresholdMin() && 
+                requestedMinMatch <= searchConfig.getNormalThresholdMax()) {
+                // Return adjusted threshold (now configurable, was 0.75)
+                return searchConfig.getNormalThresholdMin();
             }
         }
         

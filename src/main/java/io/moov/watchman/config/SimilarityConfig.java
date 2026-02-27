@@ -25,61 +25,123 @@ public class SimilarityConfig {
      * Jaro-Winkler boost threshold (required)
      * Only apply prefix boost if base Jaro score >= this threshold
      */
-    private double jaroWinklerBoostThreshold;
+    private double jaroWinklerBoostThreshold = 0.7;
 
     /**
      * Jaro-Winkler prefix size (required)
      * Number of characters to check for common prefix
      */
-    private int jaroWinklerPrefixSize;
+    private int jaroWinklerPrefixSize = 4;
 
     /**
      * Length difference cutoff factor (required)
      * If shorter string < (longer string * cutoff), return 0.0
      */
-    private double lengthDifferenceCutoffFactor;
+    private double lengthDifferenceCutoffFactor = 0.9;
 
     /**
      * Length difference penalty weight (required)
      * Penalty applied based on length difference
      */
-    private double lengthDifferencePenaltyWeight;
+    private double lengthDifferencePenaltyWeight = 0.3;
 
     /**
      * Different letter penalty weight (required)
      * Penalty for mismatched characters in Jaro-Winkler
      */
-    private double differentLetterPenaltyWeight;
+    private double differentLetterPenaltyWeight = 0.9;
 
     /**
      * Exact match favoritism (required)
      * Boost applied to exact matches (0.0 = disabled)
      */
-    private double exactMatchFavoritism;
+    private double exactMatchFavoritism = 0.0;
 
     /**
      * Unmatched index token weight (required)
      * Penalty for tokens in index that don't match query
      */
-    private double unmatchedIndexTokenWeight;
+    private double unmatchedIndexTokenWeight = 0.15;
 
     /**
      * Disable phonetic filtering (required)
      * If true, skip Soundex pre-filter
      */
-    private boolean phoneticFilteringDisabled;
+    private boolean phoneticFilteringDisabled = false;
 
     /**
      * Keep stopwords (required)
      * If true, don't remove stopwords during normalization
      */
-    private boolean keepStopwords;
+    private boolean keepStopwords = false;
 
     /**
      * Log stopword debugging (required)
      * If true, log stopword removal details
      */
-    private boolean logStopwordDebugging;
+    private boolean logStopwordDebugging = false;
+
+    /**
+     * Winkler prefix weight (required).
+     * 
+     * <p>Weight applied to common prefix in Jaro-Winkler algorithm.
+     * Formula: jaro + (prefix * weight * (1 - jaro))
+     * 
+     * <p>Previously hardcoded as WINKLER_PREFIX_WEIGHT = 0.1 in JaroWinklerSimilarity.java.
+     * 
+     * Default: 0.1
+     */
+    private double winklerPrefixWeight = 0.1;
+
+    /**
+     * Minimum token length (required).
+     * 
+     * <p>BSA FIX (Row 17): Prevents matching on ultra-short tokens like "AL-", "ABU-"
+     * that appear as standalone aliases.
+     * 
+     * <p>Aligned with Go implementation which combines short tokens (<=3 chars) with neighbors.
+     * 
+     * <p>Previously hardcoded as MIN_TOKEN_LENGTH = 3 in JaroWinklerSimilarity.java.
+     * 
+     * Default: 3
+     */
+    private int minimumTokenLength = 3;
+
+    /**
+     * Phonetic length difference threshold (required).
+     * 
+     * <p>BSA CRITICAL FIX (Rows 13, 16, 18, 24): Tightened from 30% to 10%.
+     * 
+     * <p>Maximum length difference ratio allowed for phonetic matching.
+     * If (maxLen - minLen) / maxLen > threshold, phonetic match is rejected.
+     * 
+     * <p>Cases blocked:
+     * - SHINRIKYO (9) vs SUNRISE (7) = 22% diff → REJECT
+     * - SHINRIKYO (9) vs SOMERSET (8) = 11% diff → REJECT
+     * - CECOEX (6) vs CHACHAJEE (9) = 33% diff → REJECT
+     * 
+     * <p>Previously hardcoded as 0.10 at JaroWinklerSimilarity:358.
+     * 
+     * Default: 0.10
+     */
+    private double phoneticLengthDifferenceThreshold = 0.10;
+
+    /**
+     * Short token ratio threshold (required).
+     * 
+     * <p>BSA: Detects short-code entities like "CK ID CO", "LLC".
+     * 
+     * <p>If this fraction or more of tokens are short (< minimumTokenLength),
+     * keeps ALL tokens to allow matching. Otherwise, filters short tokens.
+     * 
+     * <p>Example: "CK ID CO" has 3/3 = 100% short tokens → keeps all
+     * Example: "SMARTMET LLC" has 1/2 = 50% short tokens → filters "LLC"
+     * 
+     * <p>Previously hardcoded as 0.60 at JaroWinklerSimilarity:465.
+     * 
+     * Default: 0.60
+     */
+    private double shortTokenRatioThreshold = 0.60;
 
     // Getters and setters
 
@@ -161,5 +223,37 @@ public class SimilarityConfig {
 
     public void setLogStopwordDebugging(boolean logStopwordDebugging) {
         this.logStopwordDebugging = logStopwordDebugging;
+    }
+
+    public double getWinklerPrefixWeight() {
+        return winklerPrefixWeight;
+    }
+
+    public void setWinklerPrefixWeight(double winklerPrefixWeight) {
+        this.winklerPrefixWeight = winklerPrefixWeight;
+    }
+
+    public int getMinimumTokenLength() {
+        return minimumTokenLength;
+    }
+
+    public void setMinimumTokenLength(int minimumTokenLength) {
+        this.minimumTokenLength = minimumTokenLength;
+    }
+
+    public double getPhoneticLengthDifferenceThreshold() {
+        return phoneticLengthDifferenceThreshold;
+    }
+
+    public void setPhoneticLengthDifferenceThreshold(double phoneticLengthDifferenceThreshold) {
+        this.phoneticLengthDifferenceThreshold = phoneticLengthDifferenceThreshold;
+    }
+
+    public double getShortTokenRatioThreshold() {
+        return shortTokenRatioThreshold;
+    }
+
+    public void setShortTokenRatioThreshold(double shortTokenRatioThreshold) {
+        this.shortTokenRatioThreshold = shortTokenRatioThreshold;
     }
 }

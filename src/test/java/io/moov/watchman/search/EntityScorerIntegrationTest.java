@@ -163,7 +163,7 @@ class EntityScorerIntegrationTest {
 
         @ParameterizedTest(name = "{0} vs {1} should score ~{2}")
         @CsvSource({
-            "'Nicolas Maduro', 'MADURO MOROS, Nicolas', 0.85",
+            "'Nicolas Maduro', 'MADURO MOROS, Nicolas', 1.0",  // BSA Row 19: 100% query coverage boost
             "'AEROCARIBBEAN AIRLINES', 'AEROCARIBBEAN AIRLINES', 1.0",
             "'aerocaribbean airlines', 'AEROCARIBBEAN AIRLINES', 1.0",
             "'ANGLO CARIBBEAN CO LTD', 'ANGLO-CARIBBEAN CO., LTD.', 1.0",

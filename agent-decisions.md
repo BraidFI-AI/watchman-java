@@ -4,6 +4,78 @@ This document captures key decisions, tradeoffs, and architectural forks made du
 
 ---
 
+## 2026-02-26: BSA Scoring Algorithm Optimization Project
+
+**Decision**: Pursue performance optimization of BSA-enhanced scoring algorithms while maintaining compliance accuracy requirements.
+
+**Context**: Performance testing revealed 9x regression vs historical baseline (41.9 → 4.65 names/sec). Controlled testing isolated root cause:
+- **BSA scoring complexity**: 3.68x slowdown (41.9 → 11.40 names/sec with same OFAC-only dataset)
+- **Data size increase**: 2.45x slowdown (18.7k → 49.9k entities across all sources)
+- **Combined effect**: 3.68x × 2.45x = 9x total regression
+
+**Rationale**: Current performance (4.65-11.40 names/sec) insufficient for production scale. Historical baseline (41.9 names/sec) proves system capable of acceptable performance. BSA scoring enhancements provide critical compliance value and cannot be rolled back. Therefore, must optimize scoring algorithms to recover performance while preserving accuracy.
+
+**Options Considered**:
+1. **Optimize scoring algorithm** ✅ SELECTED
+   - Profile scoring code to identify computational hotspots
+   - Implement optimizations: caching, pre-computation, algorithmic improvements
+   - Hybrid approach: fast pre-filter → detailed BSA scoring on candidates only
+   - Target: Recover 2-3x performance improvement minimum
+   
+2. **Accept performance tradeoff** ❌ REJECTED
+   - Pro: No development effort, BSA compliance maintained
+   - Con: 11.40 names/sec insufficient for production workloads (screening 100k names = 2.4 hours)
+   - Con: Cannot compete with Portage performance expectations
+   
+3. **Rollback BSA scoring changes** ❌ REJECTED
+   - Pro: Immediate performance recovery to 41.9 names/sec
+   - Con: Loses BSA consultant accuracy improvements
+   - Con: Fails compliance requirements that justified BSA engagement
+   - Con: Wastes BSA consultant investment
+
+**Implementation Strategy**:
+1. **Phase 1: Profiling** - Identify which scoring operations consume the most time
+   - Add timing instrumentation to SearchServiceImpl.search()
+   - Measure: entity filtering, scoring loop, sorting, alias expansion
+   - Focus on operations repeated per entity (18.7k-49.9k iterations per search)
+   
+2. **Phase 2: Quick Wins** - Low-hanging fruit optimizations
+   - Cache expensive computations (Soundex codes, normalized strings)
+   - Pre-compute entity metadata during indexing (word combinations, phonetic sets)
+   - Optimize hot loops and reduce object allocations
+   
+3. **Phase 3: Algorithmic** - Fundamental improvements if needed
+   - Implement indexed search (TF-IDF, inverted index) like Go Watchman
+   - Two-stage scoring: fast filter (≥0.6 threshold) → detailed BSA scoring
+   - Consider parallel entity iteration (if profiling shows CPU-bound)
+
+**Success Criteria**:
+- Minimum: 20+ names/sec with OFAC-only (1.75x improvement from current 11.40)
+- Target: 30+ names/sec with OFAC-only (2.6x improvement, 70% of historical)
+- Maintain: All BSA test cases continue passing (102 entity + individual tests)
+- Maintain: Scoring accuracy and compliance requirements
+
+**Tradeoffs**:
+- Development time investment vs immediate business value
+- Code complexity increase for optimization vs simplicity
+- Potential maintenance burden of performance-optimized code
+- Risk: Optimization may introduce subtle scoring behavior changes requiring BSA revalidation
+
+**Historical Context**:
+- Commit 8fe46a9: 41.9 names/sec baseline (100k names in 39m48s)
+- Current HEAD: 11.40 names/sec OFAC-only, 4.65 names/sec all sources
+- BSA scoring enhancements implemented between 8fe46a9 and HEAD
+- Performance testing enabled by: test-data/clean_names_9000.json, scripts/test_batch_local.py
+
+**Next Actions**:
+1. Add timing instrumentation to SearchServiceImpl.search()
+2. Profile single search execution with 100 sample names
+3. Analyze profiling data to identify top 3 performance bottlenecks
+4. Implement and test optimizations iteratively
+5. Re-run BSA test suite after each optimization to ensure compliance maintained
+
+---
+
 ## 2026-02-06: Explicit Error Handling for DynamoDB Batch Writes
 
 **Decision**: Added comprehensive error handling to `entity_manager.batch_upsert_entities()` with try/catch blocks, success/error logging, and item count returns.

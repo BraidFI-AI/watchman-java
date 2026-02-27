@@ -615,6 +615,20 @@
                             Log Stopword Debugging
                         </label>
                     </div>
+                    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #0c4a6e; font-weight: 700;">🔍 Phonetic Matching</h4>
+                        <p style="font-size: 12px; color: #075985; margin-bottom: 15px;">Controls for phonetic similarity and short-code detection</p>
+                        <div class="form-group">
+                            <label>Phonetic Length Difference Threshold</label>
+                            <input type="number" id="phoneticLengthDifferenceThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Maximum name length difference allowed for phonetic matching (0.10 = 10%)</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Short Token Ratio Threshold</label>
+                            <input type="number" id="shortTokenRatioThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Ratio to identify short-code entities (e.g., "CK ID CO" or "LLC")</p>
+                        </div>
+                    </div>
                     <div class="actions">
                         <button class="btn btn-primary" onclick="saveSimilarityConfig()">Save Similarity</button>
                     </div>
@@ -643,6 +657,54 @@
                     <div class="form-group">
                         <label>Exact Match Threshold</label>
                         <input type="number" id="exactMatchThreshold" step="0.01" min="0" max="1">
+                    </div>
+                    <div style="background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #78350f; font-weight: 700;">🎯 Exact Match Scoring</h4>
+                        <p style="font-size: 12px; color: #92400e; margin-bottom: 15px;">How to blend ID and name scores when exact identifiers match</p>
+                        <div class="form-group">
+                            <label>Critical ID Threshold</label>
+                            <input type="number" id="exactMatchCriticalIdThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum score to trigger ID/name blending</p>
+                        </div>
+                        <div class="form-group">
+                            <label>ID Weight</label>
+                            <input type="number" id="exactMatchIdWeight" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Weight from identifier match (must sum to 1.0 with name weight)</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Name Weight</label>
+                            <input type="number" id="exactMatchNameWeight" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Weight from name similarity (must sum to 1.0 with ID weight)</p>
+                        </div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #065f46; font-weight: 700;">👥 Alias Matching</h4>
+                        <p style="font-size: 12px; color: #047857; margin-bottom: 15px;">Controls for alternative name matching and scoring</p>
+                        <div class="form-group">
+                            <label>Tie-Breaker Threshold</label>
+                            <input type="number" id="aliasTieBreakerThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">When primary name and alias score equally high, prefer exact alias match</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Score Multiplier</label>
+                            <input type="number" id="aliasScoreMultiplier" step="0.1" min="1" max="2">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">How much better an alias must score vs. primary name</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Score</label>
+                            <input type="number" id="aliasMinimumScore" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum alias score to qualify for boost</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Boost Max Score</label>
+                            <input type="number" id="aliasBoostMaxScore" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Maximum score before alias boost applies</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Boost Amount</label>
+                            <input type="number" id="aliasBoostAmount" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Score increase when entity matched via alias</p>
+                        </div>
                     </div>
                     <h4 style="margin: 15px 0 10px 0; font-size: 14px;">Phase Toggles</h4>
                     <div class="form-group">
@@ -1552,7 +1614,9 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 unmatchedIndexTokenWeight: parseFloat(document.getElementById('unmatchedIndexTokenWeight').value),
                 phoneticFilteringDisabled: document.getElementById('phoneticFilteringDisabled').checked,
                 keepStopwords: document.getElementById('keepStopwords').checked,
-                logStopwordDebugging: document.getElementById('logStopwordDebugging').checked
+                logStopwordDebugging: document.getElementById('logStopwordDebugging').checked,
+                phoneticLengthDifferenceThreshold: parseFloat(document.getElementById('phoneticLengthDifferenceThreshold').value),
+                shortTokenRatioThreshold: parseFloat(document.getElementById('shortTokenRatioThreshold').value)
             };
             
             try {
@@ -1581,6 +1645,7 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 addressWeight: parseFloat(document.getElementById('addressWeight').value),
                 criticalIdWeight: parseFloat(document.getElementById('criticalIdWeight').value),
                 supportingInfoWeight: parseFloat(document.getElementById('supportingInfoWeight').value),
+                minimumScore: parseFloat(document.getElementById('minimumScore').value),
                 exactMatchThreshold: parseFloat(document.getElementById('exactMatchThreshold').value),
                 nameComparisonEnabled: document.getElementById('nameComparisonEnabled').checked,
                 altNameComparisonEnabled: document.getElementById('altNameComparisonEnabled').checked,
@@ -1588,7 +1653,15 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 govIdComparisonEnabled: document.getElementById('govIdComparisonEnabled').checked,
                 cryptoComparisonEnabled: document.getElementById('cryptoComparisonEnabled').checked,
                 contactComparisonEnabled: document.getElementById('contactComparisonEnabled').checked,
-                dateComparisonEnabled: document.getElementById('dateComparisonEnabled').checked
+                dateComparisonEnabled: document.getElementById('dateComparisonEnabled').checked,
+                aliasTieBreakerThreshold: parseFloat(document.getElementById('aliasTieBreakerThreshold').value),
+                exactMatchCriticalIdThreshold: parseFloat(document.getElementById('exactMatchCriticalIdThreshold').value),
+                exactMatchIdWeight: parseFloat(document.getElementById('exactMatchIdWeight').value),
+                exactMatchNameWeight: parseFloat(document.getElementById('exactMatchNameWeight').value),
+                aliasScoreMultiplier: parseFloat(document.getElementById('aliasScoreMultiplier').value),
+                aliasMinimumScore: parseFloat(document.getElementById('aliasMinimumScore').value),
+                aliasBoostMaxScore: parseFloat(document.getElementById('aliasBoostMaxScore').value),
+                aliasBoostAmount: parseFloat(document.getElementById('aliasBoostAmount').value)
             };
             
             try {
@@ -1696,12 +1769,10 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                         html += `<div style="background: white; padding: 15px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #3498db;">`;
                         html += `<strong>${entity.name}</strong> - Match: ${(entity.score * 100).toFixed(1)}%<br>`;
                         
-                        // Display matched alias if present (BSA Observation #5)
                         if (entity.matchedAlias) {
                             html += `<small style="color: #e67e22; font-weight: 600;">Matched Alias: ${entity.matchedAlias}</small><br>`;
                         }
                         
-                        // Display identifying attributes for triage (BSA Observation #3)
                         let identifiers = [];
                         if (entity.dateOfBirth) {
                             identifiers.push(`DOB: ${entity.dateOfBirth}`);

@@ -40,7 +40,8 @@ public class AdminConfigController {
     }
 
     /**
-     * Get all configuration values (26 parameters).
+     * Get all configuration values (35 parameters).
+     * 12 similarity + 20 weights + 3 auto-clearance = 35 BSA-approved values.
      * 
      * GET /api/admin/config
      * 
@@ -56,7 +57,7 @@ public class AdminConfigController {
     }
 
     /**
-     * Update similarity configuration (10 parameters).
+     * Update similarity configuration (12 parameters: 10 original + 2 BSA compliance thresholds).
      * 
      * PUT /api/admin/config/similarity
      * 
@@ -74,6 +75,12 @@ public class AdminConfigController {
         if (dto.jaroWinklerPrefixSize() < 0) {
             throw new IllegalArgumentException("Invalid configuration: jaroWinklerPrefixSize must be >= 0");
         }
+        if (dto.phoneticLengthDifferenceThreshold() < 0 || dto.phoneticLengthDifferenceThreshold() > 1) {
+            throw new IllegalArgumentException("Invalid configuration: phoneticLengthDifferenceThreshold must be 0-1");
+        }
+        if (dto.shortTokenRatioThreshold() < 0 || dto.shortTokenRatioThreshold() > 1) {
+            throw new IllegalArgumentException("Invalid configuration: shortTokenRatioThreshold must be 0-1");
+        }
 
         // Apply changes
         similarityConfig.setJaroWinklerBoostThreshold(dto.jaroWinklerBoostThreshold());
@@ -86,13 +93,15 @@ public class AdminConfigController {
         similarityConfig.setPhoneticFilteringDisabled(dto.phoneticFilteringDisabled());
         similarityConfig.setKeepStopwords(dto.keepStopwords());
         similarityConfig.setLogStopwordDebugging(dto.logStopwordDebugging());
+        similarityConfig.setPhoneticLengthDifferenceThreshold(dto.phoneticLengthDifferenceThreshold());
+        similarityConfig.setShortTokenRatioThreshold(dto.shortTokenRatioThreshold());
 
         logger.info("Admin UI: similarity config updated successfully");
         return ResponseEntity.ok(new AdminMessageResponse("Similarity configuration updated successfully"));
     }
 
     /**
-     * Update weight configuration (13 parameters).
+     * Update weight configuration (20 parameters: 13 original + 7 BSA compliance thresholds).
      * 
      * PUT /api/admin/config/weights
      * 
@@ -106,6 +115,12 @@ public class AdminConfigController {
         // Validate
         if (dto.nameWeight() < 0 || dto.addressWeight() < 0 || dto.criticalIdWeight() < 0 || dto.supportingInfoWeight() < 0) {
             throw new IllegalArgumentException("Invalid configuration: weights cannot be negative");
+        }
+        if (dto.aliasTieBreakerThreshold() < 0 || dto.aliasTieBreakerThreshold() > 1) {
+            throw new IllegalArgumentException("Invalid configuration: aliasTieBreakerThreshold must be 0-1");
+        }
+        if (dto.exactMatchIdWeight() + dto.exactMatchNameWeight() != 1.0) {
+            throw new IllegalArgumentException("Invalid configuration: exactMatchIdWeight + exactMatchNameWeight must equal 1.0");
         }
 
         // Apply changes
@@ -122,6 +137,14 @@ public class AdminConfigController {
         weightConfig.setCryptoComparisonEnabled(dto.cryptoComparisonEnabled());
         weightConfig.setContactComparisonEnabled(dto.contactComparisonEnabled());
         weightConfig.setDateComparisonEnabled(dto.dateComparisonEnabled());
+        weightConfig.setAliasTieBreakerThreshold(dto.aliasTieBreakerThreshold());
+        weightConfig.setExactMatchCriticalIdThreshold(dto.exactMatchCriticalIdThreshold());
+        weightConfig.setExactMatchIdWeight(dto.exactMatchIdWeight());
+        weightConfig.setExactMatchNameWeight(dto.exactMatchNameWeight());
+        weightConfig.setAliasScoreMultiplier(dto.aliasScoreMultiplier());
+        weightConfig.setAliasMinimumScore(dto.aliasMinimumScore());
+        weightConfig.setAliasBoostMaxScore(dto.aliasBoostMaxScore());
+        weightConfig.setAliasBoostAmount(dto.aliasBoostAmount());
 
         logger.info("Admin UI: weight config updated successfully");
         return ResponseEntity.ok(new AdminMessageResponse("Weight configuration updated successfully"));
