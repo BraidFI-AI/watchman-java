@@ -1,6 +1,5 @@
 server:
   port: 8084
-
 spring:
   application:
     name: watchman-java
@@ -11,18 +10,14 @@ spring:
     driver-class-name: org.postgresql.Driver
   sql:
     init:
-      mode: never  # Don't auto-initialize schema
-
+      mode: never
 watchman:
   download:
     enabled: true
     on-startup: true
-    refresh-interval-ms: 43200000  # 12 hours in milliseconds
+    refresh-interval-ms: 43200000
     sources:
-      - US_OFAC
-      # - US_CSL
-      # - EU_CSL
-      # - UK_CSL
+    - US_OFAC
     ofac:
       sdn-url: https://www.treasury.gov/ofac/downloads/sdn.csv
       add-url: https://www.treasury.gov/ofac/downloads/add.csv
@@ -33,48 +28,44 @@ watchman:
       url: https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw
     uk-csl:
       url: https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv
-  # ScoreConfig: Centralized scoring configuration
   similarity:
-    jaro-winkler-boost-threshold: 0.7
-    jaro-winkler-prefix-size: 4
+    jaro-winkler-boost-threshold: 0.8
+    jaro-winkler-prefix-size: 5
     winkler-prefix-weight: 0.1
     minimum-token-length: 3
-    phonetic-length-difference-threshold: 0.10  # BSA Rows 13,16,18,24: Max length diff for phonetic match
-    short-token-ratio-threshold: 0.60           # BSA: If >=60% tokens short, keep all (CK ID CO case)
-    length-difference-penalty-weight: 0.3
-    length-difference-cutoff-factor: 0.9
-    different-letter-penalty-weight: 0.9
-    exact-match-favoritism: 0.0
-    unmatched-index-token-weight: 0.15
-    phonetic-filtering-disabled: false
-    keep-stopwords: false
-    log-stopword-debugging: false
-  # SearchConfig: Search filtering and threshold configuration
-  # All BSA-critical thresholds previously hardcoded in SearchServiceImpl
+    phonetic-length-difference-threshold: 0.15
+    short-token-ratio-threshold: 0.65
+    length-difference-penalty-weight: 0.4
+    length-difference-cutoff-factor: 0.85
+    different-letter-penalty-weight: 0.95
+    exact-match-favoritism: 0.1
+    unmatched-index-token-weight: 0.2
+    phonetic-filtering-disabled: true
+    keep-stopwords: true
+    log-stopword-debugging: true
   search:
-    alias-match-threshold: 0.75        # BSA: Alias matches use lower threshold (AL-QAIDA SYRIA case)
-    high-score-threshold: 0.95          # Precision filter: High scores require token coverage
-    token-coverage-minimum: 0.40        # Precision filter: Minimum 40% token coverage for 3+ token queries
-    multi-token-query-threshold: 3      # Apply coverage filter for queries with 3+ tokens
-    normal-threshold-max: 0.88          # Upper bound for "normal" threshold range
-    normal-threshold-min: 0.75          # Lower bound for "normal" threshold range
-    short-query-token-threshold: 2      # Queries with <= 2 tokens are "short" (use adjusted threshold)
+    alias-match-threshold: 0.75
+    high-score-threshold: 0.95
+    token-coverage-minimum: 0.4
+    multi-token-query-threshold: 3
+    normal-threshold-max: 0.88
+    normal-threshold-min: 0.75
+    short-query-token-threshold: 2
   weights:
     name-weight: 35.0
     address-weight: 25.0
     critical-id-weight: 50.0
     supporting-info-weight: 15.0
-    minimum-score: 0.88
+    minimum-score: 0.0
     exact-match-threshold: 0.99
-    # BSA compliance thresholds moved from EntityScorerImpl
-    alias-tie-breaker-threshold: 0.95          # Row 50: Prefer alias when both score >=0.95
-    exact-match-critical-id-threshold: 0.99    # Exact ID match triggers 70/30 blend
-    exact-match-id-weight: 0.7                 # 70% weight from exact ID match
-    exact-match-name-weight: 0. 3               # 30% weight from name similarity
-    alias-score-multiplier: 1.2                # Row 24: Alias must score 20% better
-    alias-minimum-score: 0.45                  # Min alias score to qualify for boost
-    alias-boost-max-score: 0.88                # Max score before alias boost applies
-    alias-boost-amount: 0.50                   # BSA compliance: +0.50 boost for alias matches
+    alias-tie-breaker-threshold: 0.95
+    exact-match-critical-id-threshold: 0.99
+    exact-match-id-weight: 0.7
+    exact-match-name-weight: 0.3
+    alias-score-multiplier: 1.2
+    alias-minimum-score: 0.45
+    alias-boost-max-score: 0.88
+    alias-boost-amount: 0.5
     name-comparison-enabled: true
     alt-name-comparison-enabled: true
     address-comparison-enabled: true
@@ -84,7 +75,7 @@ watchman:
     date-comparison-enabled: true
   auto-clearance:
     phase1-threshold: 0.85
-    address-mismatch-threshold: 0.50
+    address-mismatch-threshold: 0.5
     dob-difference-threshold-years: 1
   bulk:
     input-bucket: ${WATCHMAN_BULK_INPUT_BUCKET:watchman-input}
@@ -94,3 +85,6 @@ watchman:
     batch:
       job-queue-arn: ${AWS_BATCH_JOB_QUEUE_ARN:arn:aws:batch:us-east-1:100095454503:job-queue/sandbox-watchman-queue}
       job-definition-arn: ${AWS_BATCH_JOB_DEFINITION_ARN:arn:aws:batch:us-east-1:100095454503:job-definition/sandbox-watchman-bulk-screening:3}
+  webhook:
+    enabled: false
+    refresh-notification-url: ''

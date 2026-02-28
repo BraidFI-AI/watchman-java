@@ -2278,3 +2278,29 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 **Rationale**: BSA consultant is actively testing production system. Pushing changes could disrupt their workflow or introduce unexpected behavior during validation.
 
 **Impact**: 1 commit ahead of origin/main (25 files, +1008/-1790 lines). Will push after consultant completes testing.
+
+---
+
+## 2026-02-27: Implemented YAML Persistence for Admin UI Changes
+
+**Decision**: Created `ConfigPersistenceService` to write configuration changes back to `application.yml`
+
+**Rationale**: Banks need permanent configuration control for audit compliance. In-memory changes that vanish on restart don't reflect runtime reality. YAML must be single source of truth for both startup and runtime state.
+
+**Implementation**: ~150 lines using existing SnakeYAML dependency, called from all 5 AdminConfigController update endpoints
+
+**Testing**: `ConfigPersistenceServiceTest` validates BSA value preservation
+
+**Tradeoff**: Adds file I/O overhead to config updates, but essential for persistent control and audit trail
+
+---
+
+## 2026-02-27: Organized ScoreConfig Tab with Inline Sub-Tabs
+
+**Decision**: Split ScoreConfig into 3 inline sub-tabs (Similarity, Weights, Auto-Clearance) instead of vertical columns
+
+**Rationale**: Single-page vertical layout was overwhelming with 37 parameters. Sub-tabs improve UX by showing one section at a time while maintaining context (Match Threshold stays visible).
+
+**Trade-off**: Adds one extra click to switch sections, but significantly reduces cognitive load and improves scannability
+
+**Impact**: Better UI organization for banks and consultants reviewing configuration

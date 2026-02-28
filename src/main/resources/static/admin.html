@@ -142,6 +142,47 @@
             display: block;
         }
         
+        /* Sub-tabs within main tabs */
+        .sub-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0;
+        }
+        
+        .sub-tab {
+            background: transparent;
+            border: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .sub-tab:hover {
+            color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .sub-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .sub-tab-content {
+            display: none;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        .sub-tab-content.active {
+            display: block;
+        }
+        
         .config-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -532,6 +573,7 @@
             <button class="tab" onclick="showTab('test')">Test Search</button>
             <button class="tab" onclick="showTab('infrastructure')">Infrastructure</button>
             <button class="tab" onclick="showTab('day-watcher')">Day Watcher</button>
+            <button class="tab" onclick="showTab('webhooks')">Webhooks</button>
             <button class="tab" onclick="showTab('docs')">Documentation</button>
         </div>
         
@@ -564,8 +606,15 @@
                 </div>
             </div>
             
-            <div class="config-grid">
-                <!-- Similarity Config -->
+            <!-- Sub-tabs for detailed config sections -->
+            <div class="sub-tabs">
+                <button class="sub-tab active" onclick="showConfigSubTab('similarity', event)">📐 Similarity</button>
+                <button class="sub-tab" onclick="showConfigSubTab('weights', event)">⚖️ Weights</button>
+                <button class="sub-tab" onclick="showConfigSubTab('auto-clearance', event)">✅ Auto-Clearance</button>
+            </div>
+            
+            <!-- Similarity Sub-tab -->
+            <div id="similarity-config" class="sub-tab-content active">
                 <div class="config-section">
                     <h3>Similarity Parameters</h3>
                     <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Algorithm-level parameters controlling Jaro-Winkler scoring behavior</p>
@@ -630,11 +679,14 @@
                         </div>
                     </div>
                     <div class="actions">
-                        <button class="btn btn-primary" onclick="saveSimilarityConfig()">Save Similarity</button>
+                        <button class="btn btn-primary" onclick="saveSimilarityConfig()">Save Similarity Configuration</button>
+                        <button class="btn btn-secondary" onclick="loadConfig()">Reload</button>
                     </div>
                 </div>
-                
-                <!-- Weight Config -->
+            </div>
+            
+            <!-- Weights Sub-tab -->
+            <div id="weights-config" class="sub-tab-content">
                 <div class="config-section">
                     <h3>Weight Parameters</h3>
                     <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Business-level weights and phase controls for scoring</p>
@@ -750,11 +802,14 @@
                         </label>
                     </div>
                     <div class="actions">
-                        <button class="btn btn-primary" onclick="saveWeightConfig()">Save Weights</button>
+                        <button class="btn btn-primary" onclick="saveWeightConfig()">Save Weight Configuration</button>
+                        <button class="btn btn-secondary" onclick="loadConfig()">Reload</button>
                     </div>
                 </div>
-                
-                <!-- Auto-Clearance Config -->
+            </div>
+            
+            <!-- Auto-Clearance Sub-tab -->
+            <div id="auto-clearance-config" class="sub-tab-content">
                 <div class="config-section">
                     <h3>Auto-Clearance Thresholds</h3>
                     <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Controls for automated clearance feature. See Documentation tab for details.</p>
@@ -775,14 +830,61 @@
                         <small style="font-size: 11px; color: #666;">DOB difference above this = auto-clear (years). Default: 1 year</small>
                     </div>
                     <div class="actions">
-                        <button class="btn btn-primary" onclick="saveAutoClearanceConfig()">Save Auto-Clearance</button>
+                        <button class="btn btn-primary" onclick="saveAutoClearanceConfig()">Save Auto-Clearance Configuration</button>
+                        <button class="btn btn-secondary" onclick="loadConfig()">Reload</button>
                     </div>
                 </div>
             </div>
             
-            <div class="actions">
-                <button class="btn btn-secondary" onclick="loadConfig()">Reload</button>
-                <button class="btn btn-danger" onclick="resetConfig()">Reset to Defaults</button>
+            <!-- Global actions for all config sections -->
+            <div class="actions" style="margin-top: 24px; padding-top: 24px; border-top: 2px solid var(--border);">
+                <button class="btn btn-danger" onclick="resetConfig()">Reset All to Defaults</button>
+                <button class="btn btn-secondary" onclick="loadConfig()">Reload All Configuration</button>
+            </div>
+        </div>
+        
+        <!-- Webhooks Tab -->
+        <div id="webhooks" class="tab-content">
+            <h2>🔔 Webhook Notifications</h2>
+            <p class="subtitle" style="margin-bottom: 20px;">Configure webhook notifications for data refresh events</p>
+            <div id="webhook-alert"></div>
+            
+            <div class="config-section">
+                <h3>Configuration</h3>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">Sends enriched audit payloads to external systems on every data refresh (startup, scheduled, manual)</p>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="webhookEnabled">
+                        Enable Webhook Notifications
+                    </label>
+                    <small style="font-size: 11px; color: #666; display: block; margin-top: 4px;">Send POST requests on every data refresh event</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Webhook URL</label>
+                    <input type="text" id="webhookRefreshNotificationUrl" placeholder="https://example.com/webhook/endpoint" style="font-family: monospace;">
+                    <small style="font-size: 11px; color: #666;">HTTP(S) endpoint to receive refresh notifications (JSON payload)</small>
+                </div>
+                
+                <div style="background: #f0f9ff; padding: 16px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+                    <strong style="font-size: 13px; color: #0c4a6e; display: block; margin-bottom: 12px;">📋 Payload Structure</strong>
+                    <ul style="font-size: 12px; color: #075985; margin: 0 0 0 20px; line-height: 1.8;">
+                        <li><strong>success:</strong> boolean - Whether refresh completed successfully</li>
+                        <li><strong>totalEntities:</strong> number - Total entities loaded</li>
+                        <li><strong>durationMs:</strong> number - Refresh duration in milliseconds</li>
+                        <li><strong>sourceCounts:</strong> object - Entity count per source (OFAC, CSL, etc.)</li>
+                        <li><strong>errorMessage:</strong> string | null - Error details if failed</li>
+                        <li><strong>refreshType:</strong> string - "STARTUP", "SCHEDULED", or "MANUAL"</li>
+                        <li><strong>changeDetection:</strong> object - Added, removed, modified, netChange counts</li>
+                        <li><strong>entityTypeCounts:</strong> object - Counts by type (PERSON, ORGANIZATION, VESSEL, etc.)</li>
+                        <li><strong>timestamp:</strong> ISO 8601 timestamp - When refresh completed</li>
+                    </ul>
+                </div>
+                
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="saveWebhookConfig()">Save Webhook Configuration</button>
+                </div>
             </div>
         </div>
         
@@ -1516,6 +1618,15 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
             }
         }
         
+        // Sub-tab navigation within ScoreConfig
+        function showConfigSubTab(subTabName, event) {
+            document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sub-tab-content').forEach(t => t.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(subTabName + '-config').classList.add('active');
+        }
+        
         // Load configuration
         async function loadConfig() {
             try {
@@ -1553,6 +1664,18 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                         el.value = data.autoClearance[key];
                     }
                 });
+                
+                // Populate webhook fields
+                if (data.webhook) {
+                    const enabledEl = document.getElementById('webhookEnabled');
+                    const urlEl = document.getElementById('webhookRefreshNotificationUrl');
+                    if (enabledEl) {
+                        enabledEl.checked = data.webhook.enabled;
+                    }
+                    if (urlEl) {
+                        urlEl.value = data.webhook.refreshNotificationUrl || '';
+                    }
+                }
                 
                 // Update threshold display in prominent section
                 const thresholdDisplay = document.getElementById('currentThreshold');
@@ -1707,6 +1830,32 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 }
             } catch (error) {
                 showAlert('config', `Error saving auto-clearance configuration: ${error.message}`, 'error');
+            }
+        }
+        
+        // Save webhook config
+        async function saveWebhookConfig() {
+            const config = {
+                enabled: document.getElementById('webhookEnabled').checked,
+                refreshNotificationUrl: document.getElementById('webhookRefreshNotificationUrl').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/config/webhook`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('webhook', data.message, 'success');
+                } else {
+                    showAlert('webhook', `Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('webhook', `Error saving webhook configuration: ${error.message}`, 'error');
             }
         }
         

@@ -5,22 +5,27 @@ import io.moov.watchman.api.dto.AdminMessageResponse;
 import io.moov.watchman.api.dto.AutoClearanceConfigDTO;
 import io.moov.watchman.api.dto.SimilarityConfigDTO;
 import io.moov.watchman.api.dto.WeightConfigDTO;
+import io.moov.watchman.api.dto.WebhookConfigDTO;
 import io.moov.watchman.config.AutoClearanceConfig;
+import io.moov.watchman.config.ConfigPersistenceService;
 import io.moov.watchman.config.SimilarityConfig;
 import io.moov.watchman.config.WeightConfig;
+import io.moov.watchman.config.WebhookConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+
 /**
  * REST API for Admin UI to manage ScoreConfig.
  * 
  * Provides endpoints to view and edit configuration values.
- * Changes are applied to the running application (in-memory).
+ * Changes are applied to the running application (in-memory) and persisted to application.yml.
  * 
- * MVP Scope: View all config, edit similarity config, edit weight config, reset to defaults.
- * Future: Persist changes to application.yml, authentication/authorization.
+ * Features: View all config, edit similarity config, edit weight config, reset to defaults.
+ * Security: Add authentication/authorization before production deployment.
  */
 @RestController
 @RequestMapping("/api/admin/config")
@@ -32,26 +37,32 @@ public class AdminConfigController {
     private final SimilarityConfig similarityConfig;
     private final WeightConfig weightConfig;
     private final AutoClearanceConfig autoClearanceConfig;
+    private final WebhookConfig webhookConfig;
+    private final ConfigPersistenceService configPersistenceService;
 
-    public AdminConfigController(SimilarityConfig similarityConfig, WeightConfig weightConfig, AutoClearanceConfig autoClearanceConfig) {
+    public AdminConfigController(SimilarityConfig similarityConfig, WeightConfig weightConfig, 
+                                AutoClearanceConfig autoClearanceConfig, WebhookConfig webhookConfig,
+                                ConfigPersistenceService configPersistenceService) {
         this.similarityConfig = similarityConfig;
         this.weightConfig = weightConfig;
         this.autoClearanceConfig = autoClearanceConfig;
+        this.webhookConfig = webhookConfig;
+        this.configPersistenceService = configPersistenceService;
     }
 
     /**
-     * Get all configuration values (35 parameters).
-     * 12 similarity + 20 weights + 3 auto-clearance = 35 BSA-approved values.
+     * Get all configuration values (37 parameters).
+     * 12 similarity + 20 weights + 3 auto-clearance + 2 webhook = 37 total values.
      * 
      * GET /api/admin/config
      * 
-     * @return combined similarity + weight + auto-clearance config
+     * @return combined similarity + weight + auto-clearance + webhook config
      */
     @GetMapping
     public ResponseEntity<AdminConfigResponse> getAllConfig() {
         logger.info("Admin UI: fetching all configuration");
         
-        AdminConfigResponse response = AdminConfigResponse.from(similarityConfig, weightConfig, autoClearanceConfig);
+        AdminConfigResponse response = AdminConfigResponse.from(similarityConfig, weightConfig, autoClearanceConfig, webhookConfig);
         
         return ResponseEntity.ok(response);
     }
@@ -96,7 +107,15 @@ public class AdminConfigController {
         similarityConfig.setPhoneticLengthDifferenceThreshold(dto.phoneticLengthDifferenceThreshold());
         similarityConfig.setShortTokenRatioThreshold(dto.shortTokenRatioThreshold());
 
-        logger.info("Admin UI: similarity config updated successfully");
+        // Persist to YAML
+        try {
+            configPersistenceService.persistConfig(similarityConfig, weightConfig, autoClearanceConfig, webhookConfig);
+            logger.info("Admin UI: similarity config updated and persisted to YAML");
+        } catch (IOException e) {
+            logger.error("Failed to persist similarity config to YAML", e);
+            return ResponseEntity.status(500).body(new AdminMessageResponse("Configuration updated in-memory but failed to persist to YAML: " + e.getMessage()));
+        }
+
         return ResponseEntity.ok(new AdminMessageResponse("Similarity configuration updated successfully"));
     }
 
@@ -146,7 +165,15 @@ public class AdminConfigController {
         weightConfig.setAliasBoostMaxScore(dto.aliasBoostMaxScore());
         weightConfig.setAliasBoostAmount(dto.aliasBoostAmount());
 
-        logger.info("Admin UI: weight config updated successfully");
+        // Persist to YAML
+        try {
+            configPersistenceService.persistConfig(similarityConfig, weightConfig, autoClearanceConfig, webhookConfig);
+            logger.info("Admin UI: weight config updated and persisted to YAML");
+        } catch (IOException e) {
+            logger.error("Failed to persist weight config to YAML", e);
+            return ResponseEntity.status(500).body(new AdminMessageResponse("Configuration updated in-memory but failed to persist to YAML: " + e.getMessage()));
+        }
+
         return ResponseEntity.ok(new AdminMessageResponse("Weight configuration updated successfully"));
     }
 
@@ -178,7 +205,15 @@ public class AdminConfigController {
         autoClearanceConfig.setAddressMismatchThreshold(dto.addressMismatchThreshold());
         autoClearanceConfig.setDobDifferenceThresholdYears(dto.dobDifferenceThresholdYears());
 
-        logger.info("Admin UI: auto-clearance config updated successfully");
+        // Persist to YAML
+        try {
+            configPersistenceService.persistConfig(similarityConfig, weightConfig, autoClearanceConfig, webhookConfig);
+            logger.info("Admin UI: auto-clearance config updated and persisted to YAML");
+        } catch (IOException e) {
+            logger.error("Failed to persist auto-clearance config to YAML", e);
+            return ResponseEntity.status(500).body(new AdminMessageResponse("Configuration updated in-memory but failed to persist to YAML: " + e.getMessage()));
+        }
+
         return ResponseEntity.ok(new AdminMessageResponse("Auto-clearance configuration updated successfully"));
     }
 
@@ -204,13 +239,15 @@ public class AdminConfigController {
         similarityConfig.setPhoneticFilteringDisabled(false);
         similarityConfig.setKeepStopwords(false);
         similarityConfig.setLogStopwordDebugging(false);
+        similarityConfig.setPhoneticLengthDifferenceThreshold(0.10);
+        similarityConfig.setShortTokenRatioThreshold(0.60);
 
-        // Reset weight config to application.yml defaults
+        // Reset weight config to application.yml defaults (including BSA compliance thresholds)
         weightConfig.setNameWeight(35.0);
         weightConfig.setAddressWeight(25.0);
         weightConfig.setCriticalIdWeight(50.0);
         weightConfig.setSupportingInfoWeight(15.0);
-        weightConfig.setMinimumScore(0.0);
+        weightConfig.setMinimumScore(0.88);
         weightConfig.setExactMatchThreshold(0.99);
         weightConfig.setNameComparisonEnabled(true);
         weightConfig.setAltNameComparisonEnabled(true);
@@ -219,13 +256,69 @@ public class AdminConfigController {
         weightConfig.setCryptoComparisonEnabled(true);
         weightConfig.setContactComparisonEnabled(true);
         weightConfig.setDateComparisonEnabled(true);
+        weightConfig.setAliasTieBreakerThreshold(0.95);
+        weightConfig.setExactMatchCriticalIdThreshold(0.99);
+        weightConfig.setExactMatchIdWeight(0.7);
+        weightConfig.setExactMatchNameWeight(0.3);
+        weightConfig.setAliasScoreMultiplier(1.2);
+        weightConfig.setAliasMinimumScore(0.45);
+        weightConfig.setAliasBoostMaxScore(0.88);
+        weightConfig.setAliasBoostAmount(0.50);
 
         // Reset auto-clearance config to application.yml defaults
         autoClearanceConfig.setPhase1Threshold(0.85);
         autoClearanceConfig.setAddressMismatchThreshold(0.50);
         autoClearanceConfig.setDobDifferenceThresholdYears(1);
 
-        logger.info("Admin UI: configuration reset to defaults");
+        // Persist to YAML
+        try {
+            configPersistenceService.persistConfig(similarityConfig, weightConfig, autoClearanceConfig, webhookConfig);
+            logger.info("Admin UI: configuration reset to defaults and persisted to YAML");
+        } catch (IOException e) {
+            logger.error("Failed to persist reset config to YAML", e);
+            return ResponseEntity.status(500).body(new AdminMessageResponse("Configuration reset in-memory but failed to persist to YAML: " + e.getMessage()));
+        }
+
         return ResponseEntity.ok(new AdminMessageResponse("Configuration reset to defaults"));
+    }
+
+    /**
+     * Update webhook configuration (2 parameters).
+     * 
+     * PUT /api/admin/config/webhook
+     * 
+     * @param dto updated webhook config
+     * @return success message
+     */
+    @PutMapping("/webhook")
+    public ResponseEntity<AdminMessageResponse> updateWebhookConfig(@RequestBody WebhookConfigDTO dto) {
+        logger.info("Admin UI: updating webhook config");
+
+        // Validate
+        if (dto.enabled() && (dto.refreshNotificationUrl() == null || dto.refreshNotificationUrl().isBlank())) {
+            throw new IllegalArgumentException("Invalid configuration: webhook URL is required when enabled");
+        }
+        if (dto.refreshNotificationUrl() != null && !dto.refreshNotificationUrl().isBlank()) {
+            if (!dto.refreshNotificationUrl().startsWith("http://") && !dto.refreshNotificationUrl().startsWith("https://")) {
+                throw new IllegalArgumentException("Invalid configuration: webhook URL must start with http:// or https://");
+            }
+        }
+
+        // Apply changes
+        webhookConfig.setEnabled(dto.enabled());
+        webhookConfig.setRefreshNotificationUrl(dto.refreshNotificationUrl() == null ? "" : dto.refreshNotificationUrl());
+
+        // Persist to YAML
+        try {
+            configPersistenceService.persistConfig(similarityConfig, weightConfig, autoClearanceConfig, webhookConfig);
+            logger.info("Admin UI: webhook config updated and persisted to YAML (enabled={}, url={})", 
+                webhookConfig.isEnabled(), 
+                webhookConfig.getRefreshNotificationUrl().isEmpty() ? "<empty>" : "<configured>");
+        } catch (IOException e) {
+            logger.error("Failed to persist webhook config to YAML", e);
+            return ResponseEntity.status(500).body(new AdminMessageResponse("Configuration updated in-memory but failed to persist to YAML: " + e.getMessage()));
+        }
+
+        return ResponseEntity.ok(new AdminMessageResponse("Webhook configuration updated successfully"));
     }
 }

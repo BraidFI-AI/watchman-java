@@ -348,6 +348,33 @@
 
 ### What Is Now True
 - **S.I. 5 COMPLETE** ✅ (Feb 10, 2026)
+
+## Configuration Architecture
+
+### Configuration Persistence
+- Admin UI changes persist to `application.yml` via `ConfigPersistenceService`
+- YAML serves as both startup authority and runtime persistence target
+- All 5 endpoints (similarity, weights, auto-clearance, webhook, reset) write changes to disk
+- `ConfigPersistenceService` uses SnakeYAML to preserve YAML structure while updating watchman.* sections
+- Changes survive application restarts - YAML reflects current runtime state
+
+### BSA-Critical Thresholds (Immutable)
+- The following 5 values must never change during refactors or code changes:
+  - `minimumScore: 0.88` (primary match threshold)
+  - `aliasTieBreakerThreshold: 0.95` (prefer alias when both score ≥0.95)
+  - `aliasBoostAmount: 0.50` (score boost for alias matches)
+  - `phoneticLengthDifferenceThreshold: 0.10` (max name length diff for phonetic match)
+  - `shortTokenRatioThreshold: 0.60` (short-code entity detection)
+- These values are BSA compliance-approved and tested in production
+- `ConfigPersistenceServiceTest` validates preservation during persistence operations
+
+### Admin UI Organization
+- ScoreConfig tab uses inline sub-tabs for better organization:
+  - 📐 Similarity (algorithm parameters)
+  - ⚖️ Weights (business weights, exact match, alias, phase toggles)
+  - ✅ Auto-Clearance (clearance thresholds)
+- Match Threshold section remains visible across all sub-tabs (most important control)
+- Sub-tabs reduce cognitive load by showing one section at a time vs. vertical scrolling
   * CecoexPartialNameTest: 4/4 passing (previously 3/4 failing)
   * CECOEX vs CHACHAJEE: score 0.611 (below 0.70 threshold → excluded from results)
   * LAKHVI entity with CHACHAJEE alias no longer appears in CECOEX searches
