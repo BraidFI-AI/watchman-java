@@ -1,0 +1,25 @@
+{
+  "base_url": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com",
+  "timestamp": "2026-03-02T11:23:31.351158",
+  "results": [
+    {
+      "test_name": "Batch API Test (10\u00d71000 names, 1 concurrent)",
+      "endpoint": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search/batch",
+      "total_requests": 10,
+      "successful_requests": 10,
+      "failed_requests": 0,
+      "duration_seconds": 120.6205689907074,
+      "requests_per_second": 0.08290459980146835,
+      "latency_stats": {
+        "min": 10505.349159240723,
+        "max": 17805.923223495483,
+        "mean": 12060.044527053833,
+        "median": 11582.206964492798,
+        "p95": 17805.923223495483,
+        "p99": 17805.923223495483
+      },
+      "error_details": {},
+      "timestamp": "2026-03-02T11:23:31.350373"
+    }
+  ]
+}
