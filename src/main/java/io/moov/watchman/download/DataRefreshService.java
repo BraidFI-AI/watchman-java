@@ -55,6 +55,11 @@ public class DataRefreshService {
      */
     @PostConstruct
     public void init() {
+        // Log JVM parallelism configuration for diagnostics
+        logger.info("JVM Configuration: availableProcessors={}, ForkJoinPool.commonPool.parallelism={}", 
+            Runtime.getRuntime().availableProcessors(),
+            java.util.concurrent.ForkJoinPool.commonPool().getParallelism());
+        
         if (downloadEnabled && downloadOnStartup) {
             logger.info("Loading data on startup...");
             refresh("STARTUP");
@@ -66,8 +71,9 @@ public class DataRefreshService {
 
     /**
      * Scheduled refresh every 12 hours (or as configured).
+     * DISABLED: Refresh only happens on server restart to avoid performance impact during batch processing.
      */
-    @Scheduled(fixedRateString = "${watchman.download.refresh-interval-ms:43200000}")
+    // @Scheduled(fixedRateString = "${watchman.download.refresh-interval-ms:43200000}")
     public void scheduledRefresh() {
         if (!downloadEnabled) {
             return;
