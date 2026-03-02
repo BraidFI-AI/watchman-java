@@ -178,9 +178,11 @@ public class DataRefreshService {
             // Update previous entity IDs for next refresh
             previousEntityIds = currentEntityIds;
             
-            // Clear and reload index with normalized entities
-            entityIndex.clear();
-            entityIndex.addAll(normalizedEntities);
+            // Clear and reload index with normalized entities.
+            // replaceAll() atomically clears + loads + rebuilds the token index.
+            // addAll() after clear() was previously used here but skips token index
+            // construction, causing every search to fall back to a full 49,955-entity scan.
+            entityIndex.replaceAll(normalizedEntities);
             
             long duration = System.currentTimeMillis() - startTime;
             totalEntities = normalizedEntities.size();
