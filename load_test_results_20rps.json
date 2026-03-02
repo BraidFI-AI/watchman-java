@@ -1,0 +1,29 @@
+{
+  "base_url": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com",
+  "timestamp": "2026-02-25T17:14:18.341380",
+  "results": [
+    {
+      "test_name": "Search Endpoint Load Test",
+      "endpoint": "http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search",
+      "total_requests": 17842,
+      "successful_requests": 15244,
+      "failed_requests": 2598,
+      "duration_seconds": 15555.298025131226,
+      "requests_per_second": 1.1470047035533724,
+      "latency_stats": {
+        "min": 36.611080169677734,
+        "max": 131014.02497291565,
+        "mean": 55753.213264404716,
+        "median": 55717.79251098633,
+        "p95": 60151.20778083801,
+        "p99": 60222.308773994446
+      },
+      "error_details": {
+        "HTTP 504": 2564,
+        "HTTPConnectionPool(host='watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com', port=80): Max retries exceeded with url: /v1/search?name=Emma+Sullivan&limit=10 (Caused by NameResolutionError(\"HTTPConnection(host='watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com', port=80): Failed to resolve 'watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com' ([Errno 8] nodename nor servname provided, or not known)\"))": 1,
+        "Timeout": 33
+      },
+      "timestamp": "2026-02-25T17:14:17.968863"
+    }
+  ]
+}

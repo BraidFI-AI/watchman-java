@@ -1997,3 +1997,60 @@ Admin UI exists at `/api/admin/config` providing REST endpoints to view/edit con
 - Net code reduction: -782 lines (cleanup from BSA threshold migration)
 
 BSA consultant's ~451 test cases (R1-Entity 280, R1-Ind 95, R2-Entity 76) remain valid. All 9 BSA compliance thresholds now configurable via YAML and Admin UI.
+
+## Session: March 1, 2026 (Performance Optimization – Fix 1 + Fix 2)
+
+### Problem Statement
+Production target: 20 RPS / 3 threads = 60 names/sec (Portage bank requirement).
+Current measured: 2.98–6.55 names/sec (18.7x–20x gap). BSA scoring audited and approved; cannot change.
+
+### Root Cause Analysis (Completed)
+
+Two infrastructure issues, zero scoring logic issues:
+
+1. **`ScoringContext.enabled()` called per entity in hot path** (`SearchServiceImpl.java:128` before fix)
+   - Allocates `ArrayList(100)`, `HashMap`, `Instant.now()`, string concat with `System.nanoTime()` for every candidate
+   - Only used to extract one field: `matchedAlias` from context metadata
+   - Null Object pattern existed (`ScoringContext.disabled()`) but was not used in production path
+
+2. **Query normalization repeated per entity** (`EntityScorerImpl.compareNames()` lines ~315-316)
+   - `lowerAndRemovePunctuation + tokenize + collapseAcronyms + filterShortTokens` runs once per candidate
+   - Infrastructure for caching (`preprocessQueryTokens()`, `scoreWithBreakdownCached()`) existed but was never wired into production path
+   - Previous cache attempt used reflection → abandoned; correct fix is a direct cast
+
+3. **Token pre-filter OR-union scales with entity count** (separate, lower-priority issue, not addressed here)
+   - `getCandidatesByTokens()` unions all matching buckets; common Arabic/Islamic name tokens ("al", "ali", "hassan") each hit hundreds of entities
+   - 18k → 44k entities ≈ proportional bucket growth, not fixed ceiling
+
+### What Was Changed (March 1, 2026)
+
+**New file**: `src/main/java/io/moov/watchman/search/ScoringResult.java`
+- Package-private record: `(ScoreBreakdown breakdown, String matchedAlias)`
+- Replaces `ScoringContext` metadata extraction pattern in the hot path
+
+**`EntityScorer.java`**: Added `ScoringResult scoreWithResult(Entity query, Entity index)` to interface
+
+**`EntityScorerImpl.java`**: Added three methods:
+- `scoreWithResult()` – Fix 1: identical scoring logic, `ScoringContext.disabled()`, captures `matchedAlias` via local variable
+- `scoreWithResultCached(String[] preprocessedQueryTokens, Entity index)` – Fix 2: takes pre-processed tokens, skips all query normalization, returns `ScoringResult`
+- `getJaroWinkler()` – package-private accessor so `SearchServiceImpl` can reach `JaroWinklerSimilarity` without config changes
+
+**`SearchServiceImpl.java`**:
+- Constructor resolves `entityScorerImpl` and `jaroWinkler` once via pattern matching casts (no config change needed)
+- Pre-computes `cachedQueryTokens = jaroWinkler.preprocessQueryTokens(queryNorm)` once before the parallel stream
+- Hot-path lambda calls `entityScorerImpl.scoreWithResultCached(cachedQueryTokens, entity)` — no `ScoringContext.enabled()`, no per-entity normalization
+- Falls back to `entityScorer.scoreWithResult(queryEntity, entity)` when running under mocks (tests)
+
+### What Was NOT Changed
+- `bestPairJaro()`, `phoneticSetsMatch()`, `tokenizedSimilarityWithPrepared()` — all scoring algorithms unchanged
+- All BSA compliance thresholds — unchanged
+- `ScoredEntity` record — unchanged
+- All filter/sort/limit/alias-expansion logic — unchanged
+- `searchWithAutoClearance()` — unchanged (still uses `entityIndex.getAll()` full scan, separate path)
+
+### Validation
+- **`ComprehensiveBSAValidationTest`**: 51/51 PASS (100%) — zero regressions
+- Clean compile (`./mvnw compile`)
+
+### Performance Measurement Needed
+Load test not re-run post-optimization. Next step: run `scripts/aws_load_test.py` or `scripts/test_batch_local.py` against local instance to quantify improvement. Expected: 3–5x improvement from eliminating per-entity allocation + normalization overhead.

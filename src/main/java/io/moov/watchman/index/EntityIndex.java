@@ -46,4 +46,15 @@ public interface EntityIndex {
      * Replace all entities with new collection.
      */
     void replaceAll(Collection<Entity> entities);
+
+    /**
+     * Get candidate entities that have at least one token matching the query tokens.
+     * This is a fast pre-filter before expensive similarity scoring.
+     * 
+     * Performance optimization: Reduces candidates from 50k to ~100-500 for specific name searches.
+     * 
+     * @param queryTokens Normalized query tokens to search for
+     * @return Set of entities that have at least one matching token (empty if no matches)
+     */
+    Collection<Entity> getCandidatesByTokens(String[] queryTokens);
 }

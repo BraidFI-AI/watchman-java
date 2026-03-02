@@ -54,6 +54,18 @@ public interface EntityScorer {
     ScoreBreakdown scoreWithBreakdown(Entity query, Entity index, ScoringContext ctx);
 
     /**
+     * Score entity and return breakdown + matched alias in one call.
+     *
+     * Avoids EnabledScoringContext allocation in the hot search path.
+     * Use this instead of scoreWithBreakdown(Entity, Entity, ScoringContext) when tracing is not needed.
+     *
+     * @param query  The query entity
+     * @param index  The candidate entity from the index
+     * @return ScoringResult containing the score breakdown and matched alias (may be null)
+     */
+    ScoringResult scoreWithResult(Entity query, Entity index);
+
+    /**
      * Score with additional query context (address, DOB, etc.)
      */
     double score(String queryName, String queryAddress, Entity candidate);

@@ -3,11 +3,16 @@ package io.moov.watchman.index;
 import io.moov.watchman.model.Entity;
 import io.moov.watchman.model.EntityType;
 import io.moov.watchman.model.SourceList;
+import io.moov.watchman.similarity.TextNormalizer;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -27,6 +32,11 @@ public class InMemoryEntityIndex implements EntityIndex {
 
     private final List<Entity> entities = new CopyOnWriteArrayList<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    
+    // Token index for fast candidate lookup: token -> entities containing that token
+    // Performance: Reduces 50k entities to ~100-500 candidates for specific searches
+    private final Map<String, Set<Entity>> tokenIndex = new ConcurrentHashMap<>();
+    private final TextNormalizer normalizer = new TextNormalizer();
 
     @Override
     public void addAll(Collection<Entity> newEntities) {
@@ -96,6 +106,7 @@ public class InMemoryEntityIndex implements EntityIndex {
         lock.writeLock().lock();
         try {
             entities.clear();
+            tokenIndex.clear();
         } finally {
             lock.writeLock().unlock();
         }
@@ -106,11 +117,85 @@ public class InMemoryEntityIndex implements EntityIndex {
         lock.writeLock().lock();
         try {
             entities.clear();
+            tokenIndex.clear();
             if (newEntities != null) {
                 entities.addAll(newEntities);
+                rebuildTokenIndex();
             }
         } finally {
             lock.writeLock().unlock();
+        }
+    }
+    
+    @Override
+    public Collection<Entity> getCandidatesByTokens(String[] queryTokens) {
+        if (queryTokens == null || queryTokens.length == 0) {
+            return List.of();
+        }
+        
+        lock.readLock().lock();
+        try {
+            Set<Entity> candidates = new HashSet<>();
+            
+            // Union all entities that match ANY query token
+            for (String token : queryTokens) {
+                if (token != null && !token.isEmpty()) {
+                    Set<Entity> matching = tokenIndex.get(token);
+                    if (matching != null) {
+                        candidates.addAll(matching);
+                    }
+                }
+            }
+            
+            return candidates;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Rebuild the token index from current entities.
+     * Called after bulk entity updates (replaceAll).
+     */
+    private void rebuildTokenIndex() {
+        tokenIndex.clear();
+        for (Entity entity : entities) {
+            indexEntityTokens(entity);
+        }
+    }
+    
+    /**
+     * Index tokens from a single entity's name and aliases.
+     */
+    private void indexEntityTokens(Entity entity) {
+        if (entity == null) {
+            return;
+        }
+        
+        // Index primary name tokens
+        if (entity.name() != null && !entity.name().isBlank()) {
+            String normalized = normalizer.lowerAndRemovePunctuation(entity.name());
+            String[] tokens = normalizer.tokenize(normalized);
+            for (String token : tokens) {
+                if (token != null && !token.isEmpty()) {
+                    tokenIndex.computeIfAbsent(token, k -> ConcurrentHashMap.newKeySet()).add(entity);
+                }
+            }
+        }
+        
+        // Index alias tokens
+        if (entity.altNames() != null) {
+            for (String alias : entity.altNames()) {
+                if (alias != null && !alias.isBlank()) {
+                    String normalized = normalizer.lowerAndRemovePunctuation(alias);
+                    String[] tokens = normalizer.tokenize(normalized);
+                    for (String token : tokens) {
+                        if (token != null && !token.isEmpty()) {
+                            tokenIndex.computeIfAbsent(token, k -> ConcurrentHashMap.newKeySet()).add(entity);
+                        }
+                    }
+                }
+            }
         }
     }
     

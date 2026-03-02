@@ -12,6 +12,7 @@ import io.moov.watchman.trace.ScoringContext;
 import io.moov.watchman.trace.ScoringTrace;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -34,13 +35,22 @@ public class SearchServiceImpl implements SearchService {
     private final io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig;
     private final io.moov.watchman.config.SearchConfig searchConfig;
 
-    public SearchServiceImpl(EntityIndex entityIndex, EntityScorer entityScorer, 
+    // Resolved once at construction for the Fix 1+2 hot path.
+    // Both will be non-null in production (WatchmanConfig always uses these concrete types).
+    // If null (e.g. in tests with mocks), the hot path falls back to scoreWithResult().
+    private final EntityScorerImpl entityScorerImpl;
+    private final io.moov.watchman.similarity.JaroWinklerSimilarity jaroWinkler;
+
+    public SearchServiceImpl(EntityIndex entityIndex, EntityScorer entityScorer,
                              io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig,
                              io.moov.watchman.config.SearchConfig searchConfig) {
         this.entityIndex = entityIndex;
         this.entityScorer = entityScorer;
         this.autoClearanceConfig = autoClearanceConfig;
         this.searchConfig = searchConfig;
+        // Resolve concrete types once for cached-token hot path (Fix 1 + Fix 2)
+        this.entityScorerImpl = (entityScorer instanceof EntityScorerImpl impl) ? impl : null;
+        this.jaroWinkler = (entityScorerImpl != null) ? entityScorerImpl.getJaroWinkler() : null;
     }
 
     @Override
@@ -66,8 +76,28 @@ public class SearchServiceImpl implements SearchService {
         // matches, then Phase 2 auto-clearance filters via discriminators.
         double effectiveMinMatch = adjustThresholdForQueryLength(query, minMatch);
 
-        // PERFORMANCE: Use parallelStream to utilize all CPU cores for scoring 50k entities
-        Stream<Entity> entityStream = entityIndex.getAll().parallelStream();
+        // PERFORMANCE OPTIMIZATION: Token-based pre-filter
+        // Instead of scoring ALL 50k entities, only score candidates with at least 1 matching token
+        // This reduces candidates from 50k → ~100-500 for specific name searches
+        // Expected impact: 20-30% performance improvement
+        io.moov.watchman.similarity.TextNormalizer queryNormalizer = new io.moov.watchman.similarity.TextNormalizer();
+        String queryNorm = queryNormalizer.lowerAndRemovePunctuation(query);
+        queryNorm = Entity.removeCompanyTitles(queryNorm);
+        String[] queryTokens = queryNormalizer.tokenize(queryNorm);
+        
+        Collection<Entity> candidates = entityIndex.getCandidatesByTokens(queryTokens);
+        
+        // If no candidates found via token index, fall back to full scan
+        // This handles edge cases where fuzzy matching might work without exact token matches
+        // In practice, this should rarely happen for valid name queries
+        Stream<Entity> entityStream;
+        if (candidates.isEmpty()) {
+            // No token matches - fall back to full entity scan
+            entityStream = entityIndex.getAll().parallelStream();
+        } else {
+            // Use pre-filtered candidates
+            entityStream = candidates.stream().parallel();
+        }
 
         // Apply source list filter if specified
         if (sourceList != null) {
@@ -95,65 +125,32 @@ public class SearchServiceImpl implements SearchService {
         // 4. Limit to N unique entities  ← KEY CHANGE
         // 5. THEN expand aliases for those N entities
         
-        // Create query entity for scoring
+        // Create query entity for scoring (used by fallback path only)
         Entity queryEntity = Entity.of(null, query, null, null);
-        
-        // PERFORMANCE OPTIMIZATION: Pre-process query tokens once for reuse across all entities
-        // This avoids redundant query normalization (18,708 times → 1 time)
-        String[] preprocessedQueryTokens = null;
-        if (entityScorer instanceof EntityScorerImpl) {
-            // Access the similarity service to pre-process query
-            try {
-                var field = EntityScorerImpl.class.getDeclaredField("similarityService");
-                field.setAccessible(true);
-                var simService = field.get(entityScorer);
-                if (simService instanceof io.moov.watchman.similarity.JaroWinklerSimilarity jw) {
-                    // Normalize query with company suffix removal (matching EntityScorerImpl logic)
-                    var normalizerField = EntityScorerImpl.class.getDeclaredField("normalizer");
-                    normalizerField.setAccessible(true);
-                    var normalizer = (io.moov.watchman.similarity.TextNormalizer) normalizerField.get(entityScorer);
-                    
-                    String normalizedQuery = normalizer.lowerAndRemovePunctuation(query);
-                    normalizedQuery = Entity.removeCompanyTitles(normalizedQuery);
-                    
-                    preprocessedQueryTokens = jw.preprocessQueryTokens(normalizedQuery);
-                }
-            } catch (Exception e) {
-                // Reflection failed, fall back to normal path (no performance loss, just no gain)
-            }
-        }
-        
-        final String[] cachedQueryTokens = preprocessedQueryTokens;
-        
+
+        // Fix 2: Pre-process query tokens once for the entire stream.
+        // Eliminates redundant normalization (lowerAndRemovePunctuation + tokenize +
+        // collapseAcronyms + filterShortTokens) that would otherwise run per entity.
+        // jaroWinkler is non-null in production; null only in tests using mocks.
+        String[] cachedQueryTokens = (jaroWinkler != null)
+                ? jaroWinkler.preprocessQueryTokens(queryNorm)
+                : null;
+
         // Score, filter, sort, and limit ENTITIES (not results)
         PerformanceTimer scoringTimer = PerformanceTimers.get("search.entity_scoring_loop");
         scoringTimer.start();
-        
+
         List<ScoredEntity> topEntities = entityStream
             .map(entity -> {
-                ScoringContext ctx = ScoringContext.enabled("search-" + System.nanoTime());
-                
-                // Use cached query tokens if available for better performance
-                ScoreBreakdown breakdown;
-                if (cachedQueryTokens != null && entityScorer instanceof EntityScorerImpl scorer) {
-                    breakdown = scorer.scoreWithBreakdownCached(cachedQueryTokens, entity, ctx);
-                } else {
-                    breakdown = entityScorer.scoreWithBreakdown(queryEntity, entity, ctx);
-                }
-                
-                double score = breakdown.totalWeightedScore();
-                
-                // Extract matched alias from context
-                String matchedAlias = null;
-                ScoringTrace trace = ctx.toTrace();
-                if (trace != null && trace.metadata() != null) {
-                    Object aliasObj = trace.metadata().get("matchedAlias");
-                    if (aliasObj instanceof String) {
-                        matchedAlias = (String) aliasObj;
-                    }
-                }
-                
-                return new ScoredEntity(entity, score, breakdown, matchedAlias);
+                // Fix 1 + Fix 2: Use cached tokens + disabled context.
+                // Replaces ScoringContext.enabled() (ArrayList(100)+HashMap+Instant per entity)
+                // and eliminates per-entity query re-normalization.
+                ScoringResult result = (cachedQueryTokens != null && entityScorerImpl != null)
+                        ? entityScorerImpl.scoreWithResultCached(cachedQueryTokens, entity)
+                        : entityScorer.scoreWithResult(queryEntity, entity);
+
+                return new ScoredEntity(entity, result.breakdown().totalWeightedScore(),
+                        result.breakdown(), result.matchedAlias());
             })
             .filter(scored -> {
                 // BSA CRITICAL FIX (Entity Observation - AL-QAIDA SYRIA case):

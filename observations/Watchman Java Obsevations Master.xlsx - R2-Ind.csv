@@ -1,0 +1,89 @@
+,S.I,Individual Name,,Baseline Name Matching ,Partial / Close Name Handling,Alias-Based Matching,Observations,Implementation Status,Implementation Notes,Retest Comments
+,1,"NAFRIEH, Edman",Edman Nafrieh,Pass,Pass,N/A,-,Pass,,
+,2,"MUJYAMBERE, Leopold",Leopold Mujyambere,Pass,Pass,"Pass
+(IBRAHIM, Frere Petrus / MUSENYERI / ACHILLE)",-,Pass,,
+,3,"HALILI, Nevzat",Nevzat Halili,Pass,Pass,N/A,-,Pass,,
+,4,"KAYA, Mehmet",Mehmet Kaya,Pass,Pass,N/A,-,Pass,,
+,5,"LUGO LEON, Toribio Alberto",Toribio Alberto Lugo Leon,Pass,Pass,N/A,-,Pass,,
+,6,"KHAN, Hafiz Saeed",Hafiz Saeed Khan,Pass,Pass,"Pass
+(SAEED, Hafiz / HAFIZ, Said Khan / KHAN, Wali Hafiz Sayid / SA'ID, Hafiz / KHAN, Hafiz Sa'id / KHAN, Hafiz Said / KHAN, Hafiz Said Muhammad / KHAN, Hafez Sayed / KHAN, Shaykh Hafidh Sa'id / AHMAD, Sayed)",-,Pass,,
+,7,"ARIF, Said",Said Arif,Pass,Pass,"Pass
+(ARIF, Said Mohamed / GHARIB, Omar / ABDERAHMANE / ABDERRAHMANE / SOULEIMAN / ABDALLAH AL-JAZAIRI / CHABANI, Slimane)",-,Pass,,
+,8,"LLANOS GAZIA, Jorge Luis",Jorge Luis Llanos Gazia,Pass,Pass,"Pass
+(LLANOS GAZZIA, Jorge Luis)",-,Pass,,
+,9,"ZAKHAROV, Nikita Aleksandrovich",Nikita Aleksandrovich Zakharov,Pass,Pass,N/A,-,Pass,,
+,10,"FITCH PARENTE, Pablo Antonio",Pablo Antonio Fitch Parente,Pass,Pass,N/A,-,Pass,,
+,11,"BAKHSHI, Dariush",Dariush Bakhshi,Pass,Pass,N/A,-,Pass,,
+,12,"AL-AJOURI, Akram",Akram Al-Ajouri,Pass,Pass,"Pass
+(AL-'AJURI, Akram / AL-AJURI, Akram Muhammad Salih / AL-'AJURI, Abu Muhammad / HASAN, 'Abd al-Karim Ahmad)",-,Pass,,
+,13,"MALPICA HURTADO, Erica Patricia",Erica Patricia Malpica Hurtado,Pass,Pass,N/A,-,Pass,,
+,14,"NIKOLAEV, Nikolay Petrovich",Nikolay Petrovich Nikolaev,Pass,Pass,N/A,-,Pass,,
+,15,"OZIA MAZIO, Dieudonne",Dieudonne Ozia Mazio,Pass,Pass,"Pass
+(OMARI)",-,Pass,,
+,16,"VLASOVA, Veronika Valerievna",Veronika Valerievna Vlasova,Pass,Pass,N/A,-,Pass,,
+,17,"AZIZABADI, Reza Mohammadi",Reza Mohammadi Azizabadi,Pass,Pass,N/A,-,Pass,,
+,18,"PAVKOVIC, Nebojsa",Nebojsa Pavkovic,Pass,Pass,N/A,-,Pass,,
+,19,"MILOSEVIC, Marija",Marija Milosevic,Pass,Pass,N/A,-,Pass,,
+,20,"MICHIELSEN, Tom",Tom Michielsen,Pass,Pass,"Pass
+(MICHIELSEN, Tom R.D.)",-,Pass,,
+,21,"RAMIREZ GARCIA, Freyner Alfonso",Freyner Alfonso Ramirez Garcia,Pass,Pass,"Pass
+(CARLOS PESEBRE)",-,Pass,,
+,22,"IVAKIN, Yuriy Vladimirovich",Yuriy Vladimirovich Ivakin,Pass,Pass,"Pass
+(IVAKIN, Yurii)",-,Pass,,
+,23,"KOLOMEITSEV, Nikolay Vasilievich",Nikolay Vasilievich Kolomeitsev,Pass,Pass,"Pass
+(KOLOMEITSEV, Nikolai Vasilyevich / KOLOMEYTSEV, Nikolay Vasilyevich)",-,Pass,,
+,24,"ABDALLAH, Ahmad Jalal Reda",Ahmad Jalal Reda Abdallah,Pass,Pass,"Pass
+(ABDALLAH, Ahmed Jalal Rida)",-,Pass,,
+,25,"KARADZIC-JOVICEVIC, Sonja",Sonja Karadzic-Jovicevic,Pass,Pass,N/A,-,Pass,,
+,26,"GRIGORYEV, Andrey Ivanovich",Andrey Ivanovich Grigoryev,Pass,Pass,"GRIGOREV (GRIGOR'EV without apostrophe) didnt return the sanctioned individual
+
+(GRIGORYEV, Andrei Ivanovich / GRIGORIEV, Andrey Ivanovich / GRIGOR'EV, Andrej Ivanovich)",Analysts frequently omits apostrophes and other special chars. “GRIGOREV” did not return the sanctioned individual.,Retest,,
+,27,"SUGAIPOV, Umar",Umar Sugaipov,Pass,Pass,N/A,-,Pass,,
+,28,"KHUCHIEV, Muslim Magomedovich",Muslim Magomedovich Khuchiev,Pass,Pass,N/A,-,Pass,,
+,29,"MOOR, Aleksandr Viktorovich",Aleksandr Viktorovich Moor,Pass,Pass,"Pass
+(MOOR, Alexander Viktorovich)",-,Pass,,
+,30,"MAKOLOV, Yury Yuryevich",Yury Yuryevich Makolov,Pass,Pass,N/A,-,Pass,,
+,31,"LI, Kai Shou",Kai Shou Li,Pass,Pass,"Pass 
+(LI KAI SHOU)",-,Pass,,
+,32,"BABAIE, Nematollah Hosein",Nematollah Hosein Babaie,Pass,Pass,"Pass 
+(BABAEI, Nemat Hossein)",-,Pass,,
+,33,"GASTELUM SERRANO, Cesar",Cesar Gastelum Serrano,Pass,Pass,"Pass
+
+(LA SENORA))",-,Pass,,
+,34,"SOE, Aung",Aung Soe,Pass,Pass,N/A,-,Pass,,
+,35,"RAMOS ACOSTA, Alvaro",Alvaro Ramos Acosta,Pass,Pass,"Pass
+(Alvaro Arroz Ramos)",-,Pass,,
+,36,"BOSHAB, Evariste",Evariste Boshab,Pass,Pass,"Pass
+(BOSHAB, Evarist / BOSHAB MABUTSH, Evariste
+ / BOSHAB MABUDJ, Evariste
+/ BOSHAB MABUDJ-MA-BILENGE, Evariste
+/ BOSHAB MABUDJ MA BILENGE, Evariste
+/ MULUMBU BOSHAB, Evariste )",-,Pass,,
+,37,"RODRIGUEZ RODRIGUEZ, Caryslia Beatriz",Caryslia Beatriz Rodriguez Rodriguez,Pass,Pass,N/A,-,Pass,,
+,38,"KIM, Se Un",Se Un Kim,Pass,Pass," Pass
+(KIM, Se-u'n)",-,Pass,,
+,39,"AHMAD, Tariq Anwar al-Sayyid",Tariq Anwar Al-Sayyid Ahmad,Pass,Pass,"Pass
+(FATHI, Amr Al-Fatih / FARAG, Hamdi Ahmad)",-,Pass,,
+,40,"AWALE, Mohamed Jumale Ali",Mohamed Jumale Ali Awale,Pass,Pass,N/A,-,Pass,,
+,41,"CHERBOV, Gleb Sergeyevich",Gleb Sergeyevich Cherbov,Pass,Pass,N/A,-,Pass,,
+,42,"AKBULUT, Cerkez",Cerkez Akbulut,Pass,Pass,"Pass
+(MURAT, Cernit / MURAT, Altig)",-,Pass,,
+,43,"LI, Fangwei",Fangwei Li,Pass,Pass,"Pass
+(LEE, Karl)",-,Pass,,
+,44,"GASHASBI, Mansoor",Mansoor Gashasbi,Pass,Pass,N/A,-,Pass,,
+,45,"TSUDA, Chikara",Chikara Tsuda,Pass,Pass,N/A,-,Pass,,
+,46,"JUBAYR AL-RAWI, Fawaz Muhammad",Fawaz Muhammad Jubayr Al-Rawi,Pass,Pass,"Pass
+(JABIR AL-RAWI, Fawaz Muhamed / JUBAYR AL-RAWI, Fawwaz Muhammad / JABUR AL-RAWI, Fawwaz / AL-ARWEE, Hajji Fouaz / AL-RAWI, Hajj Fawaz)",-,Pass,,
+,47,"IQBAL, Zafar",Zafar Iqbal,Pass,Pass,"Pass
+(SHEHBAZ, Malik Zafar Iqbal / SHAHBAZ, Malik Zafar Iqbal / IQBAL, Malik Zafar / IQBAL, Zaffer / CHAUDHRY, Zafar Iqbal / IQBAL, Muhammad Zafar)",-,Pass,,
+,48,"CHUOL, James Koang",James Koang Chuol,Pass,Pass,"Pass
+(CHOL, James Koang / RANLEY, Koang Chuol / RANLEY, James Koang Chol / CHUAL, James Koang)",-,Pass,,
+,49,"KIM, Tong-Myo'ng",Tong-Myo'Ng Kim,Pass,Pass,"Pass
+(KIM, CHIN-SO'K / KIM, JIN SOK / KIM, TONG MYONG / KIM, HYOK CHOL)",-,Pass,,
+,50,"AL-SAYYID, Ibrahim Amin",Ibrahim Amin Al-Sayyid,Pass,Pass,"Pass
+(SAYYED, Ibrahim Amin / AL-AMIN, Ibrahim)",-,Pass,,
+,,,,,,,,,,
+,,,,General Observations:,,,,,,
+,,,,"1. Search results for tested names frequently returned a higher number of matches compared to OFAC reference search results. However, the true sanctioned matches are consistently listed and in most cases, ranked among the top results. No material suppression of relevant sanctioned parties was observed. The higher result volume reflects broader matching sensitivity rather than a recall deficiency. This represents a calibration consideration rather than a compliance gap.",,,,,,
+,,,,"2. Hyphen and spacing normalization was tested across Individuals, entities, vessels and aircraft identifiers. Matching behavior was observed to be consistent with OFAC reference search behavior. No material suppression of sanctioned names or identifiers was identified based on the tested formatting variations.",,,,,,
+,,,,"3. The system has a configurable setting that allows users to limit the number of search results returned (range: 1–100, default: 50). While this provides flexibility for performance and usability, restricting the number of returned results may introduce an operational visibility risk. True matches could fall outside the configured result range, particularly in high-noise name searches.",,,,,,

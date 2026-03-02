@@ -110,10 +110,23 @@ class WatchmanLoadTester:
         
         # Legacy datasets for duration-based testing
         self.SEARCH_QUERIES = self.CLEAN_NAMES_9000[:99] + [self.OFAC_NAMES[0]]
-        self.BATCH_TEST_ITEMS = (
-            [{"name": name, "type": "individual"} for name in self.CLEAN_NAMES_9000[:985]] +
-            [{"name": self.OFAC_NAMES[i % len(self.OFAC_NAMES)], "type": "individual"} for i in range(15)]
-        )
+        
+        # Build batch test items with proper DTO structure (requestId + name)
+        self.BATCH_TEST_ITEMS = []
+        for i, name in enumerate(self.CLEAN_NAMES_9000[:985]):
+            self.BATCH_TEST_ITEMS.append({
+                "requestId": f"clean-{i}",
+                "name": name,
+                "entityType": None,
+                "source": None
+            })
+        for i in range(15):
+            self.BATCH_TEST_ITEMS.append({
+                "requestId": f"ofac-{i}",
+                "name": self.OFAC_NAMES[i % len(self.OFAC_NAMES)],
+                "entityType": None,
+                "source": None
+            })
     
     def _generate_fuzzy_names(self, count: int) -> List[str]:
         """Generate fuzzy/typo variations of OFAC names"""
@@ -355,15 +368,22 @@ class WatchmanLoadTester:
         self.results.append(result)
         return result
 
-    def test_batch_endpoint(self, num_requests: int, batch_size: int = 10) -> TestResult:
+    def test_batch_endpoint(self, num_requests: int, batch_size: int = 1000, concurrent: int = 1) -> TestResult:
         """
         Load test the /v1/search/batch endpoint.
         
         Args:
             num_requests: Number of batch requests to send
-            batch_size: Number of items per batch
+            batch_size: Number of items per batch (max 1000)
+            concurrent: Number of concurrent batch requests (default 1 for sequential)
         """
-        logger.info(f"Starting batch endpoint load test: {num_requests} requests, {batch_size} items per batch")
+        if batch_size > 1000:
+            logger.warning(f"Batch size {batch_size} exceeds max 1000, setting to 1000")
+            batch_size = 1000
+            
+        total_names = num_requests * batch_size
+        logger.info(f"Batch endpoint load test: {num_requests} batches × {batch_size} names = {total_names} total names")
+        logger.info(f"Concurrency: {concurrent} {'batch' if concurrent == 1 else 'batches'} at a time")
         
         latencies = []
         successful = 0
@@ -371,61 +391,91 @@ class WatchmanLoadTester:
         errors: Dict[str, int] = {}
         start_time = time.time()
         
-        def make_batch_request() -> Tuple[bool, float, str]:
-            """Make a single batch request. Returns (success, latency_ms, error_msg)"""
+        def make_batch_request(batch_num: int) -> Tuple[bool, float, str, int]:
+            """Make a single batch request. Returns (success, latency_ms, error_msg, names_count)"""
             url = f"{self.base_url}/v1/search/batch"
             
-            # Use fixed test items, cycle if batch_size > available
-            items = [self.BATCH_TEST_ITEMS[i % len(self.BATCH_TEST_ITEMS)] 
-                     for i in range(batch_size)]
+            # Build batch items from TEST_DATASET_10K
+            items = []
+            for i in range(batch_size):
+                name_idx = (batch_num * batch_size + i) % len(self.TEST_DATASET_10K)
+                items.append({
+                    "requestId": f"batch{batch_num}-req{i}",
+                    "name": self.TEST_DATASET_10K[name_idx],
+                    "entityType": None,
+                    "source": None
+                })
             
             payload = {
                 "items": items,
-                "minMatch": 0.88,
-                "limit": 10,
+                "minMatch": 0.85,
+                "limit": 20,
                 "trace": False
             }
             
             req_start = time.time()
             try:
-                response = requests.post(url, json=payload, timeout=180)
+                response = requests.post(url, json=payload, timeout=300)
                 latency_ms = (time.time() - req_start) * 1000
                 
                 if response.status_code == 200:
-                    return True, latency_ms, ""
+                    return True, latency_ms, "", len(items)
                 else:
-                    return False, latency_ms, f"HTTP {response.status_code}"
+                    return False, latency_ms, f"HTTP {response.status_code}", len(items)
             except requests.exceptions.Timeout:
                 latency_ms = (time.time() - req_start) * 1000
-                return False, latency_ms, "Timeout"
+                return False, latency_ms, "Timeout", len(items)
             except Exception as e:
                 latency_ms = (time.time() - req_start) * 1000
-                return False, latency_ms, str(e)
+                return False, latency_ms, str(e), len(items)
 
-        # Execute batch requests sequentially (batch is already heavy)
-        for i in range(num_requests):
-            logger.info(f"[{i+1}/{num_requests}] Sending batch request with {batch_size} names...")
-            req_start_time = time.time()
-            success, latency, error = make_batch_request()
-            latencies.append(latency)
-            
-            if success:
-                successful += 1
-                logger.info(f"[{i+1}/{num_requests}] ✓ Completed in {latency/1000:.1f}s ({batch_size} names processed)")
-            else:
-                failed += 1
-                errors[error] = errors.get(error, 0) + 1
-                logger.error(f"[{i+1}/{num_requests}] ✗ Failed: {error} (took {latency/1000:.1f}s)")
-            
-            # Show running statistics
-            elapsed = time.time() - start_time
-            completed = i + 1
-            names_processed = completed * batch_size
-            names_per_sec = names_processed / elapsed if elapsed > 0 else 0
-            logger.info(f"   Running stats: {names_processed} names in {elapsed:.1f}s = {names_per_sec:.1f} names/sec")
+        # Execute batch requests (sequential or concurrent)
+        if concurrent == 1:
+            # Sequential execution
+            for i in range(num_requests):
+                logger.info(f"[{i+1}/{num_requests}] Sending batch with {batch_size} names...")
+                success, latency, error, names_count = make_batch_request(i)
+                latencies.append(latency)
+                
+                if success:
+                    successful += 1
+                    logger.info(f"[{i+1}/{num_requests}] ✓ {names_count} names in {latency/1000:.1f}s")
+                else:
+                    failed += 1
+                    errors[error] = errors.get(error, 0) + 1
+                    logger.error(f"[{i+1}/{num_requests}] ✗ Failed: {error}")
+                
+                # Running statistics
+                elapsed = time.time() - start_time
+                names_processed = (i + 1) * batch_size
+                names_per_sec = names_processed / elapsed if elapsed > 0 else 0
+                logger.info(f"   Progress: {names_processed}/{total_names} names ({names_per_sec:.1f} names/sec)")
+        else:
+            # Concurrent execution with thread pool
+            logger.info(f"Executing {num_requests} batch requests with {concurrent} concurrent workers...")
+            with ThreadPoolExecutor(max_workers=concurrent) as executor:
+                futures = [executor.submit(make_batch_request, i) for i in range(num_requests)]
+                
+                for i, future in enumerate(as_completed(futures)):
+                    success, latency, error, names_count = future.result()
+                    latencies.append(latency)
+                    
+                    if success:
+                        successful += 1
+                    else:
+                        failed += 1
+                        errors[error] = errors.get(error, 0) + 1
+                    
+                    if (i + 1) % 5 == 0 or i + 1 == num_requests:
+                        elapsed = time.time() - start_time
+                        names_processed = (i + 1) * batch_size
+                        names_per_sec = names_processed / elapsed if elapsed > 0 else 0
+                        logger.info(f"Progress: {i+1}/{num_requests} batches completed ({names_per_sec:.1f} names/sec)")
 
         actual_duration = time.time() - start_time
         total_requests = successful + failed
+        total_names_processed = total_requests * batch_size
+        names_per_second = total_names_processed / actual_duration if actual_duration > 0 else 0
         
         latency_stats = LatencyStats(
             min=min(latencies) if latencies else 0,
@@ -436,14 +486,20 @@ class WatchmanLoadTester:
             p99=statistics.quantiles(latencies, n=100)[98] if len(latencies) >= 100 else (max(latencies) if latencies else 0)
         )
         
+        logger.info("=" * 60)
+        logger.info(f"BATCH TEST COMPLETE: {total_names_processed} names in {actual_duration:.1f}s")
+        logger.info(f"THROUGHPUT: {names_per_second:.2f} names/sec")
+        logger.info(f"Batch latency - Mean: {latency_stats.mean/1000:.1f}s, P95: {latency_stats.p95/1000:.1f}s, P99: {latency_stats.p99/1000:.1f}s")
+        logger.info("=" * 60)
+        
         result = TestResult(
-            test_name=f"Batch Endpoint Load Test (batch_size={batch_size})",
+            test_name=f"Batch API Test ({num_requests}×{batch_size} names, {concurrent} concurrent)",
             endpoint=f"{self.base_url}/v1/search/batch",
             total_requests=total_requests,
             successful_requests=successful,
             failed_requests=failed,
             duration_seconds=actual_duration,
-            requests_per_second=total_requests / actual_duration,
+            requests_per_second=total_requests / actual_duration if actual_duration > 0 else 0,
             latency_stats=latency_stats,
             error_details=errors,
             timestamp=datetime.now().isoformat()
@@ -567,11 +623,15 @@ def main():
     
     parser.add_argument('--endpoint', required=True,
                         help='AWS ALB endpoint URL (e.g., http://watchman-java-alb-123.us-east-1.elb.amazonaws.com)')
+    parser.add_argument('--test', choices=['search', 'batch'], default='batch',
+                        help='Test type: search (individual /v1/search) or batch (/v1/search/batch) - DEFAULT: batch')
     parser.add_argument('--requests', type=int, default=10,
-                        help='Number of batch requests (default: 10)')
+                        help='Number of requests (batch: batch requests, search: total individual requests)')
     parser.add_argument('--batch-size', type=int, default=1000,
-                        help='Items per batch request (default: 1000, max: 1000)')
-    parser.add_argument('--output', default='batch_load_test',
+                        help='Items per batch request (batch test only, default: 1000, max: 1000)')
+    parser.add_argument('--concurrent', type=int, default=1,
+                        help='Concurrent workers (batch: concurrent batches, search: concurrent threads)')
+    parser.add_argument('--output', default='load_test',
                         help='Output file for results (without extension)')
     parser.add_argument('--format', choices=['json', 'csv', 'both'], default='both',
                         help='Output format (default: both)')
@@ -589,11 +649,18 @@ def main():
         logger.error("Service is not healthy. Aborting load test.")
         return
     
-    # Run BATCH test only (this is what we use in production)
-    logger.info("=" * 60)
-    logger.info("BATCH API LOAD TEST - Testing /v1/search/batch endpoint")
-    logger.info("=" * 60)
-    tester.test_batch_endpoint(args.requests, args.batch_size)
+    # Run selected test
+    if args.test == 'search':
+        logger.info("=" * 60)
+        logger.info(f"SEARCH API LOAD TEST - {args.requests} requests, {args.concurrent} threads")
+        logger.info("=" * 60)
+        tester.test_search_fixed_requests(args.concurrent, args.requests)
+    else:
+        logger.info("=" * 60)
+        logger.info(f"BATCH API LOAD TEST - {args.requests} batches × {args.batch_size} names")
+        logger.info(f"Concurrency: {args.concurrent}")
+        logger.info("=" * 60)
+        tester.test_batch_endpoint(args.requests, args.batch_size, args.concurrent)
     
     # Generate report
     report = tester.generate_report()

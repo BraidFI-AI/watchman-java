@@ -234,8 +234,9 @@ public class EntityScorerImpl implements EntityScorer {
         if (altNamesMatch.matchedName() != null) {
             if (altNamesScore > nameScore) {
                 ctx.withMetadata("matchedAlias", altNamesMatch.matchedName());
-            } else if (altNamesScore >= 0.95 && altNamesScore == nameScore) {
+            } else if (altNamesScore >= weightConfig.getAliasTieBreakerThreshold() && altNamesScore == nameScore) {
                 // Both score very high and equally - use alias if better token coverage
+                // Threshold now configurable via weightConfig.aliasTieBreakerThreshold (was hardcoded as 0.95)
                 String queryStr = String.join(" ", preprocessedQueryTokens);
                 String normalizedAlias = normalizer.lowerAndRemovePunctuation(altNamesMatch.matchedName());
                 String normalizedPrimary = normalizer.lowerAndRemovePunctuation(index.name());
@@ -273,6 +274,145 @@ public class EntityScorerImpl implements EntityScorer {
         );
 
         return breakdown;
+    }
+
+    @Override
+    public ScoringResult scoreWithResult(Entity query, Entity index) {
+        if (query == null || index == null) {
+            return new ScoringResult(new ScoreBreakdown(0, 0, 0, 0, 0, 0, 0, 0), null);
+        }
+
+        ScoringContext ctx = ScoringContext.disabled();
+
+        // Perfect sourceId match short-circuit
+        if (query.sourceId() != null && !query.sourceId().isBlank()
+                && index.sourceId() != null && !index.sourceId().isBlank()
+                && query.sourceId().equals(index.sourceId())) {
+            ScoreBreakdown perfect = new ScoreBreakdown(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+            return new ScoringResult(perfect, null);
+        }
+
+        double nameScore = weightConfig.isNameComparisonEnabled()
+                ? compareNames(query.name(), index, ctx)
+                : 0.0;
+
+        NameMatch altNamesMatch = weightConfig.isAltNameComparisonEnabled()
+                ? compareAltNamesWithMatch(query.name(), index, ctx)
+                : NameMatch.noMatch();
+        double altNamesScore = altNamesMatch.score();
+
+        // Determine matchedAlias via local variable (same logic as scoreWithBreakdown, no ctx needed)
+        String matchedAlias = null;
+        if (altNamesMatch.matchedName() != null) {
+            if (altNamesScore > nameScore) {
+                matchedAlias = altNamesMatch.matchedName();
+            } else if (altNamesScore >= weightConfig.getAliasTieBreakerThreshold() && altNamesScore == nameScore) {
+                String normalizedQuery = normalizer.lowerAndRemovePunctuation(query.name());
+                String normalizedAlias = normalizer.lowerAndRemovePunctuation(altNamesMatch.matchedName());
+                String normalizedPrimary = normalizer.lowerAndRemovePunctuation(index.name());
+                if (normalizedAlias.equals(normalizedQuery)
+                        || countMatchingTokens(normalizedQuery, normalizedAlias) > countMatchingTokens(normalizedQuery, normalizedPrimary)) {
+                    matchedAlias = altNamesMatch.matchedName();
+                }
+            }
+        }
+
+        double govIdScore = weightConfig.isGovIdComparisonEnabled()
+                ? compareGovernmentIds(query.governmentIds(), index.governmentIds())
+                : 0.0;
+        double cryptoScore = weightConfig.isCryptoComparisonEnabled()
+                ? compareCryptoAddresses(query.cryptoAddresses(), index.cryptoAddresses())
+                : 0.0;
+        double addressScore = weightConfig.isAddressComparisonEnabled()
+                ? compareAddresses(query.addresses(), index.addresses())
+                : 0.0;
+        double contactScore = weightConfig.isContactComparisonEnabled()
+                ? compareContact(query.contact(), index.contact())
+                : 0.0;
+        double dateScore = weightConfig.isDateComparisonEnabled()
+                ? compareDates(query, index)
+                : 0.0;
+
+        boolean sourceIdMismatch = query.sourceId() != null && !query.sourceId().isBlank()
+                && index.sourceId() != null && !index.sourceId().isBlank()
+                && !query.sourceId().equals(index.sourceId());
+
+        boolean hasExactMatch = govIdScore >= weightConfig.getExactMatchThreshold()
+                || cryptoScore >= weightConfig.getExactMatchThreshold()
+                || contactScore >= weightConfig.getExactMatchThreshold();
+
+        double finalScore = hasExactMatch
+                ? calculateWithExactMatch(nameScore, altNamesScore, govIdScore, cryptoScore, addressScore, contactScore, dateScore, index)
+                : calculateNormalScore(nameScore, altNamesScore, govIdScore, cryptoScore, addressScore, contactScore, dateScore, sourceIdMismatch, index);
+
+        ScoreBreakdown breakdown = new ScoreBreakdown(
+                nameScore, altNamesScore, addressScore, govIdScore,
+                cryptoScore, contactScore, dateScore, finalScore);
+
+        return new ScoringResult(breakdown, matchedAlias);
+    }
+
+    /**
+     * Score using pre-processed query tokens and return breakdown + matched alias.
+     *
+     * Fix 2 hot path: query tokens are normalized once before the stream and reused for every
+     * entity. Eliminates redundant lowerAndRemovePunctuation + tokenize + collapseAcronyms +
+     * filterShortTokens calls that scoreWithResult() would otherwise do per entity.
+     *
+     * @param preprocessedQueryTokens Tokens from JaroWinklerSimilarity.preprocessQueryTokens()
+     * @param index                   Candidate entity
+     * @return ScoringResult with breakdown and matched alias
+     */
+    ScoringResult scoreWithResultCached(String[] preprocessedQueryTokens, Entity index) {
+        if (preprocessedQueryTokens == null || preprocessedQueryTokens.length == 0 || index == null) {
+            return new ScoringResult(new ScoreBreakdown(0, 0, 0, 0, 0, 0, 0, 0), null);
+        }
+
+        ScoringContext ctx = ScoringContext.disabled();
+
+        double nameScore = weightConfig.isNameComparisonEnabled()
+                ? compareNamesWithCachedQuery(preprocessedQueryTokens, index, ctx)
+                : 0.0;
+
+        NameMatch altNamesMatch = weightConfig.isAltNameComparisonEnabled()
+                ? compareAltNamesWithMatchCached(preprocessedQueryTokens, index, ctx)
+                : NameMatch.noMatch();
+        double altNamesScore = altNamesMatch.score();
+
+        // Determine matchedAlias via local variable (same logic as scoreWithResult)
+        String matchedAlias = null;
+        if (altNamesMatch.matchedName() != null) {
+            if (altNamesScore > nameScore) {
+                matchedAlias = altNamesMatch.matchedName();
+            } else if (altNamesScore >= weightConfig.getAliasTieBreakerThreshold() && altNamesScore == nameScore) {
+                String queryStr = String.join(" ", preprocessedQueryTokens);
+                String normalizedAlias = normalizer.lowerAndRemovePunctuation(altNamesMatch.matchedName());
+                String normalizedPrimary = normalizer.lowerAndRemovePunctuation(index.name());
+                if (normalizedAlias.equals(queryStr)
+                        || countMatchingTokens(queryStr, normalizedAlias) > countMatchingTokens(queryStr, normalizedPrimary)) {
+                    matchedAlias = altNamesMatch.matchedName();
+                }
+            }
+        }
+
+        // Name-only search path: no address/govId/crypto/contact/date
+        double bestNameScore = Math.max(nameScore, altNamesScore);
+        double totalWeight = weightConfig.getNameWeight();
+        double weightedSum = bestNameScore * weightConfig.getNameWeight();
+        double finalScore = weightedSum / totalWeight;
+
+        ScoreBreakdown breakdown = new ScoreBreakdown(
+                nameScore, altNamesScore, 0.0, 0.0, 0.0, 0.0, 0.0, finalScore);
+
+        return new ScoringResult(breakdown, matchedAlias);
+    }
+
+    /**
+     * Package-private accessor for the underlying JaroWinklerSimilarity instance.
+     * Used by SearchServiceImpl to call preprocessQueryTokens() for Fix 2.
+     */
+    io.moov.watchman.similarity.JaroWinklerSimilarity getJaroWinkler() {
+        return (similarityService instanceof io.moov.watchman.similarity.JaroWinklerSimilarity jw) ? jw : null;
     }
 
     @Override

@@ -1,0 +1,275 @@
+package io.moov.watchman.webhook;
+
+import io.moov.watchman.model.SourceList;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Instant;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+/**
+ * Unit tests for RefreshWebhookService.
+ * Tests webhook notification on data refresh with audit information.
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("RefreshWebhookService Tests")
+class RefreshWebhookServiceTest {
+
+    @Mock
+    private RestTemplate restTemplate;
+
+    private RefreshWebhookService webhookService;
+
+    private static final String TEST_WEBHOOK_URL = "https://api.example.com/webhooks/refresh";
+
+    @BeforeEach
+    void setUp() {
+        webhookService = new RefreshWebhookService(restTemplate, TEST_WEBHOOK_URL, true);
+    }
+
+    @Nested
+    @DisplayName("Notification Tests")
+    class NotificationTests {
+
+        @Test
+        @DisplayName("Sends webhook notification on successful refresh")
+        void sendsWebhookOnSuccessfulRefresh() {
+            when(restTemplate.exchange(any(String.class), any(HttpMethod.class), 
+                any(HttpEntity.class), eq(Void.class)))
+                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+
+            Instant timestamp = Instant.parse("2026-02-27T10:00:00Z");
+            Map<SourceList, Integer> entityCounts = Map.of(
+                SourceList.US_OFAC, 18703,
+                SourceList.US_CSL, 15000
+            );
+            
+            RefreshWebhookPayload.ChangeDetection changes = 
+                new RefreshWebhookPayload.ChangeDetection(15, 3, 7, 12);
+            Map<String, Integer> typeCounts = Map.of(
+                "individual", 20000,
+                "entity", 10000,
+                "vessel", 3500
+            );
+
+            webhookService.notifyRefreshComplete(
+                true, 33703, 2500L, timestamp, entityCounts, null,
+                "STARTUP", changes, typeCounts
+            );
+
+            ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+            verify(restTemplate).exchange(
+                eq(TEST_WEBHOOK_URL),
+                eq(HttpMethod.POST),
+                entityCaptor.capture(),
+                eq(Void.class)
+            );
+
+            RefreshWebhookPayload payload = (RefreshWebhookPayload) entityCaptor.getValue().getBody();
+            assertThat(payload).isNotNull();
+            assertThat(payload.success()).isTrue();
+            assertThat(payload.totalEntities()).isEqualTo(33703);
+            assertThat(payload.durationMs()).isEqualTo(2500L);
+            assertThat(payload.timestamp()).isEqualTo(timestamp);
+            assertThat(payload.sourceCounts()).isEqualTo(entityCounts);
+            assertThat(payload.errorMessage()).isNull();
+            assertThat(payload.refreshType()).isEqualTo("STARTUP");
+            assertThat(payload.changeDetection().entitiesAdded()).isEqualTo(15);
+            assertThat(payload.changeDetection().netChange()).isEqualTo(12);
+            assertThat(payload.entityTypeCounts()).containsEntry("individual", 20000);
+        }
+
+        @Test
+        @DisplayName("Sends webhook notification on failed refresh")
+        void sendsWebhookOnFailedRefresh() {
+            when(restTemplate.exchange(any(String.class), any(HttpMethod.class), 
+                any(HttpEntity.class), eq(Void.class)))
+                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
+
+            Instant timestamp = Instant.parse("2026-02-27T10:05:00Z");
+
+            webhookService.notifyRefreshComplete(
+                false, 0, 150L, timestamp, Map.of(), "Connection timeout",
+                "MANUAL", null, Map.of()
+            );
+
+            ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+            verify(restTemplate).exchange(
+                eq(TEST_WEBHOOK_URL),
+                eq(HttpMethod.POST),
+                entityCaptor.capture(),
+                eq(Void.class)
+            );
+
+            RefreshWebhookPayload payload = (RefreshWebhookPayload) entityCaptor.getValue().getBody();
+            assertThat(payload).isNotNull();
+            assertThat(payload.success()).isFalse();
+            assertThat(payload.totalEntities()).isEqualTo(0);
+            assertThat(payload.errorMessage()).isEqualTo("Connection timeout");
+            assertThat(payload.refreshType()).isEqualTo("MANUAL");
+        }
+
+        @Test
+        @DisplayName("Does not send notification when disabled")
+        void doesNotSendWhenDisabled() {
+            RefreshWebhookService disabledService = new RefreshWebhookService(restTemplate, TEST_URL, false);
+
+            disabledService.notifyRefreshComplete(
+                true, 100, 1000L, Instant.now(), Map.of(), null,
+                "SCHEDULED", null, Map.of()
+            );
+
+            verify(restTemplate, never()).exchange(any(), any(), any(), any(Class.class));
+        }
+
+        @Test
+        @DisplayName("Does not send notification when URL is blank")
+        void doesNotSendWhenUrlBlank() {
+            RefreshWebhookService noUrlService = new RefreshWebhookService(restTemplate, "", true);
+
+            noUrlService.notifyRefreshComplete(
+                true, 100, 1000L, Instant.now(), Map.of(), null,
+                "SCHEDULED", null, Map.of()
+            );
+
+            verify(restTemplate, never()).exchange(any(), any(), any(), any(Class.class));
+        }
+
+        @Test
+        @DisplayName("Handles webhook delivery failure gracefully")
+        void handlesWebhookFailureGracefully() {
+            when(restTemplate.exchange(any(String.class), any(HttpMethod.class), 
+                any(HttpEntity.class), eq(Void.class)))
+                .thenThrow(new RestClientException("Network error"));
+
+            // Should not throw exception
+            assertThatNoException().isThrownBy(() ->
+                webhookService.notifyRefreshComplete(
+                    true, 100, 1000L, Instant.now(), Map.of(), null,
+                    "MANUAL", null, Map.of()
+                
+
+            // Should not throw exception
+            assertThatNoException().isThrownBy(() ->
+                webhookService.notifyRefreshComplete(true, 100, 1000L, Instant.now(), Map.of(), null)
+            );
+
+            // Verify it attempted to send
+            verify(restTemplate).exchange(
+                eq(TEST_WEBHOOK_URL),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(Void.class)
+            );
+        }
+    }
+
+    @Nested
+            
+            RefreshWebhookPayload.ChangeDetection changes = 
+                new RefreshWebhookPayload.ChangeDetection(25, 10, 15, 15);
+            Map<String, Integer> typeCounts = Map.of(
+                "individual", 30000,
+                "entity", 15000,
+                "vessel", 3500,
+                "aircraft", 203
+            );
+
+            RefreshWebhookPayload payload = new RefreshWebhookPayload(
+                true,
+                48703,
+                3200L,
+                timestamp,
+                sourceCounts,
+                null,
+                "SCHEDULED",
+                changes,
+                typeCounts
+            );
+
+            assertThat(payload.success()).isTrue();
+            assertThat(payload.totalEntities()).isEqualTo(48703);
+            assertThat(payload.durationMs()).isEqualTo(3200L);
+            assertThat(payload.timestamp()).isEqualTo(timestamp);
+            assertThat(payload.sourceCounts()).hasSize(4);
+            assertThat(payload.sourceCounts().get(SourceList.US_OFAC)).isEqualTo(18703);
+            assertThat(payload.errorMessage()).isNull();
+            assertThat(payload.refreshType()).isEqualTo("SCHEDULED");
+            assertThat(payload.changeDetection().entitiesAdded()).isEqualTo(25);
+            
+            RefreshWebhookPayload.ChangeDetection changes = 
+                new RefreshWebhookPayload.ChangeDetection(5, 2, 3, 3);
+            Map<String, Integer> typeCounts = Map.of("individual", 12000, "entity", 6703);
+
+            RefreshWebhookPayload payload = new RefreshWebhookPayload(
+                true,
+                18703,
+                2500L,
+                timestamp,
+                sourceCounts,
+                null,
+                "STARTUP",
+                changes,
+                typeCounts
+            );
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+            mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            String json = mapper.writeValueAsString(payload);
+
+            assertThat(json).contains("\"success\":true");
+            assertThat(json).contains("\"totalEntities\":18703");
+            assertThat(json).contains("\"durationMs\":2500");
+            assertThat(json).contains("2026-02-27T10:00:00Z");
+            assertThat(json).contains("\"US_OFAC\":18703");
+            assertThat(json).contains("\"refreshType\":\"STARTUP\"");
+            assertThat(json).contains("\"entitiesAdded\":5");
+            assertThat(json).contains("\"netChange\":3");
+            assertThat(json).contains("\"individual\":12000
+        @Test
+        @DisplayName("Payload serializes to JSON correctly")
+        void payloadSerializesToJson() throws Exception {
+            Instant timestamp = Instant.parse("2026-02-27T10:00:00Z");
+            Map<SourceList, Integer> sourceCounts = Map.of(SourceList.US_OFAC, 18703);
+
+            RefreshWebhookPayload payload = new RefreshWebhookPayload(
+                true,
+                18703,
+                2500L,
+                timestamp,
+                sourceCounts,
+                null
+            );
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+            mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            String json = mapper.writeValueAsString(payload);
+
+            assertThat(json).contains("\"success\":true");
+            assertThat(json).contains("\"totalEntities\":18703");
+            assertThat(json).contains("\"durationMs\":2500");
+            assertThat(json).contains("2026-02-27T10:00:00Z");  // Just check the timestamp string appears
+            assertThat(json).contains("\"US_OFAC\":18703");
+        }
+    }
+}

@@ -2304,3 +2304,32 @@ Resolution requires business decision on acceptable false-positive vs false-nega
 **Trade-off**: Adds one extra click to switch sections, but significantly reduces cognitive load and improves scannability
 
 **Impact**: Better UI organization for banks and consultants reviewing configuration
+
+---
+
+## 2026-03-01: Hot Path Performance Optimization (Fix 1 + Fix 2)
+
+**Decision**: Eliminate `ScoringContext.enabled()` per-entity allocation and per-entity query re-normalization in `SearchServiceImpl.search()` hot path.
+
+**Context**: Target 60 names/sec (Portage production requirement). Current 2.98–6.55 names/sec. BSA scoring audited and approved — cannot change. Two infrastructure inefficiencies identified as responsible for majority of overhead.
+
+**Fix 1 – ScoringContext allocation**:
+- Problem: `ScoringContext.enabled("search-" + System.nanoTime())` called for every candidate entity, allocating `ArrayList(100)`, `HashMap`, `Instant.now()` per entity. Only purpose was extracting `matchedAlias` from context metadata.
+- Solution: New `ScoringResult` record (`breakdown + matchedAlias`). New `EntityScorer.scoreWithResult()` interface method implemented in `EntityScorerImpl` using `ScoringContext.disabled()` and a local `String matchedAlias` variable.
+- Scoring logic: bit-identical to previous `scoreWithBreakdown(Entity, Entity, ScoringContext)`.
+
+**Fix 2 – Per-entity query re-normalization**:
+- Problem: `compareNames()` and `compareAltNamesWithMatch()` re-ran `lowerAndRemovePunctuation + tokenize + collapseAcronyms + filterShortTokens` on the query string for every candidate. Infrastructure to avoid this (`preprocessQueryTokens()`, `scoreWithBreakdownCached()`) existed but was never wired into production.
+- Previous attempt used reflection to call `preprocessQueryTokens()` → abandoned (reflection overhead worse than the problem).
+- Solution: `SearchServiceImpl` constructor resolves `entityScorerImpl` and `jaroWinkler` via pattern matching casts (done once). Query tokens pre-computed via `jaroWinkler.preprocessQueryTokens(queryNorm)` before the parallel stream. New `EntityScorerImpl.scoreWithResultCached(String[], Entity)` consumes the pre-computed tokens.
+- Fallback: if casts resolve null (mock in tests), falls back to `entityScorer.scoreWithResult(queryEntity, entity)`.
+
+**What was NOT changed**: All scoring algorithms (`bestPairJaro`, `phoneticSetsMatch`, thresholds, weights, alias boost logic, filter/sort/limit pipeline).
+
+**Validation**: `ComprehensiveBSAValidationTest` 51/51 PASS (100%).
+
+**Tradeoffs**:
+- `SearchServiceImpl` now holds concrete-type references (`EntityScorerImpl`, `JaroWinklerSimilarity`) — slight violation of interface-only design. Acceptable: both are wired by `WatchmanConfig` which already creates these exact types; casts are guarded with null checks.
+- `scoreWithResultCached()` is name-only scoring path (no address/govId/crypto/contact/date). This is correct for the search hot path which constructs `Entity.of(null, query, null, null)` as the query entity.
+
+**Remaining performance gap**: Fix 3 (AND-intersection token pre-filter) not implemented. This addresses the scaling cliff where common-token queries (Arabic name particles) produce large candidate sets proportional to entity count. Deferred pending measurement of Fix 1+2 improvement.
