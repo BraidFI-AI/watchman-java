@@ -43,5 +43,22 @@ scripts/__pycache__/
 scripts/.pytest_cache/
 scripts/state/
 
-# Archived POC and experimental work
-archive/
+# Test artifacts and benchmark results
+batch_test*.txt
+batch_test*.csv
+batch_test*.json
+load_test*.csv
+load_test*.json
+production_*.csv
+production_*.json
+test_run_*.csv
+test_run_*.json
+portage_*.csv
+portage_*.json
+*_baseline_*.csv
+*_baseline_*.json
+test_results.log
+local_test_output.log
+
+# Safety archives
+*-extract-*.tar.gz

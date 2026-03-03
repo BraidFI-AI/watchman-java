@@ -1,2 +1,0 @@
-Test Name,Endpoint,Total Requests,Successful,Failed,Success Rate %,Duration (s),Throughput (req/s),Latency Min (ms),Latency Max (ms),Latency Mean (ms),Latency Median (ms),Latency P95 (ms),Latency P99 (ms),Errors
-Search Endpoint Fixed-Request Test (10000 requests),http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/search,10000,9983,17,99.83,16312.17,0.61,571.09,86685.74,4892.97,3812.82,11487.63,20263.37,HTTP 504: 13; Timeout: 4
