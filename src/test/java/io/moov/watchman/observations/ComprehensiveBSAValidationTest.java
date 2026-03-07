@@ -266,7 +266,7 @@ class ComprehensiveBSAValidationTest {
         System.out.println("=".repeat(100));
 
         if (passCount == totalTests) {
-            System.out.println(String.format("🎉 SUCCESS: ALL %d BSA CONSULTANT OBSERVATIONS VALIDATED! (Row 19 skipped - see ROW19_ISSUE_SUMMARY.md)", totalTests));
+            System.out.println(String.format("🎉 SUCCESS: ALL %d BSA CONSULTANT OBSERVATIONS VALIDATED! (Row 19 skipped - see row19_issue_summary.md)", totalTests));
         } else {
             System.out.println("⚠️  Some rows need attention - see details above");
         }

@@ -2114,7 +2114,7 @@ Admin UI exists at `/api/admin/config` providing REST endpoints to view/edit con
 - AdminConfigController tests: 9/9 passing
 - Net code reduction: -782 lines (cleanup from BSA threshold migration)
 
-BSA consultant's ~451 test cases (R1-Entity 280, R1-Ind 95, R2-Entity 76) remain valid. All 9 BSA compliance thresholds now configurable via YAML and Admin UI.
+BSA consultant's ~451 test cases (r1-entity 280, r1-ind 95, r2-entity 76) remain valid. All 9 BSA compliance thresholds now configurable via YAML and Admin UI.
 
 ## Session: March 1, 2026 (Performance Optimization – Fix 1 + Fix 2)
 

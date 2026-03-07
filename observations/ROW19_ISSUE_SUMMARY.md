@@ -149,7 +149,7 @@ Row 19 is fixed when:
 - `src/test/java/io/moov/watchman/observations/ComprehensiveBSAValidationTest.java` - Row 19 skipped
 - `src/test/java/io/moov/watchman/observations/Row19AbuGhunaymSquadTest.java` - TDD RED tests created
 - `src/test/java/io/moov/watchman/observations/PijEntityLoadedTest.java` - Data loading verification
-- `observations/ROW19_ISSUE_SUMMARY.md` - This document
+- `observations/row19_issue_summary.md` - This document
 
 ---
 

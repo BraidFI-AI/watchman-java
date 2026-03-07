@@ -73,6 +73,14 @@ watchman:
     crypto-comparison-enabled: true
     contact-comparison-enabled: true
     date-comparison-enabled: true
+    # Address field weights (from AddressComparer.java migration - Mar 6, 2026)
+    address-line1-weight: 5.0   # Primary address line (most important)
+    address-line2-weight: 2.0   # Secondary address info
+    address-city-weight: 4.0    # City (highly important)
+    address-state-weight: 2.0   # State/province
+    address-postal-weight: 3.0  # Postal code (strong verification)
+    address-country-weight: 4.0 # Country (critical for international)
+    address-high-confidence-threshold: 0.92  # Early exit optimization
   auto-clearance:
     phase1-threshold: 0.85
     address-mismatch-threshold: 0.5

@@ -817,7 +817,7 @@ http://watchman-java:8084/admin.html
 - [docs/api_spec.md](../docs/api_spec.md) - API reference
 - [docs/scoreconfig.md](../docs/scoreconfig.md) - Configuration tuning
 - [docs/scoretrace.md](../docs/scoretrace.md) - Score report generation
-- [docs/PERFORMANCE_BENCHMARK_REPORT.md](../docs/PERFORMANCE_BENCHMARK_REPORT.md) - Performance metrics
+- [docs/performance_benchmark_report.md](../docs/performance_benchmark_report.md) - Performance metrics
 
 **Braid Integration Examples:**
 - [braid-integration/MoovService.java](MoovService.java) - Current OFAC integration pattern

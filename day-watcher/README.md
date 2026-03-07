@@ -341,7 +341,7 @@ This is expected sandbox behavior, not a bug.
 
 ## References
 
-- [Day Watcher Plan](../braid-integration/Day%20Watcher%20Plan.md) - Original design document
+- [day watcher plan](../braid-integration/day%20watcher%20plan.md) - Original design document
 - [Context Documentation](../docs/context.md) - Entity fetching patterns and audit trail
 - [Decision Log](../docs/decisions.md) - Architectural decisions with rationales
 - [Braid API Docs](../braid-integration/Braid%20Sandbox) - Braid API reference

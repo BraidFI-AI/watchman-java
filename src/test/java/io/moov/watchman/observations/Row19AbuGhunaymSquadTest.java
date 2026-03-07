@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * TDD RED Phase: Row 19 - ABU GHUNAYM SQUAD investigation
  * 
- * Observation from R1-Entity.csv Row 19:
+ * Observation from r1-entity.csv Row 19:
  * - Entity: "ABU GHUNAYM SQUAD OF THE HIZBALLAH BAYT AL-MAQDIS"
  * - Search query: "HIZBALLAH BAYT AL-MAQDIS"
  * - Problem: Search returns "HIZBALLAH" entity first, omits the main "ABU GHUNAYM SQUAD" entity

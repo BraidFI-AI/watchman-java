@@ -1,46 +1,50 @@
 package io.moov.watchman.scorer;
 
 import io.moov.watchman.config.SimilarityConfig;
+import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.model.PreparedAddress;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
 import io.moov.watchman.similarity.PhoneticFilter;
 import io.moov.watchman.similarity.TextNormalizer;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 /**
- * TDD Phase 7 - GREEN PHASE
- * Address comparison utilities
+ * TDD Phase 1 - GREEN PHASE (Mar 6, 2026)
+ * Address comparison utilities - Now Spring-managed bean with config injection
  * 
  * Ported from Go: pkg/search/similarity_address.go (lines 53-161)
  * 
- * Field weights (from Go):
- * - line1: 5.0 (most important - primary address)
- * - line2: 2.0 (less important - secondary info)
- * - city: 4.0 (highly important for location)
- * - state: 2.0 (helps confirm location)
- * - postalCode: 3.0 (strong verification)
- * - country: 4.0 (critical for international)
+ * Field weights now loaded from WeightConfig (YAML configurable):
+ * - line1: addressLine1Weight (default 5.0)
+ * - line2: addressLine2Weight (default 2.0)
+ * - city: addressCityWeight (default 4.0)
+ * - state: addressStateWeight (default 2.0)
+ * - postalCode: addressPostalWeight (default 3.0)
+ * - country: addressCountryWeight (default 4.0)
+ * - highConfidence: addressHighConfidenceThreshold (default 0.92)
  */
+@Component
 public class AddressComparer {
     
-    // Field weights from Go (similarity_address.go lines 11-17)
-    private static final double LINE1_WEIGHT = 5.0;
-    private static final double LINE2_WEIGHT = 2.0;
-    private static final double CITY_WEIGHT = 4.0;
-    private static final double STATE_WEIGHT = 2.0;
-    private static final double POSTAL_WEIGHT = 3.0;
-    private static final double COUNTRY_WEIGHT = 4.0;
+    private final WeightConfig weightConfig;
+    private final JaroWinklerSimilarity jaroWinkler;
     
-    // High confidence threshold for early exit (from Go)
-    private static final double HIGH_CONFIDENCE_THRESHOLD = 0.92;
-    
-    // TODO: Inject config via constructor when these utilities become Spring-managed beans
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity(
-        new TextNormalizer(),
-        new PhoneticFilter(true),
-        new SimilarityConfig()
-    );
+    /**
+     * Constructor injection for Spring bean.
+     * 
+     * @param weightConfig Configuration for address field weights
+     * @param similarityConfig Configuration for JaroWinkler algorithm
+     */
+    public AddressComparer(WeightConfig weightConfig, SimilarityConfig similarityConfig) {
+        this.weightConfig = weightConfig;
+        this.jaroWinkler = new JaroWinklerSimilarity(
+            new TextNormalizer(),
+            new PhoneticFilter(true),
+            similarityConfig
+        );
+    }
     
     /**
      * Compares two prepared addresses using weighted field comparison.
@@ -54,29 +58,29 @@ public class AddressComparer {
      * @param index Index address (normalized)
      * @return Similarity score [0.0, 1.0]
      */
-    public static double compareAddress(PreparedAddress query, PreparedAddress index) {
+    public double compareAddress(PreparedAddress query, PreparedAddress index) {
         double totalScore = 0.0;
         double totalWeight = 0.0;
         
         // Compare line1 (highest weight)
         if (!query.line1Fields().isEmpty() && !index.line1Fields().isEmpty()) {
             double similarity = bestPairCombinationJaroWinkler(query.line1Fields(), index.line1Fields());
-            totalScore += similarity * LINE1_WEIGHT;
-            totalWeight += LINE1_WEIGHT;
+            totalScore += similarity * weightConfig.getAddressLine1Weight();
+            totalWeight += weightConfig.getAddressLine1Weight();
         }
         
         // Compare line2
         if (!query.line2Fields().isEmpty() && !index.line2Fields().isEmpty()) {
             double similarity = bestPairCombinationJaroWinkler(query.line2Fields(), index.line2Fields());
-            totalScore += similarity * LINE2_WEIGHT;
-            totalWeight += LINE2_WEIGHT;
+            totalScore += similarity * weightConfig.getAddressLine2Weight();
+            totalWeight += weightConfig.getAddressLine2Weight();
         }
         
         // Compare city
         if (!query.cityFields().isEmpty() && !index.cityFields().isEmpty()) {
             double similarity = bestPairCombinationJaroWinkler(query.cityFields(), index.cityFields());
-            totalScore += similarity * CITY_WEIGHT;
-            totalWeight += CITY_WEIGHT;
+            totalScore += similarity * weightConfig.getAddressCityWeight();
+            totalWeight += weightConfig.getAddressCityWeight();
         }
         
         // Compare state (exact match)
@@ -84,8 +88,8 @@ public class AddressComparer {
         if (query.state() != null && !query.state().isEmpty() && 
             index.state() != null && !index.state().isEmpty()) {
             double score = query.state().equalsIgnoreCase(index.state()) ? 1.0 : 0.0;
-            totalScore += score * STATE_WEIGHT;
-            totalWeight += STATE_WEIGHT;
+            totalScore += score * weightConfig.getAddressStateWeight();
+            totalWeight += weightConfig.getAddressStateWeight();
         }
         
         // Compare postal code (exact match)
@@ -93,8 +97,8 @@ public class AddressComparer {
         if (query.postalCode() != null && !query.postalCode().isEmpty() && 
             index.postalCode() != null && !index.postalCode().isEmpty()) {
             double score = query.postalCode().equalsIgnoreCase(index.postalCode()) ? 1.0 : 0.0;
-            totalScore += score * POSTAL_WEIGHT;
-            totalWeight += POSTAL_WEIGHT;
+            totalScore += score * weightConfig.getAddressPostalWeight();
+            totalWeight += weightConfig.getAddressPostalWeight();
         }
         
         // Compare country (exact match)
@@ -102,8 +106,8 @@ public class AddressComparer {
         if (query.country() != null && !query.country().isEmpty() && 
             index.country() != null && !index.country().isEmpty()) {
             double score = query.country().equalsIgnoreCase(index.country()) ? 1.0 : 0.0;
-            totalScore += score * COUNTRY_WEIGHT;
-            totalWeight += COUNTRY_WEIGHT;
+            totalScore += score * weightConfig.getAddressCountryWeight();
+            totalWeight += weightConfig.getAddressCountryWeight();
         }
         
         // Return weighted average, or 0.0 if no fields compared
@@ -118,13 +122,13 @@ public class AddressComparer {
      * Finds the best matching address pair from two lists.
      * 
      * Tries all query-index combinations and returns the highest score.
-     * Early exits when finding high confidence match (>0.92).
+     * Early exits when finding high confidence match (>= configured threshold).
      * 
      * @param queryAddrs List of query addresses (normalized)
      * @param indexAddrs List of index addresses (normalized)
      * @return Best match score [0.0, 1.0], or 0.0 if either list is empty
      */
-    public static double findBestAddressMatch(List<PreparedAddress> queryAddrs, List<PreparedAddress> indexAddrs) {
+    public double findBestAddressMatch(List<PreparedAddress> queryAddrs, List<PreparedAddress> indexAddrs) {
         if (queryAddrs == null || queryAddrs.isEmpty() || indexAddrs == null || indexAddrs.isEmpty()) {
             return 0.0;
         }
@@ -137,8 +141,8 @@ public class AddressComparer {
                 if (score > bestScore) {
                     bestScore = score;
                     
-                    // Early exit on high confidence match
-                    if (score > HIGH_CONFIDENCE_THRESHOLD) {
+                    // Early exit on high confidence match (config-driven)
+                    if (score > weightConfig.getAddressHighConfidenceThreshold()) {
                         return score;
                     }
                 }
@@ -154,7 +158,7 @@ public class AddressComparer {
      * 
      * Go: stringscore.BestPairCombinationJaroWinkler(query.Line1Fields, index.Line1Fields)
      */
-    private static double bestPairCombinationJaroWinkler(List<String> queryTokens, List<String> indexTokens) {
+    private double bestPairCombinationJaroWinkler(List<String> queryTokens, List<String> indexTokens) {
         // Join tokens to strings
         String queryStr = String.join(" ", queryTokens);
         String indexStr = String.join(" ", indexTokens);

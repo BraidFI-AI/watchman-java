@@ -216,7 +216,7 @@ Once all sources are loaded and validated:
 
 1. **Confirm with engineering team**: Our entity count matches their Portage baseline
 2. **Request Portage metrics**: p95, p99, mean latency, success rate
-3. **Execute load test**: [LOAD_TEST_PLAN.md](../LOAD_TEST_PLAN.md)
+3. **Execute load test**: [load_test_plan.md](performance/load_test_plan.md)
 4. **Document results**: Compare performance vs Portage baseline
 5. **Optional**: Consider adding data source UI control ([admin UI enhancement](../src/main/resources/static/admin.html))
 

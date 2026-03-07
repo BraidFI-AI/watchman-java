@@ -107,9 +107,10 @@ public class TypeDispatchers {
      * @param query  the query entity with addresses
      * @param index  the index entity with addresses to compare against
      * @param weight the weight to assign to this comparison
+     * @param addressComparer the AddressComparer bean to use
      * @return a ScorePiece with the best address match score
      */
-    public static ScorePiece compareAddresses(Entity query, Entity index, double weight) {
+    public static ScorePiece compareAddresses(Entity query, Entity index, double weight, AddressComparer addressComparer) {
         if (query.addresses().isEmpty() || index.addresses().isEmpty()) {
             return ScorePiece.builder()
                     .pieceType("address")
@@ -124,7 +125,7 @@ public class TypeDispatchers {
         List<PreparedAddress> queryAddrs = AddressNormalizer.normalizeAddresses(query.addresses());
         List<PreparedAddress> indexAddrs = AddressNormalizer.normalizeAddresses(index.addresses());
 
-        double score = AddressComparer.findBestAddressMatch(queryAddrs, indexAddrs);
+        double score = addressComparer.findBestAddressMatch(queryAddrs, indexAddrs);
 
         return ScorePiece.builder()
                 .pieceType("address")

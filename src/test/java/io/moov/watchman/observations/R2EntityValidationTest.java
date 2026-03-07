@@ -12,8 +12,8 @@ import java.util.List;
 /**
  * R2 Entity Validation - BSA Consultant Round 2 Retest
  * 
- * TDD RED Phase: Validates all 50 entity rows from R2-Entity.csv
- * Source: observations/Watchman Java Obsevations Master.xlsx - R2-Entity.csv
+ * TDD RED Phase: Validates all 50 entity rows from r2-entity.csv
+ * Source: observations/watchman java obsevations master.xlsx - r2-entity.csv
  * 
  * Test Parameters: limit=20, minMatch=0.88 (standard BSA consultant parameters)
  * 
@@ -33,7 +33,7 @@ class R2EntityValidationTest {
     void validateAll50EntityRows() {
         System.out.println("\n" + "=".repeat(100));
         System.out.println("R2 ENTITY VALIDATION - ALL 50 ROWS");
-        System.out.println("Source: R2-Entity.csv (BSA Consultant Round 2 Retest)");
+        System.out.println("Source: r2-entity.csv (BSA Consultant Round 2 Retest)");
         System.out.println("Parameters: limit=20, minMatch=0.88");
         System.out.println("=".repeat(100));
 
@@ -208,7 +208,7 @@ class R2EntityValidationTest {
     }
 
     /**
-     * Validate a single entity row from R2-Entity.csv
+     * Validate a single entity row from r2-entity.csv
      * 
      * @param rowNumber S.I. number from CSV
      * @param entityName Expected entity name to match

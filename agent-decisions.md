@@ -256,7 +256,7 @@ Investigation of actual Braid code (~/Documents/GitHub/core_api_banking-developm
 
 **Rationale**: PostgreSQL provides incremental sync support (query `MAX(braid_updated_at)` to fetch only changed entities), SQL capabilities (complex queries, JOINs), single database (no split), and better entity management. First run fetches 120,700 entities; daily runs fetch only ~50 updated entities (99.5% API call reduction). Cost delta: +$12/month RDS vs DynamoDB, negligible for enterprise workload.
 
-**Impact**: Architecture now: Braid API → Lambda → PostgreSQL batch upsert (entities table) → PostgreSQL export → S3 NDJSON → ECS screening → S3 results. Lambda VPC-enabled for RDS access, uses psycopg2 with execute_values() for batch operations. Schema includes entities table (entity_id PK, braid_updated_at indexed) and runs table (run_id PK, audit trail). See day-watcher/RDS_MIGRATION.md for complete details.
+**Impact**: Architecture now: Braid API → Lambda → PostgreSQL batch upsert (entities table) → PostgreSQL export → S3 NDJSON → ECS screening → S3 results. Lambda VPC-enabled for RDS access, uses psycopg2 with execute_values() for batch operations. Schema includes entities table (entity_id PK, braid_updated_at indexed) and runs table (run_id PK, audit trail). See day-watcher/rds_migration.md for complete details.
 
 ---
 

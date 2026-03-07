@@ -1,9 +1,12 @@
 package io.moov.watchman.search;
 
 import io.moov.watchman.model.*;
+import io.moov.watchman.scorer.AddressComparer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -11,15 +14,19 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Phase 11: Type Dispatcher Functions
+ * Phase 11: Type Dispatcher Functions - Updated for Spring bean injection (Mar 6, 2026)
  * <p>
  * Functions:
  * - compareExactIdentifiers() - Type dispatcher for exact ID matching (row 67)
  * - compareExactGovernmentIDs() - Type dispatcher for government ID matching (row 68)
  * - compareAddresses() - Address list comparison with ScorePiece integration (row 61)
  */
+@SpringBootTest
 @DisplayName("Phase 11: Type Dispatcher Functions")
 class Phase11TypeDispatchersTest {
+    
+    @Autowired
+    private AddressComparer addressComparer;
 
     @Nested
     @DisplayName("compareExactIdentifiers() Tests")
@@ -338,7 +345,7 @@ class Phase11TypeDispatchersTest {
             Entity query = createEntityWithAddress("123 Main St", "New York", "NY", "10001", "USA");
             Entity index = createEntityWithAddress("123 Main Street", "New York", "NY", "10001", "USA");
             
-            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0);
+            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0, addressComparer);
             
             assertTrue(result.getScore() > 0.8);
             assertTrue(result.isMatched());
@@ -353,7 +360,7 @@ class Phase11TypeDispatchersTest {
             Entity query = createEntityWithAddress(null, null, null, null, null);
             Entity index = createEntityWithAddress(null, null, null, null, null);
             
-            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0);
+            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0, addressComparer);
             
             assertEquals(0.0, result.getScore());
             assertFalse(result.isMatched());
@@ -366,7 +373,7 @@ class Phase11TypeDispatchersTest {
             Entity query = createEntityWithAddress(null, null, null, null, null);
             Entity index = createEntityWithAddress("123 Main St", "New York", "NY", "10001", "USA");
             
-            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0);
+            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0, addressComparer);
             
             assertEquals(0.0, result.getScore());
             assertEquals(0, result.getFieldsCompared());
@@ -378,7 +385,7 @@ class Phase11TypeDispatchersTest {
             Entity query = createEntityWithAddress("123 Main St", "New York", "NY", "10001", "USA");
             Entity index = createEntityWithAddress("456 Oak Ave", "Los Angeles", "CA", "90001", "USA");
             
-            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0);
+            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0, addressComparer);
             
             assertTrue(result.getScore() < 0.5);
             assertFalse(result.isMatched());
@@ -400,7 +407,7 @@ class Phase11TypeDispatchersTest {
                     )
             );
             
-            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0);
+            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0, addressComparer);
             
             assertTrue(result.getScore() > 0.8);
             assertTrue(result.isMatched());
@@ -412,7 +419,7 @@ class Phase11TypeDispatchersTest {
             Entity query = createEntityWithAddress("123 Main St", "New York", "NY", "10001", "USA");
             Entity index = createEntityWithAddress("123 Main St", "New York", "NY", "10001", "USA");
             
-            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0);
+            ScorePiece result = TypeDispatchers.compareAddresses(query, index, 8.0, addressComparer);
             
             assertTrue(result.getScore() > 0.99);
             assertTrue(result.isExact());

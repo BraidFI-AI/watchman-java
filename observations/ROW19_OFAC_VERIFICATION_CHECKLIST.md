@@ -94,7 +94,7 @@ https://sanctionssearch.ofac.treas.gov/
 
 **If PIJ alias removed or never matches:**
 → Delete Row 19 test entirely  
-→ Update [ROW19_ISSUE_SUMMARY.md](ROW19_ISSUE_SUMMARY.md) with OFAC findings  
+→ Update [row19_issue_summary.md](row19_issue_summary.md) with OFAC findings  
 → Update pass rate to 51/51 (100%)
 
 ---
@@ -102,7 +102,7 @@ https://sanctionssearch.ofac.treas.gov/
 ## Files to Update After Verification
 
 - [ ] [ComprehensiveBSAValidationTest.java](../src/test/java/io/moov/watchman/observations/ComprehensiveBSAValidationTest.java#L112-L120)
-- [ ] [ROW19_ISSUE_SUMMARY.md](ROW19_ISSUE_SUMMARY.md)
+- [ ] [row19_issue_summary.md](row19_issue_summary.md)
 - [ ] [agent-context.md](../agent-context.md) (if test deleted, remove Row 19 reference)
 
 ---

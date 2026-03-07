@@ -210,6 +210,86 @@ public class WeightConfig {
      */
     private double aliasBoostAmount = 0.50;
 
+    /**
+     * Address line1 field weight (required).
+     * 
+     * <p>Address comparison field weight for primary address line.
+     * Higher weight = more influence on overall address score.
+     * 
+     * <p>Previously hardcoded as 5.0 at AddressComparer.java:28.
+     * 
+     * Default: 5.0
+     */
+    private double addressLine1Weight = 5.0;
+
+    /**
+     * Address line2 field weight (required).
+     * 
+     * <p>Address comparison field weight for secondary address line.
+     * 
+     * <p>Previously hardcoded as 2.0 at AddressComparer.java:29.
+     * 
+     * Default: 2.0
+     */
+    private double addressLine2Weight = 2.0;
+
+    /**
+     * Address city field weight (required).
+     * 
+     * <p>Address comparison field weight for city.
+     * 
+     * <p>Previously hardcoded as 4.0 at AddressComparer.java:30.
+     * 
+     * Default: 4.0
+     */
+    private double addressCityWeight = 4.0;
+
+    /**
+     * Address state field weight (required).
+     * 
+     * <p>Address comparison field weight for state/province.
+     * 
+     * <p>Previously hardcoded as 2.0 at AddressComparer.java:31.
+     * 
+     * Default: 2.0
+     */
+    private double addressStateWeight = 2.0;
+
+    /**
+     * Address postal code field weight (required).
+     * 
+     * <p>Address comparison field weight for postal code.
+     * 
+     * <p>Previously hardcoded as 3.0 at AddressComparer.java:32.
+     * 
+     * Default: 3.0
+     */
+    private double addressPostalWeight = 3.0;
+
+    /**
+     * Address country field weight (required).
+     * 
+     * <p>Address comparison field weight for country.
+     * 
+     * <p>Previously hardcoded as 4.0 at AddressComparer.java:33.
+     * 
+     * Default: 4.0
+     */
+    private double addressCountryWeight = 4.0;
+
+    /**
+     * Address high confidence threshold (required).
+     * 
+     * <p>Early exit threshold in findBestAddressMatch.
+     * When address match score >= this threshold, stop searching.
+     * Performance optimization for exact/near-exact matches.
+     * 
+     * <p>Previously hardcoded as 0.92 at AddressComparer.java:36.
+     * 
+     * Default: 0.92
+     */
+    private double addressHighConfidenceThreshold = 0.92;
+
     // Getters and setters
 
     public double getNameWeight() {
@@ -378,5 +458,61 @@ public class WeightConfig {
 
     public void setAliasBoostAmount(double aliasBoostAmount) {
         this.aliasBoostAmount = aliasBoostAmount;
+    }
+
+    public double getAddressLine1Weight() {
+        return addressLine1Weight;
+    }
+
+    public void setAddressLine1Weight(double addressLine1Weight) {
+        this.addressLine1Weight = addressLine1Weight;
+    }
+
+    public double getAddressLine2Weight() {
+        return addressLine2Weight;
+    }
+
+    public void setAddressLine2Weight(double addressLine2Weight) {
+        this.addressLine2Weight = addressLine2Weight;
+    }
+
+    public double getAddressCityWeight() {
+        return addressCityWeight;
+    }
+
+    public void setAddressCityWeight(double addressCityWeight) {
+        this.addressCityWeight = addressCityWeight;
+    }
+
+    public double getAddressStateWeight() {
+        return addressStateWeight;
+    }
+
+    public void setAddressStateWeight(double addressStateWeight) {
+        this.addressStateWeight = addressStateWeight;
+    }
+
+    public double getAddressPostalWeight() {
+        return addressPostalWeight;
+    }
+
+    public void setAddressPostalWeight(double addressPostalWeight) {
+        this.addressPostalWeight = addressPostalWeight;
+    }
+
+    public double getAddressCountryWeight() {
+        return addressCountryWeight;
+    }
+
+    public void setAddressCountryWeight(double addressCountryWeight) {
+        this.addressCountryWeight = addressCountryWeight;
+    }
+
+    public double getAddressHighConfidenceThreshold() {
+        return addressHighConfidenceThreshold;
+    }
+
+    public void setAddressHighConfidenceThreshold(double addressHighConfidenceThreshold) {
+        this.addressHighConfidenceThreshold = addressHighConfidenceThreshold;
     }
 }

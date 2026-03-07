@@ -126,7 +126,7 @@ curl -X POST http://localhost:8084/v1/download
 - Memory footprint: 49,955 entities in-memory with token pre-filter
 - Zero-downtime data refresh: Daily sanctions list updates
 
-See [`docs/aws_deployment.md`](docs/aws_deployment.md) and [`docs/PERFORMANCE_BENCHMARK_REPORT.md`](docs/PERFORMANCE_BENCHMARK_REPORT.md) for details.
+See [`docs/aws_deployment.md`](docs/aws_deployment.md) and [`docs/performance_benchmark_report.md`](docs/performance_benchmark_report.md) for details.
 
 ### Local Development
 
@@ -201,7 +201,7 @@ src/test/java/io/moov/watchman/  # ~1100 tests
 
 | Document | Description |
 |----------|-------------|
-| [PERFORMANCE_BENCHMARK_REPORT.md](docs/PERFORMANCE_BENCHMARK_REPORT.md) | Production performance validation |
+| [performance_benchmark_report.md](docs/performance_benchmark_report.md) | Production performance validation |
 | [api_spec.md](docs/api_spec.md) | Complete API reference |
 | [aws_deployment.md](docs/aws_deployment.md) | AWS ECS deployment guide |
 | [test_coverage.md](docs/test_coverage.md) | Test documentation |

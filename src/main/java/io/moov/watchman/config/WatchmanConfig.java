@@ -65,7 +65,8 @@ public class WatchmanConfig {
 
     @Bean
     public SearchService searchService(EntityIndex entityIndex, EntityScorer entityScorer, 
-                                       AutoClearanceConfig autoClearanceConfig, SearchConfig searchConfig) {
-        return new SearchServiceImpl(entityIndex, entityScorer, autoClearanceConfig, searchConfig);
+                                       AutoClearanceConfig autoClearanceConfig, SearchConfig searchConfig,
+                                       io.moov.watchman.scorer.AddressComparer addressComparer) {
+        return new SearchServiceImpl(entityIndex, entityScorer, autoClearanceConfig, searchConfig, addressComparer);
     }
 }

@@ -327,5 +327,5 @@ aws ecs register-task-definition \
 1. Check CloudWatch logs first: `/aws/lambda/day-watcher-orchestrator` and `/ecs/day-watcher`
 2. Query DynamoDB for run status: `aws dynamodb get-item ...`
 3. Test components individually (Lambda, ECS task) with manual invocations
-4. Review [Day Watcher Plan](../../braid-integration/Day%20Watcher%20Plan.md) for design context
+4. Review [day watcher plan](../../braid-integration/day%20watcher%20plan.md) for design context
 5. Verify infrastructure state: `cd terraform && terraform show`

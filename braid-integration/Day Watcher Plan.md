@@ -1,4 +1,4 @@
-# Day Watcher Plan
+# day watcher plan
 
 ## Summary
 
@@ -156,7 +156,7 @@ aws logs tail /aws/ecs/day-watcher --follow
 ```
 watchman-java/
 ├── braid-integration/
-│   ├── Day Watcher Plan.md                    # This file
+│   ├── day watcher plan.md                    # This file
 │   └── [existing files...]
 │
 ├── day-watcher/                                # NEW: Day Watcher root

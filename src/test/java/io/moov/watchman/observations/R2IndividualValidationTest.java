@@ -12,8 +12,8 @@ import java.util.List;
 /**
  * R2 Individual Validation - BSA Consultant Round 2 Retest
  * 
- * TDD RED Phase: Validates all 50 individual rows from R2-Ind.csv
- * Source: observations/Watchman Java Obsevations Master.xlsx - R2-Ind.csv
+ * TDD RED Phase: Validates all 50 individual rows from r2-ind.csv
+ * Source: observations/watchman java obsevations master.xlsx - r2-ind.csv
  * 
  * Test Parameters: limit=20, minMatch=0.88 (standard BSA consultant parameters)
  * 
@@ -32,7 +32,7 @@ class R2IndividualValidationTest {
     void validateAll50IndividualRows() {
         System.out.println("\n" + "=".repeat(100));
         System.out.println("R2 INDIVIDUAL VALIDATION - ALL 50 ROWS");
-        System.out.println("Source: R2-Ind.csv (BSA Consultant Round 2 Retest)");
+        System.out.println("Source: r2-ind.csv (BSA Consultant Round 2 Retest)");
         System.out.println("Parameters: limit=20, minMatch=0.88");
         System.out.println("=".repeat(100));
 
@@ -208,7 +208,7 @@ class R2IndividualValidationTest {
     }
 
     /**
-     * Validate a single individual row from R2-Ind.csv
+     * Validate a single individual row from r2-ind.csv
      * 
      * @param rowNumber S.I. number from CSV
      * @param individualName Expected individual name to match

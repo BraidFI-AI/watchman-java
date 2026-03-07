@@ -80,7 +80,7 @@ Migrated Day Watcher from DynamoDB to RDS PostgreSQL for **both entities and run
 
 **Documentation:**
 - `docs/architecture.md` - Updated diagrams and component descriptions for RDS
-- `RDS_MIGRATION.md` - This comprehensive change note
+- `rds_migration.md` - This comprehensive change note
 
 ## How to validate
 

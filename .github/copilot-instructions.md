@@ -181,7 +181,7 @@ curl "http://localhost:8084/api/reports/abc123"
 
 **Implementation**: `BatchScreeningServiceImpl` uses parallel streams (8 threads) to process names concurrently. Each name → `SearchServiceImpl.search()` → independent scoring.
 
-**Performance**: 82.9 names/sec on 4 vCPU (10,000-name test in 120.6 seconds). See [`docs/PERFORMANCE_BENCHMARK_REPORT.md`](../docs/PERFORMANCE_BENCHMARK_REPORT.md).
+**Performance**: 82.9 names/sec on 4 vCPU (10,000-name test in 120.6 seconds). See [`docs/performance_benchmark_report.md`](../docs/performance_benchmark_report.md).
 
 ---
 

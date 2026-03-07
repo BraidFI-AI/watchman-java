@@ -570,7 +570,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return 0.0
             assertEquals(0.0, score, 0.001);
@@ -588,7 +588,7 @@ class AddressComparisonTest {
             List<PreparedAddress> index = List.of();
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return 0.0
             assertEquals(0.0, score, 0.001);
@@ -606,7 +606,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return perfect score
             assertEquals(1.0, score, 0.001);
@@ -626,7 +626,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return perfect score (found the matching address)
             assertEquals(1.0, score, 0.001);
@@ -645,7 +645,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return perfect score (found the matching query address)
             assertEquals(1.0, score, 0.001);
@@ -665,7 +665,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return high score (found the best pair: Elm St ↔ Elm Street)
             assertTrue(score > 0.95, "Should find best match across all query-index pairs");
@@ -685,7 +685,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return perfect score (early exit optimization)
             assertEquals(1.0, score, 0.001);
@@ -704,7 +704,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return low score (still best available)
             assertTrue(score < 0.3, "Should return low score when no good matches exist");
@@ -725,7 +725,7 @@ class AddressComparisonTest {
             );
             
             // WHEN: Finding best match
-            double score = addressComparer.findBestAddressMatch(query, index);
+            double score = AddressComparer.findBestAddressMatch(query, index);
             
             // THEN: Should return high score (found the matching Broadway address despite comma difference)
             assertTrue(score > 0.95, "Should handle real-world address variations");
@@ -774,7 +774,7 @@ class AddressComparisonTest {
             List<PreparedAddress> prepIndex = AddressNormalizer.normalizeAddresses(indexAddrs);
             
             // AND: Find best match
-            double score = addressComparer.findBestAddressMatch(prepQuery, prepIndex);
+            double score = AddressComparer.findBestAddressMatch(prepQuery, prepIndex);
             
             // THEN: Should find the best match (Main St vs Main Street)
             assertTrue(score > 0.95, "Batch processing should find best match across all addresses");

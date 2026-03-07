@@ -34,6 +34,7 @@ public class SearchServiceImpl implements SearchService {
     private final EntityScorer entityScorer;
     private final io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig;
     private final io.moov.watchman.config.SearchConfig searchConfig;
+    private final io.moov.watchman.scorer.AddressComparer addressComparer;
 
     // Resolved once at construction for the Fix 1+2 hot path.
     // Both will be non-null in production (WatchmanConfig always uses these concrete types).
@@ -43,11 +44,13 @@ public class SearchServiceImpl implements SearchService {
 
     public SearchServiceImpl(EntityIndex entityIndex, EntityScorer entityScorer,
                              io.moov.watchman.config.AutoClearanceConfig autoClearanceConfig,
-                             io.moov.watchman.config.SearchConfig searchConfig) {
+                             io.moov.watchman.config.SearchConfig searchConfig,
+                             io.moov.watchman.scorer.AddressComparer addressComparer) {
         this.entityIndex = entityIndex;
         this.entityScorer = entityScorer;
         this.autoClearanceConfig = autoClearanceConfig;
         this.searchConfig = searchConfig;
+        this.addressComparer = addressComparer;
         // Resolve concrete types once for cached-token hot path (Fix 1 + Fix 2)
         this.entityScorerImpl = (entityScorer instanceof EntityScorerImpl impl) ? impl : null;
         this.jaroWinkler = (entityScorerImpl != null) ? entityScorerImpl.getJaroWinkler() : null;
@@ -538,7 +541,7 @@ public class SearchServiceImpl implements SearchService {
             .map(addr -> io.moov.watchman.scorer.AddressNormalizer.normalizeAddress(addr))
             .toList();
         
-        double addressScore = io.moov.watchman.scorer.AddressComparer.findBestAddressMatch(
+        double addressScore = addressComparer.findBestAddressMatch(
             java.util.List.of(preparedQueryAddr),
             preparedEntityAddrs
         );
