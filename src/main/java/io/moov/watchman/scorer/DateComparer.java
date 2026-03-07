@@ -1,12 +1,16 @@
 package io.moov.watchman.scorer;
 
+import io.moov.watchman.config.WeightConfig;
+import org.springframework.stereotype.Component;
+
 import java.time.LocalDate;
 
 /**
- * Phase 8: Date Comparison Enhancement
+ * Phase 2 - GREEN PHASE (Mar 6, 2026)
+ * Date Comparison Enhancement - Now Spring-managed bean with config injection
  * 
  * Implements 8 date comparison functions from Go's similarity_close.go:
- * 1. compareDates() - Enhanced scoring with year/month/day weighting (40/30/30)
+ * 1. compareDates() - Enhanced scoring with year/month/day weighting (configurable)
  * 2. areDaysLogical() - Birth/death order validation with lifespan ratio check
  * 3. areDaysSimilar() - Digit similarity detection (1 vs 11, 12 vs 21)
  * 4. comparePersonDates() - Birth/death date scoring with logic penalty
@@ -16,7 +20,19 @@ import java.time.LocalDate;
  * 
  * Go source: pkg/search/similarity_close.go
  */
+@Component
 public class DateComparer {
+
+    private final WeightConfig weightConfig;
+
+    /**
+     * Constructor injection for Spring bean.
+     * 
+     * @param weightConfig Configuration for date comparison weights
+     */
+    public DateComparer(WeightConfig weightConfig) {
+        this.weightConfig = weightConfig;
+    }
 
     /**
      * Compare two dates with enhanced scoring algorithm.
@@ -32,23 +48,23 @@ public class DateComparer {
      * @param date2 Second date (null returns 0.0)
      * @return Weighted similarity score (0.0-1.0)
      */
-    public static double compareDates(LocalDate date1, LocalDate date2) {
+    public double compareDates(LocalDate date1, LocalDate date2) {
         if (date1 == null || date2 == null) {
             return 0.0;
         }
 
-        // Year scoring (40% weight)
+        // Year scoring (configurable weight)
         double yearScore;
         int yearDiff = Math.abs(date1.getYear() - date2.getYear());
         if (yearDiff <= 5) {
-            // Linear decay: 1.0 at 0 years, 0.5 at 5 years
-            yearScore = 1.0 - (0.1 * yearDiff);
+            // Linear decay: 1.0 at 0 years, configurable decay rate
+            yearScore = 1.0 - (weightConfig.getDateYearDecayRate() * yearDiff);
         } else {
-            // Distant years score 0.2
-            yearScore = 0.2;
+            // Distant years score (configurable)
+            yearScore = weightConfig.getDateDistantYearScore();
         }
 
-        // Month scoring (30% weight)
+        // Month scoring (configurable weight)
         double monthScore;
         int month1 = date1.getMonthValue();
         int month2 = date2.getMonthValue();
@@ -57,16 +73,16 @@ public class DateComparer {
         if (monthDiff == 0) {
             monthScore = 1.0;
         } else if (monthDiff == 1) {
-            monthScore = 0.9;
+            monthScore = weightConfig.getDateMonthTolerance1();
         } else if ((month1 == 1 && (month2 == 10 || month2 == 11 || month2 == 12)) ||
                    (month2 == 1 && (month1 == 10 || month1 == 11 || month1 == 12))) {
             // Special case: month 1 vs 10/11/12 (common typo)
-            monthScore = 0.7;
+            monthScore = weightConfig.getDateMonthTolerance2();
         } else {
-            monthScore = 0.3;
+            monthScore = weightConfig.getDateMonthTolerance3Plus();
         }
 
-        // Day scoring (30% weight)
+        // Day scoring (configurable weight)
         double dayScore;
         int day1 = date1.getDayOfMonth();
         int day2 = date2.getDayOfMonth();
@@ -75,17 +91,20 @@ public class DateComparer {
         if (dayDiff == 0) {
             dayScore = 1.0;
         } else if (dayDiff <= 3) {
-            // Linear decay within ±3 day tolerance
-            dayScore = 0.95 - (0.05 * dayDiff / 3.0);
+            // Linear decay within ±3 day tolerance (configurable)
+            dayScore = weightConfig.getDateDayTolerance0to3Start() - 
+                      (weightConfig.getDateDayTolerance0to3Decay() * dayDiff / 3.0);
         } else if (areDaysSimilar(day1, day2)) {
             // Similar digit patterns (1 vs 11, 12 vs 21)
-            dayScore = 0.7;
+            dayScore = weightConfig.getDateDayTolerance4to7();
         } else {
-            dayScore = 0.3;
+            dayScore = weightConfig.getDateDayTolerance8Plus();
         }
 
-        // Weighted average: 40% year + 30% month + 30% day
-        return (0.4 * yearScore) + (0.3 * monthScore) + (0.3 * dayScore);
+        // Weighted average (configurable weights)
+        return (weightConfig.getDateYearWeight() * yearScore) + 
+               (weightConfig.getDateMonthWeight() * monthScore) + 
+               (weightConfig.getDateDayWeight() * dayScore);
     }
 
     /**
@@ -99,7 +118,7 @@ public class DateComparer {
      * @param day2 Second day (1-31)
      * @return true if days are similar, false otherwise
      */
-    public static boolean areDaysSimilar(int day1, int day2) {
+    public boolean areDaysSimilar(int day1, int day2) {
         if (day1 == day2) {
             return true;
         }
@@ -141,8 +160,8 @@ public class DateComparer {
      * @param death2 Second person's death date
      * @return true if dates are logically consistent, false otherwise
      */
-    public static boolean areDatesLogical(LocalDate birth1, LocalDate death1, 
-                                          LocalDate birth2, LocalDate death2) {
+    public boolean areDatesLogical(LocalDate birth1, LocalDate death1, 
+                                   LocalDate birth2, LocalDate death2) {
         // If any date is null, we cannot validate
         if (birth1 == null || death1 == null || birth2 == null || death2 == null) {
             return true;
@@ -183,8 +202,8 @@ public class DateComparer {
      * @param death2 Second person's death date
      * @return DateComparisonResult with score, matched flag, and fieldsCompared count
      */
-    public static DateComparisonResult comparePersonDates(LocalDate birth1, LocalDate death1,
-                                                          LocalDate birth2, LocalDate death2) {
+    public DateComparisonResult comparePersonDates(LocalDate birth1, LocalDate death1,
+                                                   LocalDate birth2, LocalDate death2) {
         double totalScore = 0.0;
         int fieldsCompared = 0;
 
@@ -229,8 +248,8 @@ public class DateComparer {
      * @param dissolved2 Second business dissolved date
      * @return DateComparisonResult with score, matched flag, and fieldsCompared count
      */
-    public static DateComparisonResult compareBusinessDates(LocalDate created1, LocalDate dissolved1,
-                                                            LocalDate created2, LocalDate dissolved2) {
+    public DateComparisonResult compareBusinessDates(LocalDate created1, LocalDate dissolved1,
+                                                     LocalDate created2, LocalDate dissolved2) {
         double totalScore = 0.0;
         int fieldsCompared = 0;
 
@@ -268,8 +287,8 @@ public class DateComparer {
      * @param dissolved2 Second org dissolved date
      * @return DateComparisonResult with score, matched flag, and fieldsCompared count
      */
-    public static DateComparisonResult compareOrgDates(LocalDate created1, LocalDate dissolved1,
-                                                       LocalDate created2, LocalDate dissolved2) {
+    public DateComparisonResult compareOrgDates(LocalDate created1, LocalDate dissolved1,
+                                                LocalDate created2, LocalDate dissolved2) {
         double totalScore = 0.0;
         int fieldsCompared = 0;
 
@@ -306,8 +325,8 @@ public class DateComparer {
      * @param assetType Type of asset ("Vessel" or "Aircraft") for logging
      * @return DateComparisonResult with score, matched flag, and fieldsCompared count
      */
-    public static DateComparisonResult compareAssetDates(LocalDate built1, LocalDate built2, 
-                                                         String assetType) {
+    public DateComparisonResult compareAssetDates(LocalDate built1, LocalDate built2, 
+                                                  String assetType) {
         if (built1 == null || built2 == null) {
             return new DateComparisonResult(0.0, false, 0);
         }

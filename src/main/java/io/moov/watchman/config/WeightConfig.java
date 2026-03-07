@@ -290,6 +290,144 @@ public class WeightConfig {
      */
     private double addressHighConfidenceThreshold = 0.92;
 
+    /**
+     * Date comparison year decay rate (required).
+     * 
+     * <p>Linear decay per year difference in compareDates().
+     * yearScore = 1.0 - (decayRate * yearDiff) for yearDiff <= 5.
+     * 
+     * <p>Previously hardcoded as 0.1 at DateComparer.java:47.
+     * 
+     * Default: 0.1 (10% penalty per year)
+     */
+    private double dateYearDecayRate = 0.1;
+
+    /**
+     * Date comparison distant year score (required).
+     * 
+     * <p>Floor score for dates with >5 year difference.
+     * 
+     * <p>Previously hardcoded as 0.2 at DateComparer.java:50.
+     * 
+     * Default: 0.2
+     */
+    private double dateDistantYearScore = 0.2;
+
+    /**
+     * Date comparison month tolerance 1 score (required).
+     * 
+     * <p>Score for dates with ±1 month difference.
+     * 
+     * <p>Previously hardcoded as 0.9 at DateComparer.java:60.
+     * 
+     * Default: 0.9
+     */
+    private double dateMonthTolerance1 = 0.9;
+
+    /**
+     * Date comparison month tolerance 2-3 score (required).
+     * 
+     * <p>Score for special case: month 1 vs 10/11/12 (common typo).
+     * 
+     * <p>Previously hardcoded as 0.7 at DateComparer.java:65.
+     * 
+     * Default: 0.7
+     */
+    private double dateMonthTolerance2 = 0.7;
+
+    /**
+     * Date comparison month tolerance 3+ score (required).
+     * 
+     * <p>Default score for months with difference >1 (excluding special case).
+     * 
+     * <p>Previously hardcoded as 0.3 at DateComparer.java:68.
+     * 
+     * Default: 0.3
+     */
+    private double dateMonthTolerance3Plus = 0.3;
+
+    /**
+     * Date comparison day tolerance 0-3 start score (required).
+     * 
+     * <p>Starting score for days within ±3 day tolerance.
+     * Linear decay applied: startScore - (decay * dayDiff / 3.0).
+     * 
+     * <p>Previously hardcoded as 0.95 at DateComparer.java:81.
+     * 
+     * Default: 0.95
+     */
+    private double dateDayTolerance0to3Start = 0.95;
+
+    /**
+     * Date comparison day tolerance 0-3 decay rate (required).
+     * 
+     * <p>Decay rate for days within ±3 day tolerance.
+     * Applied as: startScore - (decay * dayDiff / 3.0).
+     * 
+     * <p>Previously hardcoded as 0.05 at DateComparer.java:81.
+     * 
+     * Default: 0.05
+     */
+    private double dateDayTolerance0to3Decay = 0.05;
+
+    /**
+     * Date comparison day tolerance 4-7 score (required).
+     * 
+     * <p>Score for similar day patterns (1 vs 11, 12 vs 21).
+     * 
+     * <p>Previously hardcoded as 0.7 at DateComparer.java:84.
+     * 
+     * Default: 0.7
+     */
+    private double dateDayTolerance4to7 = 0.7;
+
+    /**
+     * Date comparison day tolerance 8+ score (required).
+     * 
+     * <p>Default score for days with large difference.
+     * 
+     * <p>Previously hardcoded as 0.3 at DateComparer.java:86.
+     * 
+     * Default: 0.3
+     */
+    private double dateDayTolerance8Plus = 0.3;
+
+    /**
+     * Date comparison year component weight (required).
+     * 
+     * <p>Weight for year component in final date score.
+     * Should sum to 1.0 with month and day weights.
+     * 
+     * <p>Previously hardcoded as 0.4 at DateComparer.java:90.
+     * 
+     * Default: 0.4 (40%)
+     */
+    private double dateYearWeight = 0.4;
+
+    /**
+     * Date comparison month component weight (required).
+     * 
+     * <p>Weight for month component in final date score.
+     * Should sum to 1.0 with year and day weights.
+     * 
+     * <p>Previously hardcoded as 0.3 at DateComparer.java:90.
+     * 
+     * Default: 0.3 (30%)
+     */
+    private double dateMonthWeight = 0.3;
+
+    /**
+     * Date comparison day component weight (required).
+     * 
+     * <p>Weight for day component in final date score.
+     * Should sum to 1.0 with year and month weights.
+     * 
+     * <p>Previously hardcoded as 0.3 at DateComparer.java:90.
+     * 
+     * Default: 0.3 (30%)
+     */
+    private double dateDayWeight = 0.3;
+
     // Getters and setters
 
     public double getNameWeight() {
@@ -514,5 +652,101 @@ public class WeightConfig {
 
     public void setAddressHighConfidenceThreshold(double addressHighConfidenceThreshold) {
         this.addressHighConfidenceThreshold = addressHighConfidenceThreshold;
+    }
+
+    public double getDateYearDecayRate() {
+        return dateYearDecayRate;
+    }
+
+    public void setDateYearDecayRate(double dateYearDecayRate) {
+        this.dateYearDecayRate = dateYearDecayRate;
+    }
+
+    public double getDateDistantYearScore() {
+        return dateDistantYearScore;
+    }
+
+    public void setDateDistantYearScore(double dateDistantYearScore) {
+        this.dateDistantYearScore = dateDistantYearScore;
+    }
+
+    public double getDateMonthTolerance1() {
+        return dateMonthTolerance1;
+    }
+
+    public void setDateMonthTolerance1(double dateMonthTolerance1) {
+        this.dateMonthTolerance1 = dateMonthTolerance1;
+    }
+
+    public double getDateMonthTolerance2() {
+        return dateMonthTolerance2;
+    }
+
+    public void setDateMonthTolerance2(double dateMonthTolerance2) {
+        this.dateMonthTolerance2 = dateMonthTolerance2;
+    }
+
+    public double getDateMonthTolerance3Plus() {
+        return dateMonthTolerance3Plus;
+    }
+
+    public void setDateMonthTolerance3Plus(double dateMonthTolerance3Plus) {
+        this.dateMonthTolerance3Plus = dateMonthTolerance3Plus;
+    }
+
+    public double getDateDayTolerance0to3Start() {
+        return dateDayTolerance0to3Start;
+    }
+
+    public void setDateDayTolerance0to3Start(double dateDayTolerance0to3Start) {
+        this.dateDayTolerance0to3Start = dateDayTolerance0to3Start;
+    }
+
+    public double getDateDayTolerance0to3Decay() {
+        return dateDayTolerance0to3Decay;
+    }
+
+    public void setDateDayTolerance0to3Decay(double dateDayTolerance0to3Decay) {
+        this.dateDayTolerance0to3Decay = dateDayTolerance0to3Decay;
+    }
+
+    public double getDateDayTolerance4to7() {
+        return dateDayTolerance4to7;
+    }
+
+    public void setDateDayTolerance4to7(double dateDayTolerance4to7) {
+        this.dateDayTolerance4to7 = dateDayTolerance4to7;
+    }
+
+    public double getDateDayTolerance8Plus() {
+        return dateDayTolerance8Plus;
+    }
+
+    public void setDateDayTolerance8Plus(double dateDayTolerance8Plus) {
+        this.dateDayTolerance8Plus = dateDayTolerance8Plus;
+    }
+
+    public double getDateYearWeight() {
+        return dateYearWeight;
+    }
+
+    public void setDateYearWeight(double dateYearWeight) {
+        this.dateYearWeight = dateYearWeight;
+    }
+
+    public double getDateMonthWeight() {
+        return dateMonthWeight;
+    }
+
+    public void setDateMonthWeight(double dateMonthWeight) {
+        this.dateMonthWeight = dateMonthWeight;
+    }
+
+    public double getDateDayWeight() {
+        return dateDayWeight;
+    }
+
+    public void setDateDayWeight(double dateDayWeight) {
+        this.dateDayWeight = dateDayWeight;
     }
 }

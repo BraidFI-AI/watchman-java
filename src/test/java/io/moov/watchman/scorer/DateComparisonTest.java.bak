@@ -191,36 +191,36 @@ class DateComparisonTest {
         @Test
         @DisplayName("Should return true for same single digit (1 vs 11, 2 vs 22)")
         void shouldDetectSameSingleDigit() {
-            assertTrue(dateComparer.areDaysSimilar(1, 11), "1 vs 11 should be similar");
-            assertTrue(dateComparer.areDaysSimilar(11, 1), "11 vs 1 should be similar");
-            assertTrue(dateComparer.areDaysSimilar(2, 22), "2 vs 22 should be similar");
-            assertTrue(dateComparer.areDaysSimilar(22, 2), "22 vs 2 should be similar");
-            assertTrue(dateComparer.areDaysSimilar(3, 3), "3 vs 3 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(1, 11), "1 vs 11 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(11, 1), "11 vs 1 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(2, 22), "2 vs 22 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(22, 2), "22 vs 2 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(3, 3), "3 vs 3 should be similar");
         }
 
         @Test
         @DisplayName("Should return true for transposed digits (12 vs 21, 13 vs 31)")
         void shouldDetectTransposedDigits() {
-            assertTrue(dateComparer.areDaysSimilar(12, 21), "12 vs 21 should be similar");
-            assertTrue(dateComparer.areDaysSimilar(21, 12), "21 vs 12 should be similar");
-            assertTrue(dateComparer.areDaysSimilar(13, 31), "13 vs 31 should be similar");
-            assertTrue(dateComparer.areDaysSimilar(24, 42), "24 vs 42 should be similar (transposed)");
+            assertTrue(DateComparer.areDaysSimilar(12, 21), "12 vs 21 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(21, 12), "21 vs 12 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(13, 31), "13 vs 31 should be similar");
+            assertTrue(DateComparer.areDaysSimilar(24, 42), "24 vs 42 should be similar (transposed)");
         }
 
         @Test
         @DisplayName("Should return false for unrelated days")
         void shouldReturnFalseForUnrelatedDays() {
-            assertFalse(dateComparer.areDaysSimilar(1, 15), "1 vs 15 should not be similar");
-            assertFalse(dateComparer.areDaysSimilar(5, 20), "5 vs 20 should not be similar");
-            assertFalse(dateComparer.areDaysSimilar(10, 25), "10 vs 25 should not be similar");
+            assertFalse(DateComparer.areDaysSimilar(1, 15), "1 vs 15 should not be similar");
+            assertFalse(DateComparer.areDaysSimilar(5, 20), "5 vs 20 should not be similar");
+            assertFalse(DateComparer.areDaysSimilar(10, 25), "10 vs 25 should not be similar");
         }
 
         @Test
         @DisplayName("Should handle edge cases (1-31)")
         void shouldHandleEdgeCases() {
-            assertTrue(dateComparer.areDaysSimilar(1, 1), "Same day should be similar");
-            assertTrue(dateComparer.areDaysSimilar(31, 31), "Same day should be similar");
-            assertFalse(dateComparer.areDaysSimilar(1, 31), "1 vs 31 should not be similar");
+            assertTrue(DateComparer.areDaysSimilar(1, 1), "Same day should be similar");
+            assertTrue(DateComparer.areDaysSimilar(31, 31), "Same day should be similar");
+            assertFalse(DateComparer.areDaysSimilar(1, 31), "1 vs 31 should not be similar");
         }
     }
 
@@ -237,7 +237,7 @@ class DateComparisonTest {
             LocalDate birth2 = LocalDate.of(1951, 1, 1);
             LocalDate death2 = LocalDate.of(2019, 1, 1); // 68 years later
             
-            boolean logical = dateComparer.areDatesLogical(birth1, death1, birth2, death2);
+            boolean logical = DateComparer.areDatesLogical(birth1, death1, birth2, death2);
             
             assertTrue(logical, "Valid birth→death order should be logical");
         }
@@ -251,7 +251,7 @@ class DateComparisonTest {
             LocalDate birth2 = LocalDate.of(2021, 1, 1); // Birth AFTER death!
             LocalDate death2 = LocalDate.of(2019, 1, 1);
             
-            boolean logical = dateComparer.areDatesLogical(birth1, death1, birth2, death2);
+            boolean logical = DateComparer.areDatesLogical(birth1, death1, birth2, death2);
             
             assertFalse(logical, "Birth after death should be illogical");
         }
@@ -265,7 +265,7 @@ class DateComparisonTest {
             LocalDate birth2 = LocalDate.of(1951, 1, 1);
             LocalDate death2 = LocalDate.of(1991, 1, 1); // 40 years (70/40 = 1.75 > 1.2)
             
-            boolean logical = dateComparer.areDatesLogical(birth1, death1, birth2, death2);
+            boolean logical = DateComparer.areDatesLogical(birth1, death1, birth2, death2);
             
             assertFalse(logical, "Lifespans differing by >20% should be illogical");
         }
@@ -279,7 +279,7 @@ class DateComparisonTest {
             LocalDate birth2 = LocalDate.of(1952, 1, 1);
             LocalDate death2 = LocalDate.of(2010, 1, 1); // 58 years (70/58 = 1.21, close to 1.2)
             
-            boolean logical = dateComparer.areDatesLogical(birth1, death1, birth2, death2);
+            boolean logical = DateComparer.areDatesLogical(birth1, death1, birth2, death2);
             
             assertTrue(logical, "Lifespans within 20% should be logical");
         }
@@ -290,10 +290,10 @@ class DateComparisonTest {
             LocalDate birth = LocalDate.of(1950, 1, 1);
             LocalDate death = LocalDate.of(2020, 1, 1);
             
-            assertTrue(dateComparer.areDatesLogical(null, death, birth, death));
-            assertTrue(dateComparer.areDatesLogical(birth, null, birth, death));
-            assertTrue(dateComparer.areDatesLogical(birth, death, null, death));
-            assertTrue(dateComparer.areDatesLogical(birth, death, birth, null));
+            assertTrue(DateComparer.areDatesLogical(null, death, birth, death));
+            assertTrue(DateComparer.areDatesLogical(birth, null, birth, death));
+            assertTrue(DateComparer.areDatesLogical(birth, death, null, death));
+            assertTrue(DateComparer.areDatesLogical(birth, death, birth, null));
         }
     }
 

@@ -143,15 +143,17 @@ public class IntegrationFunctions {
      * @param query  Query entity
      * @param index  Index entity
      * @param weight Score weight
+     * @param dateComparer DateComparer bean for performing date comparisons
      * @return ScorePiece with date comparison result
      */
-    public static ScorePiece compareEntityDates(Entity query, Entity index, double weight) {
+    public static ScorePiece compareEntityDates(Entity query, Entity index, double weight,
+                                                io.moov.watchman.scorer.DateComparer dateComparer) {
         io.moov.watchman.scorer.DateComparer.DateComparisonResult result = switch (query.type()) {
             case PERSON -> {
                 if (query.person() == null || index.person() == null) {
                     yield new io.moov.watchman.scorer.DateComparer.DateComparisonResult(0.0, false, 0);
                 }
-                yield io.moov.watchman.scorer.DateComparer.comparePersonDates(
+                yield dateComparer.comparePersonDates(
                         query.person().birthDate(), query.person().deathDate(),
                         index.person().birthDate(), index.person().deathDate()
                 );
@@ -160,7 +162,7 @@ public class IntegrationFunctions {
                 if (query.business() == null || index.business() == null) {
                     yield new io.moov.watchman.scorer.DateComparer.DateComparisonResult(0.0, false, 0);
                 }
-                yield io.moov.watchman.scorer.DateComparer.compareBusinessDates(
+                yield dateComparer.compareBusinessDates(
                         query.business().created(), query.business().dissolved(),
                         index.business().created(), index.business().dissolved()
                 );
@@ -169,7 +171,7 @@ public class IntegrationFunctions {
                 if (query.organization() == null || index.organization() == null) {
                     yield new io.moov.watchman.scorer.DateComparer.DateComparisonResult(0.0, false, 0);
                 }
-                yield io.moov.watchman.scorer.DateComparer.compareOrgDates(
+                yield dateComparer.compareOrgDates(
                         query.organization().created(), query.organization().dissolved(),
                         index.organization().created(), index.organization().dissolved()
                 );
@@ -180,7 +182,7 @@ public class IntegrationFunctions {
                 }
                 LocalDate queryBuilt = parseDate(query.vessel().built());
                 LocalDate indexBuilt = parseDate(index.vessel().built());
-                yield io.moov.watchman.scorer.DateComparer.compareAssetDates(queryBuilt, indexBuilt, "Vessel");
+                yield dateComparer.compareAssetDates(queryBuilt, indexBuilt, "Vessel");
             }
             case AIRCRAFT -> {
                 if (query.aircraft() == null || index.aircraft() == null) {
@@ -188,7 +190,7 @@ public class IntegrationFunctions {
                 }
                 LocalDate queryBuilt = parseDate(query.aircraft().built());
                 LocalDate indexBuilt = parseDate(index.aircraft().built());
-                yield io.moov.watchman.scorer.DateComparer.compareAssetDates(queryBuilt, indexBuilt, "Aircraft");
+                yield dateComparer.compareAssetDates(queryBuilt, indexBuilt, "Aircraft");
             }
             default -> new io.moov.watchman.scorer.DateComparer.DateComparisonResult(0.0, false, 0);
         };

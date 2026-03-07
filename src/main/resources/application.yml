@@ -81,6 +81,19 @@ watchman:
     address-postal-weight: 3.0  # Postal code (strong verification)
     address-country-weight: 4.0 # Country (critical for international)
     address-high-confidence-threshold: 0.92  # Early exit optimization
+    # Date comparison weights (from DateComparer.java migration - Mar 6, 2026)
+    date-year-decay-rate: 0.1        # 10% penalty per year difference
+    date-distant-year-score: 0.2     # Floor score for >5 year difference
+    date-month-tolerance1: 0.9       # Score for ±1 month difference
+    date-month-tolerance2: 0.7       # Score for month 1 vs 10/11/12 typo
+    date-month-tolerance3-plus: 0.3  # Default month score
+    date-day-tolerance0to3-start: 0.95  # Starting score for ±3 day tolerance
+    date-day-tolerance0to3-decay: 0.05  # Decay rate within ±3 days
+    date-day-tolerance4to7: 0.7      # Score for similar day patterns (1 vs 11)
+    date-day-tolerance8-plus: 0.3    # Default day score
+    date-year-weight: 0.4            # Year component weight (40%)
+    date-month-weight: 0.3           # Month component weight (30%)
+    date-day-weight: 0.3             # Day component weight (30%)
   auto-clearance:
     phase1-threshold: 0.85
     address-mismatch-threshold: 0.5

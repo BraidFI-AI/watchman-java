@@ -1,9 +1,12 @@
 package io.moov.watchman.search;
 
 import io.moov.watchman.model.*;
+import io.moov.watchman.scorer.DateComparer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,8 +21,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * - compareExactContactInfo() - Contact info exact matching (row 70)
  * - compareEntityDates() - Type dispatcher for date comparisons (row 84)
  */
+@SpringBootTest
 @DisplayName("Phase 10: Integration Functions")
 class Phase10IntegrationTest {
+
+    @Autowired
+    private DateComparer dateComparer;
 
     @Nested
     @DisplayName("compareExactSourceList() Tests")
@@ -249,7 +256,7 @@ class Phase10IntegrationTest {
             Entity query = createPersonWithDates(birthDate, null);
             Entity index = createPersonWithDates(birthDate, null);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() > 0.9);
             assertTrue(result.isMatched());
@@ -266,7 +273,7 @@ class Phase10IntegrationTest {
             Entity query = createBusinessWithDates(created, null);
             Entity index = createBusinessWithDates(created, null);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() > 0.9);
             assertTrue(result.isMatched());
@@ -280,7 +287,7 @@ class Phase10IntegrationTest {
             Entity query = createOrgWithDates(created, null);
             Entity index = createOrgWithDates(created, null);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() > 0.9);
             assertTrue(result.isMatched());
@@ -293,7 +300,7 @@ class Phase10IntegrationTest {
             Entity query = createVesselWithDates(built);
             Entity index = createVesselWithDates(built);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() > 0.9);
             assertTrue(result.isMatched());
@@ -306,7 +313,7 @@ class Phase10IntegrationTest {
             Entity query = createAircraftWithDates(built);
             Entity index = createAircraftWithDates(built);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() > 0.9);
             assertTrue(result.isMatched());
@@ -318,7 +325,7 @@ class Phase10IntegrationTest {
             Entity query = createPersonWithDates(null, null);
             Entity index = createPersonWithDates(null, null);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertEquals(0.0, result.getScore());
             assertFalse(result.isMatched());
@@ -333,7 +340,7 @@ class Phase10IntegrationTest {
             Entity query = createPersonWithDates(birth, death);
             Entity index = createPersonWithDates(birth, death);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() > 0.9);
             assertEquals(2, result.getFieldsCompared());
@@ -347,7 +354,7 @@ class Phase10IntegrationTest {
             Entity query = createBusinessWithDates(created, dissolved);
             Entity index = createBusinessWithDates(created, dissolved);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() > 0.9);
             assertEquals(2, result.getFieldsCompared());
@@ -361,7 +368,7 @@ class Phase10IntegrationTest {
             Entity query = createPersonWithDates(queryBirth, null);
             Entity index = createPersonWithDates(indexBirth, null);
             
-            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0);
+            ScorePiece result = IntegrationFunctions.compareEntityDates(query, index, 10.0, dateComparer);
             
             assertTrue(result.getScore() < 0.7);
             assertEquals(1, result.getFieldsCompared());
