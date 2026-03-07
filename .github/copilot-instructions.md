@@ -1,7 +1,7 @@
 # Watchman Java - AI Agent Instructions
 
 ## Project Overview
-Watchman Java is a production-grade Java port of the Go-based [Moov Watchman](https://github.com/moov-io/watchman) OFAC sanctions screening platform. Built using strict TDD, achieving **82.9 names/sec** throughput (138% of target) with **zero BSA compliance regressions**.
+Watchman Java is a Java port of the Go-based [Moov Watchman](https://github.com/moov-io/watchman) OFAC sanctions screening platform. Built using strict TDD, achieving **82.9 names/sec** throughput (138% of target) with **zero BSA compliance regressions**.
 
 **Current Status (Mar 2026)**: Production-ready, deployed on AWS ECS Fargate. Critical performance fix (one line: `addAll()` → `replaceAll()`) achieved 25× improvement.
 
@@ -10,11 +10,11 @@ Watchman Java is a production-grade Java port of the Go-based [Moov Watchman](ht
 ## Required Reading Before Starting
 
 **ALWAYS read these files first** (in order):
-1. [`docs/development/agent-context.md`](../docs/development/agent-context.md) - Authoritative session history, BSA observations, performance investigations
-2. [`docs/development/agent-decisions.md`](../docs/development/agent-decisions.md) - Architectural decisions, tradeoffs, rationale
+1. [`agent-context.md`](../agent-context.md) - Authoritative session history, BSA observations, performance investigations
+2. [`agent-decisions.md`](../agent-decisions.md) - Architectural decisions, tradeoffs, rationale
 3. [`README.md`](../README.md) - High-level orientation only
 
-**Never invent constraints** - if it's not documented in docs/development/agent-context.md or agent-decisions.md, ask directly.
+**Never invent constraints** - if it's not documented in agent-context.md or agent-decisions.md, ask directly.
 
 ---
 

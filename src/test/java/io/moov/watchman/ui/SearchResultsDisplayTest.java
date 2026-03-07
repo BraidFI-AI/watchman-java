@@ -189,7 +189,8 @@ class SearchResultsDisplayTest {
             List.of("SDGT"),
             null,
             "AL-MALIZI",  // matchedAlias
-            null, null, null, null, null
+            null, null, null, null, null,
+            null, null, null, null, null, null, null, null, null  // enriched fields
         );
         return new SearchResponse(
             List.of(entity),

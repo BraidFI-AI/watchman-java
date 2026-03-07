@@ -4,6 +4,150 @@ This document captures key decisions, tradeoffs, and architectural forks made du
 
 ---
 
+## 2026-03-06: Braid Integration - Go Watchman Compatible Endpoint
+
+**Decision**: Implement `/go/search` endpoint with 100% response format compatibility with Go Watchman (moov/watchman:0.28.2) for Braid Core Banking API integration.
+
+**Context**: Braid Core Banking API currently uses legacy Go Watchman Docker image for OFAC screening. Migration to Watchman Java requires either:
+1. Change Braid's MoovService.java to handle new response format (risky, requires Braid code changes)
+2. Provide Go-compatible endpoint in Watchman Java (zero Braid changes, drop-in replacement)
+
+Investigation of actual Braid code (~/Documents/GitHub/core_api_banking-development/) revealed:
+- **Response format dependency**: MoovService.java:599-612 uses `containsAny()` checking for `SDNs[]`, `altNames[]` arrays
+- **Match field requirement**: MoovService.java:614-627 filters by `match` field (not `score`)
+- **Entity field usage**: OFACService.java:309-323 extracts `entityID`, `sdnName`, `sdnType`, `program`, `title`, vessel fields, `remarks`
+- **Endpoint pattern**: Synchronous GET /search (not POST, not batch)
+
+**Rationale**: Drop-in compatibility minimizes integration risk. Braid has no test coverage for OFAC integration, so changing response format could break production silently. Creating `/go/search` endpoint allows:
+- Zero code changes in Braid (only URL configuration change)
+- Gradual migration path (Phase 1: /go/search, Phase 2: native /v1/search)
+- Both endpoints coexist (legacy consumers + new consumers supported)
+- Full vessel/aircraft/person data available (no information loss vs Go)
+
+**Options Considered**:
+1. **Go-compatible endpoint** ✅ SELECTED
+   - Pro: Zero risk to Braid integration (URL change only)
+   - Pro: Drop-in replacement for Go Watchman across all consumers
+   - Pro: Both /v1/search and /go/search can coexist
+   - Pro: Migration path: /go/search → native /v1/search → /v1/search/batch
+   - Con: Maintain two response formats (SearchResponse + GoCompatResponse)
+   - Con: Additional controller + DTOs (137 lines + DTOs + tests)
+   
+2. **Force Braid to adopt /v1/search format** ❌ REJECTED
+   - Pro: One response format to maintain
+   - Pro: Richer feature set (trace, filters) available immediately
+   - Con: Requires Braid code changes (MoovService.java, OFACService.java)
+   - Con: High integration risk (Braid has no OFAC test coverage)
+   - Con: Delays Watchman Java deployment until Braid team can test
+   - Con: Couples Watchman Java release to Braid release cycle
+   
+3. **Transform in Braid** ❌ REJECTED
+   - Pro: Watchman Java stays purely /v1/search
+   - Con: Requires writing transformation layer in Braid
+   - Con: Same code changes + testing burden as option 2
+   - Con: Transformation logic duplicated across multiple consumers
+
+**Architectural Decisions**:
+
+1. **Separate Controller vs Endpoint in SearchController**
+   - Decision: Create dedicated `GoCompatSearchController.java`
+   - Rationale: 
+     - Clear separation of concerns (legacy vs modern API)
+     - Different request mapping (/go vs /v1)
+     - Easier to deprecate/remove when migration complete
+     - No pollution of SearchController with legacy format logic
+   
+2. **SearchHit Enhancement vs Separate DTO**
+   - Decision: Enhance SearchHit with 9 new fields (vessel, aircraft, person, etc.)
+   - Rationale:
+     - All API consumers benefit from richer data (not just /go/search)
+     - "Don't throw away information" - vessel/aircraft details available via /v1/search too
+     - Single source of truth for entity data in API responses
+     - JavaDoc already documents "comprehensive entity information"
+   - Alternative rejected: Create GoCompatSearchHit separate from SearchHit
+     - Con: Duplication of 15 existing fields
+     - Con: Two DTOs with same semantic meaning
+     - Con: Maintenance burden (changes must sync between DTOs)
+   
+3. **Type Mapping Strategy**
+   - Decision: Map EntityType enum to Go sdnType strings in GoEntity.from()
+     - PERSON → "individual"
+     - BUSINESS/ORGANIZATION → "entity"
+     - VESSEL → "vessel"
+     - AIRCRAFT → "aircraft"
+   - Rationale: Type conversion isolated in transformation layer, not in domain model
+   - Go Watchman uses different terminology ("individual" vs "PERSON") - handle at API boundary
+   
+4. **Alias Categorization (SDNs vs altNames arrays)**
+   - Decision: Use `SearchResult.matchedAlias` field to determine array placement
+     - If matchedAlias != null && matchedAlias != entity.name → altNames array
+     - Otherwise → SDNs array
+   - Rationale: Matches Go Watchman behavior where alias matches appear in altNames array
+   - Alternative rejected: Put all results in SDNs array
+     - Con: Doesn't match Go Watchman response structure
+     - Con: Braid's containsAny() expects altNames array for alias matches
+   
+5. **Vessel Field Mapping**
+   - Decision: Map all 6 vessel fields from Entity.vessel() record
+     - callSign, vesselType, tonnage, grossRegisteredTonnage, vesselFlag, vesselOwner
+   - Rationale: OFACService.parseBlockedResult() in Braid expects these fields
+   - Note: Go uses "tonnage" for GRT - we populate both tonnage and GRT with same value
+   
+6. **Empty String vs Null for Missing Fields**
+   - Decision: Use empty string "" for missing fields in GoEntity
+   - Rationale: Go Watchman returns empty strings, not nulls
+   - Matches Braid expectations (parseBlockedResult handles empty strings gracefully)
+
+**Implementation Strategy**:
+
+1. **Phase 1: Core Implementation** ✅ COMPLETED
+   - GoCompatSearchController: Request handling, parameter parsing
+   - GoCompatResponse: DTO transformation (SearchResult → GoEntity)
+   - SearchHit enhancement: 9 new fields for complete entity data
+   
+2. **Phase 2: Testing** ✅ COMPLETED
+   - GoCompatSearchIntegrationTest: 4 tests covering format, fields, aliases, threshold
+   - UI test fixes: IdentifyingAttributesDisplayTest, SearchResultsDisplayTest
+   - Manual testing: 4/4 tests passing, format verified
+   
+3. **Phase 3: Deployment** → PENDING
+   - Git commit: GoCompat files + SearchResponse changes
+   - Docker build: Create image :152
+   - AWS ECS: Update task definition, force new deployment
+   - Braid config: Update watchman service URL to /go/search
+   
+4. **Phase 4: Migration Path** → FUTURE
+   - Phase 1: Braid uses /go/search (drop-in replacement)
+   - Phase 2: Migrate to /v1/search (richer features, trace support)
+   - Phase 3: Adopt /v1/search/batch (bulk screening for Day Watcher)
+   - Phase 4: Deprecate /go/search endpoint when all consumers migrated
+
+**Performance Implications**:
+- Response time: ~40-88ms per search (vs Go's 24ms baseline)
+- CPU overhead: Minimal - transformation is simple field mapping
+- Memory: GoCompatResponse allocated per request (garbage collected)
+- Throughput: 82.9 names/sec (same as native Java endpoint)
+
+**Testing Coverage**:
+- Integration tests: 4/4 passing (GoCompatSearchIntegrationTest.java)
+- Response format: Verified against Braid's MoovService.containsAny(), OFACService.parseBlockedResult()
+- Vessel fields: 6 fields mapped (callSign, vesselType, tonnage, GRT, flag, owner)
+- Alias matching: matchedAlias determines SDNs vs altNames categorization
+- Threshold filtering: minMatch parameter respected
+
+**Rollback Plan**:
+- If /go/search has issues: Revert to Go Watchman Docker image (moov/watchman:0.28.2)
+- No Braid code changes needed - just URL configuration rollback
+- Native /v1/search endpoint unaffected
+
+**Future Considerations**:
+- **Deprecation timeline**: Remove /go/search when all consumers migrated (6-12 months)
+- **Documentation**: Postman collection includes migration path guidance
+- **Monitoring**: Track /go/search usage to identify when deprecation safe
+- **Breaking change**: When /go/search removed, bump major version (v2.0.0)
+
+---
+
 ## 2026-02-26: BSA Scoring Algorithm Optimization Project
 
 **Decision**: Pursue performance optimization of BSA-enhanced scoring algorithms while maintaining compliance accuracy requirements.

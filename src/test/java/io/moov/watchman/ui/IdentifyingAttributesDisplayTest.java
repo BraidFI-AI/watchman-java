@@ -281,7 +281,8 @@ class IdentifyingAttributesDisplayTest {
             pob,   // placeOfBirth
             nationality,
             passport,  // passportNumber
-            passportCountry
+            passportCountry,
+            null, null, null, null, null, null, null, null, null  // enriched fields
         );
     }
 

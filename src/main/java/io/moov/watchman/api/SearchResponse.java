@@ -58,6 +58,7 @@ public record SearchResponse(
 
     /**
      * Individual search hit with entity and score.
+     * Enriched to include all Entity data for OFAC compliance and completeness.
      */
     public record SearchHit(
         String id,
@@ -74,7 +75,17 @@ public record SearchResponse(
         String placeOfBirth,
         String nationality,
         String passportNumber,
-        String passportCountry
+        String passportCountry,
+        // Enhanced fields for OFAC compliance
+        io.moov.watchman.model.Person person,
+        io.moov.watchman.model.Business business,
+        io.moov.watchman.model.Organization organization,
+        io.moov.watchman.model.Aircraft aircraft,
+        io.moov.watchman.model.Vessel vessel,
+        io.moov.watchman.model.ContactInfo contact,
+        List<io.moov.watchman.model.Address> addresses,
+        List<io.moov.watchman.model.GovernmentId> governmentIds,
+        String remarks
     ) {
         public static SearchHit from(SearchResult result, boolean includeBreakdown) {
             Entity entity = result.entity();
@@ -93,7 +104,17 @@ public record SearchResponse(
                 entity.placeOfBirth(),
                 entity.nationality(),
                 entity.passportNumber(),
-                entity.passportCountry()
+                entity.passportCountry(),
+                // Include all entity details
+                entity.person(),
+                entity.business(),
+                entity.organization(),
+                entity.aircraft(),
+                entity.vessel(),
+                entity.contact(),
+                entity.addresses(),
+                entity.governmentIds(),
+                entity.remarks()
             );
         }
     }

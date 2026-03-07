@@ -18,6 +18,124 @@
 
 **Verification Methods**: Direct file reads, grep searches, git log checks, file existence validation.
 
+---
+
+## Session: March 6, 2026 (Braid Integration - Go Watchman Compatible Endpoint)
+
+### What We Decided
+- Build drop-in replacement for Go Watchman (moov/watchman:0.28.2) to enable Braid Core Banking API migration
+- Provide `/go/search` endpoint with 100% response format compatibility: `{SDNs:[], altNames:[], ...}` structure
+- Enhance SearchHit with full entity data (vessel, aircraft, person fields) - no data loss vs Go
+- Zero code changes required in Braid's MoovService.java
+
+### What We Did
+- **Enhanced SearchResponse.java**: Added 9 fields to SearchHit record for full Entity data parity
+  * Lines 24-32: Added person, business, organization, aircraft, vessel, contact, addresses, governmentIds, remarks fields
+  * All identifying attributes now exposed via API (not thrown away after scoring)
+  * SearchResult → SearchHit mapping preserves complete entity details
+- **Created GoCompatSearchController.java** (137 lines): Go Watchman-compatible endpoint
+  * Package: io.moov.watchman.api
+  * Endpoint: `GET /go/search?name={query}&minMatch={threshold}`
+  * Parameters: name/q (query), minMatch, limit, source, type
+  * Returns GoCompatResponse in legacy format
+  * Logging: Request params + result count
+- **Created GoCompatResponse.java**: DTOs for Go format transformation
+  * Package: io.moov.watchman.api
+  * Response structure: SDNs, altNames, addresses, sectoralSanctions, deniedPersons, bisEntities arrays
+  * GoEntity record: Maps Entity → Go fields (entityID, sdnName, sdnType, program, title, vessel fields, remarks, match)
+  * Type mapping: PERSON→individual, BUSINESS/ORGANIZATION→entity, VESSEL→vessel, AIRCRAFT→aircraft
+  * Vessel field mapping: callSign, vesselType, tonnage, grossRegisteredTonnage, vesselFlag, vesselOwner
+  * Categorization: matchedAlias determines SDNs vs altNames array placement
+- **Created GoCompatSearchIntegrationTest.java** (197 lines): Integration tests for /go/search
+  * Package: io.moov.watchman.integration
+  * 4 tests: testGoSearchReturnsCorrectFormat, testGoEntityHasAllRequiredFields, testGoSearchHandlesAliasMatches, testGoSearchRespectsMinMatch
+  * Uses @SpringBootTest with full entity index (49,955 entities)
+  * Validates: Response structure, field presence, vessel details, alias categorization, threshold filtering
+  * All 4 tests passing (BUILD SUCCESS)
+- **Fixed UI test compilation errors**: IdentifyingAttributesDisplayTest.java, SearchResultsDisplayTest.java
+  * Updated assertions to match SearchHit's expanded field list
+- **Updated Postman collection**: Added "Go-Compatible Search (Legacy)" folder
+  * 3 request examples: Basic search, filtered search, vessel search
+  * Documentation: Purpose, field mapping, integration pattern, migration path
+  * Sample responses with realistic data
+
+### What We Verified
+- **Braid Integration Requirements** (from ~/Documents/GitHub/core_api_banking-development/):
+  * MoovService.java:599-612: containsAny() checks for SDNs, altNames arrays ✓
+  * MoovService.java:614-627: filter() expects "match" field in entities ✓
+  * MoovService.java:509: GET /search endpoint (synchronous blocking) ✓
+  * OFACService.java:309-323: parseBlockedResult() extracts entityID, sdnName, sdnType, program, title, vessel fields, remarks, match ✓
+- **Response Format Compatibility**:
+  * Go Watchman: `{SDNs:[], altNames:[], match, entityID}` → Implemented ✓
+  * Field mapping complete: Java Entity → Go GoEntity with all 13 fields ✓
+  * Type conversion: EntityType enum → Go sdnType strings ✓
+
+### What Is Now True
+- **Go Watchman Compatible Endpoint Implemented** ✅ (Mar 6, 2026)
+  * Endpoint: GET /go/search (GoCompatSearchController.java, 137 lines)
+  * Response DTOs: GoCompatResponse.java with GoEntity record
+  * Full vessel data: callSign, vesselType, tonnage, GRT, flag, owner
+  * Full person data: title from person.titles
+  * Full sanctions data: programs, remarks
+  * Integration tests: 4/4 passing, 93.68s (includes full data download)
+- **SearchHit Enhanced** ✅ (Mar 6, 2026)
+  * File: src/main/java/io/moov/watchman/api/SearchResponse.java lines 24-32
+  * Added 9 fields: person, business, organization, aircraft, vessel, contact, addresses, governmentIds, remarks
+  * Total fields: 24 (was 15)
+  * Purpose: Full entity data available for both /v1/search and /go/search endpoints
+- **Braid Integration Ready** (PENDING DEPLOYMENT):
+  * Code complete and tested ✓
+  * Files untracked in git (not yet committed) ⚠️
+  * Production (task :151) predates this implementation ⚠️
+  * No code changes needed in Braid MoovService.java ✓
+  * Drop-in URL replacement: moov-watchman:8084/search → watchman-java:8084/go/search
+
+### Performance
+- Response time: ~40-88ms per search (vs Go's 24ms baseline)
+- Throughput: 82.9 names/sec on 4 vCPU (from existing batch API benchmarks)
+- Data: Same 49,955 entities as native Java endpoint
+
+### Integration Pattern
+**Before (Go Watchman)**:
+```java
+String url = "http://moov-watchman:8084/search?name=" + name;
+ResponseEntity<OFACResult> response = restTemplate.exchange(url, GET, ...);
+```
+
+**After (Watchman Java)**:
+```java
+String url = "http://watchman-java:8084/go/search?name=" + name;
+ResponseEntity<OFACResult> response = restTemplate.exchange(url, GET, ...);
+// No other code changes needed!
+```
+
+### Key Insights
+- Response format compatibility more critical than we initially thought - drove entire implementation approach
+- Braid expects synchronous GET endpoint (not POST, not batch initially)
+- Entity data enrichment (9 new SearchHit fields) benefits all API consumers, not just /go/search
+- TDD approach: Integration tests pass 4/4, confirms format compatibility before deployment
+- Migration path: Phase 1 = /go/search drop-in, Phase 2 = native /v1/search adoption, Phase 3 = /v1/search/batch bulk operations
+
+### Next Steps
+1. Commit GoCompat files + SearchResponse changes + UI test fixes
+2. Build Docker image :152
+3. Deploy to AWS ECS (task definition update, service force-new-deployment)
+4. Update Braid's application.yml: Change watchman service URL
+5. Test Braid → Watchman Java integration end-to-end
+
+### Files Created
+- src/main/java/io/moov/watchman/api/GoCompatSearchController.java (137 lines)
+- src/main/java/io/moov/watchman/api/GoCompatResponse.java (DTOs)
+- src/test/java/io/moov/watchman/integration/GoCompatSearchIntegrationTest.java (197 lines)
+
+### Files Modified
+- src/main/java/io/moov/watchman/api/SearchResponse.java (added 9 fields to SearchHit)
+- src/test/java/io/moov/watchman/ui/IdentifyingAttributesDisplayTest.java (fixed assertions)
+- src/test/java/io/moov/watchman/ui/SearchResultsDisplayTest.java (fixed assertions)
+- postman/Watchman-Java-API.postman_collection.json (added Go-Compatible Search folder)
+
+---
+
 ## Session: February 26, 2026 (Performance Regression Analysis - BSA Scoring Impact)
 
 ### What We Discovered

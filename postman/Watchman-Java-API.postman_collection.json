@@ -297,6 +297,146 @@
       ]
     },
     {
+      "name": "Go-Compatible Search (Legacy)",
+      "description": "## Go Watchman Compatible Endpoint\n\n**Drop-in replacement** for legacy Go Watchman (`moov/watchman:0.28.2`) used by Braid Core Banking API.\n\n### Endpoint\n\n```\nGET /go/search?name={query}&minMatch={threshold}\n```\n\n### Purpose\n\nProvides 100% response format compatibility with Go Watchman for existing integrations:\n- **Response**: `{SDNs:[], altNames:[], match, entityID}` format\n- **No code changes** needed in consuming applications (e.g., Braid MoovService.java)\n- **Same data**: Full entity details (vessel, aircraft, person attributes)\n\n### Key Parameters\n\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| `name` or `q` | string | required | Name to screen (supports both param names) |\n| `minMatch` | float | 0.0 | Score threshold (0.0-1.0) |\n| `limit` | int | 10 | Maximum results to return |\n| `source` | string | null | Filter by list (OFAC, CSL, etc.) |\n| `type` | string | null | Filter by type (individual, entity, vessel, aircraft) |\n\n### Response Structure (Go Format)\n\n```json\n{\n  \"SDNs\": [\n    {\n      \"entityID\": \"12345\",\n      \"sdnName\": \"PUTIN, Vladimir Vladimirovich\",\n      \"sdnType\": \"individual\",\n      \"program\": \"UKRAINE-EO13662\",\n      \"title\": \"President\",\n      \"match\": 0.95,\n      \"remarks\": \"Linked To: ...\",\n      \"callSign\": null,\n      \"vesselType\": null,\n      \"tonnage\": null,\n      \"grossRegisteredTonnage\": null,\n      \"vesselFlag\": null,\n      \"vesselOwner\": null\n    }\n  ],\n  \"altNames\": [],\n  \"sectoralSanctions\": [],\n  \"deniedPersons\": [],\n  \"bisEntities\": []\n}\n```\n\n### Field Mapping\n\n| Go Field | Java Source | Notes |\n|----------|-------------|-------|\n| `entityID` | `entity.id` | Entity identifier |\n| `sdnName` | `entity.name` | Primary name |\n| `sdnType` | `entity.type` | Mapped: PERSON→individual, BUSINESS→entity |\n| `program` | `entity.programs[0]` | First program if available |\n| `match` | `searchHit.score` | Similarity score |\n| `title` | `entity.person.title` | For individuals |\n| `remarks` | `entity.remarks[0]` | Concatenated remarks |\n| Vessel fields | `entity.vessel.*` | For vessel entities |\n\n### Integration Pattern (Braid)\n\n**Before** (Go Watchman):\n```java\nString url = \"http://moov-watchman:8084/search?name=\" + name;\nResponseEntity<OFACResult> response = restTemplate.exchange(url, GET, ...);\n```\n\n**After** (Watchman Java):\n```java\nString url = \"http://watchman-java:8084/go/search?name=\" + name;\nResponseEntity<OFACResult> response = restTemplate.exchange(url, GET, ...);\n// No other code changes needed!\n```\n\n### Performance\n\n- **Response Time**: ~40-88ms (vs Go's 24ms baseline)\n- **Throughput**: 82.9 names/sec on 4 vCPU\n- **Data**: Same 49,955 entities as native Java endpoint\n\n### Migration Path\n\n1. **Phase 1**: Use `/go/search` for drop-in replacement\n2. **Phase 2**: Gradually migrate to native `/v1/search` for richer features\n3. **Phase 3**: Leverage `/v1/search/batch` for bulk operations\n\n### Best Practices\n\n✅ **Use for legacy integrations**: Minimal disruption to existing code\n✅ **Same minMatch values**: Keep existing 0.85 thresholds\n✅ **Monitor performance**: Track response times vs Go baseline\n⚠️ **Plan migration**: Native endpoint offers more features (trace, filters)\n\n### Example Requests\n\n**Basic Search**:\n```\nGET /go/search?name=Putin&minMatch=0.85\n```\n\n**With Filters**:\n```\nGET /go/search?name=Maduro&source=OFAC&type=individual&limit=5\n```\n\n**Low Threshold (fuzzy)**:\n```\nGET /go/search?q=AL-QAEDA&minMatch=0.70\n```",
+      "item": [
+        {
+          "name": "Go Search - Basic",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/go/search?name=Putin&minMatch=0.85&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "go",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Putin",
+                  "description": "Name to search (can also use 'q' parameter)"
+                },
+                {
+                  "key": "minMatch",
+                  "value": "0.85",
+                  "description": "Minimum match score (0.0-1.0)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Maximum results"
+                }
+              ]
+            },
+            "description": "Basic Go Watchman-compatible search. Returns {SDNs, altNames, ...} format for legacy integrations."
+          },
+          "response": [
+            {
+              "name": "Go Search Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"SDNs\": [\n    {\n      \"entityID\": \"6158\",\n      \"sdnName\": \"PUTIN, Vladimir Vladimirovich\",\n      \"sdnType\": \"individual\",\n      \"program\": \"UKRAINE-EO13662\",\n      \"title\": \"President of the Russian Federation\",\n      \"callSign\": null,\n      \"vesselType\": null,\n      \"tonnage\": null,\n      \"grossRegisteredTonnage\": null,\n      \"vesselFlag\": null,\n      \"vesselOwner\": null,\n      \"remarks\": \"Linked To: RUSSIAN FEDERATION\",\n      \"match\": 0.95\n    }\n  ],\n  \"altNames\": [],\n  \"sectoralSanctions\": [],\n  \"deniedPersons\": [],\n  \"bisEntities\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Go Search - With Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/go/search?q=Maduro&source=OFAC&type=individual&minMatch=0.85",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "go",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Maduro",
+                  "description": "Alternative parameter name (same as 'name')"
+                },
+                {
+                  "key": "source",
+                  "value": "OFAC",
+                  "description": "Filter by data source"
+                },
+                {
+                  "key": "type",
+                  "value": "individual",
+                  "description": "Filter by entity type"
+                },
+                {
+                  "key": "minMatch",
+                  "value": "0.85"
+                }
+              ]
+            },
+            "description": "Go search with source and type filters. Demonstrates both 'q' and 'name' parameters work."
+          },
+          "response": [
+            {
+              "name": "Filtered Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"SDNs\": [\n    {\n      \"entityID\": \"23232\",\n      \"sdnName\": \"MADURO MOROS, Nicolas\",\n      \"sdnType\": \"individual\",\n      \"program\": \"VENEZUELA\",\n      \"title\": \"President of Venezuela\",\n      \"callSign\": null,\n      \"vesselType\": null,\n      \"tonnage\": null,\n      \"grossRegisteredTonnage\": null,\n      \"vesselFlag\": null,\n      \"vesselOwner\": null,\n      \"remarks\": \"DOB 23 Nov 1962\",\n      \"match\": 0.98\n    }\n  ],\n  \"altNames\": [],\n  \"sectoralSanctions\": [],\n  \"deniedPersons\": [],\n  \"bisEntities\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Go Search - Vessel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/go/search?name=OCEAN&type=vessel&minMatch=0.80&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "go",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "OCEAN"
+                },
+                {
+                  "key": "type",
+                  "value": "vessel"
+                },
+                {
+                  "key": "minMatch",
+                  "value": "0.80"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Search for vessels. Response includes vessel-specific fields (callSign, vesselType, tonnage, etc.)."
+          },
+          "response": [
+            {
+              "name": "Vessel Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"SDNs\": [\n    {\n      \"entityID\": \"45678\",\n      \"sdnName\": \"OCEAN GLORY\",\n      \"sdnType\": \"vessel\",\n      \"program\": \"DPRK\",\n      \"title\": null,\n      \"callSign\": \"3ELY8\",\n      \"vesselType\": \"Bulk Carrier\",\n      \"tonnage\": \"28800\",\n      \"grossRegisteredTonnage\": \"28800\",\n      \"vesselFlag\": \"Panama\",\n      \"vesselOwner\": \"Ocean Maritime Ltd\",\n      \"remarks\": \"IMO 9103456\",\n      \"match\": 0.92\n    }\n  ],\n  \"altNames\": [],\n  \"sectoralSanctions\": [],\n  \"deniedPersons\": [],\n  \"bisEntities\": []\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Batch Screening",
       "description": "## Batch Screening\n\nScreen multiple entities simultaneously with efficient parallel processing.\n\n### Endpoints\n\n- **POST /v1/search/batch** - Synchronous batch screening (up to 1000 items)\n- **POST /v1/search/batch/async** - Asynchronous processing for large batches\n\n### Request Format\n\n```json\n{\n  \"items\": [\n    {\"id\": \"req-1\", \"name\": \"John Smith\"},\n    {\"id\": \"req-2\", \"name\": \"Acme Corp\", \"type\": \"BUSINESS\", \"source\": \"OFAC_SDN\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 10,\n  \"trace\": false\n}\n```\n\n### Parameters\n\n| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n| `items` | array | ✅ Yes | 1-1000 entities to screen |\n| `items[].id` | string | ✅ Yes | Your unique ID for this entity |\n| `items[].name` | string | ✅ Yes | Entity name to screen |\n| `items[].type` | string | ❌ No | Filter: PERSON, BUSINESS, VESSEL, AIRCRAFT |\n| `items[].source` | string | ❌ No | Filter: OFAC_SDN, US_CSL, EU_CSL, UK_CSL |\n| `minMatch` | float | ❌ No | Score threshold (default: 0.85) |\n| `limit` | int | ❌ No | Max results per item (default: 10) |\n| `trace` | boolean | ❌ No | Enable detailed breakdowns (default: false) |\n\n### Response Structure\n\n```json\n{\n  \"results\": [\n    {\n      \"itemId\": \"req-1\",\n      \"name\": \"John Smith\",\n      \"matches\": [\n        {\n          \"entityId\": \"12345\",\n          \"name\": \"JOHN SMITH\",\n          \"type\": \"PERSON\",\n          \"source\": \"OFAC_SDN\",\n          \"score\": 0.98,\n          \"breakdown\": null  // present when trace=true\n        }\n      ],\n      \"matchCount\": 1,\n      \"trace\": null  // present when trace=true\n    }\n  ],\n  \"statistics\": {\n    \"totalItems\": 1,\n    \"itemsWithMatches\": 1,\n    \"itemsWithoutMatches\": 0,\n    \"totalMatches\": 1,\n    \"processingTimeMs\": 45\n  }\n}\n```\n\n### Performance\n\n| Batch Size | Avg Response Time | Recommended Use |\n|------------|------------------|----------------|\n| 1-10 items | < 100ms | Real-time checks |\n| 11-100 items | < 500ms | Transaction monitoring |\n| 101-500 items | 1-3s | Periodic screening |\n| 501-1000 items | 3-8s | Batch processing |\n| 1000+ items | Use async | Large bulk imports |\n\n### Best Practices\n\n✅ **Use meaningful IDs**: Include your system IDs for easy correlation\n✅ **Batch related items**: Group by transaction, user session, or business process\n✅ **Handle partial failures**: Check `status` field for each item\n✅ **Enable trace sparingly**: Only for debugging (increases response time)\n✅ **Use async for 1000+ items**: Better for large batches and reduces timeouts\n\n### Common Use Cases\n\n**1. Transaction Batch Screening**\n```json\n{\n  \"items\": [\n    {\"id\": \"txn-001\", \"name\": \"Sender Name\"},\n    {\"id\": \"txn-001-recipient\", \"name\": \"Recipient Name\"}\n  ],\n  \"minMatch\": 0.90\n}\n```\n\n**2. Customer Onboarding Batch**\n```json\n{\n  \"items\": [\n    {\"id\": \"cust-100\", \"name\": \"Primary Account Holder\"},\n    {\"id\": \"cust-100-auth-1\", \"name\": \"Authorized User 1\"},\n    {\"id\": \"cust-100-auth-2\", \"name\": \"Authorized User 2\"}\n  ],\n  \"minMatch\": 0.85\n}\n```\n\n**3. Vendor Screening with Filters**\n```json\n{\n  \"items\": [\n    {\"id\": \"vendor-1\", \"name\": \"Supplier Co\", \"type\": \"BUSINESS\"},\n    {\"id\": \"vendor-2\", \"name\": \"Logistics LLC\", \"type\": \"BUSINESS\"}\n  ],\n  \"minMatch\": 0.85,\n  \"limit\": 5\n}\n```\n\n**4. Debug with Trace**\n```json\n{\n  \"items\": [{\"id\": \"test-1\", \"name\": \"Test Name\"}],\n  \"trace\": true,\n  \"minMatch\": 0.70\n}\n```\n\n### Error Handling\n\n**400 Bad Request**\n- Empty items array\n- More than 1000 items\n- Missing required fields (id, name)\n- Invalid parameter values\n\n**429 Too Many Requests**\n- Rate limit exceeded\n- Solution: Implement exponential backoff\n\n**503 Service Unavailable**\n- Service temporarily down\n- Solution: Retry with delay or use async endpoint\n\n### Sync vs Async\n\n**Use Sync (`/v1/search/batch`)** when:\n- Batch size < 1000 items\n- Need immediate results\n- Real-time transaction processing\n\n**Use Async (`/v1/search/batch/async`)** when:\n- Batch size > 1000 items\n- Can wait for results\n- Background job processing\n- Want to avoid timeouts",
       "item": [
