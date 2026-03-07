@@ -4,6 +4,186 @@ This document captures key decisions, tradeoffs, and architectural forks made du
 
 ---
 
+## 2026-03-06: YAML Configuration Migration Strategy (41 Hard-Coded Parameters)
+
+**Decision**: Migrate all 41 hard-coded scoring parameters to centralized YAML configuration using phased TDD approach with Spring @ConfigurationProperties pattern.
+
+**Context**: Watchman Java inherited 41 hard-coded scoring constants from Go Watchman port (e.g., `0.4` for year weight, `0.7` for address threshold). Production tuning requires code changes + recompilation + redeployment. Need runtime configurability for BSA compliance optimization without code changes.
+
+Investigation revealed:
+- **Hard-coded parameters**: 41 constants scattered across 8 classes (AddressComparer, DateComparer, SupportingInfoScorer, TitleScorer, EntityScorer, NameScorer, etc.)
+- **Current tuning process**: Edit Java file → recompile → run tests → redeploy (30+ min cycle)
+- **BSA requirement**: Ability to adjust thresholds during compliance testing without developer intervention
+- **Risk**: Config changes could break BSA compliance (100 validated observations must continue passing)
+
+**Rationale**: Centralized YAML configuration enables:
+- Runtime tuning via application.yml or admin UI (no recompilation)
+- Single source of truth in WeightConfig.java (@ConfigurationProperties)
+- Version-controlled configuration with audit trail (git history)
+- Environment-specific overrides (dev vs staging vs production)
+- TDD safety: Each phase validated against 100 R2 BSA observations before commit
+
+**Options Considered**:
+
+1. **Phased Migration with TDD** ✅ SELECTED
+   - Pro: Incremental validation - BSA tests verify each phase before proceeding
+   - Pro: Clean git history - each phase is atomic commit with verification
+   - Pro: Low risk - rollback to any working phase if issues emerge
+   - Pro: Parallel work possible - different scorers independent
+   - Con: 6 phases × ~2 hours = 12 hours total effort
+   - Implementation: RED (failing test) → GREEN (implementation) → verify BSA → commit
+   
+2. **Big Bang Migration** ❌ REJECTED
+   - Pro: Faster single-phase implementation (all 41 params at once)
+   - Con: High risk - impossible to isolate which param broke BSA tests
+   - Con: Large diff - hard to code review (200+ line changes across 8 files)
+   - Con: All-or-nothing - can't partially deploy if issues found
+   - Con: Debugging nightmare if BSA tests fail (41 params to bisect)
+   
+3. **Database-Driven Configuration** ❌ REJECTED
+   - Pro: Runtime updates without pod restart
+   - Pro: Admin UI with persistence
+   - Con: Adds database dependency (application.yml sufficient for now)
+   - Con: Configuration drift risk (DB vs code mismatch)
+   - Con: Harder to version control (config in DB not in git)
+   - Con: Overkill for 41 parameters that rarely change
+   
+4. **Keep Hard-Coded + Admin UI Override** ❌ REJECTED
+   - Pro: Fastest implementation (no refactoring)
+   - Pro: Hard-coded defaults always available as fallback
+   - Con: Two sources of truth (code defaults vs runtime overrides)
+   - Con: Confusion about which value is active
+   - Con: Testing complexity (must test both paths)
+   - Con: Doesn't solve recompilation requirement for new defaults
+
+**Architectural Decisions**:
+
+1. **WeightConfig.java as Single Configuration Class**
+   - Decision: Centralize all 41 parameters in one @ConfigurationProperties class
+   - Rationale: 
+     - Single source of truth - all scoring weights in one file
+     - Easier to reason about parameter interactions
+     - Simplified admin UI (one config object to expose)
+     - Clear separation: config (WeightConfig) vs logic (scorers)
+   - Alternative rejected: Separate @ConfigurationProperties per scorer
+     - Con: 8 config classes (AddressConfig, DateConfig, etc.)
+     - Con: Admin UI must aggregate across multiple beans
+     - Con: Harder to see full parameter set at a glance
+   
+2. **Static Utility Class → Spring @Component Refactoring**
+   - Decision: Convert static utility classes (AddressComparer, DateComparer) to Spring beans with constructor injection
+   - Rationale:
+     - Enables dependency injection of WeightConfig
+     - Stateless beans are thread-safe (no concurrency issues)
+     - Spring manages lifecycle + enables @Autowired in tests
+     - Pattern: `public DateComparer(WeightConfig weightConfig) { this.weightConfig = weightConfig; }`
+   - Alternative rejected: Pass WeightConfig as method parameter
+     - Con: Every method signature grows: `compareDates(date1, date2, config)`
+     - Con: 50+ call sites to update (vs constructor injection once)
+     - Con: Doesn't leverage Spring DI framework
+     - Con: Repetitive config parameter threading
+   
+3. **TDD Pattern: RED → GREEN → Verify**
+   - Decision: Write failing config test first, then implement migration, then verify BSA tests
+   - Rationale:
+     - Prevents regressions - BSA tests must pass 100/100 before commit
+     - Documents intent - config test shows expected behavior before implementation
+     - Confidence - if BSA tests pass, scoring behavior unchanged
+     - Example: DateComparerConfigTest validates custom weights (0.2 decay rate vs 0.1 default)
+   - Test pattern:
+     ```java
+     @SpringBootTest
+     @TestPropertySource(properties = {"watchman.weights.date-year-decay-rate=0.2"})
+     class DateComparerConfigTest {
+         @Autowired private DateComparer dateComparer;
+         @Autowired private WeightConfig weightConfig;
+         // Verify config loaded + behavior affected
+     }
+     ```
+   
+4. **BSA Test Suite: R2 as Single Authority**
+   - Decision: Use R2EntityValidationTest (50 obs) + R2IndividualValidationTest (50 obs) as sole BSA validation suite
+   - Rationale:
+     - R2 is BSA consultant's authoritative retest (supersedes R1)
+     - Removes duplicate coverage (R1 had 52 overlapping observations)
+     - Clearer success criteria: 100 R2 observations must pass (not 152)
+     - Faster test execution: ~2 minutes (vs 3 minutes with R1)
+   - Alternative rejected: Keep both R1 and R2
+     - Con: Redundant validation (same entities tested twice)
+     - Con: Confusing metrics (152 total but only 100 unique)
+     - Con: R1 outdated (consultant superseded with R2)
+   
+5. **Migration Phases (6 Phases, 41 Parameters)**
+   - Phase 1: AddressComparer (7 params) - street/city/country weights, min match thresholds, partial match bonuses
+   - Phase 2: DateComparer (11 params) - year/month/day weights, tolerance thresholds, decay rates
+   - Phase 3: SupportingInfoScorer + TitleScorer (5 params) - supporting info thresholds, title matching weights
+   - Phase 4: AffiliationScorer + NameScorer (4 params) - affiliation weights, name matching thresholds
+   - Phase 5: EntityScorer address weights (3 params) - entity-level address component weights
+   - Phase 6: Final verification + documentation update (11 remaining params)
+   - Rationale: Natural groupings by scorer class, each phase independently testable
+
+**Implementation Pattern** (repeated for each phase):
+```java
+// 1. Add fields to WeightConfig.java
+@ConfigurationProperties(prefix = "watchman.weights")
+public class WeightConfig {
+    private double dateYearDecayRate = 0.1;  // Default from original hard-coded value
+    // ... getters/setters with JavaDoc referencing original location
+}
+
+// 2. Update application.yml
+watchman:
+  weights:
+    date-year-decay-rate: 0.1  # 10% penalty per year difference
+
+// 3. Convert scorer to Spring bean
+@Component
+public class DateComparer {
+    private final WeightConfig weightConfig;
+    
+    public DateComparer(WeightConfig weightConfig) {
+        this.weightConfig = weightConfig;
+    }
+    
+    public double compareDates(LocalDate d1, LocalDate d2) {
+        // OLD: yearScore = 1.0 - (0.1 * yearDiff);
+        // NEW: yearScore = 1.0 - (weightConfig.getDateYearDecayRate() * yearDiff);
+    }
+}
+
+// 4. Update callers to inject bean instead of static calls
+// IntegrationFunctions.java: compareEntityDates(..., DateComparer dateComparer)
+// Test classes: @Autowired private DateComparer dateComparer;
+
+// 5. Run BSA tests: ./mvnw test -Dtest="R2EntityValidationTest,R2IndividualValidationTest"
+// Must see: Tests run: 2, Failures: 0, Errors: 0 (100/100 observations passing)
+
+// 6. Git commit with phase summary
+```
+
+**Trade-offs Accepted**:
+- **Increased class complexity**: WeightConfig.java grows to 400+ lines (41 fields × ~10 lines each with JavaDoc)
+  * Mitigation: Organize fields by scorer category with clear section comments
+- **More verbose scoring code**: `weightConfig.getDateYearDecayRate()` vs `0.1`
+  * Mitigation: Self-documenting code (parameter name explains purpose)
+  * Benefit: IDE autocomplete shows all available config parameters
+- **Test file updates**: @SpringBootTest required for all scorer tests (slower startup)
+  * Mitigation: Batch test execution (R2 suite runs all 100 at once)
+  * Benefit: Integration test confidence (full Spring context loaded)
+- **Two response formats**: Static → instance method refactoring requires updating ~50 call sites
+  * Mitigation: sed batch replacements for repetitive changes
+  * Pattern: `sed -i '' 's/DateComparer\.compareDates(/dateComparer.compareDates(/g'`
+
+**Success Metrics** (as of 2026-03-06, 10:30 PM):
+- ✅ Phase 1 complete: AddressComparer (7/41 params) - Commit 56cc4c4
+- ✅ Phase 2 complete: DateComparer (11/41 params) - Commit a0fbabd
+- ✅ BSA tests: 100/100 R2 observations passing (R1 removed as obsolete)
+- ✅ Zero scoring regressions: Exact same output as hard-coded implementation
+- **Progress**: 18/41 parameters migrated (44%)
+- **Remaining**: 23 parameters across 4 phases (SupportingInfo/Title, Affiliation/Name, EntityScorer, final verification)
+
+---
+
 ## 2026-03-06: Braid Integration - Go Watchman Compatible Endpoint
 
 **Decision**: Implement `/go/search` endpoint with 100% response format compatibility with Go Watchman (moov/watchman:0.28.2) for Braid Core Banking API integration.

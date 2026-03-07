@@ -20,6 +20,88 @@
 
 ---
 
+## Session: March 6, 2026 (YAML Configuration Migration - Phase 1 & 2)
+
+### What We Decided
+- Migrate all 41 hard-coded scoring parameters to centralized YAML configuration for runtime tunability
+- Follow strict TDD pattern: RED (failing test) → GREEN (implementation) → verification → commit
+- Execute migration in 6 phases (AddressComparer, DateComparer, SupportingInfo/Title, Affiliation/Name, EntityScorer, Documentation)
+- Use R2 BSA validation tests as authoritative suite (100 observations: 50 entity + 50 individual)
+
+### What We Did
+**Phase 1: AddressComparer (7 parameters)** - Commit `56cc4c4`
+- **WeightConfig.java**: Added 7 address comparison fields with @ConfigurationProperties (lines ~240-290)
+  * addressStreetWeight (0.4), addressCityWeight (0.3), addressCountryWeight (0.3)  
+  * addressBuildingNumberMinMatch (0.7), addressStreetNameMinMatch (0.6)
+  * addressPartialBuildingBonus (0.1), addressPartialStreetBonus (0.15)
+- **application.yml**: Added `watchman.weights.address-*` configuration section
+- **AddressComparer.java**: Converted from static utility class to Spring @Component
+  * Constructor injection: `AddressComparer(WeightConfig weightConfig)`
+  * Replaced 7 hard-coded values with `weightConfig.get*()` calls
+  * Lines 29-31, 54, 60, 77, 84: Hard-coded weights replaced
+- **TypeDispatchers.java**: Updated `compareEntityAddresses()` to accept AddressComparer parameter
+  * Line 80: Method signature changed to include `addressComparer` parameter
+  * Line 87: Static call replaced with `addressComparer.compareAddresses()`
+- **Test Updates**: AddressComparisonTest.java, Phase9TypeDispatchersTest.java converted to @SpringBootTest with @Autowired
+- **New Test**: AddressComparerConfigTest.java - TDD test verifying config injection works
+
+**Phase 2: DateComparer (11 parameters)** - Commit `a0fbabd`
+- **WeightConfig.java**: Added 11 date comparison fields (lines ~292-402)
+  * dateYearDecayRate (0.1), dateDistantYearScore (0.2)
+  * dateMonthTolerance1/2/3Plus (0.9, 0.7, 0.3)
+  * dateDayTolerance0to3Start/Decay (0.95, 0.05)
+  * dateDayTolerance4to7 (0.7), dateDayTolerance8Plus (0.3)
+  * dateYearWeight/MonthWeight/DayWeight (0.4, 0.3, 0.3) - sum to 1.0
+- **application.yml**: Added `watchman.weights.date-*` configuration section (11 values)
+- **DateComparer.java**: Converted from static utility class to Spring @Component
+  * Constructor injection: `DateComparer(WeightConfig weightConfig)`
+  * Replaced 8 hard-coded values with `weightConfig.get*()` calls across 9 methods
+  * Lines 46, 50, 60, 65, 68, 81-82, 91: Hard-coded weights replaced
+  * Methods converted: compareDates, areDaysSimilar, areDatesLogical, comparePersonDates, compareBusinessDates, compareOrgDates, compareAssetDates
+- **IntegrationFunctions.java**: Updated `compareEntityDates()` signature
+  * Added DateComparer parameter for dependency injection
+  * Replaced 5 static DateComparer method calls with instance calls
+- **Test Updates**: DateComparisonTest.java, Phase10IntegrationTest.java converted to @SpringBootTest with @Autowired
+  * 23 static method call replacements using sed batch operations
+- **New Test**: DateComparerConfigTest.java - TDD test verifying all 11 date weights load correctly
+
+**BSA Test Correction** - Commit `a35aa8c`
+- **Removed**: ComprehensiveBSAValidationTest.java (R1 - 52 observations, obsolete)
+- **Retained**: R2EntityValidationTest.java (50 entity observations) + R2IndividualValidationTest.java (50 individual observations)
+- **Rationale**: R2 is BSA consultant's authoritative retest suite with complete coverage
+- **Files**: 
+  * R2 Entity CSV: `observations/watchman java obsevations master.xlsx - r2-entity.csv` (76 lines)
+  * R2 Individual CSV: `observations/watchman java obsevations master.xlsx - r2-ind.csv` (88 lines)
+
+### What We Verified
+- **Compilation**: All code compiles cleanly (BUILD SUCCESS)
+- **BSA Validation**: All 100 R2 observations passing (50 entity + 50 individual)
+  * R2EntityValidationTest: 50/50 PASS
+  * R2IndividualValidationTest: 50/50 PASS
+- **TDD Tests**: 
+  * AddressComparerConfigTest: 3/3 tests pass
+  * DateComparerConfigTest: 3/3 tests pass
+- **Behavior**: Zero scoring regressions - exact same output as hard-coded values
+
+### What Is Now True
+- **18/41 Parameters Migrated** ✅ (44% complete)
+  * Phase 1: AddressComparer - 7 params ✅
+  * Phase 2: DateComparer - 11 params ✅
+  * Phase 3: SupportingInfo/Title - 5 params (pending)
+  * Phase 4: Affiliation/Name - 4 params (pending)
+  * Phase 5: EntityScorer address weights - 3 params (pending)
+  * Phase 6: BSA tests + documentation - 11 params (pending)
+- **Configuration Architecture Established**: WeightConfig.java as centralized @ConfigurationProperties class with application.yml as authority
+- **TDD Pattern Validated**: RED → GREEN → verification cycle proven across 2 phases
+- **Static → Instance Refactoring Pattern**: Proven approach for converting utility classes to Spring beans
+- **BSA Test Suite Simplified**: 100 authoritative R2 observations (down from 152 with duplicate R1)
+- **Git History**: Clean commits with detailed messages for each phase
+  * 56cc4c4: Phase 1 - AddressComparer
+  * a0fbabd: Phase 2 - DateComparer  
+  * a35aa8c: Remove R1 ComprehensiveBSAValidationTest
+
+---
+
 ## Session: March 6, 2026 (Braid Integration - Go Watchman Compatible Endpoint)
 
 ### What We Decided
