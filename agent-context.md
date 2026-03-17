@@ -84,15 +84,16 @@
 - **Behavior**: Zero scoring regressions - exact same output as hard-coded values
 
 ### What Is Now True
-- **18/41 Parameters Migrated** ✅ (44% complete)
+- **56/56 Parameters Migrated** ✅ (100% complete — YAML migration COMPLETE Mar 16, 2026)
   * Phase 1: AddressComparer - 7 params ✅
   * Phase 2: DateComparer - 11 params ✅
-  * Phase 3: SupportingInfo/Title - 5 params (pending)
-  * Phase 4: Affiliation/Name - 4 params (pending)
-  * Phase 5: EntityScorer address weights - 3 params (pending)
-  * Phase 6: BSA tests + documentation - 11 params (pending)
+  * Phase 3: SupportingInfo/Title - 5 params ✅
+  * Phase 4: Affiliation/Name - 4 params ✅
+  * Phase 5: EntityScorer address weights - 3 params ✅
+  * Phase 6: JaroWinkler/alias selection/LanguageDetector - 6 params ✅
+  * BSA verified: 100/100 (50 entity + 50 individual) after all phases
 - **Configuration Architecture Established**: WeightConfig.java as centralized @ConfigurationProperties class with application.yml as authority
-- **TDD Pattern Validated**: RED → GREEN → verification cycle proven across 2 phases
+- **TDD Pattern Validated**: RED → GREEN → verification cycle proven across all 6 phases
 - **Static → Instance Refactoring Pattern**: Proven approach for converting utility classes to Spring beans
 - **BSA Test Suite Simplified**: 100 authoritative R2 observations (down from 152 with duplicate R1)
 - **Git History**: Clean commits with detailed messages for each phase

@@ -62,7 +62,7 @@ public record Entity(
      * @return A new Entity with preparedFields populated
      */
     public Entity normalize() {
-        return normalize(new LanguageDetector(), new TextNormalizer());
+        return normalize(new LanguageDetector(new io.moov.watchman.config.SimilarityConfig()), new TextNormalizer());
     }
     
     /**

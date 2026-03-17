@@ -749,4 +749,223 @@ public class WeightConfig {
     public void setDateDayWeight(double dateDayWeight) {
         this.dateDayWeight = dateDayWeight;
     }
+
+    // Phase 3: SupportingInfoComparer thresholds (migrated Mar 16, 2026)
+
+    /**
+     * Minimum average score for a supporting info match to be considered "matched".
+     * Previously hardcoded as 0.5 at SupportingInfoComparer.java:81.
+     * Default: 0.5
+     */
+    private double supportingInfoMatchedThreshold = 0.5;
+
+    /**
+     * Minimum average score for a supporting info match to be considered "exact".
+     * Previously hardcoded as 0.99 at SupportingInfoComparer.java:82.
+     * Default: 0.99
+     */
+    private double supportingInfoExactThreshold = 0.99;
+
+    /**
+     * Multiplier applied to program score when secondary sanctions status differs.
+     * Previously hardcoded as 0.8 at SupportingInfoComparer.java:141.
+     * Default: 0.8
+     */
+    private double supportingInfoSecondaryPenalty = 0.8;
+
+    /**
+     * Minimum title score for a title comparison to be considered "matched".
+     * Previously hardcoded as 0.5 at EntityTitleComparer.java:62.
+     * Default: 0.5
+     */
+    private double titleMatchedThreshold = 0.5;
+
+    /**
+     * Minimum title score for a title comparison to be considered "exact".
+     * Previously hardcoded as 0.99 at EntityTitleComparer.java:63.
+     * Default: 0.99
+     */
+    private double titleExactThreshold = 0.99;
+
+    public double getSupportingInfoMatchedThreshold() {
+        return supportingInfoMatchedThreshold;
+    }
+
+    public void setSupportingInfoMatchedThreshold(double supportingInfoMatchedThreshold) {
+        this.supportingInfoMatchedThreshold = supportingInfoMatchedThreshold;
+    }
+
+    public double getSupportingInfoExactThreshold() {
+        return supportingInfoExactThreshold;
+    }
+
+    public void setSupportingInfoExactThreshold(double supportingInfoExactThreshold) {
+        this.supportingInfoExactThreshold = supportingInfoExactThreshold;
+    }
+
+    public double getSupportingInfoSecondaryPenalty() {
+        return supportingInfoSecondaryPenalty;
+    }
+
+    public void setSupportingInfoSecondaryPenalty(double supportingInfoSecondaryPenalty) {
+        this.supportingInfoSecondaryPenalty = supportingInfoSecondaryPenalty;
+    }
+
+    public double getTitleMatchedThreshold() {
+        return titleMatchedThreshold;
+    }
+
+    public void setTitleMatchedThreshold(double titleMatchedThreshold) {
+        this.titleMatchedThreshold = titleMatchedThreshold;
+    }
+
+    public double getTitleExactThreshold() {
+        return titleExactThreshold;
+    }
+
+    public void setTitleExactThreshold(double titleExactThreshold) {
+        this.titleExactThreshold = titleExactThreshold;
+    }
+
+    // Phase 4: AffiliationComparer + NameScorer thresholds (migrated Mar 16, 2026)
+
+    /**
+     * Minimum score for an affiliation name match to be considered "matched".
+     * Previously hardcoded as 0.85 at AffiliationComparer.java:24.
+     * Default: 0.85
+     */
+    private double affiliationNameThreshold = 0.85;
+
+    /**
+     * Minimum score for an affiliation match to be considered "exact".
+     * Previously hardcoded as 0.95 at AffiliationComparer.java:25.
+     * Default: 0.95
+     */
+    private double affiliationExactThreshold = 0.95;
+
+    /**
+     * Minimum type score required (alongside exact name score) for an affiliation to be marked exact.
+     * Previously hardcoded as 0.9 at AffiliationComparer.java:161.
+     * Default: 0.9
+     */
+    private double affiliationTypeScoreThreshold = 0.9;
+
+    /**
+     * Early exit threshold for name comparison pre-filter.
+     * Names scoring below this are skipped before expensive field comparisons.
+     * Previously hardcoded as 0.4 at NameScorer.java:36.
+     * Default: 0.4
+     */
+    private double nameEarlyExitThreshold = 0.4;
+
+    public double getAffiliationNameThreshold() {
+        return affiliationNameThreshold;
+    }
+
+    public void setAffiliationNameThreshold(double affiliationNameThreshold) {
+        this.affiliationNameThreshold = affiliationNameThreshold;
+    }
+
+    public double getAffiliationExactThreshold() {
+        return affiliationExactThreshold;
+    }
+
+    public void setAffiliationExactThreshold(double affiliationExactThreshold) {
+        this.affiliationExactThreshold = affiliationExactThreshold;
+    }
+
+    public double getAffiliationTypeScoreThreshold() {
+        return affiliationTypeScoreThreshold;
+    }
+
+    public void setAffiliationTypeScoreThreshold(double affiliationTypeScoreThreshold) {
+        this.affiliationTypeScoreThreshold = affiliationTypeScoreThreshold;
+    }
+
+    public double getNameEarlyExitThreshold() {
+        return nameEarlyExitThreshold;
+    }
+
+    public void setNameEarlyExitThreshold(double nameEarlyExitThreshold) {
+        this.nameEarlyExitThreshold = nameEarlyExitThreshold;
+    }
+
+    // Phase 5: EntityScorerImpl.compareAddress() weights (migrated Mar 16, 2026)
+
+    /**
+     * Weight for country match in EntityScorerImpl.compareAddress().
+     * Previously hardcoded as 0.3 at EntityScorerImpl.java:759.
+     * Default: 0.3
+     */
+    private double scorerAddressCountryWeight = 0.3;
+
+    /**
+     * Weight for city match in EntityScorerImpl.compareAddress().
+     * Previously hardcoded as 0.3 at EntityScorerImpl.java:767.
+     * Default: 0.3
+     */
+    private double scorerAddressCityWeight = 0.3;
+
+    /**
+     * Weight for street line1 match in EntityScorerImpl.compareAddress().
+     * Previously hardcoded as 0.4 at EntityScorerImpl.java:774.
+     * Default: 0.4
+     */
+    private double scorerAddressLineWeight = 0.4;
+
+    public double getScorerAddressCountryWeight() {
+        return scorerAddressCountryWeight;
+    }
+
+    public void setScorerAddressCountryWeight(double scorerAddressCountryWeight) {
+        this.scorerAddressCountryWeight = scorerAddressCountryWeight;
+    }
+
+    public double getScorerAddressCityWeight() {
+        return scorerAddressCityWeight;
+    }
+
+    public void setScorerAddressCityWeight(double scorerAddressCityWeight) {
+        this.scorerAddressCityWeight = scorerAddressCityWeight;
+    }
+
+    public double getScorerAddressLineWeight() {
+        return scorerAddressLineWeight;
+    }
+
+    public void setScorerAddressLineWeight(double scorerAddressLineWeight) {
+        this.scorerAddressLineWeight = scorerAddressLineWeight;
+    }
+
+    // Phase 6: EntityScorerImpl alias selection params (migrated Mar 16, 2026)
+
+    /**
+     * Score delta within which alias coverage is preferred over raw score.
+     * Previously hardcoded as 0.05 at EntityScorerImpl.java:560,610.
+     * Default: 0.05
+     */
+    private double aliasSelectionTolerance = 0.05;
+
+    /**
+     * Minimum alias score required to apply coverage-based alias selection.
+     * Previously hardcoded as 0.45 at EntityScorerImpl.java:560,610.
+     * Default: 0.45
+     */
+    private double aliasCoverageMinScore = 0.45;
+
+    public double getAliasSelectionTolerance() {
+        return aliasSelectionTolerance;
+    }
+
+    public void setAliasSelectionTolerance(double aliasSelectionTolerance) {
+        this.aliasSelectionTolerance = aliasSelectionTolerance;
+    }
+
+    public double getAliasCoverageMinScore() {
+        return aliasCoverageMinScore;
+    }
+
+    public void setAliasCoverageMinScore(double aliasCoverageMinScore) {
+        this.aliasCoverageMinScore = aliasCoverageMinScore;
+    }
 }

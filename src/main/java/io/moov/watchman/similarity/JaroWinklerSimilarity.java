@@ -723,22 +723,22 @@ public class JaroWinklerSimilarity implements SimilarityService {
         // If ALL tokens from the smaller set are matched with high scores,
         // this is a strong substring match - boost the score
         boolean allTokensMatched = (comparisons == nonStopwordIndexTokens);
-        boolean highQualityMatches = tokenAvg >= 0.95;
-        
+        boolean highQualityMatches = tokenAvg >= config.getQueryCoverageQualityThreshold();
+
         if (allTokensMatched && highQualityMatches) {
             // 100% query coverage with high-quality matches
             // This is likely an alias substring match - boost heavily
             // Cap at 1.0
             timer.stop();
-            return Math.min(1.0, tokenAvg * 1.08);
+            return Math.min(1.0, tokenAvg * config.getQueryCoverageBoostMultiplier());
         }
-        
+
         // Blend token-based and full-string scores
         // Weight towards token-based for multi-word, full-string for similar lengths
-        double lengthRatio = (double) Math.min(tokens1.length, tokens2.length) / 
+        double lengthRatio = (double) Math.min(tokens1.length, tokens2.length) /
                            Math.max(tokens1.length, tokens2.length);
-        
-        double result = tokenAvg * 0.6 + fullScore * 0.4;
+
+        double result = tokenAvg * config.getTokenBlendWeight() + fullScore * (1.0 - config.getTokenBlendWeight());
         timer.stop();
         return result;
     }

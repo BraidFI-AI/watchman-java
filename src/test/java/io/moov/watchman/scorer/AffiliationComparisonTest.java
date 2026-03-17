@@ -5,6 +5,8 @@ import io.moov.watchman.search.ScorePiece;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,8 +22,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * - findBestAffiliationMatch: Find best matching affiliation from list
  * - calculateFinalAffiliateScore: Calculate weighted average of matches
  */
+@SpringBootTest
 @DisplayName("Affiliation Comparison Tests")
 class AffiliationComparisonTest {
+
+    @Autowired
+    private AffiliationComparer affiliationComparer;
 
     @Nested
     @DisplayName("compareAffiliationsFuzzy Tests")
@@ -35,7 +41,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "subsidiary of")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertEquals(0.0, result.getScore());
             assertFalse(result.isMatched());
@@ -51,7 +57,7 @@ class AffiliationComparisonTest {
             );
             List<Affiliation> indexAffs = List.of();
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertEquals(0.0, result.getScore());
             assertFalse(result.isMatched());
@@ -69,7 +75,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corporation", "subsidiary of")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() > 0.95); // Should be very high
             assertTrue(result.isMatched()); // Above affiliationNameThreshold (0.85)
@@ -88,7 +94,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corporation", "owned by") // Same group: ownership
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() > 0.85); // High score (name match + related type bonus)
             assertTrue(result.isMatched());
@@ -105,7 +111,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "managed by") // control group
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             // Name matches perfectly but types don't match - should be penalized
             assertTrue(result.getScore() < 0.90); // Lower than exact match due to penalty
@@ -124,7 +130,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Another Firm", "parent of")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() > 0.90); // Should match "Acme Corp"
             assertTrue(result.isMatched());
@@ -142,7 +148,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Beta Incorporated", "owned by")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() > 0.90); // Both affiliations match well
             assertTrue(result.isMatched());
@@ -159,7 +165,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Completely Different Name", "managed by")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() < 0.50); // Very low score
             assertFalse(result.isMatched());
@@ -176,7 +182,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "subsidiary of")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.75);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.75);
 
             assertEquals(0.75, result.getWeight());
         }
@@ -192,7 +198,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "subsidiary of")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() > 0.90); // Should match the non-empty one
             assertTrue(result.isMatched());
@@ -211,7 +217,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "subsidiary of")
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertEquals(0.0, result.nameScore());
             assertEquals(0.0, result.finalScore());
@@ -225,7 +231,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "subsidiary of")
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertEquals(0.0, result.finalScore());
         }
@@ -239,7 +245,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corporation", "subsidiary of")
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertTrue(result.finalScore() > 0.90); // Should match the non-empty one
         }
@@ -252,7 +258,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corporation", "subsidiary of")
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertTrue(result.nameScore() > 0.95);
             assertTrue(result.typeScore() > 0.95);
@@ -270,7 +276,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Beta Inc", "parent of")
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertTrue(result.finalScore() > 0.90); // Should match "Acme Corp"
             assertTrue(result.nameScore() > 0.85);
@@ -285,7 +291,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "subsidiary of") // Exact type
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertTrue(result.typeScore() > 0.95); // Should be exact type match
             assertTrue(result.finalScore() > 0.95);
@@ -299,7 +305,7 @@ class AffiliationComparisonTest {
                     new Affiliation("ACME Corp", "subsidiary of")
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertTrue(result.finalScore() > 0.85); // Should normalize and match
         }
@@ -312,7 +318,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme Corp", "managed by") // Different type group
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertEquals(0.0, result.typeScore()); // Different groups
             assertTrue(result.finalScore() < 0.90); // Penalized for type mismatch
@@ -327,7 +333,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Acme", "subsidiary of") // Shorter name, exact type
             );
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             // Should prefer the exact type match even if name score is slightly lower
             assertTrue(result.typeScore() > 0.95); // Exact type
@@ -339,7 +345,7 @@ class AffiliationComparisonTest {
             Affiliation queryAff = new Affiliation("Acme Corp", "subsidiary of");
             List<Affiliation> indexAffs = List.of();
 
-            AffiliationMatch result = AffiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
+            AffiliationMatch result = affiliationComparer.findBestAffiliationMatch(queryAff, indexAffs);
 
             assertEquals(0.0, result.finalScore());
         }
@@ -354,7 +360,7 @@ class AffiliationComparisonTest {
         void emptyMatches() {
             List<AffiliationMatch> matches = List.of();
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             assertEquals(0.0, result, 0.001);
         }
@@ -366,7 +372,7 @@ class AffiliationComparisonTest {
                     new AffiliationMatch(0.90, 1.0, 0.95, true)
             );
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             assertEquals(0.95, result, 0.01);
         }
@@ -379,7 +385,7 @@ class AffiliationComparisonTest {
                     new AffiliationMatch(0.80, 0.8, 0.85, false)
             );
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             // Higher scores should have more weight (squared weighting)
             assertTrue(result > 0.88); // Closer to 0.95 than simple average
@@ -394,7 +400,7 @@ class AffiliationComparisonTest {
                     new AffiliationMatch(0.50, 0.0, 0.40, false) // Poor match
             );
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             // Perfect match should dominate due to squared weighting
             assertTrue(result > 0.90); // Much closer to 1.0 than 0.70 (simple average)
@@ -409,7 +415,7 @@ class AffiliationComparisonTest {
                     new AffiliationMatch(0.70, 0.0, 0.60, false)
             );
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             // Should be between 0.60 and 0.95, weighted toward higher scores
             assertTrue(result > 0.75);
@@ -424,7 +430,7 @@ class AffiliationComparisonTest {
                     new AffiliationMatch(1.0, 1.0, 1.0, true)
             );
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             assertEquals(1.0, result, 0.001);
         }
@@ -437,7 +443,7 @@ class AffiliationComparisonTest {
                     new AffiliationMatch(0.25, 0.0, 0.15, false)
             );
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             assertTrue(result < 0.25); // Low overall score
             assertTrue(result > 0.10);
@@ -457,7 +463,7 @@ class AffiliationComparisonTest {
                     new AffiliationMatch(0.40, 0.0, 0.40, false)
             );
 
-            double result = AffiliationComparer.calculateFinalAffiliateScore(matches);
+            double result = affiliationComparer.calculateFinalAffiliateScore(matches);
 
             assertEquals(0.72, result, 0.01);
         }
@@ -479,7 +485,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Merrill Lynch & Co", "subsidiary of")
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() > 0.85);
             assertTrue(result.isMatched());
@@ -498,7 +504,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Partial Company", "parent of") // Similar name, different type group
             );
 
-            ScorePiece result = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             assertTrue(result.getScore() > 0.75); // Weighted average should be good
             assertTrue(result.isMatched());
@@ -514,7 +520,7 @@ class AffiliationComparisonTest {
                     new Affiliation("High Quality Match", "subsidiary of")
             );
 
-            ScorePiece result1 = AffiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
+            ScorePiece result1 = affiliationComparer.compareAffiliationsFuzzy(queryAffs, indexAffs, 0.5);
 
             // Compare with multiple poor matches
             List<Affiliation> queryAffs2 = List.of(
@@ -528,7 +534,7 @@ class AffiliationComparisonTest {
                     new Affiliation("Different Name 3", "operates")
             );
 
-            ScorePiece result2 = AffiliationComparer.compareAffiliationsFuzzy(queryAffs2, indexAffs2, 0.5);
+            ScorePiece result2 = affiliationComparer.compareAffiliationsFuzzy(queryAffs2, indexAffs2, 0.5);
 
             assertTrue(result1.getScore() > result2.getScore()); // Quality wins
         }

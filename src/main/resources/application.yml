@@ -43,6 +43,11 @@ watchman:
     phonetic-filtering-disabled: true
     keep-stopwords: true
     log-stopword-debugging: true
+    # JaroWinkler query-coverage boost + LanguageDetector (Phase 6 migration - Mar 16, 2026)
+    query-coverage-quality-threshold: 0.95   # min tokenAvg to trigger coverage boost
+    query-coverage-boost-multiplier: 1.08    # multiplier when all tokens match at high quality
+    token-blend-weight: 0.6                  # weight for token-based score (full-string gets 1-this=0.4)
+    language-detection-min-confidence: 0.5   # below this confidence, default to English
   search:
     alias-match-threshold: 0.75
     high-score-threshold: 0.95
@@ -94,6 +99,24 @@ watchman:
     date-year-weight: 0.4            # Year component weight (40%)
     date-month-weight: 0.3           # Month component weight (30%)
     date-day-weight: 0.3             # Day component weight (30%)
+    # SupportingInfo + Title thresholds (Phase 3 migration - Mar 16, 2026)
+    supporting-info-matched-threshold: 0.5   # avgScore > this → matched=true
+    supporting-info-exact-threshold: 0.99    # avgScore > this → exact=true
+    supporting-info-secondary-penalty: 0.8   # multiplier when secondary sanctions status differs
+    title-matched-threshold: 0.5             # bestScore > this → matched=true
+    title-exact-threshold: 0.99              # bestScore > this → exact=true
+    # Affiliation + Name thresholds (Phase 4 migration - Mar 16, 2026)
+    affiliation-name-threshold: 0.85         # finalScore > this → matched=true
+    affiliation-exact-threshold: 0.95        # nameScore > this AND typeScore > type-threshold → exact=true
+    affiliation-type-score-threshold: 0.9    # min typeScore for exact affiliation match
+    name-early-exit-threshold: 0.4           # names below this skip expensive comparisons
+    # EntityScorerImpl.compareAddress() weights (Phase 5 migration - Mar 16, 2026)
+    scorer-address-country-weight: 0.3       # country exact match contribution (sum: 0.3+0.3+0.4=1.0)
+    scorer-address-city-weight: 0.3          # city JaroWinkler contribution
+    scorer-address-line-weight: 0.4          # street line1 tokenized contribution
+    # Alias selection (Phase 6 migration - Mar 16, 2026)
+    alias-selection-tolerance: 0.05          # score delta within which coverage-based selection applies
+    alias-coverage-min-score: 0.45           # minimum score to apply coverage-based alias selection
   auto-clearance:
     phase1-threshold: 0.85
     address-mismatch-threshold: 0.5

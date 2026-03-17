@@ -6,6 +6,8 @@ import io.moov.watchman.search.EntityScorer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 import java.util.Map;
@@ -24,8 +26,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Goal: Upgrade 3 partial implementations (⚠️ → ✅) + add 1 new function
  * Expected: 12 comprehensive tests
  */
+@SpringBootTest
 @DisplayName("Phase 15: Name Scoring & Final Score Calculation")
 public class Phase15NameScoringTest {
+
+    @Autowired
+    private NameScorer nameScorer;
 
     // ==================== Helper Methods ====================
     
@@ -183,7 +189,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithPrimaryName("john smith");
             
             // Act
-            NameScorer.NameScore result = NameScorer.calculateNameScore(query, index);
+            NameScorer.NameScore result = nameScorer.calculateNameScore(query, index);
             
             // Assert
             assertTrue(result.score() > 0.9, "Exact primary name match should score > 0.9");
@@ -198,7 +204,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithAltNames(List.of("john", "johnny"));
             
             // Act
-            NameScorer.NameScore result = NameScorer.calculateNameScore(query, index);
+            NameScorer.NameScore result = nameScorer.calculateNameScore(query, index);
             
             // Assert
             assertTrue(result.score() > 0.8, "Matching alt name 'johnny' should score high");
@@ -213,7 +219,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithBothNames("john smith", List.of("j smith"));
             
             // Act
-            NameScorer.NameScore result = NameScorer.calculateNameScore(query, index);
+            NameScorer.NameScore result = nameScorer.calculateNameScore(query, index);
             
             // Assert
             assertTrue(result.score() > 0.7, "Blended score should be high for close matches");
@@ -228,7 +234,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithNoNames();
             
             // Act
-            NameScorer.NameScore result = NameScorer.calculateNameScore(query, index);
+            NameScorer.NameScore result = nameScorer.calculateNameScore(query, index);
             
             // Assert
             assertEquals(0.0, result.score(), "Score should be 0.0 when no names available");
@@ -250,7 +256,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithPrimaryName("john smith");
             
             // Act
-            boolean result = NameScorer.isNameCloseEnough(query, index);
+            boolean result = nameScorer.isNameCloseEnough(query, index);
             
             // Assert
             assertTrue(result, "Exact name match should be above threshold (0.4)");
@@ -264,7 +270,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithPrimaryName("xxxxxxx yyyyyy zzzzzz");
             
             // Act
-            boolean result = NameScorer.isNameCloseEnough(query, index);
+            boolean result = nameScorer.isNameCloseEnough(query, index);
             
             // Assert
             assertFalse(result, "Completely different names should be below threshold (0.4)");
@@ -278,7 +284,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithNoNames();
             
             // Act
-            boolean result = NameScorer.isNameCloseEnough(query, index);
+            boolean result = nameScorer.isNameCloseEnough(query, index);
             
             // Assert
             assertTrue(result, "Should return true when no name data (allow comparison to proceed)");
@@ -367,7 +373,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithBothNames("john smith", List.of("john s", "johnny"));
             
             // Act - Calculate name score
-            NameScorer.NameScore nameScore = NameScorer.calculateNameScore(query, index);
+            NameScorer.NameScore nameScore = nameScorer.calculateNameScore(query, index);
             
             // Act - Use in final score calculation
             Map<String, Double> components = Map.of(
@@ -389,7 +395,7 @@ public class Phase15NameScoringTest {
             Entity index = createEntityWithPrimaryName("xxxxxxx yyyyyy zzzzzz");
             
             // Act
-            boolean shouldProceed = NameScorer.isNameCloseEnough(query, index);
+            boolean shouldProceed = nameScorer.isNameCloseEnough(query, index);
             
             // Assert
             assertFalse(shouldProceed, 

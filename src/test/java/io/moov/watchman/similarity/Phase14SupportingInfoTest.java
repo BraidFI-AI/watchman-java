@@ -5,6 +5,8 @@ import io.moov.watchman.search.ScorePiece;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,8 +17,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Phase 14 TDD: Supporting Info Aggregation
  * Tests for compareSupportingInfo() which combines sanctions and historical scoring
  */
+@SpringBootTest
 @DisplayName("Phase 14: Supporting Info Aggregation")
 class Phase14SupportingInfoTest {
+
+    @Autowired
+    private SupportingInfoComparer supportingInfoComparer;
 
     // Test helper: Create entity with sanctions info
     private Entity createEntityWithSanctions(String id, List<String> programs, Boolean secondary) {
@@ -106,7 +112,7 @@ class Phase14SupportingInfoTest {
                     List.of(new HistoricalInfo("former_name", "Old Name", LocalDate.of(2020, 1, 1)))
             );
 
-            ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);
+            ScorePiece result = supportingInfoComparer.compareSupportingInfo(query, index, 15.0);
 
             // Both sanctions (1.0) and historical (1.0) → average = 1.0
             assertEquals(1.0, result.getScore(), 0.01, "Should average both scores");
@@ -123,7 +129,7 @@ class Phase14SupportingInfoTest {
             Entity query = createEntityWithSanctions("1", List.of("SDGT"), false);
             Entity index = createEntityWithSanctions("2", List.of("SDGT"), false);
 
-            ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);
+            ScorePiece result = supportingInfoComparer.compareSupportingInfo(query, index, 15.0);
 
             assertEquals(1.0, result.getScore(), 0.01, "Should use single sanctions score");
             assertTrue(result.isMatched());
@@ -141,7 +147,7 @@ class Phase14SupportingInfoTest {
             Entity query = createEntityWithHistorical("1", historical);
             Entity index = createEntityWithHistorical("2", historical);
 
-            ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);
+            ScorePiece result = supportingInfoComparer.compareSupportingInfo(query, index, 15.0);
 
             assertEquals(1.0, result.getScore(), 0.01, "Should use single historical score");
             assertTrue(result.isMatched());
@@ -172,7 +178,7 @@ class Phase14SupportingInfoTest {
                 null, null, null, null, null
             );
 
-            ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);
+            ScorePiece result = supportingInfoComparer.compareSupportingInfo(query, index, 15.0);
 
             assertEquals(0.0, result.getScore(), "No supporting info should score 0");
             assertFalse(result.isMatched());
@@ -197,7 +203,7 @@ class Phase14SupportingInfoTest {
             Entity query = createEntityWithBoth("1", querySanctions, historical);
             Entity index = createEntityWithBoth("2", indexSanctions, historical);
 
-            ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);
+            ScorePiece result = supportingInfoComparer.compareSupportingInfo(query, index, 15.0);
 
             // Should only average the historical score (1.0), ignoring sanctions (0.0)
             assertEquals(1.0, result.getScore(), 0.01, "Should filter out zero scores");
@@ -221,7 +227,7 @@ class Phase14SupportingInfoTest {
             Entity query = createEntityWithBoth("1", sanctions, queryHist);
             Entity index = createEntityWithBoth("2", sanctions, indexHist);
 
-            ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);
+            ScorePiece result = supportingInfoComparer.compareSupportingInfo(query, index, 15.0);
 
             assertTrue(result.getScore() > 0.5, "Score should be above threshold");
             assertTrue(result.isMatched(), "Score >0.5 should be matched");
@@ -244,7 +250,7 @@ class Phase14SupportingInfoTest {
             Entity query = createEntityWithBoth("1", querySanctions, historical);
             Entity index = createEntityWithBoth("2", indexSanctions, historical);
 
-            ScorePiece result = SupportingInfoComparer.compareSupportingInfo(query, index, 15.0);
+            ScorePiece result = supportingInfoComparer.compareSupportingInfo(query, index, 15.0);
 
             assertTrue(result.getScore() < 0.99, "Score should be below exact threshold");
             assertTrue(result.isMatched(), "Should still be matched");
@@ -262,14 +268,14 @@ class Phase14SupportingInfoTest {
             Entity queryBoth = createEntityWithBoth("1", sanctions, historical);
             Entity indexBoth = createEntityWithBoth("2", sanctions, historical);
 
-            ScorePiece resultBoth = SupportingInfoComparer.compareSupportingInfo(queryBoth, indexBoth, 15.0);
+            ScorePiece resultBoth = supportingInfoComparer.compareSupportingInfo(queryBoth, indexBoth, 15.0);
             assertEquals(2, resultBoth.getFieldsCompared(), "Both fields present");
 
             // Test with only sanctions
             Entity queryOne = createEntityWithSanctions("1", List.of("SDGT"), false);
             Entity indexOne = createEntityWithSanctions("2", List.of("SDGT"), false);
 
-            ScorePiece resultOne = SupportingInfoComparer.compareSupportingInfo(queryOne, indexOne, 15.0);
+            ScorePiece resultOne = supportingInfoComparer.compareSupportingInfo(queryOne, indexOne, 15.0);
             assertEquals(1, resultOne.getFieldsCompared(), "Only one field present");
         }
     }

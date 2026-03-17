@@ -1,26 +1,28 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.SimilarityConfig;
 import org.apache.tika.langdetect.optimaize.OptimaizeLangDetector;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-
 /**
  * Service for detecting the language of text using Apache Tika.
- * 
+ *
  * Uses Tika's Optimaize language detector which supports 70+ languages
  * including all major European, Middle Eastern, and Asian languages.
- * 
+ *
  * Ported from Go: internal/prepare/pipeline_stopwords.go detectLanguage()
+ *
+ * Phase 6 migration (Mar 16, 2026): MIN_CONFIDENCE now injected via SimilarityConfig.
  */
 @Service
 public class LanguageDetector {
 
     private final org.apache.tika.language.detect.LanguageDetector tikaDetector;
-    private static final double MIN_CONFIDENCE = 0.5;
+    private final SimilarityConfig similarityConfig;
 
-    public LanguageDetector() {
+    public LanguageDetector(SimilarityConfig similarityConfig) {
         this.tikaDetector = new OptimaizeLangDetector().loadModels();
+        this.similarityConfig = similarityConfig;
     }
 
     /**
@@ -101,7 +103,7 @@ public class LanguageDetector {
                 }
                 
                 // If confidence is too low, default to English
-                if (confidence < MIN_CONFIDENCE) {
+                if (confidence < similarityConfig.getLanguageDetectionMinConfidence()) {
                     return new LanguageDetectionResult("en", confidence);
                 }
                 

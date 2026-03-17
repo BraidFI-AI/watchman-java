@@ -557,7 +557,7 @@ public class EntityScorerImpl implements EntityScorer {
                 NameMatch currentMatch = NameMatch.alias(score, altName);
                 
                 // When scores are close (within 5%), prefer alias with more query token coverage
-                if (Math.abs(score - bestMatch.score()) < 0.05 && score > 0.45) {
+                if (Math.abs(score - bestMatch.score()) < weightConfig.getAliasSelectionTolerance() && score > weightConfig.getAliasCoverageMinScore()) {
                     int currentCoverage = countQueryTokensInAlias(normalizedQuery, altName);
                     int bestCoverage = countQueryTokensInAlias(normalizedQuery, bestMatch.matchedName());
                     if (currentCoverage > bestCoverage) {
@@ -607,7 +607,7 @@ public class EntityScorerImpl implements EntityScorer {
                     NameMatch currentMatch = NameMatch.alias(score, altName);
                     
                     // BSA-aware alias selection (same logic as non-cached version)
-                    if (Math.abs(score - bestMatch.score()) < 0.05 && score > 0.45) {
+                    if (Math.abs(score - bestMatch.score()) < weightConfig.getAliasSelectionTolerance() && score > weightConfig.getAliasCoverageMinScore()) {
                         String queryStr = String.join(" ", preprocessedQueryTokens);
                         int currentCoverage = countQueryTokensInAlias(queryStr, altName);
                         int bestCoverage = countQueryTokensInAlias(queryStr, bestMatch.matchedName());
@@ -756,7 +756,7 @@ public class EntityScorerImpl implements EntityScorer {
             fields++;
             if (normalizer.lowerAndRemovePunctuation(a.country())
                 .equals(normalizer.lowerAndRemovePunctuation(b.country()))) {
-                score += 0.3;
+                score += weightConfig.getScorerAddressCountryWeight();
             }
         }
 
@@ -764,14 +764,14 @@ public class EntityScorerImpl implements EntityScorer {
         if (a.city() != null && b.city() != null) {
             fields++;
             double cityScore = similarityService.jaroWinkler(a.city(), b.city());
-            score += cityScore * 0.3;
+            score += cityScore * weightConfig.getScorerAddressCityWeight();
         }
 
         // Street address match
         if (a.line1() != null && b.line1() != null) {
             fields++;
             double lineScore = similarityService.tokenizedSimilarity(a.line1(), b.line1());
-            score += lineScore * 0.4;
+            score += lineScore * weightConfig.getScorerAddressLineWeight();
         }
 
         return fields > 0 ? Math.min(1.0, score) : 0.0;

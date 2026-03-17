@@ -256,4 +256,68 @@ public class SimilarityConfig {
     public void setShortTokenRatioThreshold(double shortTokenRatioThreshold) {
         this.shortTokenRatioThreshold = shortTokenRatioThreshold;
     }
+
+    // Phase 6: JaroWinklerSimilarity query-coverage boost + LanguageDetector (migrated Mar 16, 2026)
+
+    /**
+     * Minimum token average score to trigger query-coverage boost.
+     * Previously hardcoded as 0.95 at JaroWinklerSimilarity.java:726.
+     * Default: 0.95
+     */
+    private double queryCoverageQualityThreshold = 0.95;
+
+    /**
+     * Multiplier applied when all tokens match with high quality (query-coverage boost).
+     * Previously hardcoded as 1.08 at JaroWinklerSimilarity.java:733.
+     * Default: 1.08
+     */
+    private double queryCoverageBoostMultiplier = 1.08;
+
+    /**
+     * Weight for token-based score in the token/full-string blend.
+     * Full-string weight = 1.0 - tokenBlendWeight.
+     * Previously hardcoded as 0.6 at JaroWinklerSimilarity.java:741.
+     * Default: 0.6
+     */
+    private double tokenBlendWeight = 0.6;
+
+    /**
+     * Minimum confidence score for language detection to be trusted.
+     * Below this threshold, defaults to English.
+     * Previously hardcoded as 0.5 at LanguageDetector.java:20.
+     * Default: 0.5
+     */
+    private double languageDetectionMinConfidence = 0.5;
+
+    public double getQueryCoverageQualityThreshold() {
+        return queryCoverageQualityThreshold;
+    }
+
+    public void setQueryCoverageQualityThreshold(double queryCoverageQualityThreshold) {
+        this.queryCoverageQualityThreshold = queryCoverageQualityThreshold;
+    }
+
+    public double getQueryCoverageBoostMultiplier() {
+        return queryCoverageBoostMultiplier;
+    }
+
+    public void setQueryCoverageBoostMultiplier(double queryCoverageBoostMultiplier) {
+        this.queryCoverageBoostMultiplier = queryCoverageBoostMultiplier;
+    }
+
+    public double getTokenBlendWeight() {
+        return tokenBlendWeight;
+    }
+
+    public void setTokenBlendWeight(double tokenBlendWeight) {
+        this.tokenBlendWeight = tokenBlendWeight;
+    }
+
+    public double getLanguageDetectionMinConfidence() {
+        return languageDetectionMinConfidence;
+    }
+
+    public void setLanguageDetectionMinConfidence(double languageDetectionMinConfidence) {
+        this.languageDetectionMinConfidence = languageDetectionMinConfidence;
+    }
 }

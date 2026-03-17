@@ -25,8 +25,7 @@ class LanguageDetectionTest {
 
     @BeforeEach
     void setUp() {
-        // EXPECTED TO FAIL: LanguageDetector class doesn't exist yet
-        languageDetector = new LanguageDetector();
+        languageDetector = new LanguageDetector(new io.moov.watchman.config.SimilarityConfig());
     }
 
     @Test

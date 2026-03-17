@@ -1,44 +1,50 @@
 package io.moov.watchman.similarity;
 
+import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.model.*;
 import io.moov.watchman.search.ScorePiece;
 import io.moov.watchman.search.TitleMatcher;
+import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Entity title fuzzy comparison using type-aware title extraction.
- * 
+ *
  * Ported from Go: pkg/search/similarity_fuzzy.go compareEntityTitlesFuzzy()
- * 
+ *
  * Phase 16 (January 10, 2026): Complete Zone 1 (Scoring Functions) to 100%
+ * Phase 3 migration (Mar 16, 2026): Converted to Spring @Component.
+ * Thresholds now injected via WeightConfig.
  */
+@Component
 public class EntityTitleComparer {
-    
-    private static final TitleMatcher titleMatcher = new TitleMatcher();
-    
+
+    private final WeightConfig weightConfig;
+
+    public EntityTitleComparer(WeightConfig weightConfig) {
+        this.weightConfig = weightConfig;
+    }
+
     /**
      * Compares entity titles using fuzzy matching with type-aware extraction.
-     * 
+     *
      * Title extraction by entity type:
      * - PERSON: titles list
      * - BUSINESS: name
      * - ORGANIZATION: name
      * - AIRCRAFT: type
      * - VESSEL: type
-     * 
-     * Uses Phase 5 TitleMatcher for similarity calculation.
-     * 
+     *
      * @param query  Query entity
      * @param index  Index entity
      * @param weight Score weight
      * @return ScorePiece with title comparison result
      */
-    public static ScorePiece compareEntityTitlesFuzzy(Entity query, Entity index, double weight) {
+    public ScorePiece compareEntityTitlesFuzzy(Entity query, Entity index, double weight) {
         List<String> queryTitles = extractTitles(query);
         List<String> indexTitles = extractTitles(index);
-        
+
         if (queryTitles.isEmpty() || indexTitles.isEmpty()) {
             return ScorePiece.builder()
                     .pieceType("title-fuzzy")
@@ -49,40 +55,30 @@ public class EntityTitleComparer {
                     .fieldsCompared(0)
                     .build();
         }
-        
-        // Find best match using Phase 5 title matching
+
         double bestScore = 0.0;
         for (String qTitle : queryTitles) {
             for (String iTitle : indexTitles) {
-                double score = titleMatcher.calculateTitleSimilarity(qTitle, iTitle);
+                double score = TitleMatcher.calculateTitleSimilarity(qTitle, iTitle);
                 bestScore = Math.max(bestScore, score);
             }
         }
-        
-        boolean matched = bestScore > 0.5;
-        boolean exact = bestScore > 0.99;
-        
+
         return ScorePiece.builder()
                 .pieceType("title-fuzzy")
                 .score(bestScore)
                 .weight(weight)
-                .matched(matched)
-                .exact(exact)
+                .matched(bestScore > weightConfig.getTitleMatchedThreshold())
+                .exact(bestScore > weightConfig.getTitleExactThreshold())
                 .fieldsCompared(1)
                 .build();
     }
-    
-    /**
-     * Extracts titles from entity based on entity type.
-     * 
-     * @param entity Entity to extract titles from
-     * @return List of titles (empty if none available)
-     */
-    private static List<String> extractTitles(Entity entity) {
+
+    private List<String> extractTitles(Entity entity) {
         if (entity == null) {
             return List.of();
         }
-        
+
         return switch (entity.type()) {
             case PERSON -> {
                 Person person = entity.person();

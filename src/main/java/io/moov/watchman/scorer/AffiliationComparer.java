@@ -1,35 +1,41 @@
 package io.moov.watchman.scorer;
 
 import io.moov.watchman.config.SimilarityConfig;
+import io.moov.watchman.config.WeightConfig;
 import io.moov.watchman.model.Affiliation;
 import io.moov.watchman.search.AffiliationMatcher;
 import io.moov.watchman.search.ScorePiece;
 import io.moov.watchman.similarity.JaroWinklerSimilarity;
 import io.moov.watchman.similarity.PhoneticFilter;
 import io.moov.watchman.similarity.TextNormalizer;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * Phase 6: Affiliation Comparison
- * <p>
+ *
  * Compares entity affiliations to determine relationship similarity.
  * Handles affiliation name matching, type compatibility, and weighted scoring.
+ *
+ * Phase 4 migration (Mar 16, 2026): Converted to Spring @Component.
+ * Thresholds now injected via WeightConfig.
  */
+@Component
 public class AffiliationComparer {
 
-    // Thresholds from Go implementation
-    private static final double AFFILIATION_NAME_THRESHOLD = 0.85;
-    private static final double EXACT_MATCH_THRESHOLD = 0.95;
+    private final WeightConfig weightConfig;
+    private final JaroWinklerSimilarity jaroWinkler;
 
-    // TODO: Inject config via constructor when these utilities become Spring-managed beans
-    private static final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity(
-        new TextNormalizer(),
-        new PhoneticFilter(true),
-        new SimilarityConfig()
-    );
+    public AffiliationComparer(WeightConfig weightConfig, SimilarityConfig similarityConfig) {
+        this.weightConfig = weightConfig;
+        this.jaroWinkler = new JaroWinklerSimilarity(
+            new TextNormalizer(),
+            new PhoneticFilter(true),
+            similarityConfig
+        );
+    }
 
     /**
      * Compares query and index affiliation lists.
@@ -39,12 +45,11 @@ public class AffiliationComparer {
      * @param weight    Score weight for this comparison
      * @return ScorePiece with affiliation match details
      */
-    public static ScorePiece compareAffiliationsFuzzy(
+    public ScorePiece compareAffiliationsFuzzy(
             List<Affiliation> queryAffs,
             List<Affiliation> indexAffs,
             double weight) {
-        
-        // Early return if no affiliations to compare
+
         if (queryAffs == null || queryAffs.isEmpty()) {
             return ScorePiece.builder()
                     .pieceType("affiliations")
@@ -57,7 +62,6 @@ public class AffiliationComparer {
                     .build();
         }
 
-        // Validate index affiliations
         if (indexAffs == null || indexAffs.isEmpty()) {
             return ScorePiece.builder()
                     .pieceType("affiliations")
@@ -66,14 +70,12 @@ public class AffiliationComparer {
                     .matched(false)
                     .required(false)
                     .exact(false)
-                    .fieldsCompared(1) // We had query affiliations but no index matches
+                    .fieldsCompared(1)
                     .build();
         }
 
-        // Process each query affiliation
         List<AffiliationMatch> matches = new ArrayList<>();
         for (Affiliation qAff : queryAffs) {
-            // Skip empty affiliations
             AffiliationMatch match = findBestAffiliationMatch(qAff, indexAffs);
             if (match.nameScore() > 0) {
                 matches.add(match);
@@ -92,16 +94,15 @@ public class AffiliationComparer {
                     .build();
         }
 
-        // Calculate final score
         double finalScore = calculateFinalAffiliateScore(matches);
 
         return ScorePiece.builder()
                 .pieceType("affiliations")
                 .score(finalScore)
                 .weight(weight)
-                .matched(finalScore > AFFILIATION_NAME_THRESHOLD)
+                .matched(finalScore > weightConfig.getAffiliationNameThreshold())
                 .required(false)
-                .exact(finalScore > EXACT_MATCH_THRESHOLD)
+                .exact(finalScore > weightConfig.getAffiliationExactThreshold())
                 .fieldsCompared(1)
                 .build();
     }
@@ -113,10 +114,10 @@ public class AffiliationComparer {
      * @param indexAffs List of index affiliations to search
      * @return AffiliationMatch with best match details
      */
-    public static AffiliationMatch findBestAffiliationMatch(
+    public AffiliationMatch findBestAffiliationMatch(
             Affiliation queryAff,
             List<Affiliation> indexAffs) {
-        
+
         String qName = AffiliationMatcher.normalizeAffiliationName(queryAff.entityName());
         if (qName == null || qName.trim().isEmpty()) {
             return new AffiliationMatch(0.0, 0.0, 0.0, false);
@@ -135,30 +136,26 @@ public class AffiliationComparer {
                 continue;
             }
 
-            // Calculate name match score
             String[] iFields = iName.split("\\s+");
             if (iFields.length == 0) {
                 continue;
             }
 
             double nameScore = calculateNameScore(qFields, iFields);
-            
-            // Calculate type match score
+
             double typeScore = AffiliationMatcher.calculateTypeScore(
                     queryAff.type(),
                     iAff.type()
             );
 
-            // Calculate combined score with type influence
             double finalScore = AffiliationMatcher.calculateCombinedScore(nameScore, typeScore);
 
-            // Keep the match with the best finalScore (not just nameScore)
-            // Tiebreaker: if finalScores are equal, prefer higher typeScore
             boolean betterMatch = finalScore > bestMatch.finalScore() ||
                     (finalScore == bestMatch.finalScore() && typeScore > bestMatch.typeScore());
-            
+
             if (betterMatch) {
-                boolean exactMatch = nameScore > EXACT_MATCH_THRESHOLD && typeScore > 0.9;
+                boolean exactMatch = nameScore > weightConfig.getAffiliationExactThreshold()
+                        && typeScore > weightConfig.getAffiliationTypeScoreThreshold();
                 bestMatch = new AffiliationMatch(nameScore, typeScore, finalScore, exactMatch);
             }
         }
@@ -166,14 +163,10 @@ public class AffiliationComparer {
         return bestMatch;
     }
 
-    /**
-     * Calculates name score using JaroWinkler similarity.
-     */
-    private static double calculateNameScore(String[] query, String[] index) {
+    private double calculateNameScore(String[] query, String[] index) {
         if (query == null || query.length == 0 || index == null || index.length == 0) {
             return 0.0;
         }
-        // Join tokens back into strings for JaroWinkler comparison
         String queryStr = String.join(" ", query);
         String indexStr = String.join(" ", index);
         return jaroWinkler.jaroWinkler(queryStr, indexStr);
@@ -186,17 +179,15 @@ public class AffiliationComparer {
      * @param matches List of affiliation matches
      * @return Final weighted score (0.0-1.0)
      */
-    public static double calculateFinalAffiliateScore(List<AffiliationMatch> matches) {
+    public double calculateFinalAffiliateScore(List<AffiliationMatch> matches) {
         if (matches == null || matches.isEmpty()) {
             return 0.0;
         }
 
-        // Calculate weighted average giving more weight to better matches
         double weightedSum = 0.0;
         double totalWeight = 0.0;
 
         for (AffiliationMatch match : matches) {
-            // Weight is the square of the score to emphasize better matches
             double weight = match.finalScore() * match.finalScore();
             weightedSum += match.finalScore() * weight;
             totalWeight += weight;

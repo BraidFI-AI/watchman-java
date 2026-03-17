@@ -432,7 +432,7 @@ public class TextNormalizer {
         }
         
         // Auto-detect language
-        LanguageDetector detector = new LanguageDetector();
+        LanguageDetector detector = new LanguageDetector(new io.moov.watchman.config.SimilarityConfig());
         String language = detector.detect(input);
         
         // Default to English if detection fails
@@ -464,7 +464,7 @@ public class TextNormalizer {
         }
         
         // Detect language from text
-        LanguageDetector detector = new LanguageDetector();
+        LanguageDetector detector = new LanguageDetector(new io.moov.watchman.config.SimilarityConfig());
         LanguageDetectionResult detection = detector.detectWithConfidence(input);
         
         String language;

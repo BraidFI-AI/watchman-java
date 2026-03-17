@@ -41,7 +41,10 @@ class Phase16ZoneOneCompletionIntegrationTest {
 
     @Autowired
     private EntityScorer scorer;
-    
+
+    @Autowired
+    private EntityTitleComparer entityTitleComparer;
+
     @Autowired
     private io.moov.watchman.config.WeightConfig weightConfig;
 
@@ -118,7 +121,7 @@ class Phase16ZoneOneCompletionIntegrationTest {
                 null, null, null, null, null  // identifying attributes
             );
 
-            ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
+            ScorePiece result = entityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
             assertTrue(result.getScore() > 0.9, "Matching titles should score > 0.9, got: " + result.getScore());
@@ -191,7 +194,7 @@ class Phase16ZoneOneCompletionIntegrationTest {
                 null, null, null, null, null  // identifying attributes
             );
 
-            ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
+            ScorePiece result = entityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
             assertTrue(result.getScore() > 0.7, "Similar business names should score > 0.7, got: " + result.getScore());
@@ -267,7 +270,7 @@ class Phase16ZoneOneCompletionIntegrationTest {
                 null, null, null, null, null  // identifying attributes
             );
 
-            ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
+            ScorePiece result = entityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
             assertTrue(result.getScore() < 0.5, "Different titles should score < 0.5, got: " + result.getScore());
@@ -343,7 +346,7 @@ class Phase16ZoneOneCompletionIntegrationTest {
                 null, null, null, null, null  // identifying attributes
             );
 
-            ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
+            ScorePiece result = entityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
             assertEquals(0.0, result.getScore());
@@ -420,7 +423,7 @@ class Phase16ZoneOneCompletionIntegrationTest {
                 null, null, null, null, null  // identifying attributes
             );
 
-            ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
+            ScorePiece result = entityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
             assertTrue(result.getScore() > 0.9, "Matching aircraft types should score > 0.9, got: " + result.getScore());
@@ -498,7 +501,7 @@ class Phase16ZoneOneCompletionIntegrationTest {
                 null, null, null, null, null  // identifying attributes
             );
 
-            ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
+            ScorePiece result = entityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
             if (result.getScore() > 0.5) {
@@ -577,7 +580,7 @@ class Phase16ZoneOneCompletionIntegrationTest {
                 null, null, null, null, null  // identifying attributes
             );
 
-            ScorePiece result = EntityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
+            ScorePiece result = entityTitleComparer.compareEntityTitlesFuzzy(query, index, 35.0);
 
             assertNotNull(result);
             if (result.getScore() > 0.99) {

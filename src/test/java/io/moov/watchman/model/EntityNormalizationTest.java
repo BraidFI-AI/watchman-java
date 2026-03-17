@@ -255,7 +255,7 @@ class EntityNormalizationTest {
         Entity entity = Entity.of("test-12", "Juan de la Rosa", EntityType.PERSON, SourceList.US_OFAC);
         
         // Mock language detector to return Spanish (since "Juan de la Rosa" may be too short for accurate detection)
-        LanguageDetector mockDetector = new LanguageDetector() {
+        LanguageDetector mockDetector = new LanguageDetector(new io.moov.watchman.config.SimilarityConfig()) {
             @Override
             public String detect(String text) {
                 return "es"; // Force Spanish detection
