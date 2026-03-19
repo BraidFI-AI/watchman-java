@@ -3,9 +3,10 @@ package io.moov.watchman.api.dto;
 import io.moov.watchman.config.WeightConfig;
 
 /**
- * DTO for WeightConfig - 20 business-level parameters (13 original + 7 BSA compliance thresholds).
+ * DTO for WeightConfig - 54 parameters across all migration phases.
  */
 public record WeightConfigDTO(
+    // Original 13
     double nameWeight,
     double addressWeight,
     double criticalIdWeight,
@@ -19,7 +20,7 @@ public record WeightConfigDTO(
     boolean cryptoComparisonEnabled,
     boolean contactComparisonEnabled,
     boolean dateComparisonEnabled,
-    // BSA compliance thresholds (previously hardcoded in EntityScorerImpl)
+    // BSA compliance thresholds Phase 1 (7)
     double aliasTieBreakerThreshold,
     double exactMatchCriticalIdThreshold,
     double exactMatchIdWeight,
@@ -27,7 +28,46 @@ public record WeightConfigDTO(
     double aliasScoreMultiplier,
     double aliasMinimumScore,
     double aliasBoostMaxScore,
-    double aliasBoostAmount
+    double aliasBoostAmount,
+    // Address field weights Phase 2 (7)
+    double addressLine1Weight,
+    double addressLine2Weight,
+    double addressCityWeight,
+    double addressStateWeight,
+    double addressPostalWeight,
+    double addressCountryWeight,
+    double addressHighConfidenceThreshold,
+    // Date comparison params Phase 2 (12)
+    double dateYearDecayRate,
+    double dateDistantYearScore,
+    double dateMonthTolerance1,
+    double dateMonthTolerance2,
+    double dateMonthTolerance3Plus,
+    double dateDayTolerance0to3Start,
+    double dateDayTolerance0to3Decay,
+    double dateDayTolerance4to7,
+    double dateDayTolerance8Plus,
+    double dateYearWeight,
+    double dateMonthWeight,
+    double dateDayWeight,
+    // SupportingInfo / Title thresholds Phase 3 (5)
+    double supportingInfoMatchedThreshold,
+    double supportingInfoExactThreshold,
+    double supportingInfoSecondaryPenalty,
+    double titleMatchedThreshold,
+    double titleExactThreshold,
+    // Affiliation / Name thresholds Phase 4 (4)
+    double affiliationNameThreshold,
+    double affiliationExactThreshold,
+    double affiliationTypeScoreThreshold,
+    double nameEarlyExitThreshold,
+    // Scorer address weights Phase 5 (3)
+    double scorerAddressCountryWeight,
+    double scorerAddressCityWeight,
+    double scorerAddressLineWeight,
+    // Alias selection Phase 6 (2)
+    double aliasSelectionTolerance,
+    double aliasCoverageMinScore
 ) {
     public static WeightConfigDTO from(WeightConfig config) {
         return new WeightConfigDTO(
@@ -51,7 +91,40 @@ public record WeightConfigDTO(
             config.getAliasScoreMultiplier(),
             config.getAliasMinimumScore(),
             config.getAliasBoostMaxScore(),
-            config.getAliasBoostAmount()
+            config.getAliasBoostAmount(),
+            config.getAddressLine1Weight(),
+            config.getAddressLine2Weight(),
+            config.getAddressCityWeight(),
+            config.getAddressStateWeight(),
+            config.getAddressPostalWeight(),
+            config.getAddressCountryWeight(),
+            config.getAddressHighConfidenceThreshold(),
+            config.getDateYearDecayRate(),
+            config.getDateDistantYearScore(),
+            config.getDateMonthTolerance1(),
+            config.getDateMonthTolerance2(),
+            config.getDateMonthTolerance3Plus(),
+            config.getDateDayTolerance0to3Start(),
+            config.getDateDayTolerance0to3Decay(),
+            config.getDateDayTolerance4to7(),
+            config.getDateDayTolerance8Plus(),
+            config.getDateYearWeight(),
+            config.getDateMonthWeight(),
+            config.getDateDayWeight(),
+            config.getSupportingInfoMatchedThreshold(),
+            config.getSupportingInfoExactThreshold(),
+            config.getSupportingInfoSecondaryPenalty(),
+            config.getTitleMatchedThreshold(),
+            config.getTitleExactThreshold(),
+            config.getAffiliationNameThreshold(),
+            config.getAffiliationExactThreshold(),
+            config.getAffiliationTypeScoreThreshold(),
+            config.getNameEarlyExitThreshold(),
+            config.getScorerAddressCountryWeight(),
+            config.getScorerAddressCityWeight(),
+            config.getScorerAddressLineWeight(),
+            config.getAliasSelectionTolerance(),
+            config.getAliasCoverageMinScore()
         );
     }
 }

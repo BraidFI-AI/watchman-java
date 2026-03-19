@@ -1,7 +1,11 @@
 # BSA Scoring Performance Analysis & Optimization Game Plan
 
-**Date**: February 26, 2026  
-**Context**: Performance regression from 41.9 → 11.40 names/sec (OFAC-only)  
+> **Historical document (February 26, 2026).** This analysis describes a performance regression that has since been resolved. Production throughput as of 2026-03-02 is **82.9 names/sec** (138% of the 60 names/sec target) on task `watchman-java:151`. See [performance_benchmark_report.md](../performance_benchmark_report.md) for current results and root cause.
+
+---
+
+**Date**: February 26, 2026
+**Context**: Performance regression from 41.9 → 11.40 names/sec (OFAC-only)
 **Root Cause**: BSA consultant scoring enhancements (3.68x slowdown)
 
 ---

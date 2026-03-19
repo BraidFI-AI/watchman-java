@@ -1,6 +1,10 @@
 # Test Coverage
 
-**Last Updated:** February 19, 2026  
+> **Historical snapshot (February 19, 2026).** Test counts and failure list reflect an earlier state of the codebase. The 13 known failures documented here have been resolved. Current authoritative compliance gate: R2 BSA validation suite (`R2EntityValidationTest`, `R2IndividualValidationTest`) passes 100/100 observations.
+
+---
+
+**Last Updated:** February 19, 2026
 **Status:** 1,117 tests across 178 test files (13 known failures as of Jan 2026)
 
 ## Summary

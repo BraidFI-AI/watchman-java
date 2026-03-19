@@ -29,25 +29,24 @@ watchman:
     uk-csl:
       url: https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv
   similarity:
-    jaro-winkler-boost-threshold: 0.8
-    jaro-winkler-prefix-size: 5
+    jaro-winkler-boost-threshold: 0.7
+    jaro-winkler-prefix-size: 4
     winkler-prefix-weight: 0.1
     minimum-token-length: 3
-    phonetic-length-difference-threshold: 0.15
-    short-token-ratio-threshold: 0.65
-    length-difference-penalty-weight: 0.4
-    length-difference-cutoff-factor: 0.85
-    different-letter-penalty-weight: 0.95
-    exact-match-favoritism: 0.1
-    unmatched-index-token-weight: 0.2
-    phonetic-filtering-disabled: true
-    keep-stopwords: true
-    log-stopword-debugging: true
-    # JaroWinkler query-coverage boost + LanguageDetector (Phase 6 migration - Mar 16, 2026)
-    query-coverage-quality-threshold: 0.95   # min tokenAvg to trigger coverage boost
-    query-coverage-boost-multiplier: 1.08    # multiplier when all tokens match at high quality
-    token-blend-weight: 0.6                  # weight for token-based score (full-string gets 1-this=0.4)
-    language-detection-min-confidence: 0.5   # below this confidence, default to English
+    phonetic-length-difference-threshold: 0.1
+    short-token-ratio-threshold: 0.6
+    length-difference-penalty-weight: 0.3
+    length-difference-cutoff-factor: 0.9
+    different-letter-penalty-weight: 0.9
+    exact-match-favoritism: 0.0
+    unmatched-index-token-weight: 0.15
+    phonetic-filtering-disabled: false
+    keep-stopwords: false
+    log-stopword-debugging: false
+    query-coverage-quality-threshold: 0.95
+    query-coverage-boost-multiplier: 1.08
+    token-blend-weight: 0.6
+    language-detection-min-confidence: 0.5
   search:
     alias-match-threshold: 0.75
     high-score-threshold: 0.95
@@ -78,45 +77,39 @@ watchman:
     crypto-comparison-enabled: true
     contact-comparison-enabled: true
     date-comparison-enabled: true
-    # Address field weights (from AddressComparer.java migration - Mar 6, 2026)
-    address-line1-weight: 5.0   # Primary address line (most important)
-    address-line2-weight: 2.0   # Secondary address info
-    address-city-weight: 4.0    # City (highly important)
-    address-state-weight: 2.0   # State/province
-    address-postal-weight: 3.0  # Postal code (strong verification)
-    address-country-weight: 4.0 # Country (critical for international)
-    address-high-confidence-threshold: 0.92  # Early exit optimization
-    # Date comparison weights (from DateComparer.java migration - Mar 6, 2026)
-    date-year-decay-rate: 0.1        # 10% penalty per year difference
-    date-distant-year-score: 0.2     # Floor score for >5 year difference
-    date-month-tolerance1: 0.9       # Score for ±1 month difference
-    date-month-tolerance2: 0.7       # Score for month 1 vs 10/11/12 typo
-    date-month-tolerance3-plus: 0.3  # Default month score
-    date-day-tolerance0to3-start: 0.95  # Starting score for ±3 day tolerance
-    date-day-tolerance0to3-decay: 0.05  # Decay rate within ±3 days
-    date-day-tolerance4to7: 0.7      # Score for similar day patterns (1 vs 11)
-    date-day-tolerance8-plus: 0.3    # Default day score
-    date-year-weight: 0.4            # Year component weight (40%)
-    date-month-weight: 0.3           # Month component weight (30%)
-    date-day-weight: 0.3             # Day component weight (30%)
-    # SupportingInfo + Title thresholds (Phase 3 migration - Mar 16, 2026)
-    supporting-info-matched-threshold: 0.5   # avgScore > this → matched=true
-    supporting-info-exact-threshold: 0.99    # avgScore > this → exact=true
-    supporting-info-secondary-penalty: 0.8   # multiplier when secondary sanctions status differs
-    title-matched-threshold: 0.5             # bestScore > this → matched=true
-    title-exact-threshold: 0.99              # bestScore > this → exact=true
-    # Affiliation + Name thresholds (Phase 4 migration - Mar 16, 2026)
-    affiliation-name-threshold: 0.85         # finalScore > this → matched=true
-    affiliation-exact-threshold: 0.95        # nameScore > this AND typeScore > type-threshold → exact=true
-    affiliation-type-score-threshold: 0.9    # min typeScore for exact affiliation match
-    name-early-exit-threshold: 0.4           # names below this skip expensive comparisons
-    # EntityScorerImpl.compareAddress() weights (Phase 5 migration - Mar 16, 2026)
-    scorer-address-country-weight: 0.3       # country exact match contribution (sum: 0.3+0.3+0.4=1.0)
-    scorer-address-city-weight: 0.3          # city JaroWinkler contribution
-    scorer-address-line-weight: 0.4          # street line1 tokenized contribution
-    # Alias selection (Phase 6 migration - Mar 16, 2026)
-    alias-selection-tolerance: 0.05          # score delta within which coverage-based selection applies
-    alias-coverage-min-score: 0.45           # minimum score to apply coverage-based alias selection
+    address-line1-weight: 5.0
+    address-line2-weight: 2.0
+    address-city-weight: 4.0
+    address-state-weight: 2.0
+    address-postal-weight: 3.0
+    address-country-weight: 4.0
+    address-high-confidence-threshold: 0.92
+    date-year-decay-rate: 0.1
+    date-distant-year-score: 0.2
+    date-month-tolerance1: 0.9
+    date-month-tolerance2: 0.7
+    date-month-tolerance3-plus: 0.3
+    date-day-tolerance0to3-start: 0.95
+    date-day-tolerance0to3-decay: 0.05
+    date-day-tolerance4to7: 0.7
+    date-day-tolerance8-plus: 0.3
+    date-year-weight: 0.4
+    date-month-weight: 0.3
+    date-day-weight: 0.3
+    supporting-info-matched-threshold: 0.5
+    supporting-info-exact-threshold: 0.99
+    supporting-info-secondary-penalty: 0.8
+    title-matched-threshold: 0.5
+    title-exact-threshold: 0.99
+    affiliation-name-threshold: 0.85
+    affiliation-exact-threshold: 0.95
+    affiliation-type-score-threshold: 0.9
+    name-early-exit-threshold: 0.4
+    scorer-address-country-weight: 0.3
+    scorer-address-city-weight: 0.3
+    scorer-address-line-weight: 0.4
+    alias-selection-tolerance: 0.05
+    alias-coverage-min-score: 0.45
   auto-clearance:
     phase1-threshold: 0.85
     address-mismatch-threshold: 0.5

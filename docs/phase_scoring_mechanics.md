@@ -222,8 +222,10 @@ Prevents weak matches like "Smith" (S) vs "Jones" (J) from getting any score.
 ```yaml
 watchman:
   similarity:
-    phonetic-filtering-disabled: false  # default: false (filtering enabled)
+    phonetic-filtering-disabled: true  # current default: true (filtering DISABLED in production)
 ```
+
+**Note:** Phonetic filtering is disabled in the current `application.yml`. Set to `false` to re-enable.
 
 **Example**:
 ```
@@ -320,8 +322,8 @@ watchman:
     name-weight: 35  # Weight in final score calculation
     name-comparison-enabled: true  # Enable/disable this phase
   similarity:
-    length-difference-penalty-weight: 0.3      # Penalty for length mismatch
-    unmatched-index-token-weight: 0.15         # Penalty for unmatched tokens
+    length-difference-penalty-weight: 0.4      # Penalty for length mismatch
+    unmatched-index-token-weight: 0.2          # Penalty for unmatched tokens
 ```
 
 **Score range**: 0.0 to 1.0
@@ -672,29 +674,38 @@ watchman:
 double score = 0.0;
 int fields = 0;
 
-// Country (30% weight)
+// Country (configurable weight, default 0.3)
 if (both have country) {
     fields++;
     if (normalizedCountry1.equals(normalizedCountry2)) {
-        score += 0.3;
+        score += weightConfig.getScorerAddressCountryWeight();
     }
 }
 
-// City (30% weight)
+// City (configurable weight, default 0.3)
 if (both have city) {
     fields++;
     double cityScore = jaroWinkler(city1, city2);
-    score += cityScore × 0.3;
+    score += cityScore * weightConfig.getScorerAddressCityWeight();
 }
 
-// Street (40% weight)
+// Street (configurable weight, default 0.4)
 if (both have line1) {
     fields++;
     double lineScore = tokenizedSimilarity(line1, line2);
-    score += lineScore × 0.4;
+    score += lineScore * weightConfig.getScorerAddressLineWeight();
 }
 
 return fields > 0 ? min(1.0, score) : 0.0;
+```
+
+**Configuration** (migrated to YAML in Phase 5, March 2026):
+```yaml
+watchman:
+  weights:
+    scorer-address-country-weight: 0.3
+    scorer-address-city-weight: 0.3
+    scorer-address-line-weight: 0.4
 ```
 
 **Score range**: 0.0 to 1.0 (fuzzy matching)
@@ -735,35 +746,22 @@ Final score impact:
 
 **Purpose**: Birth date validation
 
-**What it does**:
+**What it does** (current behavior in scoring pipeline):
 - **Person entities only**: Only compares dates if both entities are PERSON type
-- **Birth date exact match**: Uses LocalDate.equals() for comparison
-- **No fuzzy matching**: Must match exactly (year, month, day)
+- **Birth date exact match**: Uses `LocalDate.equals()` — must match exactly (year, month, day)
 - **Returns 0.0 if missing**: If either entity lacks birth date, returns 0.0
-- **No transposition detection**: Currently does not detect day/month swaps (01/02 vs 02/01)
 
 **Impact on score**: MINOR (default weight 15)
 
 Used as supplementary validation, not primary matching.
 
-**When it runs**: 
+**When it runs**:
 - Only if both are person entities with birth dates
-- Called from [EntityScorerImpl.compareDates()](../src/main/java/io/moov/watchman/search/EntityScorerImpl.java#L396-L406)
+- Called from [EntityScorerImpl.compareDates()](../src/main/java/io/moov/watchman/search/EntityScorerImpl.java#L804-L814)
 
-**Implementation classes**:
-- [EntityScorerImpl.compareDates()](../src/main/java/io/moov/watchman/search/EntityScorerImpl.java#L396-L406) - Date comparison logic
-- Uses Java's LocalDate.equals() for exact matching
-
-**Configuration**:
-```yaml
-watchman:
-  weights:
-    supporting-info-weight: 15  # Weight in final score
-    date-comparison-enabled: true  # Enable/disable this phase
-```
-
-**Algorithm**:
+**Implementation** (what the scorer actually uses):
 ```java
+// EntityScorerImpl.compareDates() — exact match only
 if (query.person() != null && index.person() != null) {
     LocalDate queryDob = query.person().birthDate();
     LocalDate indexDob = index.person().birthDate();
@@ -774,7 +772,23 @@ if (query.person() != null && index.person() != null) {
 return 0.0;
 ```
 
-**Future enhancement**: Could detect transposition (01/02 vs 02/01) but currently doesn't.
+**Configuration**:
+```yaml
+watchman:
+  weights:
+    supporting-info-weight: 15  # Weight in final score
+    date-comparison-enabled: true  # Enable/disable this phase
+```
+
+**DateComparer bean (not yet wired into scorer)**:
+[DateComparer.java](../src/main/java/io/moov/watchman/scorer/DateComparer.java) is a `@Component` with full fuzzy date scoring migrated to YAML config (Phase 2, March 2026). It implements:
+- Year scoring with configurable decay rate (±5 year tolerance)
+- Month tolerance (±1 month, special case for month 1 vs 10/11/12 transposition)
+- Day tolerance (±3 days with decay, digit pattern detection: 1↔11, 12↔21)
+- Person, business, org, and asset date comparison variants
+- Birth/death logic validation (lifespan ratio check)
+
+`EntityScorerImpl.compareDates()` does **not** inject or call `DateComparer`. The 11 date-related YAML parameters under `watchman.weights` are consumed by `DateComparer` but have no effect on the main scoring pipeline until `EntityScorerImpl` is wired to use it.
 
 **Example**:
 ```
@@ -817,11 +831,18 @@ Final impact:
 **What it does**:
 Weighted average formula with two modes:
 
-**Mode 1: Exact Match Mode** (if govId/crypto/contact ≥ 0.99)
+**Mode 1: Exact Match Mode** (if govId/crypto/contact ≥ `exact-match-threshold`, default 0.99)
 ```java
-finalScore = 0.7 + (bestNameScore × 0.3)
+finalScore = exactMatchIdWeight + (bestNameScore × exactMatchNameWeight)
+// defaults: 0.7 + (bestNameScore × 0.3)
 ```
-This ensures exact ID matches score at least 0.70, even with weak name match.
+This ensures exact ID matches score at least 0.70, even with weak name match. Both weights are configurable:
+```yaml
+watchman:
+  weights:
+    exact-match-id-weight: 0.7
+    exact-match-name-weight: 0.3
+```
 
 **Mode 2: Normal Weighted Scoring**
 ```java
@@ -901,7 +922,26 @@ if (dateScore > 0) {
     totalWeight += supportingInfoWeight;
 }
 
-return totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+double rawScore = totalWeight > 0 ? weightedSum / totalWeight : 0.0;
+
+// Alias boost (name-only searches): if alias scored > nameScore × aliasScoreMultiplier
+// AND alias > aliasMinimumScore AND no other factors AND rawScore < aliasBoostMaxScore,
+// add aliasBoostAmount to push alias-matched entities into the result window.
+boolean matchedViaAlias = altNameScore > nameScore * aliasScoreMultiplier
+    && altNameScore > aliasMinimumScore;
+boolean nameOnlyMatch = govId == 0 && crypto == 0 && contact == 0 && address == 0 && date == 0;
+if (matchedViaAlias && nameOnlyMatch && rawScore < aliasBoostMaxScore) {
+    return rawScore + aliasBoostAmount;
+}
+return rawScore;
+```
+
+**Alias boost configuration** (all parameters in `watchman.weights`):
+```yaml
+alias-score-multiplier: 1.2       # alias must beat nameScore × this to qualify
+alias-minimum-score: 0.45         # alias floor for boost to apply
+alias-boost-max-score: 0.88       # cap — only boost if rawScore is below this
+alias-boost-amount: 0.5           # amount added when boost applies
 ```
 
 **Example 1 - Name-only search**:
@@ -982,7 +1022,7 @@ This is a post-processing filter, not part of scoring calculation.
 
 **Configurable**: 
 - Per-request via `?minMatch=0.75` query parameter
-- Default via application.yml `watchman.weights.minimum-score: 0.88`
+- Default via application.yml `watchman.weights.minimum-score: 0.0` (no filtering by default — results filtered by per-request `minMatch`)
 - Admin UI runtime configuration (resets on restart)
 
 **Implementation classes**:
@@ -1099,7 +1139,7 @@ watchman:
     phonetic-filtering-disabled: false
 ```
 
-Threshold filtering:
+Threshold filtering (default 0.0 — pass explicit value per request):
 ```
 GET /v1/search?name=...&minMatch=0.88
 ```

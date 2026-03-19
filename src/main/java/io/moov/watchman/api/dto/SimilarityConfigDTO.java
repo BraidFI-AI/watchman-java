@@ -3,9 +3,10 @@ package io.moov.watchman.api.dto;
 import io.moov.watchman.config.SimilarityConfig;
 
 /**
- * DTO for SimilarityConfig - 12 algorithm parameters (10 original + 2 BSA compliance thresholds).
+ * DTO for SimilarityConfig - 18 algorithm parameters.
  */
 public record SimilarityConfigDTO(
+    // Original 10
     double jaroWinklerBoostThreshold,
     int jaroWinklerPrefixSize,
     double lengthDifferencePenaltyWeight,
@@ -16,9 +17,16 @@ public record SimilarityConfigDTO(
     boolean phoneticFilteringDisabled,
     boolean keepStopwords,
     boolean logStopwordDebugging,
-    // BSA compliance thresholds (previously hardcoded in JaroWinklerSimilarity)
+    // BSA compliance thresholds (Phase 1)
     double phoneticLengthDifferenceThreshold,
-    double shortTokenRatioThreshold
+    double shortTokenRatioThreshold,
+    // Phase 2-6 additions
+    double winklerPrefixWeight,
+    int minimumTokenLength,
+    double queryCoverageQualityThreshold,
+    double queryCoverageBoostMultiplier,
+    double tokenBlendWeight,
+    double languageDetectionMinConfidence
 ) {
     public static SimilarityConfigDTO from(SimilarityConfig config) {
         return new SimilarityConfigDTO(
@@ -33,7 +41,13 @@ public record SimilarityConfigDTO(
             config.isKeepStopwords(),
             config.isLogStopwordDebugging(),
             config.getPhoneticLengthDifferenceThreshold(),
-            config.getShortTokenRatioThreshold()
+            config.getShortTokenRatioThreshold(),
+            config.getWinklerPrefixWeight(),
+            config.getMinimumTokenLength(),
+            config.getQueryCoverageQualityThreshold(),
+            config.getQueryCoverageBoostMultiplier(),
+            config.getTokenBlendWeight(),
+            config.getLanguageDetectionMinConfidence()
         );
     }
 }

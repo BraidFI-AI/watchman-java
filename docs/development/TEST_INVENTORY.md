@@ -1,7 +1,11 @@
 # Watchman-Java Test Inventory
 ## Post BSA Compliance Threshold Migration Analysis
 
-**Date**: February 26, 2026  
+> **Historical snapshot (February 26, 2026).** This inventory documents test state after the initial 9-threshold YAML migration. The YAML migration was subsequently completed across all 6 phases (38 additional parameters), and all known failures documented here have been resolved. Current authoritative test state: R2 BSA validation suite passes 100/100 (51 BSA-audited cases). The test counts in this document are stale.
+
+---
+
+**Date**: February 26, 2026
 **Context**: After migrating 9 BSA compliance thresholds from hardcoded values to YAML config
 
 ---

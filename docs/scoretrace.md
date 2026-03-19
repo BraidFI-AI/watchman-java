@@ -13,9 +13,9 @@ Opt-in scoring observability system capturing phase-by-phase scoring decisions. 
 
 ## Design notes
 **Key classes:**
-- src/main/java/io/moov/watchman/scoring/context/ScoringContext.java
-- src/main/java/io/moov/watchman/scoring/EntityScorer.java
-- src/main/java/io/moov/watchman/api/reports/TraceSummaryService.java
+- src/main/java/io/moov/watchman/trace/ScoringContext.java
+- src/main/java/io/moov/watchman/search/EntityScorerImpl.java
+- src/main/java/io/moov/watchman/report/TraceSummaryService.java
 
 **10 phases currently traced (of 12 total lifecycle phases):**
 1. NORMALIZATION - Text cleanup and preparation

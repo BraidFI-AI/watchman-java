@@ -34,7 +34,7 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/health
 ```json
 {
   "status": "UP",
-  "ofacEntitiesLoaded": 18511,
+  "ofacEntitiesLoaded": 49955,
   "timestamp": "2026-01-22T12:00:00Z"
 }
 ```
@@ -74,7 +74,7 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/listinfo
       "lastUpdated": "2026-01-22T08:00:00Z"
     }
   ],
-  "totalEntities": 18511
+  "totalEntities": 49955
 }
 ```
 
@@ -404,7 +404,7 @@ curl -X POST http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/
 ```json
 {
   "status": "SUCCESS",
-  "entitiesLoaded": 18511,
+  "entitiesLoaded": 49955,
   "durationMs": 2453,
   "timestamp": "2026-01-22T12:00:00Z",
   "message": "Data refresh completed successfully"
@@ -427,7 +427,7 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/data/sta
 {
   "lastDownload": "2026-01-22T08:00:00Z",
   "lastRefresh": "2026-01-22T08:05:00Z",
-  "entitiesLoaded": 18511,
+  "entitiesLoaded": 49955,
   "dataSource": "https://www.treasury.gov/ofac/downloads/sdn.xml",
   "status": "UP_TO_DATE"
 }
@@ -466,7 +466,7 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/v1/data/sta
 
 **📚 Deep Dive Documentation:**
 - **[ScoreTrace Technical Guide](scoretrace.md)** - Architecture, 9-phase system, performance analysis
-- **[ScoreConfig Reference](scoreconfig.md)** - 10 tunable parameters controlling Jaro-Winkler algorithm
+- **[ScoreConfig Reference](scoreconfig.md)** - 82 configurable parameters across 4 config classes (SimilarityConfig, WeightConfig, SearchConfig, AutoClearanceConfig)
 
 ---
 
@@ -545,7 +545,7 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/api/reports
 {
   "sessionId": "trace-abc-123",
   "query": "Nicolas Maduro",
-  "totalCandidates": 18511,
+  "totalCandidates": 49955,
   "topMatches": 1,
   "processingTimeMs": 45,
   "breakdown": {
@@ -603,7 +603,7 @@ curl http://watchman-java-alb-1239419410.us-east-1.elb.amazonaws.com/api/reports
 4. **Audit preparation**: Re-run flagged matches with `trace=true`, save HTML reports
 
 **📚 Related Documentation:**
-- **[ScoreConfig Parameters](scoreconfig.md)** - 10 tunable parameters (Jaro-Winkler threshold, length penalties, phonetic filtering)
+- **[ScoreConfig Parameters](scoreconfig.md)** - 82 configurable parameters (similarity, weights, search, auto-clearance)
 - **[ScoreTrace Architecture](scoretrace.md)** - 9-phase system, zero-overhead design, performance benchmarks
 
 **Trace Scenarios:**

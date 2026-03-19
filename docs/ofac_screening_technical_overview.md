@@ -1,7 +1,5 @@
 # OFAC Screening Technical Overview for BSA/AML Compliance
 
-**Document Version:** 1.1  
-**Last Updated:** February 15, 2026  
 **Audience:** BSA Officers, AML Compliance Examiners, Risk Management Teams
 
 ---

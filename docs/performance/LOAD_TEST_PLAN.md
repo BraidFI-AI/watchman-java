@@ -1,8 +1,12 @@
 # Load Test Plan - Production Simulation Performance Validation
 
-**Date**: February 25, 2026  
-**Objective**: Validate application performance vs Portage (current system) using production simulation  
-**Status**: Ready to execute - **PENDING PORTAGE BASELINE METRICS**
+> **Historical document (February 25, 2026).** Load testing was completed on 2026-03-02. The Portage baseline comparison was not obtained; acceptance was evaluated against the internal 60 names/sec target instead. Result: **82.9 names/sec sustained, 0% errors across 10,000 names**. See [performance_benchmark_report.md](../performance_benchmark_report.md) for full results.
+
+---
+
+**Date**: February 25, 2026
+**Objective**: Validate application performance vs Portage (current system) using production simulation
+**Status**: Completed — see performance_benchmark_report.md
 
 ---
 

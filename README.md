@@ -169,7 +169,7 @@ src/main/java/io/moov/watchman/
 - **Maven** for build tool
 - **JUnit 5** + AssertJ + Mockito for testing
 
-**Go Parity:** Watchman Java maintains API compatibility with the original [Moov Watchman (Go)](https://github.com/moov-io/watchman) while adding BSA-enhanced scoring and batch processing. See [`docs/go_java_comparison_procedure.md`](docs/go_java_comparison_procedure.md) for detailed port mapping.
+**Go Parity:** Watchman Java maintains API compatibility with the original [Moov Watchman (Go)](https://github.com/moov-io/watchman) while adding BSA-enhanced scoring and batch processing.
 
 ---
 
@@ -205,8 +205,7 @@ src/test/java/io/moov/watchman/  # ~1100 tests
 | [api_spec.md](docs/api_spec.md) | Complete API reference |
 | [aws_deployment.md](docs/aws_deployment.md) | AWS ECS deployment guide |
 | [test_coverage.md](docs/test_coverage.md) | Test documentation |
-| [go_java_comparison_procedure.md](docs/go_java_comparison_procedure.md) | Feature parity methodology |
-| [Agent Instructions](docs/development/agent-context.md) | AI coding agent guidance |
+| [Agent Instructions](.claude/context.md) | AI coding agent guidance |
 
 ---
 

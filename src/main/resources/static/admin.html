@@ -610,6 +610,7 @@
             <div class="sub-tabs">
                 <button class="sub-tab active" onclick="showConfigSubTab('similarity', event)">📐 Similarity</button>
                 <button class="sub-tab" onclick="showConfigSubTab('weights', event)">⚖️ Weights</button>
+                <button class="sub-tab" onclick="showConfigSubTab('search', event)">🔍 Search</button>
                 <button class="sub-tab" onclick="showConfigSubTab('auto-clearance', event)">✅ Auto-Clearance</button>
             </div>
             
@@ -678,13 +679,47 @@
                             <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Ratio to identify short-code entities (e.g., "CK ID CO" or "LLC")</p>
                         </div>
                     </div>
+                    <div style="background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #a855f7;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #581c87; font-weight: 700;">🔧 Algorithm Tuning</h4>
+                        <p style="font-size: 12px; color: #6b21a8; margin-bottom: 15px;">Advanced scoring blend and language detection parameters</p>
+                        <div class="form-group">
+                            <label>Winkler Prefix Weight</label>
+                            <input type="number" id="winklerPrefixWeight" step="0.01" min="0" max="0.25">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Weight applied to common prefix in Jaro-Winkler: jaro + (prefix × weight × (1 − jaro)). Default: 0.1</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Token Length</label>
+                            <input type="number" id="minimumTokenLength" step="1" min="1" max="10">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Tokens shorter than this are combined with neighbors (prevents matching on "AL-", "ABU-"). Default: 3</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Query Coverage Quality Threshold</label>
+                            <input type="number" id="queryCoverageQualityThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum average token score to trigger query-coverage boost. Default: 0.95</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Query Coverage Boost Multiplier</label>
+                            <input type="number" id="queryCoverageBoostMultiplier" step="0.01" min="1" max="2">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Multiplier when all tokens match with high quality. Default: 1.08</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Token Blend Weight</label>
+                            <input type="number" id="tokenBlendWeight" step="0.05" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Weight of token-based score in token/full-string blend. Full-string weight = 1 − this. Default: 0.6</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Language Detection Min Confidence</label>
+                            <input type="number" id="languageDetectionMinConfidence" step="0.05" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Below this confidence, defaults to English. Default: 0.5</p>
+                        </div>
+                    </div>
                     <div class="actions">
                         <button class="btn btn-primary" onclick="saveSimilarityConfig()">Save Similarity Configuration</button>
                         <button class="btn btn-secondary" onclick="loadConfig()">Reload</button>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Weights Sub-tab -->
             <div id="weights-config" class="sub-tab-content">
                 <div class="config-section">
@@ -758,6 +793,190 @@
                             <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Score increase when entity matched via alias</p>
                         </div>
                     </div>
+                    <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f97316;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #7c2d12; font-weight: 700;">📍 Address Field Weights (AddressComparer)</h4>
+                        <p style="font-size: 12px; color: #9a3412; margin-bottom: 15px;">Per-field weights used when scoring address similarity</p>
+                        <div class="form-group">
+                            <label>Line 1 Weight</label>
+                            <input type="number" id="addressLine1Weight" step="0.5" min="0">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Primary street address line. Default: 5.0</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Line 2 Weight</label>
+                            <input type="number" id="addressLine2Weight" step="0.5" min="0">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Secondary address line (apt, suite). Default: 2.0</p>
+                        </div>
+                        <div class="form-group">
+                            <label>City Weight</label>
+                            <input type="number" id="addressCityWeight" step="0.5" min="0">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 4.0</p>
+                        </div>
+                        <div class="form-group">
+                            <label>State Weight</label>
+                            <input type="number" id="addressStateWeight" step="0.5" min="0">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 2.0</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Postal Code Weight</label>
+                            <input type="number" id="addressPostalWeight" step="0.5" min="0">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 3.0</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Country Weight</label>
+                            <input type="number" id="addressCountryWeight" step="0.5" min="0">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 4.0</p>
+                        </div>
+                        <div class="form-group">
+                            <label>High Confidence Threshold</label>
+                            <input type="number" id="addressHighConfidenceThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Early exit when address score ≥ this value. Default: 0.92</p>
+                        </div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+                        <h4 style="margin: 0 0 6px 0; font-size: 16px; color: #1e3a8a; font-weight: 700;">🗓️ Date Comparison Parameters (DateComparer)</h4>
+                        <p style="font-size: 12px; color: #1e40af; margin-bottom: 4px;">⚠️ <strong>Note:</strong> DateComparer bean is not wired into EntityScorerImpl. These values are stored in YAML but have no effect on live scoring until DateComparer is integrated.</p>
+                        <p style="font-size: 12px; color: #1e40af; margin-bottom: 15px;">Year, month, and day tolerance scoring for fuzzy date matching.</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+                            <div class="form-group">
+                                <label>Year Decay Rate</label>
+                                <input type="number" id="dateYearDecayRate" step="0.01" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Penalty per year difference (≤5 yrs). Default: 0.1</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Distant Year Score</label>
+                                <input type="number" id="dateDistantYearScore" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Floor for &gt;5 year difference. Default: 0.2</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Month Tolerance ±1</label>
+                                <input type="number" id="dateMonthTolerance1" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.9</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Month Tolerance (typo case)</label>
+                                <input type="number" id="dateMonthTolerance2" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Month 1 vs 10/11/12 typo. Default: 0.7</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Month Tolerance 3+</label>
+                                <input type="number" id="dateMonthTolerance3Plus" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.3</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Day 0–3 Start Score</label>
+                                <input type="number" id="dateDayTolerance0to3Start" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.95</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Day 0–3 Decay</label>
+                                <input type="number" id="dateDayTolerance0to3Decay" step="0.01" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.05</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Day 4–7 Score</label>
+                                <input type="number" id="dateDayTolerance4to7" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.7</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Day 8+ Score</label>
+                                <input type="number" id="dateDayTolerance8Plus" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.3</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Year Component Weight</label>
+                                <input type="number" id="dateYearWeight" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Should sum to 1.0 with month + day. Default: 0.4</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Month Component Weight</label>
+                                <input type="number" id="dateMonthWeight" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.3</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Day Component Weight</label>
+                                <input type="number" id="dateDayWeight" step="0.05" min="0" max="1">
+                                <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.3</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #22c55e;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #14532d; font-weight: 700;">📋 Supporting Info, Title &amp; Affiliation</h4>
+                        <p style="font-size: 12px; color: #166534; margin-bottom: 15px;">Thresholds for secondary data comparison phases</p>
+                        <div class="form-group">
+                            <label>Supporting Info Matched Threshold</label>
+                            <input type="number" id="supportingInfoMatchedThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum average score to count as matched. Default: 0.5</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Supporting Info Exact Threshold</label>
+                            <input type="number" id="supportingInfoExactThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum score for exact match. Default: 0.99</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Secondary Sanctions Penalty</label>
+                            <input type="number" id="supportingInfoSecondaryPenalty" step="0.05" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Multiplier when secondary sanctions status differs. Default: 0.8</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Title Matched Threshold</label>
+                            <input type="number" id="titleMatchedThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.5</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Title Exact Threshold</label>
+                            <input type="number" id="titleExactThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.99</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Affiliation Name Threshold</label>
+                            <input type="number" id="affiliationNameThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum name score for affiliation match. Default: 0.85</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Affiliation Exact Threshold</label>
+                            <input type="number" id="affiliationExactThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.95</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Affiliation Type Score Threshold</label>
+                            <input type="number" id="affiliationTypeScoreThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum type score for exact affiliation marking. Default: 0.9</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Name Early Exit Threshold</label>
+                            <input type="number" id="nameEarlyExitThreshold" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Names scoring below this skip expensive field comparisons. Default: 0.4</p>
+                        </div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #eab308;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #713f12; font-weight: 700;">🗺️ Scorer Address Weights &amp; Alias Selection</h4>
+                        <p style="font-size: 12px; color: #854d0e; margin-bottom: 15px;">Weights used in EntityScorerImpl.compareAddress() and alias selection tolerance</p>
+                        <div class="form-group">
+                            <label>Scorer Country Weight</label>
+                            <input type="number" id="scorerAddressCountryWeight" step="0.05" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Country weight in EntityScorerImpl.compareAddress(). Default: 0.3</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Scorer City Weight</label>
+                            <input type="number" id="scorerAddressCityWeight" step="0.05" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.3</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Scorer Street Line Weight</label>
+                            <input type="number" id="scorerAddressLineWeight" step="0.05" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Default: 0.4 (should sum to 1.0 with country + city)</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Alias Selection Tolerance</label>
+                            <input type="number" id="aliasSelectionTolerance" step="0.01" min="0" max="0.2">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Score delta within which alias coverage beats raw score. Default: 0.05</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Alias Coverage Min Score</label>
+                            <input type="number" id="aliasCoverageMinScore" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Minimum score for coverage-based alias selection. Default: 0.45</p>
+                        </div>
+                    </div>
                     <h4 style="margin: 15px 0 10px 0; font-size: 14px;">Phase Toggles</h4>
                     <div class="form-group">
                         <label class="checkbox-label">
@@ -808,6 +1027,57 @@
                 </div>
             </div>
             
+            <!-- Search Sub-tab -->
+            <div id="search-config" class="sub-tab-content">
+                <div class="config-section">
+                    <h3>Search Filtering Parameters</h3>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Controls match sensitivity and precision. Previously hardcoded in SearchServiceImpl — now fully configurable for BSA/AML tuning.</p>
+                    <div class="form-group">
+                        <label>Alias Match Threshold</label>
+                        <input type="number" id="aliasMatchThreshold" step="0.01" min="0" max="1">
+                        <small style="font-size: 11px; color: #666;">Entities matched via alias use this lower threshold for better sensitivity (BSA: AL-QAIDA SYRIA case). Default: 0.75</small>
+                    </div>
+                    <div class="form-group">
+                        <label>High Score Threshold</label>
+                        <input type="number" id="highScoreThreshold" step="0.01" min="0" max="1">
+                        <small style="font-size: 11px; color: #666;">Scores ≥ this with 3+ tokens require minimum token coverage (prevents false positives from single-token matches). Default: 0.95</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Token Coverage Minimum</label>
+                        <input type="number" id="tokenCoverageMinimum" step="0.05" min="0" max="1">
+                        <small style="font-size: 11px; color: #666;">Minimum fraction of query tokens that must match in result (0.40 = 40%). Default: 0.40</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Multi-Token Query Threshold</label>
+                        <input type="number" id="multiTokenQueryThreshold" step="1" min="1" max="10">
+                        <small style="font-size: 11px; color: #666;">Apply token coverage filter only when query has ≥ this many tokens. Default: 3</small>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 16px; color: #0c4a6e; font-weight: 700;">📏 OFAC Parity Threshold Adjustment</h4>
+                        <p style="font-size: 12px; color: #075985; margin-bottom: 15px;">Short queries use a relaxed threshold to match OFAC.gov portal sensitivity. When caller threshold is in [min, max] and query is short (≤ shortQueryTokenThreshold tokens), threshold is adjusted down.</p>
+                        <div class="form-group">
+                            <label>Normal Threshold Max</label>
+                            <input type="number" id="normalThresholdMax" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Upper bound of the "normal" threshold range. Default: 0.88</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Normal Threshold Min</label>
+                            <input type="number" id="normalThresholdMin" step="0.01" min="0" max="1">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Lower bound of the "normal" threshold range. Default: 0.75</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Short Query Token Threshold</label>
+                            <input type="number" id="shortQueryTokenThreshold" step="1" min="1" max="5">
+                            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Queries with ≤ this many tokens are considered "short" (e.g., "Muhammad Ali" = 2 tokens). Default: 2</p>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="saveSearchConfig()">Save Search Configuration</button>
+                        <button class="btn btn-secondary" onclick="loadConfig()">Reload</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Auto-Clearance Sub-tab -->
             <div id="auto-clearance-config" class="sub-tab-content">
                 <div class="config-section">
@@ -1657,6 +1927,16 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                     }
                 });
                 
+                // Populate search fields
+                if (data.search) {
+                    Object.keys(data.search).forEach(key => {
+                        const el = document.getElementById(key);
+                        if (el) {
+                            el.value = data.search[key];
+                        }
+                    });
+                }
+
                 // Populate auto-clearance fields
                 Object.keys(data.autoClearance).forEach(key => {
                     const el = document.getElementById(key);
@@ -1739,7 +2019,13 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 keepStopwords: document.getElementById('keepStopwords').checked,
                 logStopwordDebugging: document.getElementById('logStopwordDebugging').checked,
                 phoneticLengthDifferenceThreshold: parseFloat(document.getElementById('phoneticLengthDifferenceThreshold').value),
-                shortTokenRatioThreshold: parseFloat(document.getElementById('shortTokenRatioThreshold').value)
+                shortTokenRatioThreshold: parseFloat(document.getElementById('shortTokenRatioThreshold').value),
+                winklerPrefixWeight: parseFloat(document.getElementById('winklerPrefixWeight').value),
+                minimumTokenLength: parseInt(document.getElementById('minimumTokenLength').value),
+                queryCoverageQualityThreshold: parseFloat(document.getElementById('queryCoverageQualityThreshold').value),
+                queryCoverageBoostMultiplier: parseFloat(document.getElementById('queryCoverageBoostMultiplier').value),
+                tokenBlendWeight: parseFloat(document.getElementById('tokenBlendWeight').value),
+                languageDetectionMinConfidence: parseFloat(document.getElementById('languageDetectionMinConfidence').value)
             };
             
             try {
@@ -1784,9 +2070,42 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 aliasScoreMultiplier: parseFloat(document.getElementById('aliasScoreMultiplier').value),
                 aliasMinimumScore: parseFloat(document.getElementById('aliasMinimumScore').value),
                 aliasBoostMaxScore: parseFloat(document.getElementById('aliasBoostMaxScore').value),
-                aliasBoostAmount: parseFloat(document.getElementById('aliasBoostAmount').value)
+                aliasBoostAmount: parseFloat(document.getElementById('aliasBoostAmount').value),
+                addressLine1Weight: parseFloat(document.getElementById('addressLine1Weight').value),
+                addressLine2Weight: parseFloat(document.getElementById('addressLine2Weight').value),
+                addressCityWeight: parseFloat(document.getElementById('addressCityWeight').value),
+                addressStateWeight: parseFloat(document.getElementById('addressStateWeight').value),
+                addressPostalWeight: parseFloat(document.getElementById('addressPostalWeight').value),
+                addressCountryWeight: parseFloat(document.getElementById('addressCountryWeight').value),
+                addressHighConfidenceThreshold: parseFloat(document.getElementById('addressHighConfidenceThreshold').value),
+                dateYearDecayRate: parseFloat(document.getElementById('dateYearDecayRate').value),
+                dateDistantYearScore: parseFloat(document.getElementById('dateDistantYearScore').value),
+                dateMonthTolerance1: parseFloat(document.getElementById('dateMonthTolerance1').value),
+                dateMonthTolerance2: parseFloat(document.getElementById('dateMonthTolerance2').value),
+                dateMonthTolerance3Plus: parseFloat(document.getElementById('dateMonthTolerance3Plus').value),
+                dateDayTolerance0to3Start: parseFloat(document.getElementById('dateDayTolerance0to3Start').value),
+                dateDayTolerance0to3Decay: parseFloat(document.getElementById('dateDayTolerance0to3Decay').value),
+                dateDayTolerance4to7: parseFloat(document.getElementById('dateDayTolerance4to7').value),
+                dateDayTolerance8Plus: parseFloat(document.getElementById('dateDayTolerance8Plus').value),
+                dateYearWeight: parseFloat(document.getElementById('dateYearWeight').value),
+                dateMonthWeight: parseFloat(document.getElementById('dateMonthWeight').value),
+                dateDayWeight: parseFloat(document.getElementById('dateDayWeight').value),
+                supportingInfoMatchedThreshold: parseFloat(document.getElementById('supportingInfoMatchedThreshold').value),
+                supportingInfoExactThreshold: parseFloat(document.getElementById('supportingInfoExactThreshold').value),
+                supportingInfoSecondaryPenalty: parseFloat(document.getElementById('supportingInfoSecondaryPenalty').value),
+                titleMatchedThreshold: parseFloat(document.getElementById('titleMatchedThreshold').value),
+                titleExactThreshold: parseFloat(document.getElementById('titleExactThreshold').value),
+                affiliationNameThreshold: parseFloat(document.getElementById('affiliationNameThreshold').value),
+                affiliationExactThreshold: parseFloat(document.getElementById('affiliationExactThreshold').value),
+                affiliationTypeScoreThreshold: parseFloat(document.getElementById('affiliationTypeScoreThreshold').value),
+                nameEarlyExitThreshold: parseFloat(document.getElementById('nameEarlyExitThreshold').value),
+                scorerAddressCountryWeight: parseFloat(document.getElementById('scorerAddressCountryWeight').value),
+                scorerAddressCityWeight: parseFloat(document.getElementById('scorerAddressCityWeight').value),
+                scorerAddressLineWeight: parseFloat(document.getElementById('scorerAddressLineWeight').value),
+                aliasSelectionTolerance: parseFloat(document.getElementById('aliasSelectionTolerance').value),
+                aliasCoverageMinScore: parseFloat(document.getElementById('aliasCoverageMinScore').value)
             };
-            
+
             try {
                 const response = await fetch(`${API_BASE}/api/admin/config/weights`, {
                     method: 'PUT',
@@ -1833,6 +2152,37 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
             }
         }
         
+        // Save search config
+        async function saveSearchConfig() {
+            const config = {
+                aliasMatchThreshold: parseFloat(document.getElementById('aliasMatchThreshold').value),
+                highScoreThreshold: parseFloat(document.getElementById('highScoreThreshold').value),
+                tokenCoverageMinimum: parseFloat(document.getElementById('tokenCoverageMinimum').value),
+                multiTokenQueryThreshold: parseInt(document.getElementById('multiTokenQueryThreshold').value),
+                normalThresholdMax: parseFloat(document.getElementById('normalThresholdMax').value),
+                normalThresholdMin: parseFloat(document.getElementById('normalThresholdMin').value),
+                shortQueryTokenThreshold: parseInt(document.getElementById('shortQueryTokenThreshold').value)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/config/search`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('config', data.message, 'success');
+                } else {
+                    showAlert('config', `Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('config', `Error saving search configuration: ${error.message}`, 'error');
+            }
+        }
+
         // Save webhook config
         async function saveWebhookConfig() {
             const config = {

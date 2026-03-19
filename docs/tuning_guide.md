@@ -1,7 +1,7 @@
 # Fuzzy Matching Tuning Guide
 
 ## Purpose
-Practical guide for tuning Watchman's 23 scoring parameters without requiring fuzzy matching expertise. Organized by problem → solution with concrete examples and expected outcomes.
+Practical guide for tuning Watchman's 82 scoring parameters across 4 config classes without requiring fuzzy matching expertise. Organized by problem → solution with concrete examples and expected outcomes.
 
 ---
 
