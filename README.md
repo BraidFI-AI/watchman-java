@@ -205,6 +205,7 @@ src/test/java/io/moov/watchman/  # ~1100 tests
 | [api_spec.md](docs/api_spec.md) | Complete API reference |
 | [aws_deployment.md](docs/aws_deployment.md) | AWS ECS deployment guide |
 | [test_coverage.md](docs/test_coverage.md) | Test documentation |
+| [go_java_comparison.md](docs/go_java_comparison.md) | Go vs Java feature comparison and handoff analysis |
 | [Agent Instructions](.claude/context.md) | AI coding agent guidance |
 
 ---
