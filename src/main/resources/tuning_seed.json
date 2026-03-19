@@ -1,0 +1,495 @@
+{
+  "metadata": {
+    "generatedAt": "2026-03-18",
+    "description": "Starter tuning history extracted from .claude/context.md BSA sessions, git log, and R2 consultant CSV observations. Used as prompt context for AI-assisted config tuning feature.",
+    "bsaConsultantRounds": ["R1 (52 observations, archived)", "R2 (100 observations: 50 entity + 50 individual, authoritative)"],
+    "finalBsaResult": "100/100 (R2EntityValidationTest 50/50 + R2IndividualValidationTest 50/50)"
+  },
+
+  "bsaCriticalThresholds": {
+    "description": "These 5 values are BSA compliance-approved and tested in production. Do NOT suggest changes to these without a full R2 validation run.",
+    "values": {
+      "watchman.search.alias-match-threshold": 0.75,
+      "watchman.weights.alias-tie-breaker-threshold": 0.95,
+      "watchman.weights.alias-boost-amount": 0.50,
+      "watchman.similarity.phonetic-length-difference-threshold": 0.10,
+      "watchman.similarity.short-token-ratio-threshold": 0.60
+    }
+  },
+
+  "currentConfig": {
+    "description": "Production parameter values as of 2026-03-18 (BSA-validated, 100/100 passing)",
+    "similarity": {
+      "watchman.similarity.jaro-winkler-boost-threshold": 0.7,
+      "watchman.similarity.jaro-winkler-prefix-size": 4,
+      "watchman.similarity.winkler-prefix-weight": 0.1,
+      "watchman.similarity.minimum-token-length": 3,
+      "watchman.similarity.phonetic-length-difference-threshold": 0.1,
+      "watchman.similarity.short-token-ratio-threshold": 0.6,
+      "watchman.similarity.length-difference-penalty-weight": 0.3,
+      "watchman.similarity.length-difference-cutoff-factor": 0.9,
+      "watchman.similarity.different-letter-penalty-weight": 0.9,
+      "watchman.similarity.exact-match-favoritism": 0.0,
+      "watchman.similarity.unmatched-index-token-weight": 0.15,
+      "watchman.similarity.phonetic-filtering-disabled": false,
+      "watchman.similarity.keep-stopwords": false,
+      "watchman.similarity.query-coverage-quality-threshold": 0.95,
+      "watchman.similarity.query-coverage-boost-multiplier": 1.08,
+      "watchman.similarity.token-blend-weight": 0.6,
+      "watchman.similarity.language-detection-min-confidence": 0.5
+    },
+    "search": {
+      "watchman.search.alias-match-threshold": 0.75,
+      "watchman.search.high-score-threshold": 0.95,
+      "watchman.search.token-coverage-minimum": 0.4,
+      "watchman.search.multi-token-query-threshold": 3,
+      "watchman.search.normal-threshold-max": 0.88,
+      "watchman.search.normal-threshold-min": 0.75,
+      "watchman.search.short-query-token-threshold": 2
+    },
+    "weights": {
+      "watchman.weights.name-weight": 35.0,
+      "watchman.weights.address-weight": 25.0,
+      "watchman.weights.critical-id-weight": 50.0,
+      "watchman.weights.supporting-info-weight": 15.0,
+      "watchman.weights.exact-match-threshold": 0.99,
+      "watchman.weights.alias-tie-breaker-threshold": 0.95,
+      "watchman.weights.exact-match-critical-id-threshold": 0.99,
+      "watchman.weights.exact-match-id-weight": 0.7,
+      "watchman.weights.exact-match-name-weight": 0.3,
+      "watchman.weights.alias-score-multiplier": 1.2,
+      "watchman.weights.alias-minimum-score": 0.45,
+      "watchman.weights.alias-boost-max-score": 0.88,
+      "watchman.weights.alias-boost-amount": 0.5,
+      "watchman.weights.alias-selection-tolerance": 0.05,
+      "watchman.weights.alias-coverage-min-score": 0.45,
+      "watchman.weights.name-early-exit-threshold": 0.4,
+      "watchman.weights.supporting-info-matched-threshold": 0.5,
+      "watchman.weights.supporting-info-exact-threshold": 0.99,
+      "watchman.weights.supporting-info-secondary-penalty": 0.8,
+      "watchman.weights.title-matched-threshold": 0.5,
+      "watchman.weights.title-exact-threshold": 0.99,
+      "watchman.weights.affiliation-name-threshold": 0.85,
+      "watchman.weights.affiliation-exact-threshold": 0.95,
+      "watchman.weights.affiliation-type-score-threshold": 0.9,
+      "watchman.weights.scorer-address-country-weight": 0.3,
+      "watchman.weights.scorer-address-city-weight": 0.3,
+      "watchman.weights.scorer-address-line-weight": 0.4
+    },
+    "autoClearance": {
+      "watchman.auto-clearance.phase1-threshold": 0.85,
+      "watchman.auto-clearance.address-mismatch-threshold": 0.5,
+      "watchman.auto-clearance.dob-difference-threshold-years": 1
+    }
+  },
+
+  "tuningRounds": [
+    {
+      "round": "R1-obs-5",
+      "date": "2026-02-10",
+      "commit": "072836b",
+      "description": "Phonetic word order insensitivity — initial BSA phonetic fix",
+      "trigger": "BSA consultant observation: phonetic matching not word-order independent",
+      "changesApplied": [],
+      "bsaResultAfter": "Pass",
+      "notes": "First phonetic matching fix — established pattern for subsequent phonetic tuning"
+    },
+    {
+      "round": "R1-obs-5-cecoex",
+      "date": "2026-02-10",
+      "commit": "implied in session",
+      "description": "S.I. 5 CECOEX — Soundex false positive (CECOEX matched CHACHAJEE via S562 Soundex collision)",
+      "trigger": "CECOEX search returning LAKHVI entity (which has CHACHAJEE alias). Soundex S562 collision.",
+      "changesApplied": [
+        {
+          "parameter": "watchman.similarity.phonetic-length-difference-threshold",
+          "from": 0.30,
+          "to": 0.10,
+          "rationale": "Tighten phonetic length threshold from 30% to 10% to prevent Soundex false positives on short tokens"
+        }
+      ],
+      "bsaResultBefore": "Fail (CECOEX returning wrong entity)",
+      "bsaResultAfter": "Pass",
+      "notes": "CECOEX (6 chars) vs CHACHAJEE (9 chars) = 50% length diff → now rejected. Muhammad (8) vs Mohammad (8) = 0% diff → still accepted."
+    },
+    {
+      "round": "R1-phonetic-group",
+      "date": "2026-02-11",
+      "commit": "implied in session",
+      "description": "Broad phonetic matching — Rows 13, 16, 18, 24 (SHINRIKYO/SUNRISE Soundex collision S562, PIJ/PKK collision P200)",
+      "trigger": "Short strings colliding via Soundex. PIJ matching PKK. SHINRIKYO matching SUNRISE.",
+      "changesApplied": [
+        {
+          "parameter": "watchman.similarity.minimum-token-length",
+          "from": null,
+          "to": 3,
+          "rationale": "Tokens shorter than 3 chars excluded from phonetic matching to prevent 3-letter Soundex collisions"
+        },
+        {
+          "parameter": "watchman.similarity.short-token-ratio-threshold",
+          "from": null,
+          "to": 0.60,
+          "rationale": "Short-code entity detection threshold — entities where most tokens are short (vessels, aircraft IDs) use different matching path"
+        }
+      ],
+      "bsaResultAfter": "Pass",
+      "notes": "Soundex too coarse for 3-char tokens. PIJ (P200) = PKK (P200) collide. Minimum length requirement prevents this class of false positive."
+    },
+    {
+      "round": "R1-legal-suffix",
+      "date": "2026-02-11",
+      "commit": "implied in session",
+      "description": "Legal suffix removal — Rows 12, 23, 30, 38, 39, 42, 52. S.A., OOO, OJSC not being stripped before comparison.",
+      "trigger": "Stopword removal was running BEFORE company suffix removal. 'S.A.' → 's a' → 'a' removed as stopword → 's' left over, breaking suffix matching.",
+      "changesApplied": [],
+      "algorithmChange": "Pipeline order fix in Entity.normalize(): punctuation removal → company suffix removal → stopword removal. Suffix list expanded from 13 to 37 entries.",
+      "bsaResultAfter": "Pass for Rows 12, 23, 30, 38, 39, 42, 52",
+      "notes": "Not a parameter change — a pipeline order bug. Go implementation had it right. Key insight: order matters, and stopwords ('a','c','v') were destroying Spanish/Russian suffixes."
+    },
+    {
+      "round": "R1-row-15",
+      "date": "2026-02-16",
+      "commit": "fb1aa41",
+      "description": "Row 15 GHAILANI — FOOPIE/FUPI aliases not extracted. OFAC uses double single-quotes: a.k.a. ''FOOPIE'' instead of 'FOOPIE'.",
+      "trigger": "BSA consultant confirmed FOOPIE and FUPI are in OFAC data but not appearing in search results.",
+      "changesApplied": [],
+      "algorithmChange": "RemarksParser.java regex: ALIAS_PATTERN changed from `'([^']+)'` to `'+([^']+)'+` (one-or-more quotes on each side)",
+      "bsaResultAfter": "Pass",
+      "notes": "OFAC data inconsistency — not all entries use standard single quotes. Regex must handle double-quote format."
+    },
+    {
+      "round": "R1-ui-limit",
+      "date": "2026-02-19",
+      "commit": "ccf991b",
+      "description": "7 BSA observations (Rows 6, 21, 22, 52 entity + Rows 1, 6, 7 individual) reported 'missing entities'. Root cause: admin.html hardcoded limit=5.",
+      "trigger": "BSA consultant: 'UI defaults to displaying only the top 5 results — introduces operational visibility concern.'",
+      "changesApplied": [],
+      "uiChange": "admin.html: limit input changed from hardcoded 5 to configurable input (default 50, max 100)",
+      "bsaResultAfter": "All 7 observations resolved — entities were present but at positions 6-9",
+      "notes": "NOT a scoring bug. All 'missing' entities scored 100% and ranked in top 10. Single UI config issue caused 7 observation failures. Always verify with full result sets."
+    },
+    {
+      "round": "R1-row-50",
+      "date": "2026-02-19",
+      "commit": "aa6afa7",
+      "description": "S.I. 50 matchedAlias metadata bug — alias tie-breaking failing for Row 50 individual",
+      "trigger": "matchedAlias field not being populated correctly, causing tie-breaker to not prefer alias match",
+      "changesApplied": [],
+      "algorithmChange": "EntityScorerImpl: Fixed matchedAlias population in tie-breaking logic",
+      "bsaResultAfter": "Pass",
+      "notes": "Metadata bug, not a scoring weight issue"
+    },
+    {
+      "round": "R1-row-31",
+      "date": "2026-02-19",
+      "commit": "e4750c3",
+      "description": "Row 31 BSA regression — entity normalization and tie-breaker acronym handling (52/52 passing after fix)",
+      "trigger": "Row 31 regression introduced by prior fixes. Acronym handling in tie-breaker was inconsistent.",
+      "changesApplied": [],
+      "algorithmChange": "EntityScorerImpl: Tie-breaker acronym normalization fix",
+      "bsaResultAfter": "52/52 (R1 full suite)",
+      "notes": "Regression from prior fix. Acronym collapsing must be consistent between scoring and tie-breaking paths."
+    },
+    {
+      "round": "R1-bsa-groups",
+      "date": "2026-02-19",
+      "commit": "6ceee4a",
+      "description": "BSA Groups 2 and 5 — acronym collapsing and query coverage boost",
+      "trigger": "Short-form entity names (acronyms) not matching their expanded forms reliably. Query coverage calculation not boosting high-quality full matches.",
+      "changesApplied": [
+        {
+          "parameter": "watchman.similarity.query-coverage-quality-threshold",
+          "from": null,
+          "to": 0.95,
+          "rationale": "Minimum token-avg score to trigger coverage boost — ensures boost only fires on high-quality full matches"
+        },
+        {
+          "parameter": "watchman.similarity.query-coverage-boost-multiplier",
+          "from": null,
+          "to": 1.08,
+          "rationale": "8% score boost when all query tokens match at high quality — rewards precise matches over partial ones"
+        }
+      ],
+      "bsaResultAfter": "Pass for Groups 2 and 5",
+      "notes": "Coverage boost rewards queries where every token matches well — combats scenarios where a longer but less relevant entity outscores the correct shorter match."
+    },
+    {
+      "round": "R1-related-entity",
+      "date": "2026-02-26",
+      "commit": "a4a6ac5",
+      "description": "Rows 21, 22, 6, 35 — related entity coverage. Limit unique entities before alias expansion was cutting off valid results.",
+      "trigger": "AL QA'IDA, TALIBAN entities not appearing in top results when querying related organization names",
+      "changesApplied": [],
+      "algorithmChange": "SearchServiceImpl: Changed entity deduplication to happen before alias expansion, not after — ensures unique entities are selected then all their aliases are considered",
+      "bsaResultAfter": "Pass",
+      "notes": "Alias expansion was being limited by the entity limit. Fix: select N unique entities first, then expand aliases for all of them."
+    },
+    {
+      "round": "R1-to-yaml-migration",
+      "date": "2026-02-26",
+      "commit": "0648d20",
+      "description": "Migrated 9 BSA compliance thresholds to YAML (35 total params). SimilarityConfig expanded to 12 params, WeightConfig to 20 params.",
+      "trigger": "Production tuning required code changes + recompilation. BSA consultant testing needed runtime adjustability.",
+      "changesApplied": [
+        {
+          "parameter": "watchman.similarity.phonetic-length-difference-threshold",
+          "from": "hardcoded",
+          "to": 0.10,
+          "rationale": "Externalize BSA-validated phonetic threshold to YAML"
+        },
+        {
+          "parameter": "watchman.similarity.short-token-ratio-threshold",
+          "from": "hardcoded",
+          "to": 0.60,
+          "rationale": "Externalize short-token detection threshold"
+        },
+        {
+          "parameter": "watchman.weights.alias-tie-breaker-threshold",
+          "from": "hardcoded 0.95",
+          "to": 0.95,
+          "rationale": "Prefer alias match when both entity and alias score ≥ 0.95"
+        },
+        {
+          "parameter": "watchman.weights.alias-boost-amount",
+          "from": "hardcoded 0.50",
+          "to": 0.50,
+          "rationale": "Score boost applied when alias is the best match"
+        },
+        {
+          "parameter": "watchman.search.alias-match-threshold",
+          "from": "hardcoded ~0.70",
+          "to": 0.75,
+          "rationale": "BSA-tuned threshold for alias candidate selection — raised from ~0.70 to reduce false alias promotions"
+        }
+      ],
+      "bsaResultAfter": "All AdminConfigController tests 9/9 passing",
+      "notes": "This was a milestone: moved from scattered hardcoded values to centralized YAML. The values themselves were already BSA-validated — this was a configurability improvement, not a scoring change."
+    },
+    {
+      "round": "R2-entity-row-17",
+      "date": "2026-03-01",
+      "commit": "implied — alias boost threshold change",
+      "description": "R2 Row 17 (CK ID CO. LTD) — partial name 'CK ID' not returning main entity. Fixed by alias boost threshold change.",
+      "trigger": "BSA consultant R2 retest: 'Partial-name search missed valid entity result' for CK ID",
+      "changesApplied": [
+        {
+          "parameter": "watchman.weights.alias-boost-amount",
+          "from": "1.0 (bug — all entities getting full boost)",
+          "to": 0.50,
+          "rationale": "Alias boost was being applied universally (1.0) instead of selectively. Fix restored selectivity. Row 17 now ranks #1 for 'CK ID' query."
+        }
+      ],
+      "bsaResultAfter": "Pass — entity ranks #1 for CK ID query",
+      "notes": "The R2 CSV notes: 'Pass - Fixed by alias boost threshold change (Row 24 fix). Entity now ranks #1 for CK ID query.' The Row 24 fix (SMARTMET alias boost bug) was the same root cause — alias boost was 1.0 for ALL entities."
+    },
+    {
+      "round": "R2-entity-row-24",
+      "date": "2026-03-01",
+      "commit": "implied — alias boost bug fix",
+      "description": "R2 Row 24 (LIMITED LIABILITY COMPANY SMARTMET) — 'SMARTMET LLC' now works after alias boost bug fix. 'LLC SMARTMET' (reversed) still partially failing.",
+      "trigger": "BSA consultant R2: 'SMARTMET LLC and LLC SMARTMET didnt return main entity'",
+      "changesApplied": [],
+      "algorithmChange": "Alias boost bug: was applying score 1.0 to all entities. Fixed to apply 0.50 boost selectively to alias matches only.",
+      "bsaResultAfter": "Partial — SMARTMET LLC fixed, LLC SMARTMET (reversed token order) still failing",
+      "notes": "Reversed token order (LLC SMARTMET vs SMARTMET LLC) remains an open edge case. The R2 CSV marks this as 'Partial'. This is a known limitation — token order affects score even with bestPairCombination."
+    },
+    {
+      "round": "R2-yaml-phases-1-6",
+      "date": "2026-03-06 to 2026-03-16",
+      "commit": "56cc4c4, a0fbabd, 88855fc",
+      "description": "YAML migration Phases 1-6: externalized all 56 remaining hardcoded scoring parameters. BSA verified 100/100 after each phase.",
+      "trigger": "41 hardcoded constants remaining across AddressComparer, DateComparer, SupportingInfoScorer, TitleScorer, EntityScorer, NameScorer. Production tuning required recompilation.",
+      "changesApplied": [
+        {
+          "parameter": "watchman.weights.address-line1-weight",
+          "from": "hardcoded 5.0",
+          "to": 5.0,
+          "rationale": "Phase 1 — AddressComparer externalization"
+        },
+        {
+          "parameter": "watchman.weights.address-city-weight",
+          "from": "hardcoded 4.0",
+          "to": 4.0,
+          "rationale": "Phase 1 — AddressComparer externalization"
+        },
+        {
+          "parameter": "watchman.weights.address-country-weight",
+          "from": "hardcoded 4.0",
+          "to": 4.0,
+          "rationale": "Phase 1 — AddressComparer externalization"
+        },
+        {
+          "parameter": "watchman.weights.date-year-decay-rate",
+          "from": "hardcoded 0.1",
+          "to": 0.1,
+          "rationale": "Phase 2 — DateComparer externalization"
+        },
+        {
+          "parameter": "watchman.weights.date-year-weight",
+          "from": "hardcoded 0.4",
+          "to": 0.4,
+          "rationale": "Phase 2 — DateComparer externalization"
+        },
+        {
+          "parameter": "watchman.similarity.token-blend-weight",
+          "from": "hardcoded 0.6",
+          "to": 0.6,
+          "rationale": "Phase 6 — JaroWinkler blend weight externalization"
+        },
+        {
+          "parameter": "watchman.weights.alias-selection-tolerance",
+          "from": "hardcoded 0.05",
+          "to": 0.05,
+          "rationale": "Phase 6 — Alias selection tolerance externalization. Controls how close a second alias must be to beat the primary match."
+        }
+      ],
+      "bsaResultBefore": "100/100",
+      "bsaResultAfter": "100/100 — zero regressions across all 6 phases",
+      "notes": "Values unchanged — these were externalization passes, not scoring changes. The 100/100 BSA result confirms the migration introduced no behavioral drift."
+    }
+  ],
+
+  "knownOpenEdgeCases": [
+    {
+      "id": "smartmet-reversed",
+      "query": "LLC SMARTMET",
+      "expectedEntity": "LIMITED LIABILITY COMPANY SMARTMET",
+      "status": "partial-fail",
+      "notes": "Reversed token order still scoring below threshold. SMARTMET LLC works. Known limitation of token-pair scoring — legal prefix tokens (LLC) interact poorly when placed first."
+    },
+    {
+      "id": "grigorev-apostrophe",
+      "query": "GRIGOREV",
+      "expectedEntity": "GRIGORYEV, Andrey Ivanovich",
+      "status": "retest-pending",
+      "notes": "R2 Individual Row 26: 'GRIGOR'EV without apostrophe didnt return the sanctioned individual. Analysts frequently omit apostrophes. Marked for retest."
+    }
+  ],
+
+  "r2TestSuite": {
+    "entity": {
+      "source": "observations/watchman java obsevations master.xlsx - r2-entity.csv",
+      "totalRows": 50,
+      "finalResult": "50/50 Pass (R2EntityValidationTest)",
+      "consultantObservations": [
+        "Search results frequently returned higher volume than OFAC reference — true matches consistently ranked in top results. Higher volume reflects broader matching sensitivity, not recall deficiency.",
+        "Hyphen and spacing normalization consistent with OFAC reference behavior.",
+        "Result limit (1-100, default 50) is configurable — restricting below 50 may hide valid matches in high-noise searches."
+      ],
+      "cases": [
+        {"row": 1, "name": "GRUPO COMERCIAL SAN BLAS, S.A. DE C.V.", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 2, "name": "METALLURG-TULAMASH OOO", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 3, "name": "SB SECURITIES SA", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 4, "name": "JOINT STOCK COMPANY URAL SCIENTIFIC AND TECHNOLOGICAL COMPLEX", "baseline": "Pass", "partial": "Pass", "alias": "Pass (AKTSIONERNOE OBSHCHESTVO URALSKII NAUCHNO TEKHNOLOGICHESKII KOMPLEKS / AO UNTK)"},
+        {"row": 5, "name": "ARGON OOO", "baseline": "Pass", "partial": "Pass", "alias": "Pass (OBSHCHESTVO S OGRANICHENNOI OTVETSTVENNOSTYU ARGON / ARGON)"},
+        {"row": 6, "name": "JOINT STOCK COMPANY BLACK SEA BANK OF DEVELOPMENT AND RECONSTRUCTION", "baseline": "Pass", "partial": "Pass", "alias": "Pass (BANK CHBRR AO / JSC BLACK SEA BANK FOR DEVELOPMENT & RECONSTRUCTION)"},
+        {"row": 7, "name": "P.C.C. (SINGAPORE) PRIVATE LIMITED", "baseline": "Pass", "partial": "Pass", "alias": "Pass (PCC SINGAPORE PTE LTD / P.C.C. SINGAPORE BRANCH)"},
+        {"row": 8, "name": "WUHAN XIAORUIZHI SCIENCE AND TECHNOLOGY COMPANY, LIMITED", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 9, "name": "CORPORATIVO INTEGRAL DE LA COSTA, S.A. DE C.V.", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 10, "name": "DINA PETROKIMYA SANAYI TICARET ANONIM SIRKETI", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 11, "name": "LIMITED LIABILITY COMPANY EMERGENCY DIGITAL SOLUTIONS", "baseline": "Pass", "partial": "Pass", "alias": "Pass (LLC EDS)"},
+        {"row": 12, "name": "OBSHCHESTVO S OGRANICHENNOI OTVETSTVENNOSTYU KORPORATSIYA AIPI", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 13, "name": "DESARROLLOS TURISTICOS FORTIA, S.A. DE C.V.", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 14, "name": "BAKHTAR RAAD SEPAHAN COMPANY", "baseline": "Pass", "partial": "Pass", "alias": "Pass (BAKHTAR RAAD SEPAHAN CO. / BAKHTAR RAAD ENGINEERING COMPANY / RADSEPAHAN)"},
+        {"row": 15, "name": "KHAYBAR COMPANY", "baseline": "Pass", "partial": "Pass", "alias": "Pass (SHERKAT SAHAMI KHASS KHAYBAR / KHAYBARCO / KHEYBAR COMPANY)"},
+        {"row": 16, "name": "OPEN JOINT STOCK COMPANY AMKODOR MANAGEMENT HOLDING COMPANY", "baseline": "Pass", "partial": "Pass", "alias": "Pass (AMKODOR OAO / OTKRYTOE AKTSIONERNOE OBSHCHESTVO AMKODOR)"},
+        {"row": 17, "name": "CK ID CO. LTD", "baseline": "Pass", "partial": "Partial-name CK ID now fixed (alias boost threshold change)", "alias": "N/A"},
+        {"row": 18, "name": "JOINT STOCK COMPANY NEW HOLDING 3", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 19, "name": "EDGAR COMMERCIAL SOLUTIONS FZE", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 20, "name": "KOREA NAMGANG TRADING CORPORATION", "baseline": "Pass", "partial": "Pass", "alias": "Pass (DPRK NAMGANG TRADING COMPANY)"},
+        {"row": 21, "name": "EMPRESA CUBANA DE AVIACION", "baseline": "Pass", "partial": "Pass", "alias": "Pass (CUBANA AIRLINES)"},
+        {"row": 22, "name": "RAPICOMBUSTIBLES DE VERACRUZ, S.A. DE C.V.", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 23, "name": "JOINT STOCK COMMERCIAL BANK NOVIKOMBANK", "baseline": "Pass", "partial": "Pass", "alias": "Pass (AO AKB NOVIKOMBANK / NOVIKOMBANK JCSB)"},
+        {"row": 24, "name": "LIMITED LIABILITY COMPANY SMARTMET", "baseline": "Pass", "partial": "SMARTMET LLC fixed; LLC SMARTMET (reversed) partial", "alias": "N/A", "openIssue": "smartmet-reversed"},
+        {"row": 25, "name": "FAN PARDAZAN", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 26, "name": "MAMOUN DARKAZANLI IMPORT-EXPORT COMPANY", "baseline": "Pass", "partial": "Pass", "alias": "Pass (DARKAZANLI COMPANY / DARKAZANLI EXPORT-IMPORT SONDERPOSTEN)"},
+        {"row": 27, "name": "72ND AUTOMOTIVE AND ARMORED VEHICLE REPAIR PLANT FEDERAL STATE OWNED INSTITUTION", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 28, "name": "DIDZHITAL SEKYURITI SERVISIS, OOO", "baseline": "Pass", "partial": "Pass", "alias": "Pass (DIGITAL SECURITY SERVICES)"},
+        {"row": 29, "name": "CORPORATIVO INMOBILIARIO UNIVERSAL, S.A. DE C.V.", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 30, "name": "COMERCIALIZADORA DE GANADO Y RENTAS DE CAPITAL S.A.", "baseline": "Pass", "partial": "Pass", "alias": "Pass (GANARECA S.A.)"},
+        {"row": 31, "name": "ANHUI LAND GROUP CO., LIMITED", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 32, "name": "IRANIAN NOVIN INDUSTRY DEVELOPMENT", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 33, "name": "DALIAN SUN MOON STAR INTERNATIONAL LOGISTICS TRADING CO., LTD", "baseline": "Pass", "partial": "Pass", "alias": "Pass (DALIAN TIANBAO INTERNATIONAL LOGISTICS CO., LTD.)"},
+        {"row": 34, "name": "VISCAYA LTDA.", "baseline": "Pass", "partial": "Pass", "alias": "Pass (VIZCAYA LTDA.)"},
+        {"row": 35, "name": "MIRA E.U.", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 36, "name": "CASA APOLLO", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 37, "name": "JARACO S.A.", "baseline": "Pass", "partial": "Pass", "alias": "Pass (SOKTAR / TRADACO S.A.)"},
+        {"row": 38, "name": "T.M.G. ENGINEERING LIMITED", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 39, "name": "7TH OF TIR", "baseline": "Pass", "partial": "Pass", "alias": "Pass (7TH OF TIR INDUSTRIAL COMPLEX / SANAYE HAFTOME TIR / SEVENTH OF TIR)"},
+        {"row": 40, "name": "SINALOA CARTEL", "baseline": "Pass", "partial": "Pass", "alias": "Pass (CARTEL DE SINALOA / MEXICAN FEDERATION / GUADALAJARA CARTEL)"},
+        {"row": 41, "name": "PO THONG GANG (Vessel)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 42, "name": "DAN (Vessel)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 43, "name": "ALPHA HERMES (Vessel)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 44, "name": "CASSIOPEIA (Vessel)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 45, "name": "7-28 (Vessel)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 46, "name": "T7-OKY (Aircraft)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 47, "name": "P-537 (Aircraft)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 48, "name": "EP-VIP (Aircraft)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 49, "name": "EP-MNX (Aircraft)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 50, "name": "RA-78831 (Aircraft)", "baseline": "Pass", "partial": "Pass", "alias": "N/A"}
+      ]
+    },
+    "individual": {
+      "source": "observations/watchman java obsevations master.xlsx - r2-ind.csv",
+      "totalRows": 50,
+      "finalResult": "50/50 Pass (R2IndividualValidationTest)",
+      "consultantObservations": [
+        "Search results frequently returned higher volume than OFAC reference — true matches consistently ranked in top results.",
+        "Hyphen and spacing normalization consistent with OFAC reference behavior.",
+        "Result limit configurable (1-100, default 50) — restricting below 50 may introduce operational visibility risk."
+      ],
+      "cases": [
+        {"row": 1, "name": "NAFRIEH, Edman", "naturalOrder": "Edman Nafrieh", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 2, "name": "MUJYAMBERE, Leopold", "naturalOrder": "Leopold Mujyambere", "baseline": "Pass", "partial": "Pass", "alias": "Pass (IBRAHIM Frere Petrus / MUSENYERI / ACHILLE)"},
+        {"row": 3, "name": "HALILI, Nevzat", "naturalOrder": "Nevzat Halili", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 4, "name": "KAYA, Mehmet", "naturalOrder": "Mehmet Kaya", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 5, "name": "LUGO LEON, Toribio Alberto", "naturalOrder": "Toribio Alberto Lugo Leon", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 6, "name": "KHAN, Hafiz Saeed", "naturalOrder": "Hafiz Saeed Khan", "baseline": "Pass", "partial": "Pass", "alias": "Pass (SAEED Hafiz / HAFIZ Said Khan / KHAN Wali Hafiz Sayid)"},
+        {"row": 7, "name": "ARIF, Said", "naturalOrder": "Said Arif", "baseline": "Pass", "partial": "Pass", "alias": "Pass (ARIF Said Mohamed / GHARIB Omar / ABDERAHMANE)"},
+        {"row": 8, "name": "LLANOS GAZIA, Jorge Luis", "naturalOrder": "Jorge Luis Llanos Gazia", "baseline": "Pass", "partial": "Pass", "alias": "Pass (LLANOS GAZZIA Jorge Luis)"},
+        {"row": 9, "name": "ZAKHAROV, Nikita Aleksandrovich", "naturalOrder": "Nikita Aleksandrovich Zakharov", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 10, "name": "FITCH PARENTE, Pablo Antonio", "naturalOrder": "Pablo Antonio Fitch Parente", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 11, "name": "BAKHSHI, Dariush", "naturalOrder": "Dariush Bakhshi", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 12, "name": "AL-AJOURI, Akram", "naturalOrder": "Akram Al-Ajouri", "baseline": "Pass", "partial": "Pass", "alias": "Pass (AL-AJURI Akram / AL-AJURI Akram Muhammad Salih)"},
+        {"row": 13, "name": "MALPICA HURTADO, Erica Patricia", "naturalOrder": "Erica Patricia Malpica Hurtado", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 14, "name": "NIKOLAEV, Nikolay Petrovich", "naturalOrder": "Nikolay Petrovich Nikolaev", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 15, "name": "OZIA MAZIO, Dieudonne", "naturalOrder": "Dieudonne Ozia Mazio", "baseline": "Pass", "partial": "Pass", "alias": "Pass (OMARI)"},
+        {"row": 16, "name": "VLASOVA, Veronika Valerievna", "naturalOrder": "Veronika Valerievna Vlasova", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 17, "name": "AZIZABADI, Reza Mohammadi", "naturalOrder": "Reza Mohammadi Azizabadi", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 18, "name": "PAVKOVIC, Nebojsa", "naturalOrder": "Nebojsa Pavkovic", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 19, "name": "MILOSEVIC, Marija", "naturalOrder": "Marija Milosevic", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 20, "name": "MICHIELSEN, Tom", "naturalOrder": "Tom Michielsen", "baseline": "Pass", "partial": "Pass", "alias": "Pass (MICHIELSEN Tom R.D.)"},
+        {"row": 21, "name": "RAMIREZ GARCIA, Freyner Alfonso", "naturalOrder": "Freyner Alfonso Ramirez Garcia", "baseline": "Pass", "partial": "Pass", "alias": "Pass (CARLOS PESEBRE)"},
+        {"row": 22, "name": "IVAKIN, Yuriy Vladimirovich", "naturalOrder": "Yuriy Vladimirovich Ivakin", "baseline": "Pass", "partial": "Pass", "alias": "Pass (IVAKIN Yurii)"},
+        {"row": 23, "name": "KOLOMEITSEV, Nikolay Vasilievich", "naturalOrder": "Nikolay Vasilievich Kolomeitsev", "baseline": "Pass", "partial": "Pass", "alias": "Pass (KOLOMEITSEV Nikolai Vasilyevich / KOLOMEYTSEV Nikolay Vasilyevich)"},
+        {"row": 24, "name": "ABDALLAH, Ahmad Jalal Reda", "naturalOrder": "Ahmad Jalal Reda Abdallah", "baseline": "Pass", "partial": "Pass", "alias": "Pass (ABDALLAH Ahmed Jalal Rida)"},
+        {"row": 25, "name": "KARADZIC-JOVICEVIC, Sonja", "naturalOrder": "Sonja Karadzic-Jovicevic", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 26, "name": "GRIGORYEV, Andrey Ivanovich", "naturalOrder": "Andrey Ivanovich Grigoryev", "baseline": "Pass", "partial": "Pass", "alias": "Retest pending — GRIGOREV without apostrophe not matching", "openIssue": "grigorev-apostrophe"},
+        {"row": 27, "name": "SUGAIPOV, Umar", "naturalOrder": "Umar Sugaipov", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 28, "name": "KHUCHIEV, Muslim Magomedovich", "naturalOrder": "Muslim Magomedovich Khuchiev", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 29, "name": "MOOR, Aleksandr Viktorovich", "naturalOrder": "Aleksandr Viktorovich Moor", "baseline": "Pass", "partial": "Pass", "alias": "Pass (MOOR Alexander Viktorovich)"},
+        {"row": 30, "name": "MAKOLOV, Yury Yuryevich", "naturalOrder": "Yury Yuryevich Makolov", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 31, "name": "LI, Kai Shou", "naturalOrder": "Kai Shou Li", "baseline": "Pass", "partial": "Pass", "alias": "Pass (LI KAI SHOU)"},
+        {"row": 32, "name": "BABAIE, Nematollah Hosein", "naturalOrder": "Nematollah Hosein Babaie", "baseline": "Pass", "partial": "Pass", "alias": "Pass (BABAEI Nemat Hossein)"},
+        {"row": 33, "name": "GASTELUM SERRANO, Cesar", "naturalOrder": "Cesar Gastelum Serrano", "baseline": "Pass", "partial": "Pass", "alias": "Pass (LA SENORA)"},
+        {"row": 34, "name": "SOE, Aung", "naturalOrder": "Aung Soe", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 35, "name": "RAMOS ACOSTA, Alvaro", "naturalOrder": "Alvaro Ramos Acosta", "baseline": "Pass", "partial": "Pass", "alias": "Pass (Alvaro Arroz Ramos)"},
+        {"row": 36, "name": "BOSHAB, Evariste", "naturalOrder": "Evariste Boshab", "baseline": "Pass", "partial": "Pass", "alias": "Pass (BOSHAB Evarist / BOSHAB MABUTSH Evariste / MULUMBU BOSHAB Evariste)"},
+        {"row": 37, "name": "RODRIGUEZ RODRIGUEZ, Caryslia Beatriz", "naturalOrder": "Caryslia Beatriz Rodriguez Rodriguez", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 38, "name": "KIM, Se Un", "naturalOrder": "Se Un Kim", "baseline": "Pass", "partial": "Pass", "alias": "Pass (KIM Se-u'n)"},
+        {"row": 39, "name": "AHMAD, Tariq Anwar al-Sayyid", "naturalOrder": "Tariq Anwar Al-Sayyid Ahmad", "baseline": "Pass", "partial": "Pass", "alias": "Pass (FATHI Amr Al-Fatih / FARAG Hamdi Ahmad)"},
+        {"row": 40, "name": "AWALE, Mohamed Jumale Ali", "naturalOrder": "Mohamed Jumale Ali Awale", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 41, "name": "CHERBOV, Gleb Sergeyevich", "naturalOrder": "Gleb Sergeyevich Cherbov", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 42, "name": "AKBULUT, Cerkez", "naturalOrder": "Cerkez Akbulut", "baseline": "Pass", "partial": "Pass", "alias": "Pass (MURAT Cernit / MURAT Altig)"},
+        {"row": 43, "name": "LI, Fangwei", "naturalOrder": "Fangwei Li", "baseline": "Pass", "partial": "Pass", "alias": "Pass (LEE Karl)"},
+        {"row": 44, "name": "GASHASBI, Mansoor", "naturalOrder": "Mansoor Gashasbi", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 45, "name": "TSUDA, Chikara", "naturalOrder": "Chikara Tsuda", "baseline": "Pass", "partial": "Pass", "alias": "N/A"},
+        {"row": 46, "name": "JUBAYR AL-RAWI, Fawaz Muhammad", "naturalOrder": "Fawaz Muhammad Jubayr Al-Rawi", "baseline": "Pass", "partial": "Pass", "alias": "Pass (JABIR AL-RAWI Fawaz Muhamed / AL-ARWEE Hajji Fouaz)"},
+        {"row": 47, "name": "IQBAL, Zafar", "naturalOrder": "Zafar Iqbal", "baseline": "Pass", "partial": "Pass", "alias": "Pass (SHEHBAZ Malik Zafar Iqbal / IQBAL Muhammad Zafar / CHAUDHRY Zafar Iqbal)"},
+        {"row": 48, "name": "CHUOL, James Koang", "naturalOrder": "James Koang Chuol", "baseline": "Pass", "partial": "Pass", "alias": "Pass (CHOL James Koang / RANLEY Koang Chuol / CHUAL James Koang)"},
+        {"row": 49, "name": "KIM, Tong-Myo'ng", "naturalOrder": "Tong-Myo'Ng Kim", "baseline": "Pass", "partial": "Pass", "alias": "Pass (KIM CHIN-SO'K / KIM JIN SOK / KIM TONG MYONG / KIM HYOK CHOL)"},
+        {"row": 50, "name": "AL-SAYYID, Ibrahim Amin", "naturalOrder": "Ibrahim Amin Al-Sayyid", "baseline": "Pass", "partial": "Pass", "alias": "Pass (SAYYED Ibrahim Amin / AL-AMIN Ibrahim)"}
+      ]
+    }
+  }
+}
