@@ -1,0 +1,23 @@
+# DriftGuard — Internal Entity Test Cases
+# Day Watcher model validation suite
+#
+# Format:   row|query|expectedName|shouldMatch|scoreFloor|scoreCeiling|variantType|notes
+# Loaded by: InternalEntityValidationTest.java
+#
+# shouldMatch=true:  expectedName must appear in results with score in [scoreFloor, scoreCeiling]
+# shouldMatch=false: no result may score >= scoreCeiling (scoreCeiling = false positive threshold)
+#
+# variantType values: exact_match | alias_match | partial_name | name_permutation | false_positive
+#
+# To add a case: append a row, increment the row number, run InternalEntityValidationTest
+row|query|expectedName|shouldMatch|scoreFloor|scoreCeiling|variantType|notes
+1|SINALOA CARTEL|SINALOA CARTEL|true|0.88|1.01|exact_match|R2-entity row 40 - regression anchor
+2|GRUPO COMERCIAL SAN BLAS|GRUPO COMERCIAL SAN BLAS|true|0.88|1.01|exact_match|R2-entity row 1 - contains SAN token (false positive risk)
+3|ARGON OOO|ARGON|true|0.88|1.01|exact_match|R2-entity row 5 - short name with legal suffix
+4|FAN PARDAZAN|FAN PARDAZAN|true|0.88|1.01|exact_match|R2-entity row 25 - regression anchor
+5|NOVIKOMBANK|NOVIKOMBANK|true|0.88|1.01|partial_name|R2-entity row 23 - key token only (no legal prefix)
+6|ALPHA HERMES|ALPHA HERMES|true|0.88|1.01|exact_match|R2-entity row 43 - vessel name
+7|San Marino International Ltd||false||0.85|false_positive|Contains SAN token - generic company name must not hit
+8|International Trading Corporation||false||0.85|false_positive|Generic entity name - must not produce false positives above 85%
+9|San Blas Trading Company||false||0.88|false_positive|SAN BLAS tokens - verify does not conflate with GRUPO COMERCIAL SAN BLAS
+10|KHAYBAR|KHAYBAR|true|0.88|1.01|partial_name|R2-entity row 15 - company keyword only (no suffix)

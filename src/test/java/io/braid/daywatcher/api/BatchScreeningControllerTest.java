@@ -1,0 +1,384 @@
+package io.braid.daywatcher.api;
+
+import io.braid.daywatcher.api.dto.BatchSearchRequestDTO;
+import io.braid.daywatcher.api.dto.BatchSearchResponseDTO;
+import io.braid.daywatcher.batch.*;
+import io.braid.daywatcher.model.Entity;
+import io.braid.daywatcher.model.EntityType;
+import io.braid.daywatcher.model.SourceList;
+import io.braid.daywatcher.model.SearchResult;
+import io.braid.daywatcher.trace.ScoringTrace;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+/**
+ * Unit tests for BatchScreeningController.
+ * Tests the REST API for batch screening operations.
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("BatchScreeningController Tests")
+class BatchScreeningControllerTest {
+
+    @Mock
+    private BatchScreeningService batchService;
+
+    @Mock
+    private BatchRequestValidator validator;
+
+    private BatchScreeningController controller;
+
+    @BeforeEach
+    void setUp() {
+        controller = new BatchScreeningController(batchService, validator);
+    }
+
+    @Nested
+    @DisplayName("POST /v2/search/batch Tests")
+    class BatchSearchTests {
+
+        @Test
+        @DisplayName("Returns 200 OK for valid batch request")
+        void returns200OkForValidRequest() {
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(1)
+                .totalMatches(0)
+                .itemsWithMatches(0)
+                .processingTimeMs(10)
+                .results(List.of(
+                    BatchScreeningResult.of("req-1", "Test Name", List.of())
+                ))
+                .build();
+            
+            when(batchService.screen(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "Test Name", null, null)),
+                null, null, null
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().totalItems()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Supports trace parameter to enable score tracing")
+        void supportsTraceParameter() {
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(1)
+                .totalMatches(1)
+                .itemsWithMatches(1)
+                .processingTimeMs(20)
+                .results(List.of(
+                    BatchScreeningResult.of("req-1", "Test Name", List.of())
+                ))
+                .build();
+            
+            when(batchService.screenWithTrace(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "Test Name", null, null)),
+                null, null, true  // trace=true
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            verify(batchService).screenWithTrace(any());
+            verify(batchService, never()).screen(any());
+        }
+
+        @Test
+        @DisplayName("Returns trace data when trace=true")
+        void returnsTraceDataWhenTraceEnabled() {
+            Entity matchedEntity = Entity.of("ent-1", "JOHN DOE", EntityType.PERSON, SourceList.US_OFAC);
+            BatchScreeningMatch match = BatchScreeningMatch.of(matchedEntity, 0.95);
+            
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(1)
+                .totalMatches(1)
+                .itemsWithMatches(1)
+                .processingTimeMs(25)
+                .results(List.of(
+                    BatchScreeningResult.withTrace("req-1", "John Doe", List.of(match), null)
+                ))
+                .build();
+            
+            when(batchService.screenWithTrace(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "John Doe", null, null)),
+                null, null, true
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().results()).hasSize(1);
+            // Trace data should be included in response
+        }
+
+        @Test
+        @DisplayName("Does not call screenWithTrace when trace=false")
+        void doesNotCallScreenWithTraceWhenDisabled() {
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(1)
+                .totalMatches(0)
+                .itemsWithMatches(0)
+                .processingTimeMs(10)
+                .results(List.of())
+                .build();
+            
+            when(batchService.screen(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "Test", null, null)),
+                null, null, false
+            );
+
+            controller.batchSearch(request);
+
+            verify(batchService).screen(any());
+            verify(batchService, never()).screenWithTrace(any());
+        }
+
+        @Test
+        @DisplayName("Maps request DTO to service request correctly")
+        void mapsRequestDTOCorrectly() {
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(2)
+                .totalMatches(0)
+                .itemsWithMatches(0)
+                .processingTimeMs(5)
+                .results(List.of())
+                .build();
+            
+            when(batchService.screen(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(
+                    new BatchSearchRequestDTO.SearchItem("id1", "Name One", "person", "US_OFAC"),
+                    new BatchSearchRequestDTO.SearchItem("id2", "Name Two", "business", null)
+                ),
+                0.90, 5, null
+            );
+
+            controller.batchSearch(request);
+
+            verify(batchService).screen(argThat(r -> 
+                r.items().size() == 2 &&
+                r.minMatch() == 0.90 &&
+                r.limit() == 5
+            ));
+        }
+
+        @Test
+        @DisplayName("Should include reportUrl for each result when trace=true")
+        void shouldIncludeReportUrlForEachResultWhenTraceEnabled() {
+            ScoringTrace trace1 = new ScoringTrace("session-123", List.of(), Map.of(), null, 10L);
+            ScoringTrace trace2 = new ScoringTrace("session-456", List.of(), Map.of(), null, 15L);
+
+            Entity entity = Entity.of("1", "MATCH", EntityType.PERSON, SourceList.US_OFAC);
+            BatchScreeningMatch match = BatchScreeningMatch.of(entity, 0.95);
+
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(2)
+                .totalMatches(1)
+                .itemsWithMatches(1)
+                .processingTimeMs(25)
+                .results(List.of(
+                    BatchScreeningResult.withTrace("req-1", "John Doe", List.of(match), trace1),
+                    BatchScreeningResult.withTrace("req-2", "Jane Doe", List.of(), trace2)
+                ))
+                .build();
+            
+            when(batchService.screenWithTrace(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(
+                    new BatchSearchRequestDTO.SearchItem("req-1", "John Doe", null, null),
+                    new BatchSearchRequestDTO.SearchItem("req-2", "Jane Doe", null, null)
+                ),
+                null, null, true  // trace=true
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().results()).hasSize(2);
+            
+            // First result should have reportUrl based on its session ID
+            var result1 = response.getBody().results().get(0);
+            assertThat(result1.reportUrl()).isNotNull();
+            assertThat(result1.reportUrl()).isEqualTo("/api/reports/session-123");
+            
+            // Second result should have reportUrl based on its session ID
+            var result2 = response.getBody().results().get(1);
+            assertThat(result2.reportUrl()).isNotNull();
+            assertThat(result2.reportUrl()).isEqualTo("/api/reports/session-456");
+        }
+
+        @Test
+        @DisplayName("Should NOT include reportUrl when trace=false")
+        void shouldNotIncludeReportUrlWhenTraceDisabled() {
+            Entity entity = Entity.of("1", "MATCH", EntityType.PERSON, SourceList.US_OFAC);
+            BatchScreeningMatch match = BatchScreeningMatch.of(entity, 0.95);
+
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(1)
+                .totalMatches(1)
+                .itemsWithMatches(1)
+                .processingTimeMs(10)
+                .results(List.of(
+                    BatchScreeningResult.of("req-1", "John Doe", List.of(match))
+                ))
+                .build();
+            
+            when(batchService.screen(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "John Doe", null, null)),
+                null, null, false  // trace=false
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().results()).hasSize(1);
+            
+            var result = response.getBody().results().get(0);
+            assertThat(result.trace()).isNull();
+            assertThat(result.reportUrl()).isNull();
+        }
+
+        @Test
+        @DisplayName("Returns results with match details")
+        void returnsResultsWithMatchDetails() {
+            Entity matchedEntity = Entity.of("ent-1", "JOHN DOE", EntityType.PERSON, SourceList.US_OFAC);
+            BatchScreeningMatch match = BatchScreeningMatch.of(matchedEntity, 0.95);
+            
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(1)
+                .totalMatches(1)
+                .itemsWithMatches(1)
+                .processingTimeMs(15)
+                .results(List.of(
+                    BatchScreeningResult.of("req-1", "John Doe", List.of(match))
+                ))
+                .build();
+            
+            when(batchService.screen(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "John Doe", null, null)),
+                null, null, null
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getBody().results()).hasSize(1);
+            assertThat(response.getBody().results().get(0).matches()).hasSize(1);
+            assertThat(response.getBody().results().get(0).matches().get(0).entityId()).isEqualTo("ent-1");
+            assertThat(response.getBody().results().get(0).matches().get(0).score()).isEqualTo(0.95);
+        }
+
+        @Test
+        @DisplayName("Returns 400 for empty items list")
+        void returns400ForEmptyItemsList() {
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(), null, null, null
+            );
+
+            doThrow(new IllegalArgumentException("Batch request must contain at least one item"))
+                .when(validator).validate(request);
+
+            Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+                controller.batchSearch(request);
+            });
+
+            assertThat(exception.getMessage()).contains("at least one item");
+        }
+
+        @Test
+        @DisplayName("Returns 400 for null items")
+        void returns400ForNullItems() {
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(null, null, null, null);
+
+            doThrow(new IllegalArgumentException("Batch request must contain at least one item"))
+                .when(validator).validate(request);
+
+            Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+                controller.batchSearch(request);
+            });
+
+            assertThat(exception.getMessage()).contains("at least one item");
+        }
+
+        @Test
+        @DisplayName("Returns 400 for batch exceeding max size")
+        void returns400ForOversizedBatch() {
+            List<BatchSearchRequestDTO.SearchItem> items = java.util.stream.IntStream.range(0, 1001)
+                .mapToObj(i -> new BatchSearchRequestDTO.SearchItem("id-" + i, "Name " + i, null, null))
+                .toList();
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(items, null, null, null);
+
+            doThrow(new IllegalArgumentException("Batch size exceeds maximum limit"))
+                .when(validator).validate(request);
+
+            Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+                controller.batchSearch(request);
+            });
+
+            assertThat(exception.getMessage()).contains("maximum limit");
+        }
+    }
+
+    @Nested
+    @DisplayName("Response DTO Tests")
+    class ResponseDTOTests {
+
+        @Test
+        @DisplayName("Includes summary statistics in response")
+        void includesSummaryStatistics() {
+            BatchScreeningResponse serviceResponse = BatchScreeningResponse.builder()
+                .totalItems(10)
+                .totalMatches(25)
+                .itemsWithMatches(7)
+                .processingTimeMs(150)
+                .results(List.of())
+                .build();
+            
+            when(batchService.screen(any())).thenReturn(serviceResponse);
+
+            BatchSearchRequestDTO request = new BatchSearchRequestDTO(
+                List.of(new BatchSearchRequestDTO.SearchItem("req-1", "Test", null, null)),
+                null, null, null
+            );
+
+            ResponseEntity<BatchSearchResponseDTO> response = controller.batchSearch(request);
+
+            assertThat(response.getBody().totalItems()).isEqualTo(10);
+            assertThat(response.getBody().totalMatches()).isEqualTo(25);
+            assertThat(response.getBody().itemsWithMatches()).isEqualTo(7);
+            assertThat(response.getBody().processingTimeMs()).isEqualTo(150);
+        }
+    }
+}

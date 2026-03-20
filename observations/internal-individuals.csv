@@ -1,0 +1,23 @@
+# DriftGuard — Internal Individual Test Cases
+# Day Watcher model validation suite
+#
+# Format:   row|query|expectedName|shouldMatch|scoreFloor|scoreCeiling|variantType|notes
+# Loaded by: InternalIndividualValidationTest.java
+#
+# shouldMatch=true:  expectedName must appear in results with score in [scoreFloor, scoreCeiling]
+# shouldMatch=false: no result may score >= scoreCeiling (scoreCeiling = false positive threshold)
+#
+# variantType values: exact_match | alias_match | partial_name | name_permutation | false_positive
+#
+# To add a case: append a row, increment the row number, run InternalIndividualValidationTest
+row|query|expectedName|shouldMatch|scoreFloor|scoreCeiling|variantType|notes
+1|Randy San Nicolas||false||0.85|false_positive|Common American name - must not appear on sanctions list above 85%
+2|Jamil Mukulu|Jamil Mukulu|true|0.88|1.01|exact_match|Known EU CSL / US OFAC individual
+3|Nicolas Luumu|Nicolas Luumu|true|0.88|1.01|alias_match|Alias of Jamil Mukulu - validates alias path scoring
+4|NAFRIEH Edman|NAFRIEH|true|0.88|1.01|exact_match|R2-ind row 1 - regression anchor
+5|Nevzat Halili|HALILI|true|0.88|1.01|exact_match|R2-ind row 3 - regression anchor
+6|Hafiz Saeed Khan|KHAN|true|0.88|1.01|exact_match|R2-ind row 6 - regression anchor
+7|Mehmet Kaya|KAYA|true|0.88|1.01|exact_match|R2-ind row 4 - regression anchor
+8|Toribio Alberto Lugo Leon|LUGO LEON|true|0.88|1.01|exact_match|R2-ind row 5 - full multi-token name
+9|James Smith||false||0.85|false_positive|Common English name - must not appear on sanctions list above 85%
+10|Edman Nafrieh|NAFRIEH|true|0.85|1.01|name_permutation|First-last reorder of R2-ind row 1 - validates token order tolerance

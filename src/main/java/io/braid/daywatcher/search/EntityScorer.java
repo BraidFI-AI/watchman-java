@@ -1,0 +1,498 @@
+package io.braid.daywatcher.search;
+
+import io.braid.daywatcher.model.Entity;
+import io.braid.daywatcher.model.ScoreBreakdown;
+import io.braid.daywatcher.trace.ScoringContext;
+
+import java.util.List;
+
+/**
+ * Scores entity matches using weighted multi-factor comparison.
+ * 
+ * Factors include:
+ * - Name similarity (primary weight)
+ * - Address similarity (if available)
+ * - ID matches (exact match bonus)
+ * - Date of birth match
+ */
+public interface EntityScorer {
+
+    /**
+     * Calculate overall match score between a query name and candidate entity.
+     * 
+     * @param queryName The name being searched for
+     * @param candidate The candidate entity from the sanctions list
+     * @return Score between 0.0 and 1.0
+     */
+    double score(String queryName, Entity candidate);
+
+    /**
+     * Calculate detailed score breakdown for transparency (name query).
+     */
+    ScoreBreakdown scoreWithBreakdown(String queryName, Entity candidate);
+
+    /**
+     * Calculate detailed score breakdown for entity-to-entity comparison.
+     * Used when query has structured data (name, IDs, addresses, etc.)
+     */
+    ScoreBreakdown scoreWithBreakdown(Entity query, Entity index);
+
+    /**
+     * Calculate detailed score breakdown for entity-to-entity comparison with tracing.
+     * <p>
+     * When ctx.isEnabled(), captures full decision-making process including:
+     * - Normalization steps
+     * - Individual field comparisons
+     * - Aggregation logic
+     * - Performance metrics
+     * 
+     * @param query The query entity
+     * @param index The candidate entity from the index
+     * @param ctx Scoring context for optional tracing (use ScoringContext.disabled() for no tracing)
+     * @return Detailed score breakdown
+     */
+    ScoreBreakdown scoreWithBreakdown(Entity query, Entity index, ScoringContext ctx);
+
+    /**
+     * Score entity and return breakdown + matched alias in one call.
+     *
+     * Avoids EnabledScoringContext allocation in the hot search path.
+     * Use this instead of scoreWithBreakdown(Entity, Entity, ScoringContext) when tracing is not needed.
+     *
+     * @param query  The query entity
+     * @param index  The candidate entity from the index
+     * @return ScoringResult containing the score breakdown and matched alias (may be null)
+     */
+    ScoringResult scoreWithResult(Entity query, Entity index);
+
+    /**
+     * Score with additional query context (address, DOB, etc.)
+     */
+    double score(String queryName, String queryAddress, Entity candidate);
+
+    /**
+     * Count how many fields in an entity have non-empty values.
+     * Used for coverage calculation.
+     * 
+     * Ported from Go: pkg/search/similarity.go countAvailableFields()
+     */
+    static int countAvailableFields(Entity entity) {
+        if (entity == null) {
+            return 0;
+        }
+
+        int count = 0;
+
+        // Count type-specific fields
+        if (entity.person() != null) {
+            count += countPersonFields(entity.person());
+        } else if (entity.business() != null) {
+            count += countBusinessFields(entity.business());
+        } else if (entity.organization() != null) {
+            count += countOrganizationFields(entity.organization());
+        } else if (entity.vessel() != null) {
+            count += countVesselFields(entity.vessel());
+        } else if (entity.aircraft() != null) {
+            count += countAircraftFields(entity.aircraft());
+        }
+
+        // Count common fields
+        count += countCommonFields(entity);
+
+        return count;
+    }
+
+    /**
+     * Count how many common fields (name, source, contact, etc.) are populated.
+     * 
+     * Ported from Go: pkg/search/similarity.go countCommonFields()
+     */
+    static int countCommonFields(Entity entity) {
+        if (entity == null) {
+            return 0;
+        }
+
+        int count = 0;
+
+        if (entity.name() != null && !entity.name().isEmpty()) {
+            count++;
+        }
+        if (entity.source() != null) {
+            count++;
+        }
+        if (entity.contact() != null) {
+            if (entity.contact().emailAddress() != null && !entity.contact().emailAddress().isEmpty()) {
+                count++;
+            }
+            if (entity.contact().phoneNumber() != null && !entity.contact().phoneNumber().isEmpty()) {
+                count++;
+            }
+            if (entity.contact().faxNumber() != null && !entity.contact().faxNumber().isEmpty()) {
+                count++;
+            }
+        }
+        if (entity.cryptoAddresses() != null && !entity.cryptoAddresses().isEmpty()) {
+            count++;
+        }
+        if (entity.addresses() != null && !entity.addresses().isEmpty()) {
+            count++;
+        }
+        if (entity.altNames() != null && !entity.altNames().isEmpty()) {
+            count++;
+        }
+        if (entity.governmentIds() != null && !entity.governmentIds().isEmpty()) {
+            count++;
+        }
+
+        return count;
+    }
+
+    /**
+     * Calculate what percentage of the index entity's fields were actually compared.
+     * 
+     * Ported from Go: pkg/search/similarity.go calculateCoverage()
+     */
+    static Coverage calculateCoverage(List<ScorePiece> pieces, Entity indexEntity) {
+        int indexFields = countAvailableFields(indexEntity);
+        if (indexFields == 0) {
+            return new Coverage(1.0, 1.0);
+        }
+
+        int fieldsCompared = 0;
+        int criticalFieldsCompared = 0;
+        int criticalTotal = 0;
+
+        for (ScorePiece piece : pieces) {
+            fieldsCompared += piece.getFieldsCompared();
+            if (piece.isRequired()) {
+                criticalFieldsCompared += piece.getFieldsCompared();
+                criticalTotal += piece.getFieldsCompared();
+            }
+        }
+
+        double ratio = (double) fieldsCompared / indexFields;
+        double criticalRatio = criticalTotal > 0 
+            ? (double) criticalFieldsCompared / criticalTotal 
+            : 1.0;
+
+        return new Coverage(ratio, criticalRatio);
+    }
+
+    /**
+     * Categorize fields by importance (required, exact IDs, etc.).
+     * 
+     * Ported from Go: pkg/search/similarity.go countFieldsByImportance()
+     */
+    static EntityFields countFieldsByImportance(List<ScorePiece> pieces) {
+        EntityFields fields = new EntityFields();
+
+        for (ScorePiece piece : pieces) {
+            if (piece.getWeight() <= 0 || piece.getFieldsCompared() == 0) {
+                continue;
+            }
+
+            if (piece.isRequired()) {
+                fields.setRequired(fields.getRequired() + piece.getFieldsCompared());
+            }
+
+            if (piece.isMatched()) {
+                if ("name".equals(piece.getPieceType())) {
+                    fields.setHasName(true);
+                }
+                if (piece.isExact() && ("identifiers".equals(piece.getPieceType()) 
+                        || "gov-ids-exact".equals(piece.getPieceType()))) {
+                    fields.setHasID(true);
+                }
+                if ("address".equals(piece.getPieceType())) {
+                    fields.setHasAddress(true);
+                }
+                if (piece.isExact()) {
+                    fields.setHasCritical(true);
+                }
+            }
+        }
+
+        return fields;
+    }
+
+    /**
+     * Adjust base score based on match quality (number of matching terms).
+     * Applies penalty if too few terms match relative to query complexity.
+     * 
+     * Ported from Go: pkg/search/similarity_fuzzy.go adjustScoreBasedOnQuality()
+     * 
+     * @param match The name match result with score and term counts
+     * @param queryTermCount Number of terms in the query
+     * @return Adjusted score (may be penalized for poor quality)
+     */
+    static double adjustScoreBasedOnQuality(NameMatch match, int queryTermCount) {
+        // Constants from Go implementation
+        final int minMatchingTerms = 2;
+        
+        // Don't apply minimum term requirement if query has fewer than minMatchingTerms
+        if (queryTermCount < minMatchingTerms) {
+            return match.getScore();
+        }
+        
+        // Don't penalize exact matches
+        if (match.isExact()) {
+            return match.getScore();
+        }
+        
+        // Don't apply additional penalty to historical names (already penalized)
+        if (match.isHistorical()) {
+            return match.getScore();
+        }
+        
+        // Apply penalty if insufficient terms matched
+        if (match.getMatchingTerms() < minMatchingTerms) {
+            return match.getScore() * 0.8; // 20% penalty
+        }
+        
+        return match.getScore();
+    }
+
+    /**
+     * Apply penalties and bonuses based on field coverage and match quality.
+     * 
+     * Penalties:
+     * - Low coverage ratio (< 0.35): 0.95x
+     * - Low critical coverage (< 0.7): 0.90x
+     * - Insufficient required fields (< 2): 0.90x
+     * - Name-only match (no ID/address): 0.95x
+     * 
+     * Bonuses:
+     * - Perfect match (name + ID + critical + high coverage + high score): 1.15x
+     * 
+     * Ported from Go: pkg/search/similarity.go applyPenaltiesAndBonuses()
+     * 
+     * @param baseScore The base match score before adjustments
+     * @param coverage Coverage metrics (ratio, criticalRatio)
+     * @param fields Field importance information (hasName, hasID, etc.)
+     * @return Adjusted score with penalties/bonuses applied
+     */
+    static double applyPenaltiesAndBonuses(double baseScore, Coverage coverage, EntityFields fields) {
+        double adjustedScore = baseScore;
+        
+        // Constants from Go implementation
+        final double minCoverageRatio = 0.35;
+        final double minCriticalCoverageRatio = 0.7;
+        final int minRequiredFields = 2;
+        final double perfectMatchThreshold = 0.95;
+        final double perfectCoverageThreshold = 0.70;
+        
+        // Penalty: Low coverage ratio
+        if (coverage.getRatio() < minCoverageRatio) {
+            adjustedScore *= 0.95;
+        }
+        
+        // Penalty: Low critical field coverage
+        if (coverage.getCriticalRatio() < minCriticalCoverageRatio) {
+            adjustedScore *= 0.90;
+        }
+        
+        // Penalty: Insufficient required fields
+        if (fields.getRequired() < minRequiredFields) {
+            adjustedScore *= 0.90;
+        }
+        
+        // Penalty: Name-only match (no ID or address)
+        if (fields.isHasName() && !fields.isHasID() && !fields.isHasAddress()) {
+            adjustedScore *= 0.95;
+        }
+        
+        // Bonus: Perfect match conditions
+        // - Has name match
+        // - Has exact ID match
+        // - Has critical field match
+        // - High coverage (> 70%)
+        // - High base score (> 0.95)
+        if (fields.isHasName() 
+                && fields.isHasID() 
+                && fields.isHasCritical() 
+                && coverage.getRatio() > perfectCoverageThreshold 
+                && baseScore > perfectMatchThreshold) {
+            adjustedScore *= 1.15;
+        }
+        
+        // Cap at 1.0
+        return Math.min(adjustedScore, 1.0);
+    }
+
+    /**
+     * Determine if a name match qualifies as high confidence.
+     * 
+     * High confidence requires BOTH:
+     * - At least 2 matching terms (minMatchingTerms = 2)
+     * - Final score > 0.85 (nameMatchThreshold = 0.85)
+     * 
+     * This prevents false positives from single-word matches or low-quality scores.
+     * 
+     * Ported from Go: pkg/search/similarity_fuzzy.go isHighConfidenceMatch()
+     * 
+     * @param match The name match result with term counts
+     * @param finalScore The final adjusted score (after all penalties/bonuses)
+     * @return true if match meets high confidence criteria
+     */
+    static boolean isHighConfidenceMatch(NameMatch match, double finalScore) {
+        // Constants from Go implementation
+        final int minMatchingTerms = 2;
+        final double nameMatchThreshold = 0.85;
+        
+        // High confidence requires BOTH sufficient matching terms AND high score
+        return match.getMatchingTerms() >= minMatchingTerms 
+                && finalScore > nameMatchThreshold;
+    }
+
+    // Helper methods for counting type-specific fields
+
+    private static int countPersonFields(io.braid.daywatcher.model.Person person) {
+        if (person == null) {
+            return 0;
+        }
+
+        int count = 0;
+        if (person.birthDate() != null) count++;
+        if (person.deathDate() != null) count++;
+        if (person.gender() != null && !person.gender().isEmpty()) count++;
+        if (person.placeOfBirth() != null && !person.placeOfBirth().isEmpty()) count++;
+        if (person.titles() != null && !person.titles().isEmpty()) count++;
+        if (person.governmentIds() != null && !person.governmentIds().isEmpty()) count++;
+        if (person.altNames() != null && !person.altNames().isEmpty()) count++;
+
+        return count;
+    }
+
+    private static int countBusinessFields(io.braid.daywatcher.model.Business business) {
+        if (business == null) {
+            return 0;
+        }
+
+        int count = 0;
+        if (business.name() != null && !business.name().isEmpty()) count++;
+        if (business.altNames() != null && !business.altNames().isEmpty()) count++;
+        if (business.created() != null) count++;
+        if (business.dissolved() != null) count++;
+        if (business.governmentIds() != null && !business.governmentIds().isEmpty()) count++;
+
+        return count;
+    }
+
+    private static int countOrganizationFields(io.braid.daywatcher.model.Organization organization) {
+        if (organization == null) {
+            return 0;
+        }
+
+        int count = 0;
+        if (organization.name() != null && !organization.name().isEmpty()) count++;
+        if (organization.altNames() != null && !organization.altNames().isEmpty()) count++;
+        if (organization.created() != null) count++;
+        if (organization.dissolved() != null) count++;
+        if (organization.governmentIds() != null && !organization.governmentIds().isEmpty()) count++;
+
+        return count;
+    }
+
+    private static int countVesselFields(io.braid.daywatcher.model.Vessel vessel) {
+        if (vessel == null) {
+            return 0;
+        }
+
+        int count = 0;
+        if (vessel.name() != null && !vessel.name().isEmpty()) count++;
+        if (vessel.altNames() != null && !vessel.altNames().isEmpty()) count++;
+        if (vessel.type() != null && !vessel.type().isEmpty()) count++;
+        if (vessel.flag() != null && !vessel.flag().isEmpty()) count++;
+        if (vessel.callSign() != null && !vessel.callSign().isEmpty()) count++;
+        if (vessel.tonnage() != null && !vessel.tonnage().isEmpty()) count++;
+        if (vessel.owner() != null && !vessel.owner().isEmpty()) count++;
+        if (vessel.imoNumber() != null && !vessel.imoNumber().isEmpty()) count++;
+        if (vessel.built() != null && !vessel.built().isEmpty()) count++;
+        if (vessel.mmsi() != null && !vessel.mmsi().isEmpty()) count++;
+
+        return count;
+    }
+
+    private static int countAircraftFields(io.braid.daywatcher.model.Aircraft aircraft) {
+        if (aircraft == null) {
+            return 0;
+        }
+
+        int count = 0;
+        if (aircraft.name() != null && !aircraft.name().isEmpty()) count++;
+        if (aircraft.altNames() != null && !aircraft.altNames().isEmpty()) count++;
+        if (aircraft.type() != null && !aircraft.type().isEmpty()) count++;
+        if (aircraft.flag() != null && !aircraft.flag().isEmpty()) count++;
+        if (aircraft.serialNumber() != null && !aircraft.serialNumber().isEmpty()) count++;
+        if (aircraft.model() != null && !aircraft.model().isEmpty()) count++;
+        if (aircraft.built() != null && !aircraft.built().isEmpty()) count++;
+        if (aircraft.icaoCode() != null && !aircraft.icaoCode().isEmpty()) count++;
+
+        return count;
+    }
+
+    /**
+     * Calculate final weighted score from component scores.
+     * 
+     * Matches Go's calculateFinalScore() behavior from pkg/search/similarity.go.
+     * Only non-zero scores are included in the weighted average.
+     * 
+     * Component weights (matching Go defaults):
+     * - name: 40.0
+     * - address: 10.0
+     * - dates: 15.0
+     * - identifiers: 15.0
+     * - supportingInfo: 15.0
+     * - contactInfo: 5.0
+     * 
+     * @param components Map of component names to scores [0.0, 1.0]
+     * @return Weighted average score [0.0, 1.0], or 0.0 if no components
+     */
+    static double calculateFinalScore(java.util.Map<String, Double> components) {
+        // Default weights matching Go configuration
+        java.util.Map<String, Double> defaultWeights = java.util.Map.of(
+            "name", 40.0,
+            "address", 10.0,
+            "dates", 15.0,
+            "identifiers", 15.0,
+            "supportingInfo", 15.0,
+            "contactInfo", 5.0
+        );
+        
+        return calculateFinalScore(components, defaultWeights);
+    }
+
+    /**
+     * Calculate final weighted score with custom weights.
+     * 
+     * @param components Map of component names to scores [0.0, 1.0]
+     * @param weights Map of component names to weights
+     * @return Weighted average score [0.0, 1.0], or 0.0 if no components
+     */
+    static double calculateFinalScore(
+        java.util.Map<String, Double> components,
+        java.util.Map<String, Double> weights
+    ) {
+        double totalScore = 0.0;
+        double totalWeight = 0.0;
+        
+        for (java.util.Map.Entry<String, Double> entry : components.entrySet()) {
+            String component = entry.getKey();
+            double score = entry.getValue();
+            
+            // Only include non-zero scores
+            if (score > 0 && weights.containsKey(component)) {
+                double weight = weights.get(component);
+                totalScore += score * weight;
+                totalWeight += weight;
+            }
+        }
+        
+        // No components contributed to score
+        if (totalWeight == 0) {
+            return 0.0;
+        }
+        
+        return totalScore / totalWeight;
+    }
+}

@@ -573,6 +573,7 @@
             <button class="tab" onclick="showTab('test')">Test Search</button>
             <button class="tab" onclick="showTab('infrastructure')">Infrastructure</button>
             <button class="tab" onclick="showTab('day-watcher')">Day Watcher</button>
+            <button class="tab" onclick="showTab('driftguard')">DriftGuard</button>
             <button class="tab" onclick="showTab('webhooks')">Webhooks</button>
             <button class="tab" onclick="showTab('docs')">Documentation</button>
         </div>
@@ -1310,6 +1311,42 @@
             </div>
         </div>
         
+        <!-- DriftGuard Tab -->
+        <div id="driftguard" class="tab-content">
+            <h2>DriftGuard</h2>
+            <p class="subtitle" style="margin-bottom: 24px;">Model validation — detects scoring regressions and false positives against baseline test cases.</p>
+
+            <div id="driftguard-alert"></div>
+
+            <button onclick="runDriftGuard()" id="driftguard-btn" style="margin-bottom: 24px; padding: 12px 28px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 15px;">
+                Run DriftGuard
+            </button>
+
+            <div id="driftguard-summary" style="display:none; margin-bottom: 24px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;">
+                    <div class="metric-card">
+                        <div class="metric-label">Total Cases</div>
+                        <div class="metric-value" id="dg-total">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Passing</div>
+                        <div class="metric-value" id="dg-passed" style="color: #22c55e;">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Failing</div>
+                        <div class="metric-value" id="dg-failed" style="color: #ef4444;">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Pass Rate</div>
+                        <div class="metric-value" id="dg-rate">-</div>
+                    </div>
+                </div>
+                <p style="margin-top: 12px; font-size: 12px; color: #64748b;" id="dg-ran-at"></p>
+            </div>
+
+            <div id="driftguard-results"></div>
+        </div>
+
         <!-- Day Watcher Tab -->
         <div id="day-watcher" class="tab-content">
             <h2>Day Watcher Observability</h2>
@@ -2234,6 +2271,99 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
         }
         
         // Run test search
+        async function runDriftGuard() {
+            const btn = document.getElementById('driftguard-btn');
+            const resultsEl = document.getElementById('driftguard-results');
+            const summaryEl = document.getElementById('driftguard-summary');
+
+            btn.textContent = 'Running...';
+            btn.disabled = true;
+            resultsEl.innerHTML = '<p style="color:#64748b;">Running DriftGuard test cases against live scoring engine...</p>';
+            summaryEl.style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/admin/driftguard/run');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+
+                // Summary
+                document.getElementById('dg-total').textContent = data.total;
+                document.getElementById('dg-passed').textContent = data.passed;
+                document.getElementById('dg-failed').textContent = data.failed;
+                document.getElementById('dg-rate').textContent = data.passRate.toFixed(1) + '%';
+                document.getElementById('dg-ran-at').textContent = 'Last run: ' + new Date(data.ranAt).toLocaleString();
+                summaryEl.style.display = 'block';
+
+                // Results tables
+                let html = '';
+                html += renderSuiteTable('Individuals', data.individuals);
+                html += renderSuiteTable('Entities', data.entities);
+                resultsEl.innerHTML = html;
+
+            } catch (e) {
+                resultsEl.innerHTML = `<p style="color:#ef4444;">Error running DriftGuard: ${e.message}</p>`;
+            } finally {
+                btn.textContent = 'Run DriftGuard';
+                btn.disabled = false;
+            }
+        }
+
+        function renderSuiteTable(title, rows) {
+            if (!rows || rows.length === 0) return '';
+
+            const passed = rows.filter(r => r.passed).length;
+            const headerColor = passed === rows.length ? '#22c55e' : '#ef4444';
+
+            let html = `
+                <div style="margin-bottom: 32px;">
+                    <h3 style="margin-bottom: 12px;">${title}
+                        <span style="font-size: 13px; font-weight: 500; color: ${headerColor}; margin-left: 12px;">${passed}/${rows.length} passing</span>
+                    </h3>
+                    <table style="width:100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #f1f5f9; text-align: left;">
+                                <th style="padding: 8px 10px; border-bottom: 2px solid #e2e8f0;">#</th>
+                                <th style="padding: 8px 10px; border-bottom: 2px solid #e2e8f0;">Type</th>
+                                <th style="padding: 8px 10px; border-bottom: 2px solid #e2e8f0;">Query</th>
+                                <th style="padding: 8px 10px; border-bottom: 2px solid #e2e8f0;">Variant</th>
+                                <th style="padding: 8px 10px; border-bottom: 2px solid #e2e8f0;">Score</th>
+                                <th style="padding: 8px 10px; border-bottom: 2px solid #e2e8f0;">Status</th>
+                                <th style="padding: 8px 10px; border-bottom: 2px solid #e2e8f0;">Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            rows.forEach(r => {
+                const rowBg = r.passed ? '' : 'background: #fef2f2;';
+                const statusBadge = r.passed
+                    ? '<span style="color:#22c55e; font-weight:600;">PASS</span>'
+                    : '<span style="color:#ef4444; font-weight:600;">FAIL</span>';
+                const matchBadge = r.shouldMatch
+                    ? '<span style="color:#3b82f6; font-size:11px;">POSITIVE</span>'
+                    : '<span style="color:#f59e0b; font-size:11px;">NEGATIVE</span>';
+                const scoreDisplay = r.actualScore > 0
+                    ? (r.actualScore * 100).toFixed(1) + '%'
+                    : '—';
+
+                html += `
+                    <tr style="${rowBg} border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 8px 10px;">${r.row}</td>
+                        <td style="padding: 8px 10px;">${matchBadge}</td>
+                        <td style="padding: 8px 10px; font-weight: 500;">${r.query}</td>
+                        <td style="padding: 8px 10px; color: #64748b; font-size: 11px;">${r.variantType}</td>
+                        <td style="padding: 8px 10px;">${scoreDisplay}</td>
+                        <td style="padding: 8px 10px;">${statusBadge}</td>
+                        <td style="padding: 8px 10px; color: #64748b;">${r.detail}</td>
+                    </tr>`;
+                if (!r.passed && r.notes) {
+                    html += `<tr style="background:#fef2f2;"><td colspan="7" style="padding: 4px 10px 8px 36px; font-size: 11px; color: #94a3b8;">↳ ${r.notes}</td></tr>`;
+                }
+            });
+
+            html += '</tbody></table></div>';
+            return html;
+        }
+
         async function runTestSearch() {
             const name = document.getElementById('testName').value;
             const type = document.getElementById('testType').value;
