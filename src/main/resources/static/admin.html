@@ -2290,7 +2290,8 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 document.getElementById('dg-total').textContent = data.total;
                 document.getElementById('dg-passed').textContent = data.passed;
                 document.getElementById('dg-failed').textContent = data.failed;
-                document.getElementById('dg-rate').textContent = data.passRate.toFixed(1) + '%';
+                const passRate = data.total > 0 ? (data.passed * 100.0 / data.total) : 0;
+                document.getElementById('dg-rate').textContent = passRate.toFixed(1) + '%';
                 document.getElementById('dg-ran-at').textContent = 'Last run: ' + new Date(data.ranAt).toLocaleString();
                 summaryEl.style.display = 'block';
 
