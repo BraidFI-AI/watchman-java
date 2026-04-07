@@ -1210,6 +1210,7 @@
             </div>
             
             <div id="test-results" style="margin-top: 20px;"></div>
+            <div id="narrative-panel" style="display:none; margin-top: 20px;"></div>
         </div>
         
         <!-- Infrastructure Tab -->
@@ -2391,7 +2392,13 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 html += `<h3>Results: ${data.entities ? data.entities.length : 0} matches</h3>`;
                 
                 if (trace && data.reportUrl) {
-                    html += `<p style="margin: 10px 0;"><a href="${data.reportUrl}" target="_blank" style="color: #3498db;">View ScoreTrace Report</a></p>`;
+                    const sessionId = data.trace ? data.trace.sessionId : null;
+                    html += `<div style="display:flex; align-items:center; gap:12px; margin: 10px 0;">`;
+                    html += `<a href="${data.reportUrl}" target="_blank" style="color: #3498db;">View ScoreTrace Report</a>`;
+                    if (sessionId) {
+                        html += `<button onclick="analyzeScore('${sessionId}')" style="background:#6366f1; color:white; border:none; padding:6px 14px; border-radius:4px; cursor:pointer; font-size:13px; font-weight:600;">✦ Analyze Score</button>`;
+                    }
+                    html += `</div>`;
                 }
                 
                 if (data.entities && data.entities.length > 0) {
@@ -2439,6 +2446,74 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
             }
         }
         
+        async function analyzeScore(sessionId) {
+            const panel = document.getElementById('narrative-panel');
+            panel.style.display = 'block';
+            panel.innerHTML = `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:24px;">
+                    <div style="display:flex; align-items:center; gap:10px; color:#6366f1; font-weight:600;">
+                        <span style="font-size:18px;">✦</span> Analyzing score with Claude Opus...
+                    </div>
+                    <p style="color:#64748b; font-size:13px; margin-top:8px;">Reading source code, runtime config (82 params), and trace. This takes a few seconds.</p>
+                </div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/reports/${sessionId}/analyze`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                const signals = (data.keySignals || []).map(s =>
+                    `<li style="margin:6px 0; color:#334155;">${s}</li>`).join('');
+
+                const flags = (data.tuningFlags || []).map(f => {
+                    const [field, ...rest] = f.split('—');
+                    return `<tr>
+                        <td style="padding:8px 12px; font-family:monospace; font-size:12px; color:#6366f1; white-space:nowrap;">${field.trim()}</td>
+                        <td style="padding:8px 12px; color:#475569; font-size:13px;">${rest.join('—').trim()}</td>
+                    </tr>`;
+                }).join('');
+
+                panel.innerHTML = `
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:24px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                            <h3 style="color:#1e293b; font-size:16px; font-weight:700;">✦ Score Analysis</h3>
+                            <span style="color:#94a3b8; font-size:12px;">analysed in ${(data.analysisMs/1000).toFixed(1)}s · session ${sessionId.substring(0,8)}...</span>
+                        </div>
+
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:6px; padding:16px; margin-bottom:16px;">
+                            <h4 style="color:#475569; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Narrative</h4>
+                            <p style="color:#1e293b; font-size:14px; line-height:1.7;">${data.narrative}</p>
+                        </div>
+
+                        ${signals ? `
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:6px; padding:16px; margin-bottom:16px;">
+                            <h4 style="color:#475569; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Key Signals</h4>
+                            <ul style="padding-left:18px; margin:0;">${signals}</ul>
+                        </div>` : ''}
+
+                        ${flags ? `
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:6px; padding:16px;">
+                            <h4 style="color:#475569; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Tuning Flags</h4>
+                            <table style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr style="border-bottom:1px solid #e2e8f0;">
+                                        <th style="padding:6px 12px; text-align:left; font-size:11px; color:#94a3b8; font-weight:600;">CONFIG FIELD</th>
+                                        <th style="padding:6px 12px; text-align:left; font-size:11px; color:#94a3b8; font-weight:600;">RECOMMENDATION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${flags}</tbody>
+                            </table>
+                        </div>` : ''}
+                    </div>`;
+
+            } catch (error) {
+                panel.innerHTML = `
+                    <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:20px; color:#dc2626;">
+                        Analysis failed: ${error.message}
+                    </div>`;
+            }
+        }
+
         // Show alert
         function showAlert(tab, message, type) {
             const alertDiv = document.getElementById(`${tab}-alert`);

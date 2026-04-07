@@ -40,11 +40,14 @@ class ReportControllerTest {
     @Mock
     private TraceSummaryService summaryService;
 
+    @Mock
+    private io.braid.daywatcher.report.ScoreNarrativeService narrativeService;
+
     private ReportController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new ReportController(traceRepository, reportRenderer, summaryService);
+        controller = new ReportController(traceRepository, reportRenderer, summaryService, narrativeService);
     }
 
     @Nested

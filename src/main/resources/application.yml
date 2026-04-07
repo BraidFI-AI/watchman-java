@@ -60,7 +60,7 @@ watchman:
     address-weight: 25.0
     critical-id-weight: 50.0
     supporting-info-weight: 15.0
-    minimum-score: 0.0
+    minimum-score: 0.88
     exact-match-threshold: 0.99
     alias-tie-breaker-threshold: 0.95
     exact-match-critical-id-threshold: 0.99

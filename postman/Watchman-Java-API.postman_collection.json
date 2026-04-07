@@ -797,6 +797,41 @@
             }
           ],
           "description": "Get JSON summary using sessionId from Step 1. Shows phase contributions, timings, and insights for automation/dashboards."
+        },
+        {
+          "name": "STEP 2c: Analyze Score (AI Narrative)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/:sessionId/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                ":sessionId",
+                "analyze"
+              ],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": "{{traceSessionId}}",
+                  "description": "Session ID from Step 1 response"
+                }
+              ]
+            },
+            "description": "AI-powered post-screening analysis. Feeds the complete scoring engine source code, all 82 live configuration parameters (WeightConfig, SimilarityConfig, SearchConfig, AutoClearanceConfig), and the frozen trace to Claude Opus. Returns a plain-English explanation of exactly why the entity received its score — including the weighted sum arithmetic, which config values were in play, and specific tuning recommendations.\n\nRequires ANTHROPIC_API_KEY set on the server. No recomputation occurs — the score is frozen from Step 1."
+          },
+          "response": [
+            {
+              "name": "Analyze Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"sessionId\": \"abc-123\",\n  \"narrative\": \"The entity MADURO MOROS, Nicolas received a totalWeightedScore of 0.95. In calculateNormalScore (EntityScorerImpl), bestNameScore = max(nameScore=0.95, altNamesScore=0.0) = 0.95. weightedSum = 0.95 * nameWeight(35.0) = 33.25. totalWeight = 35.0. finalScore = 33.25 / 35.0 = 0.95. No other components contributed (govId, crypto, contact, address, date all 0.0 — no query data provided for those fields). The aliasBoostCheck evaluated: altNameScore(0.0) > nameScore(0.95) * aliasScoreMultiplier(1.2) = false — no boost applied.\",\n  \"keySignals\": [\n    \"compareNames via JaroWinklerSimilarity returned 0.95 — names are near-identical after normalization\",\n    \"calculateNormalScore: only nameWeight(35.0) contributed to denominator — name-only search\",\n    \"aliasBoostAmount(0.50) not triggered — altNamesScore did not exceed nameScore * aliasScoreMultiplier(1.2)\"\n  ],\n  \"tuningFlags\": [\n    \"nameWeight (current: 35.0) — sole denominator in this name-only search; lowering it has no effect when no other fields are present\",\n    \"aliasScoreMultiplier (current: 1.2) — alias must score 20% better than primary to trigger boost; lower this if you want alias-matched entities to surface more aggressively\",\n    \"aliasBoostAmount (current: 0.50) — BSA-critical, do not adjust without full R2 validation run\"\n  ],\n  \"analysisMs\": 3240\n}"
+            }
+          ]
         }
       ]
     },

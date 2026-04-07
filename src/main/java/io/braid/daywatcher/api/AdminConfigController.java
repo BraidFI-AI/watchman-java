@@ -277,7 +277,7 @@ public class AdminConfigController {
         weightConfig.setAddressWeight(25.0);
         weightConfig.setCriticalIdWeight(50.0);
         weightConfig.setSupportingInfoWeight(15.0);
-        weightConfig.setMinimumScore(0.0);
+        weightConfig.setMinimumScore(0.88);
         weightConfig.setExactMatchThreshold(0.99);
         weightConfig.setNameComparisonEnabled(true);
         weightConfig.setAltNameComparisonEnabled(true);

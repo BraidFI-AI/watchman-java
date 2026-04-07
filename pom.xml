@@ -152,6 +152,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Anthropic Java SDK (ScoreNarrativeService) -->
+        <dependency>
+            <groupId>com.anthropic</groupId>
+            <artifactId>anthropic-java</artifactId>
+            <version>2.17.0</version>
+        </dependency>
+
         <!-- Structured JSON Logging -->
         <dependency>
             <groupId>ch.qos.logback.contrib</groupId>

@@ -1,6 +1,8 @@
 package io.braid.daywatcher.api;
 
 import io.braid.daywatcher.report.ReportRenderer;
+import io.braid.daywatcher.report.ScoreNarrative;
+import io.braid.daywatcher.report.ScoreNarrativeService;
 import io.braid.daywatcher.report.TraceSummaryService;
 import io.braid.daywatcher.report.model.ReportSummary;
 import io.braid.daywatcher.trace.ScoringTrace;
@@ -27,11 +29,14 @@ public class ReportController {
     private final TraceRepository traceRepository;
     private final ReportRenderer reportRenderer;
     private final TraceSummaryService summaryService;
-    
-    public ReportController(TraceRepository traceRepository, ReportRenderer reportRenderer, TraceSummaryService summaryService) {
+    private final ScoreNarrativeService narrativeService;
+
+    public ReportController(TraceRepository traceRepository, ReportRenderer reportRenderer,
+                            TraceSummaryService summaryService, ScoreNarrativeService narrativeService) {
         this.traceRepository = traceRepository;
         this.reportRenderer = reportRenderer;
         this.summaryService = summaryService;
+        this.narrativeService = narrativeService;
     }
     
     /**
@@ -65,10 +70,34 @@ public class ReportController {
     }
     
     /**
+     * AI-generated analysis of a scoring trace.
+     *
+     * GET /api/reports/{sessionId}/analyze?query=Nicolas+Maduro
+     *
+     * Feeds the full scoring engine source code, live runtime config, and the trace
+     * to Claude Opus. Returns a narrative explaining every scoring decision with
+     * specific method names, config fields, and runtime values — plus tuning flags
+     * pointing at the exact knobs to adjust.
+     *
+     * Requires ANTHROPIC_API_KEY. Returns 404 if session not found.
+     */
+    @GetMapping(value = "/{sessionId}/analyze", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ScoreNarrative> analyze(@PathVariable String sessionId) {
+
+        logger.info("Narrative analysis request: sessionId={}", sessionId);
+
+        ScoringTrace trace = traceRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new EntityNotFoundException("Report", sessionId));
+
+        ScoreNarrative narrative = narrativeService.analyze(trace);
+        return ResponseEntity.ok(narrative);
+    }
+
+    /**
      * Get a JSON summary of a scoring trace for programmatic access.
-     * 
+     *
      * GET /api/reports/{sessionId}/summary
-     * 
+     *
      * @param sessionId the trace session ID
      * @return JSON summary or 404 if not found
      */
