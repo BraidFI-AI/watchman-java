@@ -114,6 +114,8 @@ watchman:
     phase1-threshold: 0.85
     address-mismatch-threshold: 0.5
     dob-difference-threshold-years: 1
+  config:
+    bucket: ${WATCHMAN_CONFIG_BUCKET:}
   bulk:
     input-bucket: ${WATCHMAN_BULK_INPUT_BUCKET:watchman-input}
     results-bucket: ${WATCHMAN_BULK_RESULTS_BUCKET:watchman-results}
