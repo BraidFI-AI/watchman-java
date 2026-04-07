@@ -86,6 +86,10 @@ public class ConfigPersistenceService {
         similarity.put("phonetic-filtering-disabled", similarityConfig.isPhoneticFilteringDisabled());
         similarity.put("keep-stopwords", similarityConfig.isKeepStopwords());
         similarity.put("log-stopword-debugging", similarityConfig.isLogStopwordDebugging());
+        similarity.put("query-coverage-quality-threshold", similarityConfig.getQueryCoverageQualityThreshold());
+        similarity.put("query-coverage-boost-multiplier", similarityConfig.getQueryCoverageBoostMultiplier());
+        similarity.put("token-blend-weight", similarityConfig.getTokenBlendWeight());
+        similarity.put("language-detection-min-confidence", similarityConfig.getLanguageDetectionMinConfidence());
 
         // Update weight config (including BSA compliance thresholds)
         Map<String, Object> weights = getOrCreateMap(watchmanConfig, "weights");
@@ -110,6 +114,45 @@ public class ConfigPersistenceService {
         weights.put("alias-minimum-score", weightConfig.getAliasMinimumScore());
         weights.put("alias-boost-max-score", weightConfig.getAliasBoostMaxScore());
         weights.put("alias-boost-amount", weightConfig.getAliasBoostAmount());
+        // Phase 2 — address field weights
+        weights.put("address-line1-weight", weightConfig.getAddressLine1Weight());
+        weights.put("address-line2-weight", weightConfig.getAddressLine2Weight());
+        weights.put("address-city-weight", weightConfig.getAddressCityWeight());
+        weights.put("address-state-weight", weightConfig.getAddressStateWeight());
+        weights.put("address-postal-weight", weightConfig.getAddressPostalWeight());
+        weights.put("address-country-weight", weightConfig.getAddressCountryWeight());
+        weights.put("address-high-confidence-threshold", weightConfig.getAddressHighConfidenceThreshold());
+        // Phase 2 — date comparison params
+        weights.put("date-year-decay-rate", weightConfig.getDateYearDecayRate());
+        weights.put("date-distant-year-score", weightConfig.getDateDistantYearScore());
+        weights.put("date-month-tolerance1", weightConfig.getDateMonthTolerance1());
+        weights.put("date-month-tolerance2", weightConfig.getDateMonthTolerance2());
+        weights.put("date-month-tolerance3-plus", weightConfig.getDateMonthTolerance3Plus());
+        weights.put("date-day-tolerance0to3-start", weightConfig.getDateDayTolerance0to3Start());
+        weights.put("date-day-tolerance0to3-decay", weightConfig.getDateDayTolerance0to3Decay());
+        weights.put("date-day-tolerance4to7", weightConfig.getDateDayTolerance4to7());
+        weights.put("date-day-tolerance8-plus", weightConfig.getDateDayTolerance8Plus());
+        weights.put("date-year-weight", weightConfig.getDateYearWeight());
+        weights.put("date-month-weight", weightConfig.getDateMonthWeight());
+        weights.put("date-day-weight", weightConfig.getDateDayWeight());
+        // Phase 3 — supporting info / title thresholds
+        weights.put("supporting-info-matched-threshold", weightConfig.getSupportingInfoMatchedThreshold());
+        weights.put("supporting-info-exact-threshold", weightConfig.getSupportingInfoExactThreshold());
+        weights.put("supporting-info-secondary-penalty", weightConfig.getSupportingInfoSecondaryPenalty());
+        weights.put("title-matched-threshold", weightConfig.getTitleMatchedThreshold());
+        weights.put("title-exact-threshold", weightConfig.getTitleExactThreshold());
+        // Phase 4 — affiliation / name thresholds
+        weights.put("affiliation-name-threshold", weightConfig.getAffiliationNameThreshold());
+        weights.put("affiliation-exact-threshold", weightConfig.getAffiliationExactThreshold());
+        weights.put("affiliation-type-score-threshold", weightConfig.getAffiliationTypeScoreThreshold());
+        weights.put("name-early-exit-threshold", weightConfig.getNameEarlyExitThreshold());
+        // Phase 5 — scorer address weights
+        weights.put("scorer-address-country-weight", weightConfig.getScorerAddressCountryWeight());
+        weights.put("scorer-address-city-weight", weightConfig.getScorerAddressCityWeight());
+        weights.put("scorer-address-line-weight", weightConfig.getScorerAddressLineWeight());
+        // Phase 6 — alias selection
+        weights.put("alias-selection-tolerance", weightConfig.getAliasSelectionTolerance());
+        weights.put("alias-coverage-min-score", weightConfig.getAliasCoverageMinScore());
 
         // Update auto-clearance config
         Map<String, Object> autoClearance = getOrCreateMap(watchmanConfig, "auto-clearance");
