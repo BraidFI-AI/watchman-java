@@ -1,9 +1,14 @@
 package io.braid.daywatcher.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.yaml.snakeyaml.Yaml;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -21,7 +26,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Verifies that configuration changes are persisted correctly to YAML
  * without corrupting BSA-critical thresholds.
  */
+@ExtendWith(MockitoExtension.class)
 class ConfigPersistenceServiceTest {
+
+    @Mock
+    private S3Client s3Client;
 
     private ConfigPersistenceService service;
     private SimilarityConfig similarityConfig;
@@ -37,7 +46,8 @@ class ConfigPersistenceServiceTest {
         // Backup original config
         Files.copy(CONFIG_FILE, BACKUP_FILE, StandardCopyOption.REPLACE_EXISTING);
 
-        service = new ConfigPersistenceService();
+        // No config bucket set — S3 persist is skipped, local file persist runs
+        service = new ConfigPersistenceService(s3Client, new ObjectMapper(), "");
         
         // Create config beans with BSA-approved default values
         similarityConfig = new SimilarityConfig();
