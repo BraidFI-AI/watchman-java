@@ -7,7 +7,6 @@ import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.TextBlockParam;
-import com.anthropic.models.messages.ThinkingConfigAdaptive;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -160,7 +159,7 @@ public class ScoreNarrativeService {
         MessageCreateParams params = MessageCreateParams.builder()
                 .model(Model.CLAUDE_OPUS_4_6)
                 .maxTokens(8192L)
-                .thinking(ThinkingConfigAdaptive.builder().build())
+                // No thinking — we need strict JSON output; thinking blocks interfere with parsing.
                 // Cache the system prompt (instructions + source code) — source rarely changes,
                 // so repeated calls in a tuning session hit cache instead of re-sending all source.
                 .systemOfTextBlockParams(List.of(
@@ -310,6 +309,9 @@ public class ScoreNarrativeService {
 
     private ScoreNarrative parseResponse(String sessionId, String responseText, long analysisMs) {
         String json = responseText.trim();
+
+        // Strip thinking block XML if present (adaptive thinking can embed these in text content)
+        json = json.replaceAll("(?s)<thinking>.*?</thinking>", "").trim();
 
         // Strip markdown code fences if present
         if (json.startsWith("```")) {
