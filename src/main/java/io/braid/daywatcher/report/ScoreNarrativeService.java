@@ -320,6 +320,18 @@ public class ScoreNarrativeService {
             }
         }
 
+        // Find JSON object if preamble text is present before the opening brace
+        int jsonStart = json.indexOf('{');
+        if (jsonStart > 0) {
+            json = json.substring(jsonStart);
+        }
+
+        // Trim any trailing content after the closing brace
+        int jsonEnd = json.lastIndexOf('}');
+        if (jsonEnd >= 0 && jsonEnd < json.length() - 1) {
+            json = json.substring(0, jsonEnd + 1);
+        }
+
         try {
             NarrativeResponse nr = objectMapper.readValue(json, NarrativeResponse.class);
             return new ScoreNarrative(sessionId, nr.narrative(), nr.keySignals(), nr.tuningFlags(), analysisMs);

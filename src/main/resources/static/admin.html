@@ -2462,6 +2462,13 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
+                // Format narrative: split on double-newlines for paragraphs, single-newlines for line breaks
+                const narrativeHtml = (data.narrative || '')
+                    .split(/\n{2,}/)
+                    .filter(p => p.trim())
+                    .map(p => `<p style="color:#1e293b; font-size:14px; line-height:1.7; margin:0 0 12px 0;">${p.replace(/\n/g, '<br>')}</p>`)
+                    .join('');
+
                 const signals = (data.keySignals || []).map(s =>
                     `<li style="margin:6px 0; color:#334155;">${s}</li>`).join('');
 
@@ -2482,7 +2489,7 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
 
                         <div style="background:white; border:1px solid #e2e8f0; border-radius:6px; padding:16px; margin-bottom:16px;">
                             <h4 style="color:#475569; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Narrative</h4>
-                            <p style="color:#1e293b; font-size:14px; line-height:1.7;">${data.narrative}</p>
+                            <div>${narrativeHtml}</div>
                         </div>
 
                         ${signals ? `
