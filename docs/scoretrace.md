@@ -90,6 +90,45 @@ curl "http://localhost:8080/api/reports/$SESSION_ID/summary"
 # Verify: totalEntitiesScored, phaseContributions, phaseTimings, insights[]
 ```
 
+## AI Score Narrative Analysis
+
+**Endpoint:** `GET /api/reports/{sessionId}/analyze`
+
+Post-screening tool that asks Claude Opus to explain exactly why an entity received its score. Designed for compliance review, BSA analyst questions, and parameter tuning sessions.
+
+**What is sent to Claude:**
+
+*System prompt (prompt-cached — sent once per session):*
+- BSA/AML expert instructions requiring every claim to cite a specific method name, config field, and live runtime value
+- Full source code of 12 scoring engine files (4,497 lines): `EntityScorerImpl`, all 4 config classes, `JaroWinklerSimilarity`, `NameScorer`, `AddressComparer`, `DateComparer`, `AffiliationComparer`, `SupportingInfoComparer`, `EntityTitleComparer`
+
+*User message (unique per request):*
+- Live snapshot of all 84 config parameters at current runtime values
+- Full scoring trace: every phase event in order with descriptions and data
+- Score breakdown: all 8 component scores + `totalWeightedScore`
+- Entity metadata: matched entity name, aliases, matched alias
+
+**Response fields:**
+- `narrative` — step-by-step explanation of every decision from normalization through aggregation, including the weighted sum arithmetic
+- `keySignals` — most important factors, each citing method + config field + live value
+- `tuningFlags` — which parameters to adjust and in which direction to change this result
+
+**Usage:**
+```bash
+# Step 1: Run search with trace enabled
+curl "http://localhost:8084/v2/search?name=Nicolas+Maduro&trace=true"
+# Response includes sessionId
+
+# Step 2: Get AI narrative
+curl "http://localhost:8084/api/reports/{sessionId}/analyze"
+```
+
+**Admin UI:** "Analyze Score" button appears in the ScoreTrace panel after a trace completes. Renders narrative, key signals, and tuning flags inline.
+
+**Requirements:** `ANTHROPIC_API_KEY` environment variable must be set. Degrades gracefully with a clear message if not configured.
+
+**Cost profile:** ~7,000–8,000 input tokens per request. System prompt is prompt-cached after the first call — repeated analysis requests in a tuning session only bill for the trace + config portion (~500–800 tokens).
+
 ## Implementation Details
 
 **Trace storage:** In-memory with 24-hour TTL
