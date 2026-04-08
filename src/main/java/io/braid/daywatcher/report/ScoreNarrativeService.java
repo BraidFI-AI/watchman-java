@@ -73,27 +73,27 @@ public class ScoreNarrativeService {
             You are an expert analyst for Day Watcher, a BSA/AML sanctions screening system.
 
             You have been given the complete Java source code for the scoring engine and all \
-            configuration classes. Your job is to analyze a scoring trace and explain EXACTLY why \
-            an entity received its specific totalWeightedScore.
+            configuration classes. Your job is to explain EXACTLY why an entity received its score.
 
-            Rules:
-            - Every claim MUST reference a specific method name from the source code.
-            - Every claim MUST name the exact WeightConfig or SimilarityConfig field that controlled the behavior.
-            - Every claim MUST cite the actual runtime value from the configuration snapshot.
-            - If a phase score is 0.0 because no query data was provided (no address, no gov ID, etc.), \
-              explain that — it is not a miss, it is an absence of evidence.
-            - Trace the alias boost logic explicitly when altNamesScore > 0.
-            - Trace the aggregation formula in calculateNormalScore or calculateWithExactMatch.
+            Style rules — be a code reviewer, not a narrator:
+            - One bullet per phase. One sentence per bullet. No hedging, no speculation.
+            - Every bullet MUST name the method called, the config field that controlled it, \
+              and the live value. Format: `method()` — field=value — result.
+            - If a phase score is 0.0 due to absent query data, say so in five words or fewer \
+              (e.g., "No address provided — absence of evidence").
+            - For aggregation, show the formula inline: bestNameScore=max(x,y)=z → z×nameWeight/nameWeight=1.0.
+            - keySignals: the 3–5 factors that most determined the outcome. One line each.
+            - tuningFlags: config fields that, if changed, would shift this result. One line each.
 
             Response format — return a JSON object ONLY, no markdown, no preamble:
             {
-              "narrative": "Step-by-step explanation of every scoring decision from normalization through aggregation",
+              "narrative": "- Bullet 1\\n- Bullet 2\\n- Bullet 3\\n...",
               "keySignals": [
-                "Signal naming method + config field + value (e.g., 'calculateNormalScore used nameWeight=0.85 ...')",
+                "method() — field=value — one-line impact",
                 "..."
               ],
               "tuningFlags": [
-                "fieldName (current: X) — what this controls and which direction to move it to change this result",
+                "fieldName (current: X) — raise/lower to change result in this direction",
                 "..."
               ]
             }
@@ -296,14 +296,12 @@ public class ScoreNarrativeService {
 
                 ## TASK
 
-                Explain exactly why the totalWeightedScore above is what it is.
-                Walk through each phase: normalization, name comparison, alias comparison, \
-                each disabled/zero phase (explain why it is zero), and aggregation.
-                For the aggregation, show the weighted sum calculation using the actual values.
-                For every factor, name the method in EntityScorerImpl, the config field, \
-                and the live value.
+                Return one bullet per scoring phase explaining why totalWeightedScore is what it is.
+                Each bullet: method called — config field=live value — score/outcome.
+                Zero scores: state the reason in ≤5 words.
+                Aggregation bullet: show the formula with actual numbers inline.
 
-                Return JSON only.
+                Return JSON only. No preamble.
                 """;
     }
 

@@ -2462,12 +2462,17 @@ double score = entityScorer.scoreWithBreakdown(query, candidate, ctx);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
-                // Format narrative: split on double-newlines for paragraphs, single-newlines for line breaks
-                const narrativeHtml = (data.narrative || '')
-                    .split(/\n{2,}/)
-                    .filter(p => p.trim())
-                    .map(p => `<p style="color:#1e293b; font-size:14px; line-height:1.7; margin:0 0 12px 0;">${p.replace(/\n/g, '<br>')}</p>`)
-                    .join('');
+                // Format narrative: render "- bullet" lines as <li>, other lines as <p>
+                const narrativeLines = (data.narrative || '').split('\n').filter(l => l.trim());
+                const isBulletList = narrativeLines.some(l => l.trim().startsWith('-'));
+                const narrativeHtml = isBulletList
+                    ? `<ul style="padding-left:18px; margin:0;">${narrativeLines
+                        .filter(l => l.trim().startsWith('-'))
+                        .map(l => `<li style="color:#1e293b; font-size:14px; line-height:1.7; margin:0 0 6px 0;">${l.trim().replace(/^-\s*/, '')}</li>`)
+                        .join('')}</ul>`
+                    : narrativeLines
+                        .map(l => `<p style="color:#1e293b; font-size:14px; line-height:1.7; margin:0 0 10px 0;">${l}</p>`)
+                        .join('');
 
                 const signals = (data.keySignals || []).map(s =>
                     `<li style="margin:6px 0; color:#334155;">${s}</li>`).join('');
