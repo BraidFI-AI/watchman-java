@@ -111,26 +111,17 @@ public class SearchController {
         if (Boolean.TRUE.equals(trace) && !results.isEmpty()) {
             String sessionId = UUID.randomUUID().toString();
             
-            // Filter to high-confidence results for trace (exclude low-confidence noise)
-            List<SearchResult> highConfidenceResults = results.stream()
-                .filter(result -> result.score() >= TRACE_CONFIDENCE_THRESHOLD)
-                .toList();
-            
-            // Re-score each filtered result with tracing (each entity gets its own context)
-            // High-confidence: trace enabled, Low-confidence: trace disabled
+            // Re-score each result with breakdown (disabled context for all — scores come from re-scoring)
             results = results.stream()
                 .map(result -> {
-                    boolean isHighConfidence = result.score() >= TRACE_CONFIDENCE_THRESHOLD;
-                    ScoringContext ctx = isHighConfidence 
-                        ? ScoringContext.enabled(sessionId)
-                        : ScoringContext.disabled();
-                    
+                    ScoringContext ctx = ScoringContext.disabled();
+
                     ScoreBreakdown breakdown = entityScorer.scoreWithBreakdown(
                         Entity.of(null, request.name(), null, null),
                         result.entity(),
                         ctx
                     );
-                    
+
                     // Extract matchedAlias from context metadata
                     String matchedAlias = null;
                     ScoringTrace entityTrace = ctx.toTrace();
@@ -140,15 +131,19 @@ public class SearchController {
                             matchedAlias = (String) aliasObj;
                         }
                     }
-                    
+
                     return new SearchResult(result.entity(), breakdown.totalWeightedScore(), breakdown, matchedAlias);
                 })
                 .toList();
-            
+
+            // Filter high-confidence results AFTER re-scoring so the threshold applies to final scores
+            List<SearchResult> highConfidenceResults = results.stream()
+                .filter(result -> result.score() >= TRACE_CONFIDENCE_THRESHOLD)
+                .toList();
+
             // Save trace only for high-confidence results (for report generation)
-            // Always create a trace session, even if no high-confidence results exist
             ScoringContext reportCtx = ScoringContext.enabled(sessionId);
-            
+
             if (!highConfidenceResults.isEmpty()) {
                 // BSA Row 45 FIX: Use best-matching entity for trace report, not just first result
                 // Prefer entities with exact or near-exact name matches over alphabetically-first results
